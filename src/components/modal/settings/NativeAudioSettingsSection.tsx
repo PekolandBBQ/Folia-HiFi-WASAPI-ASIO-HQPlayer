@@ -9,6 +9,7 @@ import { setPlayerState } from '../../../stores/usePlaybackStore';
 import { isNativeAudioSupported } from '../../../services/nativeAudio/capabilities';
 import { PlayerState, type Theme } from '../../../types';
 import type { NativeAudioBackend, NativeAudioDevice } from '../../../types/nativeAudio';
+import { settingsToggleOffClassFor } from './settingsCardClasses';
 
 // src/components/modal/settings/NativeAudioSettingsSection.tsx — native backend and endpoint selection.
 export default function NativeAudioSettingsSection({ isDaylight, theme, className }: {
@@ -18,21 +19,33 @@ export default function NativeAudioSettingsSection({ isDaylight, theme, classNam
     const backend = useAudioSettingsStore(state => state.nativeAudioBackend);
     const deviceId = useAudioSettingsStore(state => state.nativeAudioDeviceId);
     const apply = useAudioSettingsStore(state => state.handleSetNativeAudioOutput);
+    const processingMode = useAudioSettingsStore(state => state.nativeAudioProcessingMode);
+    const setProcessingMode = useAudioSettingsStore(state => state.handleSetNativeAudioProcessingMode);
     const [devices, setDevices] = useState<NativeAudioDevice[]>([]);
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState('');
+    const showSignalPath = useAudioSettingsStore(state => state.showAudioSignalPath);
+    const setShowSignalPath = useAudioSettingsStore(state => state.handleSetShowAudioSignalPath);
+    const [component, setComponent] = useState<{ installed?: boolean; installable?: boolean; version?: string }>({});
     const [available, setAvailable] = useState(false);
     const supported = isNativeAudioSupported();
     const refresh = async () => {
         if (!supported) return;
         setBusy(true); setError('');
         try {
-            const status = await window.electron!.nativeAudio!.request({ action: 'status' }) as { available: boolean };
+            const status = await window.electron!.nativeAudio!.request({ action: 'status' }) as { available: boolean; installed?: boolean; installable?: boolean; version?: string; error?: string };
+            setComponent(status);
             setAvailable(status.available);
-            if (!status.available) { setError(t('nativeAudio.unavailable')); return; }
+            if (!status.available) { setError(status.error || t('nativeAudio.unavailable')); return; }
             const next = await window.electron!.nativeAudio!.request({ action: 'devices' }) as NativeAudioDevice[];
             setDevices(next);
         } catch (error) { setError(error instanceof Error ? error.message : String(error)); }
+        finally { setBusy(false); }
+    };
+    const manage = async (action: string) => {
+        setBusy(true); setError('');
+        try { await window.electron!.nativeAudio!.request({ action }); await refresh(); }
+        catch (error) { setError(error instanceof Error ? error.message : String(error)); }
         finally { setBusy(false); }
     };
     useEffect(() => { if (supported) void refresh(); }, [supported]);
@@ -54,6 +67,16 @@ export default function NativeAudioSettingsSection({ isDaylight, theme, classNam
                 <RefreshCw size={16} className={busy ? 'animate-spin' : ''} />
             </button>
         </div>
+        <div className="mt-3 flex flex-wrap gap-2 text-xs">
+            <button type="button" disabled={busy || backend !== 'browser' || !component.installable}
+                className="rounded-lg border px-3 py-2 disabled:opacity-40"
+                onClick={() => void manage('component-install')}>{t('nativeAudio.installComponent')}</button>
+            {component.installed && <button type="button" disabled={busy || backend !== 'browser'}
+                className="rounded-lg border px-3 py-2 disabled:opacity-40"
+                onClick={() => void manage('component-uninstall')}>{t('nativeAudio.removeComponent')}</button>}
+            {!component.installable && <p>{t('nativeAudio.componentPending')}</p>}
+            {component.version && <span>v{component.version}</span>}
+        </div>
         <p className="my-3 text-xs opacity-70">{t('nativeAudio.description')}</p>
         <CustomSelect value={value} options={options} isDaylight={isDaylight} theme={theme}
             ariaLabel={t('nativeAudio.title')} disabled={busy}
@@ -67,6 +90,37 @@ export default function NativeAudioSettingsSection({ isDaylight, theme, classNam
         {available && !devices.some(device => device.backend === 'asio') &&
             <p className="mt-2 text-xs opacity-70">{t('nativeAudio.noAsio')}</p>}
         {error && <p role="alert" className="mt-2 text-xs">{error}</p>}
+        <div className="mt-4 flex items-start justify-between gap-4 border-t pt-4"
+            style={{ borderColor: isDaylight ? 'rgba(24, 24, 27, 0.12)' : 'rgba(255, 255, 255, 0.1)' }}>
+            <div className="min-w-0">
+                <div className="text-sm font-medium">{t('nativeAudio.integerDirect')}</div>
+                <div className="mt-1 max-w-[540px] text-[11px] leading-relaxed opacity-60">
+                    {t('nativeAudio.integerDirectDescription')}
+                </div>
+            </div>
+            <button type="button" role="switch" aria-checked={processingMode === 'integer-direct'}
+                aria-label={t('nativeAudio.integerDirect')}
+                onClick={() => {
+                    setPlayerState(PlayerState.PAUSED);
+                    setProcessingMode(processingMode === 'integer-direct' ? 'compatibility' : 'integer-direct');
+                }}
+                className={`h-6 w-12 shrink-0 rounded-full p-1 transition-colors ${
+                    processingMode === 'integer-direct' ? '' : settingsToggleOffClassFor(isDaylight)}`}
+                style={{ backgroundColor: processingMode === 'integer-direct'
+                    ? theme?.secondaryColor || 'rgba(114, 119, 134, 1)' : undefined }}>
+                <div className={`h-4 w-4 rounded-full bg-white shadow-sm transition-transform ${
+                    processingMode === 'integer-direct' ? 'translate-x-6' : 'translate-x-0'}`} />
+            </button>
+        </div>
+        <div className="mt-4 flex items-center justify-between gap-4 border-t pt-4 text-sm" style={{ borderColor: isDaylight ? 'rgba(24,24,27,0.12)' : 'rgba(255,255,255,0.1)' }}>
+            {t('nativeAudio.showSignalPath')}
+            <button type="button" role="switch" aria-checked={showSignalPath} aria-label={t('nativeAudio.showSignalPath')}
+                onClick={() => setShowSignalPath(!showSignalPath)}
+                className={`h-6 w-12 shrink-0 rounded-full p-1 transition-colors ${showSignalPath ? '' : settingsToggleOffClassFor(isDaylight)}`}
+                style={{ backgroundColor: showSignalPath ? theme?.secondaryColor || 'rgba(114,119,134,1)' : undefined }}>
+                <div className={`h-4 w-4 rounded-full bg-white shadow-sm transition-transform ${showSignalPath ? 'translate-x-6' : 'translate-x-0'}`} />
+            </button>
+        </div>
         </div>
     </SettingsAnchor>;
 }

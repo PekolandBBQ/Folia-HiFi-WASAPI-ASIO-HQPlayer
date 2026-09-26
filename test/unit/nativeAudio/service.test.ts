@@ -17,9 +17,9 @@ async function fixture(decode: (exe: string, input: string, directory: string, s
     const frame = {};
     const sender = { mainFrame: frame, isDestroyed: () => false, send: vi.fn() };
     const event = { sender, senderFrame: frame };
-    const helper = { request: vi.fn(async request => ({ session: request.session, duration: 4 })), dispose: vi.fn() };
+    const helper = { request: vi.fn(async request => (request.action === 'hello' ? { protocolMajor: 1, capabilities: ['integer-pcm', 'replaygain', 'format-telemetry'] } : { session: request.session, duration: 4 })), dispose: vi.fn() };
     const service = registerNativeAudio({ app, ipcMain: { handle: vi.fn() }, isTrustedSender: (value: unknown) => value === sender,
-        helperFactory: () => helper, decode });
+        componentManager: { status: async () => ({ available: true, executable: 'test.exe' }) }, decoderResolver: async () => 'ffmpeg.exe', helperFactory: () => helper, decode });
     cleanups.push(async () => {
         app.emit('before-quit');
         await new Promise(resolve => setTimeout(resolve, 20));
@@ -45,6 +45,9 @@ describe.skipIf(process.platform !== 'win32' || process.arch !== 'x64')('native 
         await request({ action: 'finish', session: 'first' });
         expect(helper.request.mock.calls.some(([value]) => value.action === 'load')).toBe(true);
         await expect(request({ action: 'volume', session: 'first', volume: NaN })).rejects.toThrow('volume');
+        await request({ action: 'replaygain', session: 'first', gain: 0.5 });
+        expect(helper.request.mock.calls.at(-1)?.[0]).toMatchObject({ action: 'replaygain', gain: 0.5 });
+        expect(helper.dispose).not.toHaveBeenCalled();
         await expect(request({ action: 'seek', session: 'first', position: -1 })).rejects.toThrow('seek');
         await request({ action: 'stop', session: 'first' });
         expect(await readdir(directory)).toEqual([]);

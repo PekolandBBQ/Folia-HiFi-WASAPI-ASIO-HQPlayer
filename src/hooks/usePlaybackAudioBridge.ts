@@ -5,6 +5,7 @@ import { PlayerState } from '../types';
 import type { ReplayGainInfo, ReplayGainMode, SongResult, StatusMessage } from '../types';
 import type { LocalSong } from '../types';
 import { resolveNavidromePlaybackCarrier } from '../utils/appPlaybackGuards';
+import type { NativeAudioTransport } from '../services/nativeAudio/NativeAudioTransport';
 import { calculateReplayGain } from '../utils/replayGain';
 import { applyAudioEqualizerSettings } from '../services/audioEqualizerGraph';
 import { type AudioEffectChain } from '../services/audioEffects/effectChain';
@@ -78,7 +79,11 @@ export function usePlaybackAudioBridge({
     const effectChainRef = useRef<AudioEffectChain | null>(null);
     // A backend switch replaces the transport. Nodes connected to a previous DOM element
     // cannot be reused when the listener later returns to browser playback.
+    const previousNativePlayback = useRef(nativePlayback);
     useLayoutEffect(() => {
+        const changed = previousNativePlayback.current !== nativePlayback;
+        previousNativePlayback.current = nativePlayback;
+        if (!changed) return;
         effectChainRef.current?.dispose();
         effectChainRef.current = null;
         equalizerNodesRef.current = [];
@@ -92,7 +97,9 @@ export function usePlaybackAudioBridge({
 
     // Recalculates source-specific gain after the audio graph or playback settings become ready.
     const applyReplayGain = useCallback(() => {
-        if (!currentSong || !gainNodeRef.current || !audioContextRef.current) return;
+        if (!currentSong) return;
+        const native = isNativeAudioElement(audioRef.current);
+        if (!native && (!gainNodeRef.current || !audioContextRef.current)) return;
 
         let replayGainInfo: ReplayGainInfo | undefined;
         const localSongId = (currentSong as SongResult & { localRef?: { songId: string } }).localRef?.songId;
@@ -119,6 +126,11 @@ export function usePlaybackAudioBridge({
         }
 
         const calculation = calculateReplayGain(replayGainInfo, replayGainMode);
+        if (native) {
+            (audioRef.current as unknown as NativeAudioTransport).setReplayGain(calculation.linearGain);
+            return;
+        }
+        if (!audioContextRef.current) return;
 
         try {
             // Onto the deck rather than the shared output: loudness compensation is a per-track
@@ -143,10 +155,10 @@ export function usePlaybackAudioBridge({
         } catch (error) {
             console.warn('[AudioContext] Failed to apply ReplayGain', error);
         }
-    }, [audioContextRef, currentSong, gainNodeRef, getActiveChain, localSongs, replayGainMode]);
+    }, [audioRef, audioContextRef, currentSong, gainNodeRef, getActiveChain, localSongs, replayGainMode, nativePlayback]);
 
     const setupAudioAnalyzer = useCallback(() => {
-        if (isNativeAudioElement(audioRef.current)) return;
+        if (isNativeAudioElement(audioRef.current)) { applyReplayGain(); return; }
         // The context is the sentinel, not the source node: a deck that failed to connect must
         // not let this run twice, because createMediaElementSource throws on a second call.
         if (!audioRef.current || audioContextRef.current) return;

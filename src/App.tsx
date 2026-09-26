@@ -344,6 +344,7 @@ export default function App() {
     } = usePlaybackRuntimeRefs();
     const nativeAudioBackend = useAudioSettingsStore(state => state.nativeAudioBackend);
     const nativeAudioDeviceId = useAudioSettingsStore(state => state.nativeAudioDeviceId);
+    const nativeAudioProcessingMode = useAudioSettingsStore(state => state.nativeAudioProcessingMode);
     const nativePlayback = Boolean(window.electron?.nativeAudio?.supported && nativeAudioBackend !== 'browser'
         && isLocalPlaybackSong(currentSong));
     // The automix decks are set up much further down, but a few reset paths declared above here
@@ -2388,6 +2389,7 @@ export default function App() {
             register={register}
             nativeBackend={nativePlayback ? nativeAudioBackend : 'browser'}
             nativeDeviceId={nativeAudioDeviceId}
+            nativeProcessingMode={nativeAudioProcessingMode}
             getLocalFile={async () => {
                 if (!isLocalPlaybackSong(currentSong)) return null;
                 const local = localSongs.find(song => song.id === currentSong.localRef.songId);
@@ -2480,7 +2482,7 @@ export default function App() {
                 // the queue behind it. Visible in the log as a cancel and a `playSong` in the same
                 // second, or as a lone `plain cut` line when the track was too near its end to fade.
                 if (audioElement.paused) return;
-                if (!audioElement.ended && usePlaybackStore.getState().playerState !== PlayerState.PLAYING) {
+                if (!audioElement.ended && (!isNativeAudioElement(audioElement) || usePlaybackStore.getState().playerState !== PlayerState.PLAYING)) {
                     setPlayerState(PlayerState.PLAYING);
                 }
                 automix.checkTransitionPoint(audioElement.currentTime);
@@ -2562,6 +2564,7 @@ export default function App() {
             onError={(e) => {
                 const audioElement = e.currentTarget;
                 if (isNativeAudioElement(audioElement)) {
+                    if (!automix.isActiveDeck(audioElement)) return;
                     shouldAutoPlay.current = false;
                     setPlayerState(PlayerState.PAUSED);
                     setStatusMsg({ type: 'error', text: t('nativeAudio.playbackFailed', { message: audioElement.error?.message || '' }) });

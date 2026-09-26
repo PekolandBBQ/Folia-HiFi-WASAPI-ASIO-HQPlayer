@@ -105,11 +105,11 @@ export function usePlaybackTransportController({
         if (!requestedAudio) return;
         try {
             await requestedAudio.play();
-            if (audioRef.current !== requestedAudio) return;
+            if (isNativeAudioElement(requestedAudio) && audioRef.current !== requestedAudio) return;
             setPlayerState(PlayerState.PLAYING);
         } catch (error) {
-            if (audioRef.current !== requestedAudio) return;
-            if (error instanceof Error && error.name === 'AbortError') return;
+            if (isNativeAudioElement(requestedAudio) && audioRef.current !== requestedAudio) return;
+            if (isNativeAudioElement(requestedAudio) && error instanceof Error && error.name === 'AbortError') return;
             if (isNativeAudioElement(requestedAudio)) {
                 // The native error event already supplies the device/decoder-specific message.
                 setPlayerState(PlayerState.PAUSED);

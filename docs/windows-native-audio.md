@@ -1,98 +1,74 @@
-# Windows 原生音频第一版
+# Windows 原生音频：组件化第一阶段
 
-贡献候选分支：`codex/contrib-windows-local-audio`。基于上游 `d2b8467`（包含稳定版 0.7.8）。这份实现用于讨论贡献方向，尚未提交正式 PR。
+本地审查分支：`codex/native-component-stage1`，从原候选 `0363b91` 继续改造。上游基线为 `d2b8467`，包含 0.7.8。尚未推送此次改造、创建正式 PR 或发布组件。
 
-## 使用
+## 使用和默认行为
 
-安装或运行 **Folia Native Audio**，在「选项 → 播放控制 → 播放设备」下方的「Windows 本地音频输出」选择（侧栏支持直接跳转）：
+使用原来的 Folia 应用、应用标识、音乐库、设置目录和更新渠道，不再提供另一个 Native Audio 版应用。普通构建不编译 .NET，也不打包原生组件。
 
-- `WASAPI 独占 — 设备名称`
-- `ASIO — 驱动名称`
-- `浏览器音频（默认）`，用于返回原有播放方式。
+「选项 → 播放控制 → 播放设备」下方的「Windows 本地音频输出」包含组件安装／更新、停用、设备选择、整数直通和音频链路开关。侧栏及命令面板可跳转；两个开关也有命令入口。
 
-命令面板也可搜索「Windows 原生音频」、WASAPI、ASIO。
+默认仍是浏览器播放，整数直通和音频链路展示均默认关闭。没有安装组件的用户继续原来的播放路径；Linux/macOS 不显示 Windows 组件入口。在线歌曲也继续使用浏览器后端。
 
-从 Folia 本地音乐库选歌，继续使用原来的播放/暂停、进度条、上一首/下一首和歌词界面。设备更换后，当前曲目从头暂停；按播放继续。设备不可用时显示错误，不自动切到共享模式。按播放可重新尝试加载，或者选择其他输出。
+**当前为本地验证版**：生产组件目录 `electron/nativeAudio/component-catalog.json` 暂为空，尚无已发布的组件 URL 和审核后的生产 SHA-256。安装按钮会明确显示未配置发布，而不会下载不明版本。正式开放安装还需要独立组件发布及官方 FFmpeg 新版发布后更新固定清单。
 
-此版本采用独立应用标识、名称和用户数据目录，可与官方 Folia 并存。需要在新版本中重新导入本地音乐目录；不会自动迁移原安装的设置。专用安装包不使用官方自动更新源。
+## 功能边界
 
-## 范围与限制
+- Windows x64，本地文件，WASAPI 独占、已安装的 x64 ASIO 驱动。
+- 使用既有本地库的 File/文件句柄；无 OS 路径时以 1 MiB 分块传递。源文件分块暂存上限 2 GiB，准备后的 WAV 上限 4 GiB。
+- 完整解码当前文件后播放；兼容模式准备 PCM24，整数模式准备 PCM32，不指定重采样或声道转换。临时文件随切歌、停止和正常退出释放；崩溃可能留下系统临时目录。
+- 播放、暂停、跳转、单曲循环、普通队列、音量、静音、歌词同步。暂停释放设备，继续时重新打开。
+- ReplayGain 沿用 Folia 的 off/track/album 设置、专辑到曲目回退和峰值保护计算，保持既有默认。极端标签的线性增益限制在 0–16（约 +24.08 dB 上限）。
+- EQ、音效、频谱和自动混音仅在原生播放时绕过；浏览器后端行为保留。
+- WASAPI 同采样率探测浮点及 PCM16/24/32，补充 PCM WAVEFORMATEXTENSIBLE。整数模式仅接受 PCM32；不支持就报错，不静默降级为浮点或共享模式。
+- ASIO 使用驱动前几个输出通道及驱动缓冲，整数模式限定 NAudio 回报为 Int32LSB 的驱动。未承诺所有 ASIO 格式或所有设备可用。
+- 首阶段不含 HQPlayer、在线原生输出、Spotify/Apple Music、DSD/DoP、无缝播放或跨平台原生后端。这些既有探索保留在完整自用分支。
 
-- Windows x64；终端用户不需要安装 .NET SDK，辅助程序携带运行时。
-- 本地文件通过 FFmpeg 解码为 24 位 PCM WAV，保留源采样率和声道数。WAV、FLAC、MP3 等格式由所带解码器处理。
-- 第一版必须先完成当前文件解码，再开始播放；长文件首次准备会有等待。临时文件在切歌、停止或正常退出时清理。异常断电/强制结束主进程可能留下系统临时目录中的 `folia-native-audio-*` 文件夹。
-- 无可用 OS 路径的浏览器文件句柄采用 1 MiB 分块传输，源文件限制为 2 GiB；解码后的 WAV 限制为 4 GiB。
-- WASAPI 始终以独占模式打开设备，按原采样率协商浮点或 16/24/32 位 PCM 输出。不支持该采样率/声道组合时显示错误，不静默重采样。
-- ASIO 需要已经安装的 **64 位**设备驱动，使用驱动的前几个输出通道和驱动配置的缓冲大小；第一版没有通道映射器或内嵌驱动控制面板。
-- 播放/暂停、跳转、软件音量/静音、单曲循环和普通队列切歌均接入原有控制。暂停会释放输出并在恢复时重新打开。
-- 原生模式绕过 EQ、ReplayGain、音效、音频频谱分析、自动混音。歌词动画保留；依赖实时频谱的效果使用现有无分析器时的显示行为。
-- 在线歌曲继续使用原来的浏览器后端，不通过原生引擎播放。
-- 本版不承诺 bit-perfect，不包含 DSD/DoP、无缝播放、变速播放或在线原生播放。
+## 整数模式和链路展示
 
-## 播放时钟
+整数模式在解码准备之后，以整数 PCM 提供数据；100% 音量、ReplayGain 合并增益为 1 时复制采样字节。其他增益使用 Q16 定点运算并饱和保护，不擅自关闭 ReplayGain、静音或恢复最大音量。源文件的解码/位深转换与设备自身处理不包含在此逐字节保证内，因此不宣称全链路 bit-perfect。
 
-WASAPI 读取设备音频时钟；ASIO 使用实际音频回调消耗的帧数和驱动输出延迟估计播放位置。辅助程序约每 40 ms 报告一次状态。前端短距离插值供现有歌词/进度 `MotionValue` 使用，最多外推 120 ms，防止辅助程序故障后界面继续无限前进。
+听感参考（主观描述）：通常可使三频密度更加饱满并改善背景的透明度，在解析力较好的系统上，这种差异更易被察觉 。
 
-修订版将已呈现的播放时间作为下限：后台快照略落后于插值帧时，保持当前帧等待设备时钟追上，避免海报歌词把微小回退误判为跳转并反复重建。主动跳转、切歌和重播仍可重置时间，不会累积插值超前量。
+该听感描述与工程验证分别呈现，不能作为普遍音质改善或盲测结论。
 
-暂停和跳转会清空旧缓冲并重建输出；会话标识及命令顺序用于隔离快速切歌和旧的进度事件。这里验证的是时钟与控制行为，未做外部声学测量或逐采样回录一致性认证。
+可选链路浮窗显示原文件编码/采样率/位深、兼容或整数处理、采样率是否改变、引擎格式、ReplayGain 与音量的合并增益、输出后端。没有回报的数据标为未知，不根据音质选择推测。显示引擎数据不代表 DAC 实测。窗口支持紧凑单列/双列、过渡、毛玻璃、键盘关闭，浮动按钮跟随控制框上沿。
 
-## 构建
+## 组件和协议
 
-使用项目要求的 Node.js 24+、npm，以及 .NET 8 SDK（本次使用 8.0.425）。依赖锁定 NAudio 2.2.1 和 .NET 8.0.31 运行时。
+辅助程序源码、.NET 构建和运行时许可已移到独立的本地仓库 `../folia-native-audio-component`。主仓库保留 Electron 管理/会话/解码协调、媒体适配器和设置/UI，不再存放 C# 源码或单独应用配置。
 
-```powershell
-npm ci
-npm run build:windows-native
-```
+组件安装到 `userData/components/native-audio`，由 Folia 固定清单校验 SHA-256、平台和协议后激活。更新失败保留旧指针，停用只解除激活并保留版本目录便于恢复。普通 Folia 构建不依赖组件发布成功。
 
-安装包位于 `release/Folia-Native-Audio-Setup-0.7.8-x64.exe`。
+协议 v1 使用标准输入/输出 JSON Lines：请求 id、会话 id、版本握手和能力检查；会话隔离、取消和进程超时监管。状态约 40 ms 回报；WASAPI 设备时钟，ASIO 音频回调帧数减驱动延迟。前端最多外推 120 ms，防止旧状态造成歌词回退。刷新设备、参数错误或旧会话请求不释放正在播放的引擎；加载和当前传输失败才清理可能损坏的驱动状态。
 
-普通平台构建不会编译或打包此辅助程序；仅 `build:windows-native` 的可选配置启用它，因此默认构建不增加 .NET 依赖。
+详细提案见 [native-audio-component-rfc.md](native-audio-component-rfc.md)。
 
-单独构建辅助程序：
+## 本地验证启动
+
+在独立组件目录执行 `./build.ps1 -DotNet <dotnet.exe 路径>`；生成自包含组件 ZIP 和仅用于开发的 `artifacts/development-catalog.json`。用户无需安装 .NET SDK；目前 ZIP 约 29.4 MiB，不进入 Folia 默认包体。
+
+主项目开发进程设置：
 
 ```powershell
-npm run build:native-audio
+$env:FOLIA_NATIVE_COMPONENT_CATALOG = (Resolve-Path ../folia-native-audio-component/artifacts/development-catalog.json).Path
+# 如需覆盖解码器，只允许开发构建：
+$env:FOLIA_NATIVE_FFMPEG_PATH = (Resolve-Path build/ffmpeg/win-x64/ffmpeg.exe).Path
+npm run dev:electron
 ```
 
-若 SDK 未加入 PATH，可将 `FOLIA_DOTNET_PATH` 设置为 `dotnet.exe` 的绝对路径。首次构建会下载固定版本的 Gyan FFmpeg 8.1.2 essentials，并校验固定 SHA-256；后续构建校验已缓存的可执行文件。
+启动后到设置中安装组件。生产构建不接受上述本地组件目录覆盖。
 
-`build:windows-native` 构建本次音频版本，不编译可选的 Rust 桌面壁纸辅助程序。若需要该原有功能，先准备 Rust 工具链并运行 `npm run build:wallpaper-helper`，打包时会自动带入生成的文件。
+解码器复用主程序 `resources/ffmpeg-audio/ffmpeg.exe`。对应官方构建仓库的本地改动在 `../folia-ffmpeg-component-build`：仅追加 folia 变体 PCM24/PCM32 编码并更新验证清单，没有 Gyan 下载逻辑。当前官方固定 release 尚未包含新编码，不能把现有生产下载成功等同于原生输出可用。
 
-新增运行时的许可与来源记录随程序放在 `resources/native-audio/`。Folia 本身继续遵循仓库的 AGPL-3.0 许可；本分支没有打包或安装声卡厂商驱动。
+## 2026-09-26 验证
 
-## 验证
-
-```powershell
-npm run typecheck
-npm run test:unit -- test/unit/nativeAudio test/unit/command-palette/commandRegistryContract.test.ts test/unit/services/playbackGraph.test.ts test/unit/automix/deckSrc.test.ts
-npm run test:component -- test/component/nativeAudio.spec.ts
-```
-
-真实硬件检查只输出静音，需要明确传入设备名称的一部分：
-
-```powershell
-node test/manual/nativeAudioSmoke.cjs XingCore
-```
-
-端到端 Electron 检查：先在另一个终端启动 `npm run dev -- --host 127.0.0.1 --port 4173 --strictPort`，然后运行：
-
-```powershell
-node test/manual/nativeAudioElectronSmoke.cjs XingCore
-```
-
-后一个测试在独立、隐藏的 Electron 窗口中运行实际 preload、IPC 服务、文件分块传输、解码器和声卡输出；用户资料位于 `test-results/native-audio-electron-profile`，不访问现有 Folia 资料。
-
-2026-09-26 已在 XingCore USB Hi-Resolution Audio / XingCore USB Audio Device 上验证 WASAPI 独占与 ASIO 的 44.1 kHz 和 48 kHz 静音播放、时钟推进、暂停、跳转、恢复、播放结束、重新播放、旧会话拒绝和设备释放。其他声卡仍需各自验证驱动兼容性。
-
-## 代码入口
-
-- `native/windows-audio/`：独立驱动进程、PCM 输出和时钟。
-- `electron/nativeAudio/`：进程监管、解码、会话和临时文件生命周期。
-- `src/services/nativeAudio/`：本地文件加载与媒体事件适配器。
-- `src/components/app/playback/PlaybackDeck.tsx`：原有媒体元素/原生媒体适配器的边界。
-- `src/components/modal/settings/NativeAudioSettingsSection.tsx`：设备选择界面。
-- `packaging/windows/native-audio-builder.cjs`：独立版本打包配置。
-
-原生适配器实现 Folia 当前所用的媒体传输接口子集，并不是完整的 HTMLAudioElement。增加新的媒体 API 调用时，需同步检查该适配器；不得将其传给 Web Audio 的 `createMediaElementSource`。
+- TypeScript 类型检查通过。
+- 全量单测 3,921 通过、1 跳过；1 个既有 mod 签名测试因 Windows 创建符号链接 EPERM 失败，未修改该测试以掩盖环境限制。
+- 原生相关 17 项单测通过，覆盖会话、取消、上传、组件哈希/协议/路径/更新失败、遥测去重。
+- Chromium 2 个组件测试通过：设备切换、整数开关、播放/暂停/跳转/换歌/返回浏览器，链路开关、源规格、增益、响应布局、背景模糊。
+- .NET 独立测试：5 个增益下的 35 个边界采样、溢出饱和、EOF 静音及 PCM16/24/32 extensible 描述通过。
+- 官方构建脚本的本地 Windows 交叉编译通过；本地因缺 nasm 仅加 `--disable-x86asm`，该验证选项未提交到官方构建脚本。PCM24/32 编码存在；96 kHz PCM24 → FLAC → PCM32 的 10 个有符号边界采样保持一致。
+- XingCore：WASAPI/ASIO × 44.1/48/96 kHz × 兼容/整数，共 12 组静音硬件验证通过。包含 ReplayGain、控制/时钟、结束/重播、错误命令和旧会话隔离。
+- 隔离 Electron 实际 preload → 安装校验 → IPC → 文件分块 → 官方裁剪解码器 → 两种硬件后端，通过 UI 播放/暂停/跳转/切歌。
+- 未验证其他声卡、外部 DAC 回录、Linux/macOS 原生输出或公开发布的 CI；不能据此声称全链路无损或全设备兼容。

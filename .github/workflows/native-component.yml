@@ -1,0 +1,21 @@
+name: Optional native audio component
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'electron/nativeAudio/component-catalog.json'
+      - 'packaging/native-audio/**'
+      - '.github/workflows/native-component.yml'
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: node packaging/native-audio/verify-component.cjs

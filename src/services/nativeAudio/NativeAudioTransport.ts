@@ -1,4 +1,5 @@
-import type { NativeAudioApi, NativeAudioBackend, NativeAudioEvent, NativeAudioState } from '../../types/nativeAudio';
+import type { NativeAudioApi, NativeAudioBackend, NativeAudioEvent, NativeAudioProcessingMode, NativeAudioState } from '../../types/nativeAudio';
+import { publishSignalPath, clearSignalPath } from '../../stores/useSignalPathStore';
 import { loadNativeLocalFile } from './loadLocalFile';
 
 // src/services/nativeAudio/NativeAudioTransport.ts — the media transport subset consumed by Folia.
@@ -21,6 +22,11 @@ export class NativeAudioTransport extends EventTarget {
     private presentedTime = 0;
     private timestamp = 0;
     private level = 1;
+    private replayGain = 1;
+    setReplayGain(gain: number) {
+        this.replayGain = Number.isFinite(gain) ? Math.max(0, Math.min(16, gain)) : 1;
+        if (this.readyState) void this.command('replaygain', { gain: this.replayGain }).then(state => this.apply(state)).catch(error => this.fail(error));
+    }
     private silent = false;
     private session = '';
     private abort = new AbortController();
@@ -31,6 +37,7 @@ export class NativeAudioTransport extends EventTarget {
     private disposed = false;
     private unsubscribe: () => void;
     constructor(private api: NativeAudioApi, private backend: NativeAudioBackend, private deviceId: string,
+        private processingMode: NativeAudioProcessingMode,
         private getFile: () => Promise<File | null>) {
         super();
         this.unsubscribe = api.onEvent(event => this.receive(event));
@@ -90,7 +97,7 @@ export class NativeAudioTransport extends EventTarget {
             const file = await this.getFile();
             signal.throwIfAborted();
             if (!file) throw new Error('The local file is unavailable; grant access or re-import it');
-            const state = await loadNativeLocalFile(this.api, session, file, this.backend, this.deviceId, signal);
+            const state = await loadNativeLocalFile(this.api, session, file, this.backend, this.deviceId, signal, this.processingMode);
             this.apply(state); this.readyState = 4;
             this.emit('loadedmetadata'); this.emit('loadeddata'); this.emit('canplay');
         })();
@@ -108,6 +115,7 @@ export class NativeAudioTransport extends EventTarget {
             throw new DOMException('Playback cancelled', 'AbortError');
         if (!this.readyState || this.error) throw new Error(this.error?.message || 'No local file loaded');
         await this.command('volume', { volume: this.silent ? 0 : this.level });
+        await this.command('replaygain', { gain: this.replayGain });
         if (intent !== this.intent) throw new DOMException('Playback cancelled', 'AbortError');
         const state = await this.command('play');
         if (intent !== this.intent || session !== this.session) throw new DOMException('Playback cancelled', 'AbortError');
@@ -124,7 +132,7 @@ export class NativeAudioTransport extends EventTarget {
             if (revision === this.revision) this.apply(state);
         }).catch(error => this.fail(error));
     }
-    private command(action: string, values: { position?: number; volume?: number } = {}) {
+    private command(action: string, values: { position?: number; volume?: number; gain?: number } = {}) {
         const session = this.session;
         const run = this.queue.catch(() => {}).then(async () => {
             await this.loading;
@@ -148,6 +156,7 @@ export class NativeAudioTransport extends EventTarget {
     }
     private apply(state: NativeAudioState) {
         if (state.session !== this.session) return;
+        publishSignalPath(state);
         if (this.ended && !state.ended) this.presentedTime = state.position;
         this.position = state.position; this.timestamp = performance.now(); this.duration = state.duration;
         this.paused = !state.playing; this.ended = state.ended;
@@ -175,6 +184,7 @@ export class NativeAudioTransport extends EventTarget {
     private cancel() {
         ++this.intent; ++this.revision; this.seeking = false;
         this.abort.abort();
+        clearSignalPath(this.session);
         if (this.session) void this.api.request({ action: 'stop', session: this.session }).catch(() => {});
         this.session = '';
     }

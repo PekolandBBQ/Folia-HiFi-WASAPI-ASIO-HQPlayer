@@ -1,16 +1,31 @@
 
 
 export default {
+  "signalPath": {
+    "preparing": "Preparing native output", "conversion": "Sample-rate conversion", "gain": "ReplayGain / software volume",
+    "conversionUnknown": "Not reported", "upsampling": "Upsampling / modulation", "downsampling": "Downsampling", "sameRate": "Unchanged sample rate",
+    "title": "Signal path", "close": "Close signal path", "unknown": "Not reported",
+    "source": "Source resolution", "processing": "Processing", "format": "Engine-reported format", "output": "Playback engine",
+    "integer": "Integer direct",
+    "compatibility": "PCM24 preparation → floating-point processing → device format", "browserProcessing": "Browser decoding / processing", "browser": "Browser / system output",
+    "caveat": "Engine telemetry is not a DAC measurement. Integer mode alone does not prove bit-perfect output. Unreported source and resampling details are not inferred."
+  },
   "nativeAudio": {
+    "componentPending": "No component release is approved in this build yet.",
+    "removeComponent": "Disable component",
+    "installComponent": "Install / update component",
+    "showSignalPath": "Show audio signal path",
     "title": "Windows local audio output",
     "browser": "Browser audio (default)",
     "wasapi": "WASAPI exclusive",
     "refresh": "Refresh audio devices",
     "description": "Choose a WASAPI exclusive endpoint or an installed x64 ASIO driver for local files. Online tracks use browser audio.",
-    "limitations": "V1 prepares the entire file before playback. EQ, ReplayGain, audio effects, spectrum analysis and automix are bypassed. Changing output resets the track to paused at the start. ASIO uses the driver's first output channels and configured buffer size.",
-    "unavailable": "The native audio helper is missing. Build or install the Windows native audio edition.",
+    "limitations": "Local files only. The complete file is prepared before playback. ReplayGain and volume remain effective; EQ, effects, spectrum and automix are bypassed. No resampling; unsupported device formats fail explicitly.",
+    "unavailable": "Install a compatible native component and the official PCM24/PCM32 decoder first.",
     "savedUnavailable": "Saved output (not currently listed)",
     "noAsio": "No x64 ASIO driver found. Install the audio interface manufacturer's driver to use ASIO.",
+    "integerDirect": "Integer direct (experimental)",
+    "integerDirectDescription": "Optional integer PCM path. Software volume and ReplayGain remain effective; sample values are preserved only at unity combined gain. Requires a compatible integer driver.",
     "playbackFailed": "Native audio: {{message}}"
   },
   "notifications": {
@@ -374,6 +389,8 @@ export default {
       "ponder-hints-off": { "title": "Ponder hints: off", "description": "Never show the hold-G hint" },
       "ponder-touch-button-toggle": { "title": "Ponder button on touch", "description": "Show or hide the lightbulb in the top-right corner on touch devices" },
       "settings-native-audio": { "title": "Windows native audio", "description": "Select WASAPI exclusive or ASIO output for local files" },
+      "native-audio-signal-path-toggle": { "title": "Show audio signal path", "description": "Toggle the native audio signal path display" },
+      "native-audio-integer-direct-toggle": { "title": "Native audio integer direct", "description": "Toggle the integer-only PCM path for WASAPI exclusive and compatible ASIO drivers" },
       "search-current": { "title": "Search songs", "description": "Search songs in the current source" },
       "search-local": { "title": "Search local songs", "description": "Search local library" },
       "search-navidrome": { "title": "Search Navidrome songs", "description": "Search Navidrome library" },

@@ -3026,8 +3026,6 @@ function normalizeUpdateChannelSelection(value) {
 }
 
 function getUpdateCheckSupportReason() {
-  // This separately installed edition has no upstream-compatible update feed.
-  if (require('../package.json').nativeAudioEdition) return 'channel';
   return getCurrentReleaseChannel().updateEnabled ? null : 'channel';
 }
 

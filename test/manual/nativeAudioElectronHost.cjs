@@ -10,6 +10,7 @@ app.setPath('userData', path.join(root, 'test-results/native-audio-electron-prof
 let window;
 ipcMain.handle('automix-models-present', () => ({ beatThis: false, htdemucs: false }));
 ipcMain.handle('set-app-locale', () => {});
+ipcMain.handle('window-set-native-theme', () => {});
 registerNativeAudio({ app: { isPackaged: false, getAppPath: () => root,
     getPath: name => app.getPath(name), on: app.on.bind(app) }, ipcMain,
 isTrustedSender: sender => sender === window?.webContents });

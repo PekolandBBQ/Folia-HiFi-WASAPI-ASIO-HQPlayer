@@ -1,16 +1,38 @@
 
 
 export default {
+  "signalPath": {
+    "preparing": "Menyiapkan output asli",
+    "conversion": "Konversi laju sampel",
+    "gain": "ReplayGain / volume perangkat lunak",
+    "title": "Jalur audio",
+    "close": "Tutup jalur audio",
+    "unknown": "Tidak dilaporkan",
+    "source": "Resolusi sumber",
+    "processing": "Pemrosesan",
+    "format": "Format yang dilaporkan mesin",
+    "output": "Mesin pemutaran",
+    "integer": "Integer langsung",
+    "compatibility": "Persiapan PCM24 → pemrosesan floating-point → format perangkat",
+    "sameRate": "Laju sampel tidak berubah",
+    "caveat": "Telemetri mesin bukan pengukuran DAC. Mode integer tidak membuktikan output bit-perfect. Detail sumber dan resampling yang tidak dilaporkan tidak disimpulkan."
+},
   "nativeAudio": {
+    "componentPending": "Belum ada rilis komponen yang disetujui.",
+    "removeComponent": "Nonaktifkan komponen",
+    "installComponent": "Pasang / perbarui komponen",
+    "showSignalPath": "Tampilkan jalur audio",
     "title": "Output audio lokal Windows",
     "browser": "Audio browser (default)",
     "wasapi": "WASAPI eksklusif",
     "refresh": "Segarkan perangkat audio",
     "description": "Pilih perangkat WASAPI eksklusif atau driver ASIO x64 untuk file lokal. Lagu online memakai audio browser.",
-    "limitations": "V1 menyiapkan seluruh file sebelum memutar. EQ, ReplayGain, efek, spektrum dan automix dilewati. Mengganti output menjeda lagu di awal. ASIO memakai kanal output pertama dan ukuran buffer driver.",
-    "unavailable": "Program audio native belum tersedia. Bangun atau instal edisi audio native Windows.",
+    "limitations": "Hanya berkas lokal. ReplayGain dan volume tetap aktif; EQ, efek, spektrum dan automix dilewati. Tidak ada resampling.",
+    "unavailable": "Pasang komponen kompatibel dan dekoder resmi PCM24/PCM32.",
     "savedUnavailable": "Output tersimpan (tidak terdaftar saat ini)",
     "noAsio": "Driver ASIO x64 tidak ditemukan. Instal driver dari produsen perangkat audio.",
+    "integerDirect": "Integer direct (eksperimental)",
+    "integerDirectDescription": "Jalur PCM integer opsional. Volume dan ReplayGain tetap aktif; nilai sampel dipertahankan hanya pada penguatan gabungan satu.",
     "playbackFailed": "Audio native: {{message}}"
   },
   "notifications": {
@@ -373,6 +395,8 @@ export default {
       "ponder-hints-off": { "title": "Petunjuk Ponder: nonaktif", "description": "Jangan pernah tampilkan petunjuk tahan G" },
       "ponder-touch-button-toggle": { "title": "Tombol Ponder di layar sentuh", "description": "Tampilkan atau sembunyikan bohlam di sudut kanan atas pada perangkat sentuh" },
       "settings-native-audio": { "title": "Audio native Windows", "description": "Pilih WASAPI eksklusif atau ASIO untuk file lokal" },
+      "native-audio-signal-path-toggle": { "title": "Tampilkan jalur audio", "description": "Aktifkan atau matikan tampilan jalur audio asli" },
+      "native-audio-integer-direct-toggle": { "title": "Integer direct audio native", "description": "Aktifkan atau matikan jalur PCM integer untuk WASAPI eksklusif dan driver ASIO yang kompatibel" },
       "search-current": { "title": "Cari lagu", "description": "Cari lagu di sumber saat ini" },
       "search-local": { "title": "Cari lagu lokal", "description": "Cari di perpustakaan lokal" },
       "search-navidrome": { "title": "Cari lagu Navidrome", "description": "Cari di perpustakaan Navidrome" },

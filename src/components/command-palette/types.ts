@@ -249,6 +249,8 @@ export type CommandPaletteSettingsContext = {
      */
     canReportNeteasePlayback: () => boolean;
     toggleNeteaseScrobble: () => void;
+    toggleNativeAudioSignalPath: () => void;
+    toggleNativeAudioIntegerDirect: () => void;
     voiceInputPauseSupported: boolean;
     /** Lab switch for the experimental mod system; gates the `mods` command. */
     modSystemEnabled: boolean;

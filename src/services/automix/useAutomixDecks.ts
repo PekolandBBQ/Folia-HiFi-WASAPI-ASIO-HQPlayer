@@ -430,7 +430,7 @@ export function useAutomixDecks({
         }
         elementsRef.current[deck] = element;
         // Backend switches replace the transport; a Web Audio chain belongs to its old element.
-        if (previous !== element) chainsRef.current[deck] = undefined;
+        if (previous !== element && ((previous && 'nativeAudio' in previous) || (element && 'nativeAudio' in element))) chainsRef.current[deck] = undefined;
         if (deck === session.getActiveDeck()) {
             audioRef.current = element;
         }

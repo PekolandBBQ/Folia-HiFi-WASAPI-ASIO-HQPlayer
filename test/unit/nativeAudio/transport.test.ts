@@ -23,7 +23,7 @@ function fixture() {
     });
     const api: NativeAudioApi = { supported: true, request, onEvent: fn => { listener = fn; return vi.fn(); } };
     mocks.load.mockImplementation(async (_api, session) => { state = { ...state, session, position: 0, playing: false }; return { ...state }; });
-    const transport = new NativeAudioTransport(api, 'asio', 'test', async () => new File(['audio'], 'song.flac'));
+    const transport = new NativeAudioTransport(api, 'asio', 'test', 'compatibility', async () => new File(['audio'], 'song.flac'));
     cleanups.push(() => transport.dispose());
     const send = (patch: Partial<NativeAudioState>) => {
         state = { ...state, ...patch };

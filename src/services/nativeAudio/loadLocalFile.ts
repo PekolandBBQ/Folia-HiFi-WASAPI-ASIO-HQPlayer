@@ -1,11 +1,11 @@
-import type { NativeAudioApi, NativeAudioBackend, NativeAudioState } from '../../types/nativeAudio';
+import type { NativeAudioApi, NativeAudioBackend, NativeAudioProcessingMode, NativeAudioState } from '../../types/nativeAudio';
 
 // src/services/nativeAudio/loadLocalFile.ts — use the existing local-library File, never an online URL.
 export async function loadNativeLocalFile(api: NativeAudioApi, session: string, file: File,
-    backend: NativeAudioBackend, deviceId: string, signal: AbortSignal): Promise<NativeAudioState> {
+    backend: NativeAudioBackend, deviceId: string, signal: AbortSignal, processingMode: NativeAudioProcessingMode = 'compatibility'): Promise<NativeAudioState> {
     signal.throwIfAborted();
     const path = window.electron?.webUtils?.getPathForFile(file) || '';
-    await api.request({ action: 'begin', session, backend, deviceId, ...(path ? { path } : {}) });
+    await api.request({ action: 'begin', session, backend, deviceId, processingMode, ...(path ? { path } : {}) });
     signal.throwIfAborted();
     if (!path) {
         // File System Access handles do not always expose an OS path. Bounded chunks keep a

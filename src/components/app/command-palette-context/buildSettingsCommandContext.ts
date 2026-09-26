@@ -20,7 +20,8 @@ import { useSleepTimerStore } from '../../../stores/useSleepTimerStore';
 import { useTypographySettingsStore } from '../../../stores/useTypographySettingsStore';
 import { useThemeQuickEditorStore } from '../../../stores/useThemeQuickEditorStore';
 import { usePlayerBottomBarLayoutStore } from '../../../stores/usePlayerBottomBarLayoutStore';
-import type { SongResult } from '../../../types';
+import { PlayerState, type SongResult } from '../../../types';
+import { setPlayerState } from '../../../stores/usePlaybackStore';
 
 // src/components/app/command-palette-context/buildSettingsCommandContext.ts
 // The `settings` namespace of the palette context.
@@ -148,6 +149,17 @@ export const buildSettingsCommandContext = (
         toggleNeteaseScrobble: () => audio.handleToggleNeteaseScrobble(
             !useAudioSettingsStore.getState().neteaseScrobbleEnabled,
         ),
+        toggleNativeAudioSignalPath: () => {
+            const state = useAudioSettingsStore.getState();
+            state.handleSetShowAudioSignalPath(!state.showAudioSignalPath);
+        },
+        toggleNativeAudioIntegerDirect: () => {
+            const current = useAudioSettingsStore.getState();
+            setPlayerState(PlayerState.PAUSED);
+            current.handleSetNativeAudioProcessingMode(
+                current.nativeAudioProcessingMode === 'integer-direct' ? 'compatibility' : 'integer-direct',
+            );
+        },
         voiceInputPauseSupported: deps.voiceInputPauseSupported,
         modSystemEnabled: desktop.modSystemEnabled,
         toggleVoiceInputPause: () => desktop.handleToggleVoiceInputPause(

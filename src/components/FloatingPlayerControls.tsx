@@ -1,3 +1,5 @@
+import { useNativeSignalPathEnabled } from '../hooks/useNativeSignalPathEnabled';
+import SignalPath from './audio/SignalPath';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -136,6 +138,17 @@ const FloatingPlayerControls: React.FC<FloatingPlayerControlsProps> = ({
     const expandTimeoutRef = useRef<number | null>(null);
     const collapseTimeoutRef = useRef<number | null>(null);
 
+    const showSignalPath = useNativeSignalPathEnabled();
+    const signalPathOpenRef = useRef(false);
+    const handleSignalPathOpen = useCallback((open: boolean) => {
+        signalPathOpenRef.current = open;
+        if (open) {
+            if (expandTimeoutRef.current !== null) window.clearTimeout(expandTimeoutRef.current);
+            if (collapseTimeoutRef.current !== null) window.clearTimeout(collapseTimeoutRef.current);
+            expandTimeoutRef.current = collapseTimeoutRef.current = null;
+        }
+    }, []);
+
     const bottomBarBottomPx = usePlayerBottomBarBottomPx();
     const isPositioning = usePlayerBottomBarLayoutStore(state => state.isPositioning);
     const commitPositioning = usePlayerBottomBarLayoutStore(state => state.commitPositioning);
@@ -272,7 +285,8 @@ const FloatingPlayerControls: React.FC<FloatingPlayerControlsProps> = ({
         };
     }, []);
 
-    const handleMouseEnter = () => {
+    const handleMouseEnter = (event: React.MouseEvent) => {
+        if (signalPathOpenRef.current || (event.target as Element).closest('[data-signal-path]')) return;
         if (collapseTimeoutRef.current !== null) {
             window.clearTimeout(collapseTimeoutRef.current);
             collapseTimeoutRef.current = null;
@@ -294,7 +308,7 @@ const FloatingPlayerControls: React.FC<FloatingPlayerControlsProps> = ({
             expandTimeoutRef.current = null;
         }
 
-        if (!isHovered || collapseTimeoutRef.current !== null) {
+        if (signalPathOpenRef.current || !isHovered || collapseTimeoutRef.current !== null) {
             return;
         }
 
@@ -371,15 +385,19 @@ const FloatingPlayerControls: React.FC<FloatingPlayerControlsProps> = ({
                         onPointerUp={handlePositionDragEnd}
                         onPointerCancel={handlePositionDragEnd}
                         style={{ touchAction: isPositioning ? 'none' : undefined }}
-                        className={`backdrop-blur-xl shadow-2xl overflow-hidden rounded-full relative transition-colors duration-300
+                        className={`rounded-full relative ${showSignalPath ? 'border border-transparent' : `backdrop-blur-xl shadow-2xl overflow-hidden transition-colors duration-300 ${showExpanded ? glassBgExpanded : glassBgCollapsed}`}
                             ${isPositioning ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'}
-                            ${showExpanded ? `p-3 ${glassBgExpanded} w-full` : `px-4 py-2 ${glassBgCollapsed} ${COLLAPSED_WIDTH_CLASS}`}`}
+                            ${showExpanded ? 'p-3 w-full' : `px-4 py-2 ${COLLAPSED_WIDTH_CLASS}`}`}
                     >
+                        {/* A sibling glass layer avoids trapping the disclosure inside a backdrop-filter root. */}
+                        {showSignalPath && <div aria-hidden="true" className={`absolute inset-0 rounded-full pointer-events-none backdrop-blur-xl shadow-2xl transition-colors duration-300 ${showExpanded ? glassBgExpanded : glassBgCollapsed}`} />}
+                        {/* Keep the signal capsule attached to the animated control frame. */}
+                        {showSignalPath && !isHidden && !isPositioning && <SignalPath anchored onOpenChange={handleSignalPathOpen} />}
                         <motion.div
                             layout
                             transition={{ layout: CONTROL_LAYOUT_SPRING }}
                             // 定位模式下 seek 和所有按钮一起失效：这时胶囊是个被拖的物体，不是控件。
-                            className={`w-full ${isPositioning ? 'pointer-events-none select-none' : ''}`}
+                            className={`w-full ${showSignalPath ? 'relative z-10' : ''} ${isPositioning ? 'pointer-events-none select-none' : ''}`}
                         >
                             {showExpanded ? (
                                 <ExpandedView

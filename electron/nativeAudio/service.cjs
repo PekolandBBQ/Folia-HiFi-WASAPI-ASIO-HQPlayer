@@ -4,19 +4,33 @@ const { createHelper } = require('./helper.cjs');
 const { decodeLocalAudio } = require('./decode.cjs');
 
 // electron/nativeAudio/service.cjs — a single, session-owned local playback resource.
-function registerNativeAudio({ app, ipcMain, isTrustedSender, helperFactory = createHelper, decode = decodeLocalAudio }) {
+function registerNativeAudio({ app, ipcMain, isTrustedSender, helperFactory = createHelper, decode = decodeLocalAudio, componentManager, decoderResolver = require('./decoder.cjs').resolveNativeDecoder }) {
     const supported = process.platform === 'win32' && process.arch === 'x64';
-    const executable = app.isPackaged
-        ? path.join(process.resourcesPath, 'native-audio', 'folia-audio.exe')
-        : path.join(app.getAppPath(), 'build', 'native-audio', 'folia-audio.exe');
-    let active = null;
-    const decoder = path.join(path.dirname(executable), 'ffmpeg.exe');
-    const helper = helperFactory(executable, event => {
-        const current = active;
-        if (!current || current.sender.isDestroyed()) return;
-        if ((event.session || event.state?.session) && (event.session || event.state.session) !== current.id) return;
-        current.sender.send('native-audio:event', { ...event, session: current.id });
-    });
+    const components = componentManager || require('./componentManager.cjs').createComponentManager({ app });
+    let active = null, helper = null, helperReady = null, decoder, managingComponent = false;
+    async function ensureHelper() {
+        if (helperReady) return helperReady;
+        helperReady = (async () => {
+            const installed = await components.status();
+            if (!installed.available) throw new Error(installed.error || 'Install a compatible native audio component first');
+            decoder = await decoderResolver(app);
+            helper = helperFactory(installed.executable, event => {
+                if (event.event === 'error' && !event.session) helperReady = null;
+                const current = active;
+                if (!current || current.sender.isDestroyed()) return;
+                if ((event.session || event.state?.session) && (event.session || event.state.session) !== current.id) return;
+                current.sender.send('native-audio:event', { ...event, state: event.state ? { ...event.state, ...current.sourceInfo } : undefined, session: current.id });
+            });
+            const hello = await helper.request({ action: 'hello', protocolMajor: 1 });
+            if (hello.protocolMajor !== 1 || !['integer-pcm', 'replaygain', 'format-telemetry'].every(capability => hello.capabilities?.includes(capability))
+                || (installed.version && hello.componentVersion !== installed.version)) {
+                helper?.dispose(); helper = null;
+                throw new Error('Unsupported native audio component protocol or capabilities');
+            }
+            return helper;
+        })().catch(error => { helperReady = null; throw error; });
+        return helperReady;
+    }
 
     function assertCurrent(session) {
         if (active !== session || session.abort.signal.aborted) throw new Error('Playback request was cancelled');
@@ -24,23 +38,28 @@ function registerNativeAudio({ app, ipcMain, isTrustedSender, helperFactory = cr
     async function release(session) {
         if (!session) return;
         session.abort.abort();
-        await helper.request({ action: 'stop', session: session.id }).catch(() => {});
+        await helper?.request({ action: 'stop', session: session.id }).catch(() => {});
         await session.decoding?.catch(() => {});
         await session.creating?.catch(() => {});
         if (session.directory) await fs.rm(session.directory, { recursive: true, force: true }).catch(() => {});
     }
     // Claim before any await; a superseded decoder or upload can never load over the new song.
     async function begin(request, sender) {
+        if (managingComponent) throw new Error('Component operation is in progress');
         if (!/^[a-zA-Z0-9-]{1,100}$/.test(request.session || '')) throw new Error('Invalid session');
         if (!['wasapi-exclusive', 'asio'].includes(request.backend) || typeof request.deviceId !== 'string' || !request.deviceId)
             throw new Error('Select an output device');
         if (request.path != null && (typeof request.path !== 'string' || !path.isAbsolute(request.path) || request.path.startsWith('\\\\')))
             throw new Error('Only local absolute file paths are supported');
+        const processingMode = request.processingMode ?? 'compatibility';
+        if (!['compatibility', 'integer-direct'].includes(processingMode)) throw new Error('Invalid processing mode');
         const previous = active;
         const current = { id: request.session, sender, abort: new AbortController(), directory: null,
-            backend: request.backend, deviceId: request.deviceId, bytes: 0, ready: false };
+            backend: request.backend, deviceId: request.deviceId, processingMode, bytes: 0, ready: false };
         active = current;
         await release(previous);
+        assertCurrent(current);
+        await ensureHelper();
         assertCurrent(current);
         current.creating = fs.mkdtemp(path.join(app.getPath('temp'), 'folia-native-audio-'));
         current.directory = await current.creating;
@@ -58,11 +77,23 @@ function registerNativeAudio({ app, ipcMain, isTrustedSender, helperFactory = cr
         if (!isTrustedSender(event.sender) || (event.senderFrame && event.senderFrame !== event.sender.mainFrame))
             throw new Error('Untrusted audio caller');
         if (request?.action === 'status') {
-            const available = supported && await Promise.all([fs.access(executable), fs.access(decoder)]).then(() => true, () => false);
-            return { supported, available };
+            if (!supported) return { supported, available: false };
+            const state = await components.status();
+            let decoderError;
+            if (state.available) try { await decoderResolver(app); } catch (error) { decoderError = error.message; }
+            const { executable, ...publicState } = state;
+            return { ...publicState, supported, available: state.available && !decoderError, error: decoderError || state.error };
         }
         if (!supported) throw new Error('Native playback requires Windows x64');
-        if (request?.action === 'devices') return helper.request({ action: 'devices' });
+        if (['component-install', 'component-uninstall'].includes(request?.action)) {
+            if (active || managingComponent) throw new Error('Switch to browser playback and wait for any component operation to finish');
+            managingComponent = true;
+            helper?.dispose(); helper = null; helperReady = null;
+            try { await (request.action === 'component-install' ? components.install() : components.uninstall()); }
+            finally { managingComponent = false; }
+            return { ok: true };
+        }
+        if (request?.action === 'devices') return (await ensureHelper()).request({ action: 'devices' });
         if (request?.action === 'begin') return begin(request, event.sender);
         const current = active;
         // Disposal can race StrictMode remounts or a newer source. A stale stop is a no-op,
@@ -83,13 +114,15 @@ function registerNativeAudio({ app, ipcMain, isTrustedSender, helperFactory = cr
         if (request.action === 'finish') {
             if (current.decoding) throw new Error('File is already being prepared');
             current.decoding = (async () => {
-                const wav = await decode(decoder, current.input, current.directory, current.abort.signal);
+                current.sourceInfo = await require('./sourceInfo.cjs').readSourceInfo(current.input);
+                assertCurrent(current);
+                const wav = await decode(decoder, current.input, current.directory, current.abort.signal, current.processingMode);
                 assertCurrent(current);
                 const result = await helper.request({ action: 'load', session: current.id, path: wav,
-                    backend: current.backend, deviceId: current.deviceId });
+                    backend: current.backend, deviceId: current.deviceId, processingMode: current.processingMode });
                 assertCurrent(current);
                 current.ready = true;
-                return result;
+                return { ...result, ...current.sourceInfo };
             })();
             return current.decoding;
         }
@@ -98,10 +131,11 @@ function registerNativeAudio({ app, ipcMain, isTrustedSender, helperFactory = cr
             await release(current);
             return { ok: true };
         }
-        if (!current.ready || !['play', 'pause', 'seek', 'volume'].includes(request.action)) throw new Error('Audio is not ready');
+        if (!current.ready || !['play', 'pause', 'seek', 'volume', 'replaygain'].includes(request.action)) throw new Error('Audio is not ready');
         if (request.action === 'seek' && (!Number.isFinite(request.position) || request.position < 0)) throw new Error('Invalid seek');
         if (request.action === 'volume' && (!Number.isFinite(request.volume) || request.volume < 0 || request.volume > 1)) throw new Error('Invalid volume');
-        return helper.request({ action: request.action, session: current.id, position: request.position, volume: request.volume });
+        if (request.action === 'replaygain' && (!Number.isFinite(request.gain) || request.gain < 0 || request.gain > 16)) throw new Error('Invalid ReplayGain');
+        return { ...await helper.request({ action: request.action, session: current.id, position: request.position, volume: request.volume, gain: request.gain }), ...current.sourceInfo };
     }
     ipcMain.handle('native-audio:request', handle);
     app.on('web-contents-created', (_, contents) => {
@@ -112,7 +146,7 @@ function registerNativeAudio({ app, ipcMain, isTrustedSender, helperFactory = cr
     });
     app.on('before-quit', () => {
         const previous = active; active = null;
-        previous?.abort.abort(); helper.dispose();
+        previous?.abort.abort(); helper?.dispose();
         if (previous) void Promise.resolve(previous.decoding).catch(() => {}).then(() =>
             previous.directory && fs.rm(previous.directory, { recursive: true, force: true }).catch(() => {}));
     });

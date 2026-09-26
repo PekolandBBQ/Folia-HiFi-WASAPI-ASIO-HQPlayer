@@ -127,6 +127,8 @@ export const useCommandPaletteContext = (
     const audioSignals = useAudioSettingsStore(useShallow(state => ({
         volume: state.volume,
         isMuted: state.isMuted,
+        nativeAudioProcessingMode: state.nativeAudioProcessingMode,
+        showAudioSignalPath: state.showAudioSignalPath,
     })));
     const visualizerSignals = useVisualizerSettingsStore(useShallow(state => ({
         visualizerMode: state.visualizerMode,

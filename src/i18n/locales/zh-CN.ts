@@ -1,16 +1,31 @@
 
 
 export default {
+  "signalPath": {
+    "preparing": "原生输出准备中", "conversion": "采样率转换", "gain": "ReplayGain／软件音量",
+    "conversionUnknown": "未回报", "upsampling": "升频／调制", "downsampling": "降采样", "sameRate": "采样率未改变",
+    "title": "音频链路", "close": "关闭音频链路", "unknown": "未回报",
+    "source": "音源规格", "processing": "音频处理", "format": "播放引擎回报格式", "output": "播放引擎",
+    "integer": "整数直通",
+    "compatibility": "PCM24 准备 → 浮点处理 → 设备格式", "browserProcessing": "浏览器解码与处理", "browser": "浏览器／系统输出",
+    "caveat": "引擎回报不等于 DAC 实测。整数模式本身不代表全链路位完美；未回报的音源和升频参数不作推断。"
+  },
   "nativeAudio": {
+    "componentPending": "此构建尚未配置已审核的组件发布。",
+    "removeComponent": "停用组件",
+    "installComponent": "安装／更新组件",
+    "showSignalPath": "显示音频链路",
     "title": "Windows 本地音频输出",
     "browser": "浏览器音频（默认）",
     "wasapi": "WASAPI 独占",
     "refresh": "刷新音频设备",
     "description": "为本地文件选择 WASAPI 独占设备或已安装的 x64 ASIO 驱动。在线歌曲使用浏览器音频。",
-    "limitations": "第一版会先准备完整文件再播放。原生模式绕过均衡器、ReplayGain、音效、频谱分析和自动混音。更换输出后，曲目从头暂停，按播放继续。ASIO 使用驱动的前几个输出通道及驱动配置的缓冲大小。",
-    "unavailable": "缺少原生音频程序，请构建或安装 Windows 原生音频版本。",
+    "limitations": "仅本地文件，完整准备后播放。保留 ReplayGain 和音量，绕过均衡器、音效、频谱和自动混音。不自动重采样；设备不支持的格式将明确报错。",
+    "unavailable": "请先安装兼容的原生组件及支持 PCM24／PCM32 的官方解码器。",
     "savedUnavailable": "已保存的输出（当前未列出）",
     "noAsio": "未发现 x64 ASIO 驱动。使用 ASIO 前，请安装音频设备厂商提供的驱动。",
+    "integerDirect": "整数直通（实验性）",
+    "integerDirectDescription": "可选整数 PCM 链路。软件音量和 ReplayGain 仍然生效；合并增益为 1 时才保持采样值不变，需要兼容的整数驱动。听感参考（主观描述）：通常可使三频密度更加饱满并改善背景的透明度，在解析力较好的系统上，这种差异更易被察觉 。",
     "playbackFailed": "原生音频：{{message}}"
   },
   "notifications": {
@@ -374,6 +389,8 @@ export default {
       "ponder-hints-off": { "title": "思索提示：关闭", "description": "不再显示长按 G 的提示" },
       "ponder-touch-button-toggle": { "title": "触屏思索按钮", "description": "显示或隐藏触屏右上角那颗灯泡" },
       "settings-native-audio": { "title": "Windows 原生音频", "description": "为本地文件选择 WASAPI 独占或 ASIO 输出" },
+      "native-audio-signal-path-toggle": { "title": "显示音频链路", "description": "开启或关闭原生音频链路显示" },
+      "native-audio-integer-direct-toggle": { "title": "原生音频整数直通", "description": "开启或关闭 WASAPI 独占与兼容 ASIO 驱动的纯整数 PCM 链路" },
       "search-current": { "title": "搜索歌曲", "description": "在当前来源搜索歌曲" },
       "search-local": { "title": "搜索本地歌曲", "description": "搜索本地音乐库" },
       "search-navidrome": { "title": "搜索 Navidrome", "description": "搜索 Navidrome 音乐库" },

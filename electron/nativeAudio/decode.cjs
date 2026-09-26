@@ -3,14 +3,15 @@ const path = require('node:path');
 const { spawn } = require('node:child_process');
 
 // electron/nativeAudio/decode.cjs — decode one local file into a seekable temporary PCM WAV.
-async function decodeLocalAudio(executable, input, directory, signal) {
+async function decodeLocalAudio(executable, input, directory, signal, processingMode = 'compatibility') {
     const stat = await fs.stat(input);
     if (!stat.isFile()) throw new Error('Select a local audio file');
     const output = path.join(directory, 'decoded.wav');
     await new Promise((resolve, reject) => {
         const process = spawn(executable, ['-nostdin', '-hide_banner', '-loglevel', 'error',
             '-protocol_whitelist', 'file,pipe', '-i', input, '-map', '0:a:0', '-vn', '-sn', '-dn',
-            '-c:a', 'pcm_s24le', '-rf64', 'auto', '-y', output],
+            '-c:a', processingMode === 'integer-direct' ? 'pcm_s32le' : 'pcm_s24le',
+            '-rf64', 'auto', '-y', output],
         { windowsHide: true, signal, stdio: ['ignore', 'ignore', 'pipe'] });
         let diagnostics = '';
         let processError = null;

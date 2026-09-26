@@ -11,6 +11,7 @@ async function main() {
     electron.process().stderr.on('data', data => process.stderr.write(data));
     try {
         const page = await electron.firstWindow();
+        await page.evaluate(() => window.electron.nativeAudio.request({ action: 'component-install' }));
         const devices = await page.evaluate(() => window.electron.nativeAudio.request({ action: 'devices' }));
         const targets = devices.filter(device => device.name.toLowerCase().includes(match.toLowerCase()));
         assert.ok(targets.length, 'No matching device');

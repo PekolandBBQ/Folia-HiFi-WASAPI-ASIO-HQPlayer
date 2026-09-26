@@ -1,0 +1,14 @@
+/* Responsive signal details keep readable type and trade excess vertical space for columns. */
+.signal-path-panel { max-height: calc(100dvh - 100px); }
+[data-signal-path].absolute .signal-path-panel { max-height: calc(100dvh - 180px); }
+
+  .signal-path-panel[data-compact="true"] { padding: 16px; }
+  .signal-path-panel[data-compact="true"] > div { margin-bottom: 10px; }
+  .signal-path-panel[data-compact="true"] .signal-path-rows > li { padding-bottom: 12px; padding-left: 20px; }
+  .signal-path-panel[data-compact="true"] .signal-path-rows > li > div:last-child { font-size: 12px; line-height: 1.4; }
+  .signal-path-panel[data-compact="true"] > p { margin-top: 10px; padding-top: 8px; font-size: 11px; line-height: 1.4; }
+
+  .signal-path-panel[data-columns="true"] { width: 560px; }
+  .signal-path-panel[data-columns="true"] .signal-path-rows { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 20px; }
+  .signal-path-panel[data-columns="true"] .signal-path-rows > li { padding-bottom: 0; }
+  .signal-path-panel[data-columns="true"] .signal-path-rows > li > span:first-child:not(:last-child) { bottom: 0; }

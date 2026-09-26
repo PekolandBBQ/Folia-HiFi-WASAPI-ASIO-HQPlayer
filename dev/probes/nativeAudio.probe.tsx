@@ -1,3 +1,5 @@
+import SignalPath from '../../src/components/audio/SignalPath';
+import { usePlaybackStore } from '../../src/stores/usePlaybackStore';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { motion, useMotionValue, useTransform } from 'framer-motion';
 import NativeAudioSettingsSection from '../../src/components/modal/settings/NativeAudioSettingsSection';
@@ -20,22 +22,30 @@ function silentLocalFile() {
 function NativeAudioProbe() {
     const backend = useAudioSettingsStore(state => state.nativeAudioBackend);
     const device = useAudioSettingsStore(state => state.nativeAudioDeviceId);
+    const processingMode = useAudioSettingsStore(state => state.nativeAudioProcessingMode);
     const audio = useRef<HTMLAudioElement | null>(null);
     const register = useCallback((element: HTMLAudioElement | null) => { audio.current = element; }, []);
     const [status, setStatus] = useState('waiting');
     const [source, setSource] = useState(() => URL.createObjectURL(silentLocalFile()));
     useEffect(() => () => URL.revokeObjectURL(source), [source]);
+    useEffect(() => {
+        const song = { id: 'native-probe', name: 'Native probe', artists: [],
+            album: { id: 'probe', name: 'Probe', picUrl: '' }, durationMs: 10000, localRef: { songId: 'probe' }, isLocal: true };
+        usePlaybackStore.setState({ audioSrc: source, currentSong: song });
+    }, [source]);
     const clock = useMotionValue(0);
     const label = useTransform(clock, value => value.toFixed(2));
     return <div className="mx-auto max-w-xl space-y-5 p-8" style={{ color: 'var(--text-primary)' }}>
         <NativeAudioSettingsSection isDaylight={false} theme={DEFAULT_THEME} className="rounded-xl border border-white/20 p-5" />
         <PlaybackDeck register={register} nativeBackend={backend} nativeDeviceId={device} src={source}
+            nativeProcessingMode={processingMode}
             getLocalFile={async () => silentLocalFile()}
             onLoadedMetadata={() => setStatus('ready')}
             onPlay={() => setStatus('playing')} onPause={() => setStatus('paused')}
             onTimeUpdate={event => clock.set(event.currentTarget.currentTime)}
             onSeeked={event => clock.set(event.currentTarget.currentTime)}
             onError={event => setStatus(event.currentTarget.error?.message || 'error')} />
+        <SignalPath />
         <div data-testid="status">{status}</div><motion.div data-testid="clock">{label}</motion.div>
         <div className="flex gap-4">
             <button onClick={() => void audio.current?.play().catch(() => {})}>Play</button>

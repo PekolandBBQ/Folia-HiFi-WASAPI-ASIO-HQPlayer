@@ -116,6 +116,8 @@ const createContext = (overrides: CommandPaletteContextOverrides = {}): CommandP
             setLatticePosterTintIntensity: vi.fn(),
             toggleAlwaysShowTrackSwitchButtons: vi.fn(),
             toggleAutoPlayOnLaunch: vi.fn(),
+            toggleNativeAudioIntegerDirect: vi.fn(),
+            toggleNativeAudioSignalPath: vi.fn(),
             toggleTranscodeFallback: vi.fn(),
             toggleAlwaysShowMainWindowTitlebar: vi.fn(),
             toggleNativeMacFullscreenButton: vi.fn(),

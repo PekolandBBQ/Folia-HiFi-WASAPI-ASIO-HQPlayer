@@ -7,7 +7,7 @@
 // exists — at which point they may move once more.
 
 import { create } from 'zustand';
-import type { NativeAudioBackend } from '../types/nativeAudio';
+import type { NativeAudioBackend, NativeAudioProcessingMode } from '../types/nativeAudio';
 import type { AudioQualityPreference } from '../types/onlineMusic';
 import { type QueueAddBehavior } from '../types';
 import { getAudioEqualizerCustomSlotIndex, isAudioEqualizerCustomSlotId, readStoredAudioEqualizerSettings, resolveAudioEqualizerSettings, writeStoredAudioEqualizerSettings, type AudioEqualizerModeId, type AudioEqualizerSettings } from '../utils/audioEqualizer';
@@ -32,6 +32,8 @@ export const ENABLE_TRANSCODE_FALLBACK_KEY = 'folia_enable_transcode_fallback';
 
 /** Whether finished plays of online NetEase tracks are reported to the signed-in account. */
 export const NETEASE_SCROBBLE_KEY = 'folia_netease_scrobble';
+
+export const NATIVE_AUDIO_PROCESSING_MODE_KEY = 'folia_native_audio_processing_mode';
 
 /** Gigabytes of cached audio to keep. Zero is the listener asking for no ceiling at all. */
 export const DEFAULT_MEDIA_CACHE_LIMIT_GB = 5;
@@ -131,7 +133,11 @@ const readStoredVolume = () => {
 export type AudioSettingsState = {
     nativeAudioBackend: NativeAudioBackend;
     nativeAudioDeviceId: string;
+    showAudioSignalPath: boolean;
+    handleSetShowAudioSignalPath: (enabled: boolean) => void;
+    nativeAudioProcessingMode: NativeAudioProcessingMode;
     handleSetNativeAudioOutput: (backend: NativeAudioBackend, deviceId: string) => void;
+    handleSetNativeAudioProcessingMode: (mode: NativeAudioProcessingMode) => void;
     audioQuality: AudioQuality;
     enableMediaCache: boolean;
     /** Gigabytes of cached audio to keep before the oldest is dropped. Zero means no ceiling. */
@@ -181,10 +187,18 @@ export const useAudioSettingsStore = create<AudioSettingsState>((set, get) => ({
     nativeAudioBackend: typeof localStorage !== 'undefined' && ['wasapi-exclusive', 'asio'].includes(localStorage.getItem('folia_native_audio_backend') || '')
         ? localStorage.getItem('folia_native_audio_backend') as NativeAudioBackend : 'browser',
     nativeAudioDeviceId: typeof localStorage !== 'undefined' ? localStorage.getItem('folia_native_audio_device') || '' : '',
+    showAudioSignalPath: getStoredBoolean('folia_show_audio_signal_path', false),
+    handleSetShowAudioSignalPath: (enabled) => { setStoredBoolean('folia_show_audio_signal_path', enabled); set({ showAudioSignalPath: enabled }); },
+    nativeAudioProcessingMode: typeof localStorage !== 'undefined' && localStorage.getItem(NATIVE_AUDIO_PROCESSING_MODE_KEY) === 'integer-direct'
+        ? 'integer-direct' : 'compatibility',
     handleSetNativeAudioOutput: (backend, deviceId) => {
         localStorage.setItem('folia_native_audio_backend', backend);
         localStorage.setItem('folia_native_audio_device', deviceId);
         set({ nativeAudioBackend: backend, nativeAudioDeviceId: deviceId });
+    },
+    handleSetNativeAudioProcessingMode: (mode) => {
+        localStorage.setItem(NATIVE_AUDIO_PROCESSING_MODE_KEY, mode);
+        set({ nativeAudioProcessingMode: mode });
     },
     audioOutputDeviceId: readStoredAudioOutputDeviceId(),
     audioEqualizerSettings: readStoredAudioEqualizerSettings(),
