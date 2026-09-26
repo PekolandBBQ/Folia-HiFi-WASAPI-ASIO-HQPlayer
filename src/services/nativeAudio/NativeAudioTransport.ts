@@ -1,5 +1,6 @@
 import type { NativeAudioApi, NativeAudioBackend, NativeAudioEvent, NativeAudioProcessingMode, NativeAudioState } from '../../types/nativeAudio';
 import { publishSignalPath, clearSignalPath } from '../../stores/useSignalPathStore';
+import { loadNativeOnlineSource } from './loadOnlineSource';
 import { loadNativeLocalFile } from './loadLocalFile';
 
 // src/services/nativeAudio/NativeAudioTransport.ts — the media transport subset consumed by Folia.
@@ -96,8 +97,9 @@ export class NativeAudioTransport extends EventTarget {
         this.loading = (async () => {
             const file = await this.getFile();
             signal.throwIfAborted();
-            if (!file) throw new Error('The local file is unavailable; grant access or re-import it');
-            const state = await loadNativeLocalFile(this.api, session, file, this.backend, this.deviceId, signal, this.processingMode);
+            const state = file
+                ? await loadNativeLocalFile(this.api, session, file, this.backend, this.deviceId, signal, this.processingMode)
+                : await loadNativeOnlineSource(this.api, session, this.src, this.backend, this.deviceId, signal, this.processingMode);
             this.apply(state); this.readyState = 4;
             this.emit('loadedmetadata'); this.emit('loadeddata'); this.emit('canplay');
         })();

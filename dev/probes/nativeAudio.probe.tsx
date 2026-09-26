@@ -20,13 +20,15 @@ function silentLocalFile() {
     return new File([bytes], 'silence.wav', { type: 'audio/wav' });
 }
 function NativeAudioProbe() {
+    const sourceKind = new URLSearchParams(location.search).get('sourceKind');
+    const remoteUrl = new URLSearchParams(location.search).get('audioUrl');
     const backend = useAudioSettingsStore(state => state.nativeAudioBackend);
     const device = useAudioSettingsStore(state => state.nativeAudioDeviceId);
     const processingMode = useAudioSettingsStore(state => state.nativeAudioProcessingMode);
     const audio = useRef<HTMLAudioElement | null>(null);
     const register = useCallback((element: HTMLAudioElement | null) => { audio.current = element; }, []);
     const [status, setStatus] = useState('waiting');
-    const [source, setSource] = useState(() => URL.createObjectURL(silentLocalFile()));
+    const [source, setSource] = useState(() => sourceKind === 'remote' && remoteUrl ? remoteUrl : URL.createObjectURL(silentLocalFile()));
     useEffect(() => () => URL.revokeObjectURL(source), [source]);
     useEffect(() => {
         const song = { id: 'native-probe', name: 'Native probe', artists: [],
@@ -39,7 +41,7 @@ function NativeAudioProbe() {
         <NativeAudioSettingsSection isDaylight={false} theme={DEFAULT_THEME} className="rounded-xl border border-white/20 p-5" />
         <PlaybackDeck register={register} nativeBackend={backend} nativeDeviceId={device} src={source}
             nativeProcessingMode={processingMode}
-            getLocalFile={async () => silentLocalFile()}
+            getLocalFile={async () => sourceKind ? null : silentLocalFile()}
             onLoadedMetadata={() => setStatus('ready')}
             onPlay={() => setStatus('playing')} onPause={() => setStatus('paused')}
             onTimeUpdate={event => clock.set(event.currentTarget.currentTime)}

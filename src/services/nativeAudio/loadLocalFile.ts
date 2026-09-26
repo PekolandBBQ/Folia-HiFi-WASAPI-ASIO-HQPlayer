@@ -1,6 +1,6 @@
 import type { NativeAudioApi, NativeAudioBackend, NativeAudioProcessingMode, NativeAudioState } from '../../types/nativeAudio';
 
-// src/services/nativeAudio/loadLocalFile.ts — use the existing local-library File, never an online URL.
+// src/services/nativeAudio/loadLocalFile.ts — stage a library File or an already-resolved cache blob in bounded chunks.
 export async function loadNativeLocalFile(api: NativeAudioApi, session: string, file: File,
     backend: NativeAudioBackend, deviceId: string, signal: AbortSignal, processingMode: NativeAudioProcessingMode = 'compatibility'): Promise<NativeAudioState> {
     signal.throwIfAborted();

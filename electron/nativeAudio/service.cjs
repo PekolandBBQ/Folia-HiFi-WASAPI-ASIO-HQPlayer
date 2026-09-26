@@ -2,9 +2,10 @@ const fs = require('node:fs/promises');
 const path = require('node:path');
 const { createHelper } = require('./helper.cjs');
 const { decodeLocalAudio } = require('./decode.cjs');
+const { downloadRemoteAudio } = require('./download.cjs');
 
 // electron/nativeAudio/service.cjs — a single, session-owned local playback resource.
-function registerNativeAudio({ app, ipcMain, isTrustedSender, helperFactory = createHelper, decode = decodeLocalAudio, componentManager, decoderResolver = require('./decoder.cjs').resolveNativeDecoder }) {
+function registerNativeAudio({ app, ipcMain, isTrustedSender, helperFactory = createHelper, decode = decodeLocalAudio, download = downloadRemoteAudio, componentManager, decoderResolver = require('./decoder.cjs').resolveNativeDecoder }) {
     const supported = process.platform === 'win32' && process.arch === 'x64';
     const components = componentManager || require('./componentManager.cjs').createComponentManager({ app });
     let active = null, helper = null, helperReady = null, decoder, managingComponent = false;
@@ -51,6 +52,12 @@ function registerNativeAudio({ app, ipcMain, isTrustedSender, helperFactory = cr
             throw new Error('Select an output device');
         if (request.path != null && (typeof request.path !== 'string' || !path.isAbsolute(request.path) || request.path.startsWith('\\\\')))
             throw new Error('Only local absolute file paths are supported');
+        if (request.path != null && request.url != null) throw new Error('Choose one audio source');
+        if (request.url != null) {
+            if (typeof request.url !== 'string' || request.url.length > 16384) throw new Error('Invalid audio URL');
+            const url = new URL(request.url);
+            if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password) throw new Error('Only HTTP(S) audio URLs are supported');
+        }
         const processingMode = request.processingMode ?? 'compatibility';
         if (!['compatibility', 'integer-direct'].includes(processingMode)) throw new Error('Invalid processing mode');
         const previous = active;
@@ -70,7 +77,8 @@ function registerNativeAudio({ app, ipcMain, isTrustedSender, helperFactory = cr
             current.input = path.join(current.directory, 'input.audio');
             await fs.writeFile(current.input, Buffer.alloc(0));
         }
-        current.upload = request.path == null;
+        current.remoteUrl = request.url;
+        current.upload = request.path == null && request.url == null;
         return { ok: true };
     }
     async function handle(event, request) {
@@ -114,6 +122,8 @@ function registerNativeAudio({ app, ipcMain, isTrustedSender, helperFactory = cr
         if (request.action === 'finish') {
             if (current.decoding) throw new Error('File is already being prepared');
             current.decoding = (async () => {
+                if (current.remoteUrl) await download(current.remoteUrl, current.input, current.abort.signal);
+                assertCurrent(current);
                 current.sourceInfo = await require('./sourceInfo.cjs').readSourceInfo(current.input);
                 assertCurrent(current);
                 const wav = await decode(decoder, current.input, current.directory, current.abort.signal, current.processingMode);

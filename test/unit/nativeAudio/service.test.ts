@@ -11,7 +11,7 @@ const cleanups: Array<() => Promise<void>> = [];
 afterEach(async () => { for (const cleanup of cleanups.splice(0)) await cleanup(); });
 
 async function fixture(decode: (exe: string, input: string, directory: string, signal: AbortSignal) => Promise<unknown>
-    = vi.fn(async (_exe, input) => input)) {
+    = vi.fn(async (_exe, input) => input), download?: (...args: any[]) => Promise<unknown>) {
     const directory = await mkdtemp(path.join(os.tmpdir(), 'folia-native-service-test-'));
     const app = Object.assign(new EventEmitter(), { isPackaged: false, getAppPath: () => directory, getPath: () => directory });
     const frame = {};
@@ -19,7 +19,7 @@ async function fixture(decode: (exe: string, input: string, directory: string, s
     const event = { sender, senderFrame: frame };
     const helper = { request: vi.fn(async request => (request.action === 'hello' ? { protocolMajor: 1, capabilities: ['integer-pcm', 'replaygain', 'format-telemetry'] } : { session: request.session, duration: 4 })), dispose: vi.fn() };
     const service = registerNativeAudio({ app, ipcMain: { handle: vi.fn() }, isTrustedSender: (value: unknown) => value === sender,
-        componentManager: { status: async () => ({ available: true, executable: 'test.exe' }) }, decoderResolver: async () => 'ffmpeg.exe', helperFactory: () => helper, decode });
+        componentManager: { status: async () => ({ available: true, executable: 'test.exe' }) }, decoderResolver: async () => 'ffmpeg.exe', helperFactory: () => helper, decode, download });
     cleanups.push(async () => {
         app.emit('before-quit');
         await new Promise(resolve => setTimeout(resolve, 20));
@@ -73,4 +73,40 @@ describe.skipIf(process.platform !== 'win32' || process.arch !== 'x64')('native 
         await expect(request({ action: 'finish', session: 'first' })).rejects.toThrow('already');
         await expect(request({ action: 'shell', session: 'first' })).rejects.toThrow('ready');
     });
+    it('waits for the entire remote source before decode/load and rejects early play', async () => {
+        let complete!: () => void;
+        const download = vi.fn(() => new Promise<void>(resolve => { complete = resolve; }));
+        const decode = vi.fn(async (_exe, input) => input);
+        const { request, helper } = await fixture(decode, download);
+        await request({ action: 'begin', session: 'online', backend: 'asio', deviceId: 'driver', url: 'https://example.com/audio?quality=hires' });
+        const finish = request({ action: 'finish', session: 'online' });
+        expect((download.mock.calls as unknown[][])[0]?.[0]).toBe('https://example.com/audio?quality=hires');
+        expect(decode).not.toHaveBeenCalled();
+        await expect(request({ action: 'play', session: 'online' })).rejects.toThrow('not ready');
+        complete(); await finish;
+        expect(decode).toHaveBeenCalledOnce();
+        expect(helper.request.mock.calls.some(([value]) => value.action === 'load')).toBe(true);
+    });
+    it('cancels a download on next song and never loads its incomplete file', async () => {
+        const download = vi.fn((_url, _destination, signal) => new Promise<void>((_resolve, reject) => {
+            signal.addEventListener('abort', () => reject(new Error('download cancelled')), { once: true });
+        }));
+        const decode = vi.fn(async (_exe, input) => input);
+        const { request, begin, directory } = await fixture(decode, download);
+        await request({ action: 'begin', session: 'online', backend: 'asio', deviceId: 'driver', url: 'https://example.com/audio' });
+        const rejected = expect(request({ action: 'finish', session: 'online' })).rejects.toThrow('download cancelled');
+        await begin('next'); await rejected;
+        expect(decode).not.toHaveBeenCalled();
+        await request({ action: 'stop', session: 'next' });
+        expect(await readdir(directory)).toEqual([]);
+    });
+    it('rejects unsafe or ambiguous remote sources before creating a session', async () => {
+        const { request, directory } = await fixture();
+        for (const source of [{ url: 'file:///C:/secret' }, { url: 'https://user:password@example.com/song' },
+            { url: 'https://example.com/audio', path: 'C:\\song.flac' }]) {
+            await expect(request({ action: 'begin', session: 'online', backend: 'asio', deviceId: 'driver', ...source })).rejects.toThrow();
+        }
+        expect(await readdir(directory)).toEqual([]);
+    });
+
 });

@@ -346,7 +346,7 @@ export default function App() {
     const nativeAudioDeviceId = useAudioSettingsStore(state => state.nativeAudioDeviceId);
     const nativeAudioProcessingMode = useAudioSettingsStore(state => state.nativeAudioProcessingMode);
     const nativePlayback = Boolean(window.electron?.nativeAudio?.supported && nativeAudioBackend !== 'browser'
-        && isLocalPlaybackSong(currentSong));
+        && currentSong && !isStagePlaybackSong(currentSong));
     // The automix decks are set up much further down, but a few reset paths declared above here
     // need to be able to stop a transition, and queue navigation needs the track being SHOWN. A ref
     // keeps both reachable without reordering them; it is reassigned on every render, so the

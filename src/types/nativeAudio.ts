@@ -13,7 +13,7 @@ export type NativeAudioEvent = { event: 'state' | 'error'; session: string; stat
 export type NativeAudioApi = {
     supported: boolean;
     request: (request: { action: string; session?: string; backend?: string; deviceId?: string;
-        path?: string; data?: Uint8Array; position?: number; volume?: number; gain?: number;
+        path?: string; url?: string; data?: Uint8Array; position?: number; volume?: number; gain?: number;
         processingMode?: NativeAudioProcessingMode }) => Promise<unknown>;
     onEvent: (listener: (event: NativeAudioEvent) => void) => () => void;
 };

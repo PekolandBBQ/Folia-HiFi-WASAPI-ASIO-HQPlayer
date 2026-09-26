@@ -1,4 +1,4 @@
-import { isLocalPlaybackSong } from '../../utils/appPlaybackGuards';
+import { isStagePlaybackSong } from '../../utils/appPlaybackGuards';
 import React, { useEffect, useRef, useState } from 'react';
 import { AudioLines, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -38,7 +38,7 @@ export default function SignalPath({ anchored = false, onOpenChange }: { anchore
         window.addEventListener('keydown', key); window.addEventListener('pointerdown', outside);
         return () => { window.removeEventListener('keydown', key); window.removeEventListener('pointerdown', outside); };
     }, [open]);
-    if (!enabled || selected === 'browser' || !song || !isLocalPlaybackSong(song) || !audioSrc) return null;
+    if (!enabled || selected === 'browser' || !song || isStagePlaybackSong(song) || !audioSrc) return null;
     const { rows, brief } = buildSignalPath(snapshot, selected, t);
     return <div ref={container} data-signal-path onClick={event => event.stopPropagation()} onPointerDown={event => event.stopPropagation()} className={`${anchored ? 'absolute bottom-full mb-2' : 'fixed bottom-1'} left-1/2 -translate-x-1/2 z-[90] w-max max-w-[calc(100vw-24px)] pointer-events-auto`} style={{ WebkitAppRegion: 'no-drag', color: 'var(--text-primary)' } as React.CSSProperties}>
         {open && <section ref={panelRef} data-compact={compact} data-columns={columns} id="folia-signal-path" role="region" aria-label={t('signalPath.title')} className={`signal-path-panel absolute bottom-full left-1/2 -translate-x-1/2 mb-3 w-80 max-w-[calc(100vw-24px)]  overflow-auto rounded-2xl border ${glassPanel} p-5 shadow-2xl backdrop-blur-2xl`}>
