@@ -1,6 +1,18 @@
 
 
 export default {
+  "nativeAudio": {
+    "title": "Windows 本地音频输出",
+    "browser": "浏览器音频（默认）",
+    "wasapi": "WASAPI 独占",
+    "refresh": "刷新音频设备",
+    "description": "为本地文件选择 WASAPI 独占设备或已安装的 x64 ASIO 驱动。在线歌曲使用浏览器音频。",
+    "limitations": "第一版会先准备完整文件再播放。原生模式绕过均衡器、ReplayGain、音效、频谱分析和自动混音。更换输出后，曲目从头暂停，按播放继续。ASIO 使用驱动的前几个输出通道及驱动配置的缓冲大小。",
+    "unavailable": "缺少原生音频程序，请构建或安装 Windows 原生音频版本。",
+    "savedUnavailable": "已保存的输出（当前未列出）",
+    "noAsio": "未发现 x64 ASIO 驱动。使用 ASIO 前，请安装音频设备厂商提供的驱动。",
+    "playbackFailed": "原生音频：{{message}}"
+  },
   "notifications": {
     "coverColorAdded": "添加封面色彩",
     "coverColorDefault": "使用默认色彩",
@@ -361,6 +373,7 @@ export default {
       "ponder-hints-unseen": { "title": "思索提示：仅未看过的区域", "description": "某个控件的教程看过之后就不再提示它" },
       "ponder-hints-off": { "title": "思索提示：关闭", "description": "不再显示长按 G 的提示" },
       "ponder-touch-button-toggle": { "title": "触屏思索按钮", "description": "显示或隐藏触屏右上角那颗灯泡" },
+      "settings-native-audio": { "title": "Windows 原生音频", "description": "为本地文件选择 WASAPI 独占或 ASIO 输出" },
       "search-current": { "title": "搜索歌曲", "description": "在当前来源搜索歌曲" },
       "search-local": { "title": "搜索本地歌曲", "description": "搜索本地音乐库" },
       "search-navidrome": { "title": "搜索 Navidrome", "description": "搜索 Navidrome 音乐库" },

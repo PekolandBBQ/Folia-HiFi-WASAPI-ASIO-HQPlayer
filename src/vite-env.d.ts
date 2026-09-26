@@ -601,6 +601,7 @@ declare global {
 
   interface Window {
     electron?: {
+      nativeAudio?: import('./types/nativeAudio').NativeAudioApi;
       webUtils?: {
         /** Resolves the OS path of a dropped File (File.path was removed in modern Electron). */
         getPathForFile: (file: File) => string;

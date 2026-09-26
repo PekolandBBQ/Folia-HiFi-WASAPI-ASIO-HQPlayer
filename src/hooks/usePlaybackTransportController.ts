@@ -6,6 +6,7 @@ import { setPlayerState } from '../stores/usePlaybackStore';
 import { useTranslation } from 'react-i18next';
 import { usePlaybackStore } from '../stores/usePlaybackStore';
 import { currentTime } from '../stores/motionSignals';
+import { isNativeAudioElement } from '../services/nativeAudio/NativeAudioTransport';
 
 // src/hooks/usePlaybackTransportController.ts
 
@@ -100,10 +101,20 @@ export function usePlaybackTransportController({
             }
         }
 
+        const requestedAudio = audioRef.current;
+        if (!requestedAudio) return;
         try {
-            await audioRef.current.play();
+            await requestedAudio.play();
+            if (audioRef.current !== requestedAudio) return;
             setPlayerState(PlayerState.PLAYING);
         } catch (error) {
+            if (audioRef.current !== requestedAudio) return;
+            if (error instanceof Error && error.name === 'AbortError') return;
+            if (isNativeAudioElement(requestedAudio)) {
+                // The native error event already supplies the device/decoder-specific message.
+                setPlayerState(PlayerState.PAUSED);
+                return;
+            }
             const recovered = await recoverOnlinePlaybackSource({
                 failedSrc: audioRef.current.currentSrc || audioSrc,
                 resumeAt: audioRef.current.currentTime,

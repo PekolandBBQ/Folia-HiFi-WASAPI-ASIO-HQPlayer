@@ -7,6 +7,7 @@
 // exists — at which point they may move once more.
 
 import { create } from 'zustand';
+import type { NativeAudioBackend } from '../types/nativeAudio';
 import type { AudioQualityPreference } from '../types/onlineMusic';
 import { type QueueAddBehavior } from '../types';
 import { getAudioEqualizerCustomSlotIndex, isAudioEqualizerCustomSlotId, readStoredAudioEqualizerSettings, resolveAudioEqualizerSettings, writeStoredAudioEqualizerSettings, type AudioEqualizerModeId, type AudioEqualizerSettings } from '../utils/audioEqualizer';
@@ -128,6 +129,9 @@ const readStoredVolume = () => {
 };
 
 export type AudioSettingsState = {
+    nativeAudioBackend: NativeAudioBackend;
+    nativeAudioDeviceId: string;
+    handleSetNativeAudioOutput: (backend: NativeAudioBackend, deviceId: string) => void;
     audioQuality: AudioQuality;
     enableMediaCache: boolean;
     /** Gigabytes of cached audio to keep before the oldest is dropped. Zero means no ceiling. */
@@ -174,6 +178,14 @@ export const useAudioSettingsStore = create<AudioSettingsState>((set, get) => ({
     ),
     // Off unless asked for: it writes to the listener's music account, so it is never a default.
     neteaseScrobbleEnabled: getStoredBoolean(NETEASE_SCROBBLE_KEY, false),
+    nativeAudioBackend: typeof localStorage !== 'undefined' && ['wasapi-exclusive', 'asio'].includes(localStorage.getItem('folia_native_audio_backend') || '')
+        ? localStorage.getItem('folia_native_audio_backend') as NativeAudioBackend : 'browser',
+    nativeAudioDeviceId: typeof localStorage !== 'undefined' ? localStorage.getItem('folia_native_audio_device') || '' : '',
+    handleSetNativeAudioOutput: (backend, deviceId) => {
+        localStorage.setItem('folia_native_audio_backend', backend);
+        localStorage.setItem('folia_native_audio_device', deviceId);
+        set({ nativeAudioBackend: backend, nativeAudioDeviceId: deviceId });
+    },
     audioOutputDeviceId: readStoredAudioOutputDeviceId(),
     audioEqualizerSettings: readStoredAudioEqualizerSettings(),
     isAudioEqualizerOpen: false,

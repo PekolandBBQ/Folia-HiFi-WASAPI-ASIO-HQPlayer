@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef } from 'react';
+import { isNativeAudioElement } from '../services/nativeAudio/NativeAudioTransport';
 import type { MutableRefObject, RefObject } from 'react';
 import { PlayerState } from '../types';
 import type { ReplayGainInfo, ReplayGainMode, SongResult, StatusMessage } from '../types';
@@ -20,6 +21,7 @@ import { useAppViewStore } from '../stores/useAppViewStore';
 // src/hooks/usePlaybackAudioBridge.ts
 
 type UsePlaybackAudioBridgeParams = {
+    nativePlayback?: boolean;
 
     audioRef: RefObject<HTMLAudioElement | null>;
     localSongs: LocalSong[];
@@ -44,6 +46,7 @@ type UsePlaybackAudioBridgeParams = {
 
 // Bridges audio element setup, autoplay, replay gain, and media caching.
 export function usePlaybackAudioBridge({
+    nativePlayback = false,
     audioRef,
     localSongs,
     isLyricsLoading,
@@ -73,6 +76,18 @@ export function usePlaybackAudioBridge({
     const replayGainLogSignatureRef = useRef<string | null>(null);
     const equalizerNodesRef = useRef<BiquadFilterNode[]>([]);
     const effectChainRef = useRef<AudioEffectChain | null>(null);
+    // A backend switch replaces the transport. Nodes connected to a previous DOM element
+    // cannot be reused when the listener later returns to browser playback.
+    useLayoutEffect(() => {
+        effectChainRef.current?.dispose();
+        effectChainRef.current = null;
+        equalizerNodesRef.current = [];
+        const context = audioContextRef.current;
+        audioContextRef.current = null;
+        analyserRef.current = null;
+        gainNodeRef.current = null;
+        if (context) void context.close().catch(() => {});
+    }, [nativePlayback]);
     const audioEqualizerSettings = useAudioSettingsStore(state => state.audioEqualizerSettings);
 
     // Recalculates source-specific gain after the audio graph or playback settings become ready.
@@ -131,6 +146,7 @@ export function usePlaybackAudioBridge({
     }, [audioContextRef, currentSong, gainNodeRef, getActiveChain, localSongs, replayGainMode]);
 
     const setupAudioAnalyzer = useCallback(() => {
+        if (isNativeAudioElement(audioRef.current)) return;
         // The context is the sentinel, not the source node: a deck that failed to connect must
         // not let this run twice, because createMediaElementSource throws on a second call.
         if (!audioRef.current || audioContextRef.current) return;
@@ -310,7 +326,8 @@ export function usePlaybackAudioBridge({
                             // play() was ever called, so nothing would press play again and the
                             // app sits silent. Put the intent back for the next run.
                             if (error.name === 'AbortError') {
-                                shouldAutoPlayRef.current = true;
+                                // Native decoding also aborts when the listener explicitly pauses.
+                                if (!nativePlayback) shouldAutoPlayRef.current = true;
                                 return;
                             }
 
@@ -322,7 +339,7 @@ export function usePlaybackAudioBridge({
                 }
             }
         }
-    }, [audioRef, audioSrc, getTargetPlaybackVolume, isAutoplayHeld, isLyricsLoading, setPlayerState, setStatusMsg, setupAudioAnalyzer, shouldAutoPlayRef, suppressAutoplayRef, syncOutputGain, t]);
+    }, [audioRef, audioSrc, getTargetPlaybackVolume, isAutoplayHeld, isLyricsLoading, nativePlayback, setPlayerState, setStatusMsg, setupAudioAnalyzer, shouldAutoPlayRef, suppressAutoplayRef, syncOutputGain, t]);
 
     // Tells this bridge that the active deck ALREADY holds `src` and is sounding it, so the next time
     // `audioSrc` settles on that value the reload effect above treats it as a no-op instead of calling

@@ -31,6 +31,7 @@ vi.mock('react', () => ({
     useMemo: (factory: () => unknown) => factory(),
     useRef: (initial: unknown) => reactHooks.useRef(initial),
     useEffect: (effect: () => unknown) => { reactHooks.effects.push(effect); },
+    useLayoutEffect: (effect: () => unknown) => { reactHooks.effects.push(effect); },
 }));
 
 const playbackState = vi.hoisted(() => ({

@@ -55,7 +55,9 @@ import { usePlayerPanelModel } from './components/app/player-panel/usePlayerPane
 import { createQueueMutations } from './components/app/player-panel/createQueueMutations';
 import { Album, Artist, LyricData, Theme, PlayerState, SongResult, ReplayGainMode, StatusMessage, PlaybackContext, StageLoopMode, UnifiedSong } from './types';
 import type { LocalSong } from './types';
-import { getLocalSongArrayBuffer } from './services/localMusicService';
+import { getLocalSongArrayBuffer, getFileFromLocalSong } from './services/localMusicService';
+import PlaybackDeck from './components/app/playback/PlaybackDeck';
+import { isNativeAudioElement } from './services/nativeAudio/NativeAudioTransport';
 import type { MediaId, OnlineProviderId, ProviderCollection } from './types/onlineMusic';
 import { resolveSongCatalogRef } from './services/onlineMusic/catalogRefs';
 import { omni } from './services/onlineMusic/omni';
@@ -340,6 +342,10 @@ export default function App() {
         lastAudioRecoverySourceRef,
         currentOnlineAudioUrlFetchedAtRef,
     } = usePlaybackRuntimeRefs();
+    const nativeAudioBackend = useAudioSettingsStore(state => state.nativeAudioBackend);
+    const nativeAudioDeviceId = useAudioSettingsStore(state => state.nativeAudioDeviceId);
+    const nativePlayback = Boolean(window.electron?.nativeAudio?.supported && nativeAudioBackend !== 'browser'
+        && isLocalPlaybackSong(currentSong));
     // The automix decks are set up much further down, but a few reset paths declared above here
     // need to be able to stop a transition, and queue navigation needs the track being SHOWN. A ref
     // keeps both reachable without reordering them; it is reassigned on every render, so the
@@ -508,6 +514,11 @@ export default function App() {
 
     const syncOutputGain = useCallback((targetVolume: number, smoothing = 0.015) => {
         const clampedVolume = clampMediaVolume(targetVolume);
+        if (isNativeAudioElement(audioRef.current)) {
+            audioRef.current!.volume = clampedVolume;
+            audioRef.current!.muted = isMuted;
+            return;
+        }
 
         if (gainNodeRef.current && audioContextRef.current) {
             // Volume only. ReplayGain lives on each deck now, because during a blend the two
@@ -1149,7 +1160,7 @@ export default function App() {
         currentSongKeyRef: currentSongRef,
         coverUrl,
         loopMode: effectiveLoopMode,
-        isEnabled: automixEnabled && !isNowPlayingStageActive,
+        isEnabled: automixEnabled && !isNowPlayingStageActive && !nativePlayback,
         transition: transitionSettings,
         onAdvanceTrack: () => {
             // Same advance the end of a track would trigger, only early enough for the outgoing
@@ -1357,6 +1368,7 @@ export default function App() {
     }, [audioSrc, audioRef, setDuration]);
 
     const { setupAudioAnalyzer, cacheSongAssets, cacheSongAssetsFor, adoptActiveDeckSource } = usePlaybackAudioBridge({
+        nativePlayback,
         audioRef,
         localSongs,
         isLyricsLoading,
@@ -2371,10 +2383,17 @@ export default function App() {
     // deck that is not currently active, so a track fading out in the background can never drive
     // the progress bar, the duration, the queue, or the player state.
     const renderAudioDeck = (deck: AutomixDeckId, register: (element: HTMLAudioElement | null) => void) => (
-        <audio
+        <PlaybackDeck
             key={deck}
-            ref={register}
-            src={automix.deckSrc(deck)}
+            register={register}
+            nativeBackend={nativePlayback ? nativeAudioBackend : 'browser'}
+            nativeDeviceId={nativeAudioDeviceId}
+            getLocalFile={async () => {
+                if (!isLocalPlaybackSong(currentSong)) return null;
+                const local = localSongs.find(song => song.id === currentSong.localRef.songId);
+                return local ? getFileFromLocalSong(local) : null;
+            }}
+            src={nativePlayback && automix.activeDeck !== deck ? undefined : automix.deckSrc(deck)}
             preload="auto"
             crossOrigin="anonymous"
             loop={effectiveLoopMode === 'one' && automix.activeDeck === deck}
@@ -2461,7 +2480,9 @@ export default function App() {
                 // the queue behind it. Visible in the log as a cancel and a `playSong` in the same
                 // second, or as a lone `plain cut` line when the track was too near its end to fade.
                 if (audioElement.paused) return;
-                if (!audioElement.ended) setPlayerState(PlayerState.PLAYING);
+                if (!audioElement.ended && usePlaybackStore.getState().playerState !== PlayerState.PLAYING) {
+                    setPlayerState(PlayerState.PLAYING);
+                }
                 automix.checkTransitionPoint(audioElement.currentTime);
             }}
             onSeeked={(e) => {
@@ -2540,6 +2561,12 @@ export default function App() {
             }}
             onError={(e) => {
                 const audioElement = e.currentTarget;
+                if (isNativeAudioElement(audioElement)) {
+                    shouldAutoPlay.current = false;
+                    setPlayerState(PlayerState.PAUSED);
+                    setStatusMsg({ type: 'error', text: t('nativeAudio.playbackFailed', { message: audioElement.error?.message || '' }) });
+                    return;
+                }
                 const isActiveDeck = automix.isActiveDeck(audioElement);
                 const reportedDuration = Number.isFinite(audioElement.duration) && audioElement.duration > 0
                     ? audioElement.duration

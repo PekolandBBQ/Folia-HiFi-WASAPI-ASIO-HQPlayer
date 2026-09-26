@@ -11,11 +11,15 @@ import { latticePosterTintSurface } from '../surfaces/latticePosterTintSurface';
 import { gridViewCardsSurface } from '../surfaces/gridViewCardsSurface';
 import { reduceMotionSurface } from '../surfaces/reduceMotionSurface';
 import { openCurrentPagePonder } from '../../../services/ponder/pagePonderTarget';
+import { isNativeAudioSupported } from '../../../services/nativeAudio/capabilities';
 
 // src/components/command-palette/commands/settingsCommands.ts
 // Commands in the `settings` group: settings subviews, app toggles, theme, sync, and desktop-only switches.
 
 export const settingsCommands: CommandPaletteCommand[] = [
+    createSettingsAnchorCommand('settings-native-audio', 'Windows native audio', 'Select WASAPI exclusive or ASIO output',
+        ['wasapi', 'asio', 'sound card', '原生音频', '独占', '声卡'], 'nativeAudioOutput',
+        { platform: ['win'], isAvailable: isNativeAudioSupported }),
     createSettingsCommand('settings-help', 'Open Help', 'Open help and shortcuts', ['help', '帮助'], 'help', null, { executeShortcut: 'h' }),
     {
         id: 'ponder-current-page',

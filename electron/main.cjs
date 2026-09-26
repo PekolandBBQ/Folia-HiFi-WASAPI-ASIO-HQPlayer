@@ -1714,6 +1714,7 @@ installCrashHandlers({
 
 
 let mainWindow = null;
+require('./nativeAudio/service.cjs').registerNativeAudio({ app, ipcMain, isTrustedSender: isTrustedMainWindowContents });
 let modSystem = null;
 let remoteControlWindow = null;
 let appTray = null;
@@ -3025,6 +3026,8 @@ function normalizeUpdateChannelSelection(value) {
 }
 
 function getUpdateCheckSupportReason() {
+  // This separately installed edition has no upstream-compatible update feed.
+  if (require('../package.json').nativeAudioEdition) return 'channel';
   return getCurrentReleaseChannel().updateEnabled ? null : 'channel';
 }
 

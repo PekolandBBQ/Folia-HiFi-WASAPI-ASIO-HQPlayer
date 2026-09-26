@@ -46,6 +46,7 @@ exports[`command palette registry contract > keeps the registered command order 
   "playback-shuffle",
   "playback-clear-queue",
   "playback-auto-match-best-lyric",
+  "settings-native-audio",
   "settings-help",
   "ponder-current-page",
   "sleep-timer",

@@ -1,6 +1,15 @@
 const { contextBridge, ipcRenderer, webUtils } = require('electron');
 
 contextBridge.exposeInMainWorld('electron', {
+    nativeAudio: {
+      supported: process.platform === 'win32' && process.arch === 'x64',
+      request: request => ipcRenderer.invoke('native-audio:request', request),
+      onEvent: listener => {
+        const handler = (_event, message) => listener(message);
+        ipcRenderer.on('native-audio:event', handler);
+        return () => ipcRenderer.removeListener('native-audio:event', handler);
+      },
+    },
     webUtils: {
       // File.path was removed in modern Electron; this is the supported way to
       // resolve the OS path of a dropped file from the renderer.

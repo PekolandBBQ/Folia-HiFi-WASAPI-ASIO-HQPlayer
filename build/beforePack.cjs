@@ -15,4 +15,10 @@ exports.default = async (context) => {
     "../packaging/ffmpeg/fetch-ffmpeg.mjs"
   );
   await prepareBundledFfmpeg({ platform: context.electronPlatformName, arch });
+  if (context.packager.config.extraMetadata?.nativeAudioEdition) {
+    if (context.electronPlatformName !== 'win32') throw new Error('The native audio edition requires Windows');
+    if (arch !== 'x64') throw new Error('This native audio branch supports Windows x64 only');
+    const { buildNativeAudio } = await import('../packaging/windows/build-native-audio.mjs');
+    await buildNativeAudio();
+  }
 };

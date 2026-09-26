@@ -1,6 +1,18 @@
 
 
 export default {
+  "nativeAudio": {
+    "title": "Output audio lokal Windows",
+    "browser": "Audio browser (default)",
+    "wasapi": "WASAPI eksklusif",
+    "refresh": "Segarkan perangkat audio",
+    "description": "Pilih perangkat WASAPI eksklusif atau driver ASIO x64 untuk file lokal. Lagu online memakai audio browser.",
+    "limitations": "V1 menyiapkan seluruh file sebelum memutar. EQ, ReplayGain, efek, spektrum dan automix dilewati. Mengganti output menjeda lagu di awal. ASIO memakai kanal output pertama dan ukuran buffer driver.",
+    "unavailable": "Program audio native belum tersedia. Bangun atau instal edisi audio native Windows.",
+    "savedUnavailable": "Output tersimpan (tidak terdaftar saat ini)",
+    "noAsio": "Driver ASIO x64 tidak ditemukan. Instal driver dari produsen perangkat audio.",
+    "playbackFailed": "Audio native: {{message}}"
+  },
   "notifications": {
     "coverColorAdded": "Warna sampul ditambahkan",
     "coverColorDefault": "Menggunakan warna bawaan",
@@ -360,6 +372,7 @@ export default {
       "ponder-hints-unseen": { "title": "Petunjuk Ponder: hanya yang belum dilihat", "description": "Berhenti memberi petunjuk setelah tutorialnya ditonton" },
       "ponder-hints-off": { "title": "Petunjuk Ponder: nonaktif", "description": "Jangan pernah tampilkan petunjuk tahan G" },
       "ponder-touch-button-toggle": { "title": "Tombol Ponder di layar sentuh", "description": "Tampilkan atau sembunyikan bohlam di sudut kanan atas pada perangkat sentuh" },
+      "settings-native-audio": { "title": "Audio native Windows", "description": "Pilih WASAPI eksklusif atau ASIO untuk file lokal" },
       "search-current": { "title": "Cari lagu", "description": "Cari lagu di sumber saat ini" },
       "search-local": { "title": "Cari lagu lokal", "description": "Cari di perpustakaan lokal" },
       "search-navidrome": { "title": "Cari lagu Navidrome", "description": "Cari di perpustakaan Navidrome" },

@@ -1,6 +1,18 @@
 
 
 export default {
+  "nativeAudio": {
+    "title": "Windows local audio output",
+    "browser": "Browser audio (default)",
+    "wasapi": "WASAPI exclusive",
+    "refresh": "Refresh audio devices",
+    "description": "Choose a WASAPI exclusive endpoint or an installed x64 ASIO driver for local files. Online tracks use browser audio.",
+    "limitations": "V1 prepares the entire file before playback. EQ, ReplayGain, audio effects, spectrum analysis and automix are bypassed. Changing output resets the track to paused at the start. ASIO uses the driver's first output channels and configured buffer size.",
+    "unavailable": "The native audio helper is missing. Build or install the Windows native audio edition.",
+    "savedUnavailable": "Saved output (not currently listed)",
+    "noAsio": "No x64 ASIO driver found. Install the audio interface manufacturer's driver to use ASIO.",
+    "playbackFailed": "Native audio: {{message}}"
+  },
   "notifications": {
     "coverColorAdded": "Cover color added",
     "coverColorDefault": "Using default color",
@@ -361,6 +373,7 @@ export default {
       "ponder-hints-unseen": { "title": "Ponder hints: only where I have not looked", "description": "Stop hinting a control once its tutorial has been watched" },
       "ponder-hints-off": { "title": "Ponder hints: off", "description": "Never show the hold-G hint" },
       "ponder-touch-button-toggle": { "title": "Ponder button on touch", "description": "Show or hide the lightbulb in the top-right corner on touch devices" },
+      "settings-native-audio": { "title": "Windows native audio", "description": "Select WASAPI exclusive or ASIO output for local files" },
       "search-current": { "title": "Search songs", "description": "Search songs in the current source" },
       "search-local": { "title": "Search local songs", "description": "Search local library" },
       "search-navidrome": { "title": "Search Navidrome songs", "description": "Search Navidrome library" },

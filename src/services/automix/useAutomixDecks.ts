@@ -429,6 +429,8 @@ export function useAutomixDecks({
             console.warn(`[Automix] deck ${deck} was remounted while it held a source`);
         }
         elementsRef.current[deck] = element;
+        // Backend switches replace the transport; a Web Audio chain belongs to its old element.
+        if (previous !== element) chainsRef.current[deck] = undefined;
         if (deck === session.getActiveDeck()) {
             audioRef.current = element;
         }
@@ -504,7 +506,7 @@ export function useAutomixDecks({
     const connectDecks = useCallback((context: AudioContext, output: AudioNode) => {
         (['A', 'B'] as const).forEach(deck => {
             const element = elementsRef.current[deck];
-            if (!element || chainsRef.current[deck]) return;
+            if (!element || 'nativeAudio' in element || chainsRef.current[deck]) return;
             chainsRef.current[deck] = connectAutomixDeck(context, element, output);
             // The song changes no blend was ever scheduled for. The analyser is only reset by
             // whatever starts the next track on this deck, so the readings are still the finished

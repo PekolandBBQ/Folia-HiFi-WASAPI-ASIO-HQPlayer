@@ -16,6 +16,8 @@
     "node": ">=24.0.0"
   },
   "scripts": {
+    "build:native-audio": "node packaging/windows/build-native-audio.mjs",
+    "build:windows-native": "cross-env ELECTRON_DEV=false ELECTRON=true vite build && electron-builder --config packaging/windows/native-audio-builder.cjs --win --x64 --publish never",
     "dev": "vite",
     "dev:probe": "vite --open /dev-probe.html",
     "build": "npm run build:vercel-api && vite build",

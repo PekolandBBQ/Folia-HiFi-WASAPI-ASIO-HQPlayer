@@ -33,6 +33,7 @@ export const SETTINGS_ANCHOR_DEFINITIONS = {
     replayGainSettings: { section: 'playback', labelKey: 'options.replayGainSettings' },
     lyrics: { section: 'playback', labelKey: 'options.lyrics' },
     audioOutputSettings: { section: 'playback', labelKey: 'options.audioOutputSettings' },
+    nativeAudioOutput: { section: 'playback', labelKey: 'nativeAudio.title', electronOnly: true },
 
     // InteractionSettingsSubview
     gridActionButton: { section: 'interaction', labelKey: 'options.gridActionButton' },

@@ -38,6 +38,7 @@ export const useAudioOutputDevice = ({
             setSinkId?: (sinkId: string) => Promise<void>;
             sinkId?: string;
         }) | null;
+        if (audioElement && 'nativeAudio' in audioElement) return true;
         const audioContext = audioContextRef.current as (AudioContext & {
             setSinkId?: (sinkId: string) => Promise<void>;
             sinkId?: string;
