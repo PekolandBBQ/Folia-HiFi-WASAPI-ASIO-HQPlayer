@@ -20,7 +20,7 @@ export const settingsCommands: CommandPaletteCommand[] = [
     createSettingsAnchorCommand('settings-native-audio', 'Windows native audio', 'Select WASAPI exclusive or ASIO output',
         ['wasapi', 'asio', 'sound card', '原生音频', '独占', '声卡'], 'nativeAudioOutput',
         { platform: ['win'], isAvailable: isNativeAudioSupported }),
-    createToggleCommand('settings-toggle-native-auto-fallback', 'settings', 'Native audio auto fallback', 'Return to browser playback after component crash or timeout', ['native fallback', '自动回退', 'zdht'], context => context.settings.toggleNativeAudioAutoFallback(), { platform: ['win'] }),
+    createToggleCommand('settings-toggle-native-auto-fallback', 'settings', 'Native audio auto fallback', 'Return to browser playback after component crash or timeout', ['native fallback', '自动回退'], context => context.settings.toggleNativeAudioAutoFallback(), { platform: ['win'] }),
     createToggleCommand('native-audio-signal-path-toggle', 'settings', 'Show audio signal path',
         'Toggle the native audio signal path display', ['signal path', '音频链路', 'audio quality'],
         context => context.settings.toggleNativeAudioSignalPath(),

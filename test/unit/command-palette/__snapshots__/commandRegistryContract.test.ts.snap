@@ -47,6 +47,7 @@ exports[`command palette registry contract > keeps the registered command order 
   "playback-clear-queue",
   "playback-auto-match-best-lyric",
   "settings-native-audio",
+  "settings-toggle-native-auto-fallback",
   "native-audio-signal-path-toggle",
   "native-audio-integer-direct-toggle",
   "settings-help",
