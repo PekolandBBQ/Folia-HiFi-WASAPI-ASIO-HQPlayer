@@ -8,6 +8,9 @@ const http = require('node:http');
 async function main() {
     const navidrome = process.argv.includes('--navidrome');
     const providerFilter = process.argv.find(value => value.startsWith('--provider='))?.split('=')[1];
+    const useCurrent = process.argv.includes('--current');
+    const playlistId = process.argv.find(value => value.startsWith('--playlist='))?.slice('--playlist='.length);
+    if ((useCurrent || playlistId) && (!providerFilter || navidrome)) throw new Error('指定歌曲模式需要指定在线平台 / Selected source requires --provider');
     const output = path.resolve('test-results/native-audio-review', `${navidrome ? 'navidrome' : 'providers'}-${Date.now()}`);
     await fs.mkdir(output, { recursive: true });
     const browser = await chromium.connectOverCDP('http://127.0.0.1:19333');
@@ -54,7 +57,7 @@ async function main() {
                 devices: window.__reviewDevices.map(({ backend, name }) => ({ backend, name })) };
         }));
         for (const provider of navidrome ? ['navidrome-raw', 'navidrome-mp3', 'navidrome-folia-transcode'] : (providerFilter ? [providerFilter] : ['netease', 'qq', 'kugou'])) {
-            const source = await step(`${provider}-source`, navidrome ? '通过 Subsonic 解析账号音源' : '通过 Omni 解析真实账号音源', navidrome ? 'Resolve account audio through Subsonic' : 'Resolve account audio through Omni', () => page.evaluate(async provider => {
+            const source = await step(`${provider}-source`, navidrome ? '通过 Subsonic 解析账号音源' : '通过 Omni 解析真实账号音源', navidrome ? 'Resolve account audio through Subsonic' : 'Resolve account audio through Omni', () => page.evaluate(async ({ provider, useCurrent, playlistId }) => {
                 if (provider.startsWith('navidrome')) {
                     const { navidromeApi, getNavidromeConfig } = await import('/src/services/navidromeService.ts');
                     const config = getNavidromeConfig();
@@ -75,14 +78,20 @@ async function main() {
                     return { status: 'PASS', song: song.title, trackId: song.id, suffix: song.suffix, sourceScheme: new URL(url).protocol };
                 }
                 const { omni } = await import('/src/services/onlineMusic/omni.ts');
-                const songs = await omni.searchProviderSongs(provider, '晴天', { limit: 5, offset: 0 });
+                const { usePlaybackStore } = await import('/src/stores/usePlaybackStore.ts');
+                const current = usePlaybackStore.getState().currentSong;
+                const songs = playlistId
+                    ? await omni.getCollectionTracks({ providerId: provider, id: playlistId, type: 'playlist' }, { limit: 5, offset: 0 })
+                    : useCurrent
+                    ? { items: current?.sourceRef?.kind === 'online' && current.sourceRef.providerId === provider ? [current] : [] }
+                    : await omni.searchProviderSongs(provider, '晴天', { limit: 5, offset: 0 });
                 const song = songs.items.find(song => omni.canPlaySong(song));
-                if (!song) return { status: 'BLOCKED', reason: '没有可播放搜索结果 / No playable search result' };
+                if (!song) return { status: 'BLOCKED', reason: '所选入口未返回可播放歌曲 / Selected entry returned no playable song' };
                 const source = await omni.getAudioSource(song, 'hires');
                 if (!source?.url) return { status: 'BLOCKED', reason: '没有音源 / No audio source' };
                 window.__reviewSources[provider] = { song, source };
                 return { status: 'PASS', song: song.name, requestedQuality: 'hires', returnedQuality: source.quality, sourceScheme: new URL(source.url).protocol };
-            }, provider));
+            }, { provider, useCurrent, playlistId }));
             if (source.status !== 'PASS') continue;
             if (!navidrome) await step(`${provider}-expired-refresh`, '注入 HTTP 403 后通过原恢复控制器重新解析真实音源', 'Inject HTTP 403, then refresh a real source through the existing recovery controller', async () => {
                 const result = await page.evaluate(async ({ provider, expiredUrl }) => {
@@ -113,9 +122,10 @@ async function main() {
                     const recovered = await controller.recoverOnlinePlaybackSource({ failedSrc: expiredUrl, resumeAt: 3, autoplay: true });
                     const refreshed = usePlaybackStore.getState().audioSrc;
                     usePlaybackStore.setState({ audioSrc: oldSource });
-                    if (recovered) window.__reviewSources[provider].source.url = refreshed;
+                    const hasRefreshedSource = typeof refreshed === 'string' && /^(https?:|blob:)/.test(refreshed);
+                    if (recovered && hasRefreshedSource) window.__reviewSources[provider].source.url = refreshed;
                     document.cookie = 'folia_review_cookie=; path=/; Max-Age=0';
-                    return { status: rejectedCode === 'SOURCE_EXPIRED' && recovered && resume.current === 3 && auto.current ? 'PASS' : 'FAIL',
+                    return { status: rejectedCode === 'SOURCE_EXPIRED' && recovered && hasRefreshedSource && resume.current === 3 && auto.current ? 'PASS' : 'FAIL',
                         injectedStatus: 403, rejectedCode, recovered, resumeAt: resume.current, autoplayIntent: auto.current,
                         sourceScheme: refreshed ? new URL(refreshed).protocol : null };
                 }, { provider, expiredUrl });
@@ -153,15 +163,19 @@ async function main() {
                         const progress = latest.position;
                         await phase('playing', '硬件播放时钟已前进', 'Hardware playback clock advanced', { progress });
                         const paused = await call('pause');
-                        await phase('paused', '已暂停', 'Paused', { playing: paused.playing });
+                        await phase('paused', '已暂停', 'Paused', { status: !paused.playing ? 'PASS' : 'FAIL', playing: paused.playing });
                         const seek = await call('seek', { position: 5 });
-                        await phase('seeked', '已定位至五秒', 'Seeked to five seconds', { position: seek.position });
+                        await phase('seeked', '已定位至五秒', 'Seeked to five seconds', { status: Math.abs(seek.position - 5) < 0.1 ? 'PASS' : 'FAIL', position: seek.position });
                         return { status: !paused.playing && Math.abs(seek.position - 5) < 0.1 ? 'PASS' : 'FAIL', preparationMs, progress,
                             sourceSampleRate: prepared.sourceSampleRate, sourceBitsPerSample: prepared.sourceBitsPerSample, sourceCodec: prepared.sourceCodec,
                             outputSampleRate: prepared.sampleRate, outputFormat: prepared.outputFormat,
                             paused: !paused.playing, seekPosition: seek.position };
                     } catch (error) { return { status: 'FAIL', code: error.code || error.message }; }
-                    finally { await call('stop').catch(() => {}); unsubscribe(); await phase('stopped', '已停止并释放测试会话', 'Stopped and released test session'); }
+                    finally {
+                        const stopped = await call('stop').then(() => true, () => false);
+                        unsubscribe();
+                        await phase('stopped', '停止并释放测试会话', 'Stop and release test session', { status: stopped ? 'PASS' : 'FAIL' });
+                    }
                 }, { provider, backend, cached }));
             }
         }
