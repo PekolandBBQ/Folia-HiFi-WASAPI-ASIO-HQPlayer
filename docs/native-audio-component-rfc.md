@@ -1,6 +1,6 @@
 # RFC 草案：可选 Windows 原生音频组件 v1
 
-状态：本地原型，未提交／未获得维护者批准。对应 [维护者意见](https://github.com/chthollyphile/folia-major/issues/353#issuecomment-5845948009)。功能和验证结果见 [使用说明](windows-native-audio.md)。
+状态：个人仓库中的公开候选原型，未创建正式 PR／未获得维护者合入批准。对应 [维护者意见](https://github.com/chthollyphile/folia-major/issues/353#issuecomment-5845948009)。功能和验证结果见 [使用说明](windows-native-audio.md)。
 
 ## 职责边界
 

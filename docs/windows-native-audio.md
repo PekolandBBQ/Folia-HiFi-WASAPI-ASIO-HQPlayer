@@ -1,6 +1,6 @@
 # Windows 原生音频：组件化第一阶段
 
-本地审查分支：`codex/native-component-stage1`，从原候选 `0363b91` 继续改造。上游基线为 `d2b8467`，包含 0.7.8。尚未推送此次改造、创建正式 PR 或发布组件。
+本地审查分支：`codex/native-component-stage1`，从原候选 `0363b91` 继续改造。上游基线为 `d2b8467`，包含 0.7.8。组件化候选分支及配套源码已公开至个人仓库；尚未创建正式 PR 或发布生产组件。复现入口见 [审查验证指南](native-audio-review-guide.md)。
 
 ## 使用和默认行为
 
@@ -37,7 +37,7 @@
 
 ## 组件和协议
 
-辅助程序源码、.NET 构建和运行时许可已移到独立的本地仓库 `../folia-native-audio-component`。主仓库保留 Electron 管理/会话/解码协调、媒体适配器和设置/UI，不再存放 C# 源码或单独应用配置。
+辅助程序源码、.NET 构建和运行时许可已移到独立仓库 [PekolandBBQ/folia-native-audio-component](https://github.com/PekolandBBQ/folia-native-audio-component/tree/codex/component-stage1)（本地建议目录 `../folia-native-audio-component`）。主仓库保留 Electron 管理/会话/解码协调、媒体适配器和设置/UI，不再存放 C# 源码或单独应用配置。
 
 组件安装到 `userData/components/native-audio`，由 Folia 固定清单校验 SHA-256、平台和协议后激活。更新失败保留旧指针，停用只解除激活并保留版本目录便于恢复。普通 Folia 构建不依赖组件发布成功。
 
@@ -72,7 +72,7 @@ npm run dev:electron
 - 官方构建脚本的本地 Windows 交叉编译通过；本地因缺 nasm 仅加 `--disable-x86asm`，该验证选项未提交到官方构建脚本。PCM24/32 编码存在；96 kHz PCM24 → FLAC → PCM32 的 10 个有符号边界采样保持一致。
 - XingCore：WASAPI/ASIO × 44.1/48/96 kHz × 兼容/整数，共 12 组静音硬件验证通过。包含 ReplayGain、控制/时钟、结束/重播、错误命令和旧会话隔离。
 - 隔离 Electron 实际 preload → 安装校验 → IPC → 文件分块 → 官方裁剪解码器 → 两种硬件后端，通过 UI 播放/暂停/跳转/切歌。
-- 未验证其他声卡、外部 DAC 回录、Linux/macOS 原生输出或公开发布的 CI；不能据此声称全链路无损或全设备兼容。
+- 上述自动化记录未覆盖其他声卡；用户另提供了拓品 USB/通用 ASIO 的使用反馈，尚无同等矩阵记录。未验证外部 DAC 回录、Linux/macOS 原生输出或公开发布的 CI；不能据此声称全链路无损或全设备兼容。
 
 ## 在线原生输出恢复验证（2026-09-26）
 
