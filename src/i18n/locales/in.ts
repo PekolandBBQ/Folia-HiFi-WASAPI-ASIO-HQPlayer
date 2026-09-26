@@ -18,6 +18,33 @@ export default {
     "caveat": "Telemetri mesin bukan pengukuran DAC. Mode integer tidak membuktikan output bit-perfect. Detail sumber dan resampling yang tidak dilaporkan tidak disimpulkan."
 },
   "nativeAudio": {
+    "autoFallback": "Kembali otomatis ke pemutaran Web jika komponen berhenti atau melewati batas waktu",
+    "returnedToBrowser": "Output asli dinonaktifkan; kembali ke pemutaran Web.",
+    "updateAvailable": "Pembaruan komponen yang kompatibel tersedia.",
+    "recoveryTitle": "Pulihkan audio asli",
+    "recovery": {
+        "retry": "Coba lagi",
+        "browser": "Kembali ke pemutaran default",
+        "rollback": "Coba versi komponen sebelumnya"
+    },
+    "errors": {
+        "COMPONENT_CRASHED": "Komponen berhenti secara tidak terduga.",
+        "COMPONENT_TIMEOUT": "Komponen melewati batas waktu.",
+        "COMPONENT_UNAVAILABLE": "Pasang dan aktifkan komponen audio asli terlebih dahulu.",
+        "COMPONENT_INTEGRITY": "Verifikasi integritas komponen gagal. Pasang ulang komponen.",
+        "COMPONENT_INCOMPATIBLE": "Versi atau protokol komponen tidak kompatibel.",
+        "COMPONENT_UPDATE_FAILED": "Pembaruan komponen gagal. Versi sebelumnya dipertahankan.",
+        "ROLLBACK_UNAVAILABLE": "Tidak ada versi sebelumnya yang telah diverifikasi.",
+        "SOURCE_UNAVAILABLE": "Sumber audio tidak dapat dibaca. Periksa jaringan atau akses akun.",
+        "SOURCE_EXPIRED": "URL audio kedaluwarsa. Mencoba memperbaruinya.",
+        "SOURCE_TOO_LARGE": "Sumber melebihi batas ukuran persiapan.",
+        "DECODE_FAILED": "Dekode audio gagal.",
+        "DEVICE_UNAVAILABLE": "Perangkat audio tidak tersedia. Periksa perangkat dan driver.",
+        "FORMAT_UNSUPPORTED": "Perangkat tidak mendukung format audio ini.",
+        "INVALID_REQUEST": "Permintaan audio tidak valid.",
+        "CANCELLED": "Operasi audio dibatalkan.",
+        "NATIVE_REQUEST_FAILED": "Audio asli gagal. Lihat log diagnostik."
+    },
     "componentPending": "Belum ada rilis komponen yang disetujui.",
     "removeComponent": "Nonaktifkan komponen",
     "installComponent": "Pasang / perbarui komponen",
@@ -394,6 +421,7 @@ export default {
       "ponder-hints-unseen": { "title": "Petunjuk Ponder: hanya yang belum dilihat", "description": "Berhenti memberi petunjuk setelah tutorialnya ditonton" },
       "ponder-hints-off": { "title": "Petunjuk Ponder: nonaktif", "description": "Jangan pernah tampilkan petunjuk tahan G" },
       "ponder-touch-button-toggle": { "title": "Tombol Ponder di layar sentuh", "description": "Tampilkan atau sembunyikan bohlam di sudut kanan atas pada perangkat sentuh" },
+      "settings-toggle-native-auto-fallback": {"title": "Native audio auto fallback", "description": "Return to browser playback after component crash or timeout"},
       "settings-native-audio": { "title": "Audio native Windows", "description": "Pilih WASAPI eksklusif atau ASIO untuk file lokal" },
       "native-audio-signal-path-toggle": { "title": "Tampilkan jalur audio", "description": "Aktifkan atau matikan tampilan jalur audio asli" },
       "native-audio-integer-direct-toggle": { "title": "Integer direct audio native", "description": "Aktifkan atau matikan jalur PCM integer untuk WASAPI eksklusif dan driver ASIO yang kompatibel" },

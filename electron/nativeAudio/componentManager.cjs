@@ -2,6 +2,8 @@ const fs = require('node:fs/promises');
 const path = require('node:path');
 const crypto = require('node:crypto');
 const { unzipSync } = require('fflate');
+const { folderName, readPointer, writePointer, pruneVersions } = require('./componentVersions.cjs');
+const { audioError } = require('./errors.cjs');
 
 // electron/nativeAudio/componentManager.cjs — only host-pinned artifacts may become executable.
 const digest = bytes => crypto.createHash('sha256').update(bytes).digest('hex');
@@ -28,13 +30,15 @@ function createComponentManager({ app, catalogPath, fetchImpl = fetch }) {
         let active;
         try { active = JSON.parse(await fs.readFile(path.join(directory, 'active.json'), 'utf8')); } catch { /* Not installed. */ }
         const release = releases.find(r => r.sha256 === active?.archiveSha256);
-        if (!release) return { available: false, installed: false, installable: releases.length > 0, busy };
+        if (!release) return { available: false, installed: Boolean(active), installable: releases.length > 0, busy,
+            ...(active ? { errorCode: 'COMPONENT_INCOMPATIBLE' } : {}) };
+        const previous = await readPointer(directory, 'previous.json');
         const executable = path.join(directory, `${release.version}-${release.sha256.slice(0, 12)}`, 'folia-audio.exe');
         try {
             if (digest(await fs.readFile(executable)) !== active.executableSha256) throw new Error('Component integrity check failed');
             return { available: true, installed: true, installable: true, version: release.version,
-                updateAvailable: releases[0].sha256 !== release.sha256, executable, busy };
-        } catch (error) { return { available: false, installed: true, installable: true, error: error.message, busy }; }
+                updateAvailable: releases[0].sha256 !== release.sha256, rollbackAvailable: Boolean(releases.some(r => r.sha256 === previous?.archiveSha256)), executable, busy };
+        } catch (error) { return { available: false, installed: true, installable: true, errorCode: 'COMPONENT_INTEGRITY', busy }; }
     }
     async function readArchive(release) {
         if (!app.isPackaged && release.localPath) {
@@ -42,7 +46,8 @@ function createComponentManager({ app, catalogPath, fetchImpl = fetch }) {
                 throw new Error('Invalid development archive');
             return fs.readFile(release.localPath);
         }
-        if (!/^https:\/\//.test(release.url || '')) throw new Error('Component download must use HTTPS');
+        if (!/^https:\/\/github\.com\/chthollyphile\/folia-major\/releases\/download\//.test(release.url || ''))
+            throw audioError('COMPONENT_INCOMPATIBLE', 'Component download must use HTTPS from Folia releases');
         const response = await fetchImpl(release.url, { signal: AbortSignal.timeout(120000) });
         if (!response.ok || !response.url.startsWith('https://')) throw new Error('Component download failed');
         const chunks = []; let length = 0;
@@ -82,18 +87,41 @@ function createComponentManager({ app, catalogPath, fetchImpl = fetch }) {
                 // Reinstall never replaces an executable that might still be mapped by a process.
                 if (digest(await fs.readFile(path.join(destination, 'folia-audio.exe'))) !== digest(files['folia-audio.exe'])) throw error;
             }
-            const pointer = path.join(directory, 'active.json.tmp');
-            await fs.writeFile(pointer, JSON.stringify({ archiveSha256: release.sha256, executableSha256: digest(files['folia-audio.exe']) }));
-            await fs.rename(pointer, path.join(directory, 'active.json'));
+            const previous = await readPointer(directory) || await readPointer(directory, 'inactive.json');
+            if (previous && previous.archiveSha256 !== release.sha256) await writePointer(directory, 'previous.json', previous);
+            await writePointer(directory, 'active.json', { archiveSha256: release.sha256, executableSha256: digest(files['folia-audio.exe']) });
+            await fs.rm(path.join(directory, 'inactive.json'), { force: true });
+            await pruneVersions(directory, await catalog());
         } finally { if (staging) await fs.rm(staging, { recursive: true, force: true }); busy = false; }
         return status();
     }
     async function uninstall() {
         if (busy) throw new Error('Component operation already in progress');
         // Removing activation is reversible; retained version folders support rollback and avoid deleting mapped binaries.
+        const current = await readPointer(directory);
+        if (current) await writePointer(directory, 'inactive.json', current);
         await fs.rm(path.join(directory, 'active.json'), { force: true });
+        await pruneVersions(directory, await catalog());
         return status();
     }
-    return { status, install, uninstall };
+    async function rollback() {
+        if (busy) throw audioError('INVALID_REQUEST', 'Component operation already in progress');
+        busy = true;
+        try {
+            const releases = await catalog();
+            const previous = await readPointer(directory, 'previous.json');
+            const release = releases.find(item => item.sha256 === previous?.archiveSha256);
+            if (!release) throw audioError('ROLLBACK_UNAVAILABLE', 'No approved previous version');
+            const executable = path.join(directory, folderName(release), 'folia-audio.exe');
+            if (digest(await fs.readFile(executable)) !== previous.executableSha256) throw audioError('COMPONENT_INTEGRITY');
+            const current = await readPointer(directory) || await readPointer(directory, 'inactive.json');
+            await writePointer(directory, 'active.json', previous);
+            if (current) await writePointer(directory, 'previous.json', current);
+            await fs.rm(path.join(directory, 'inactive.json'), { force: true });
+            await pruneVersions(directory, releases);
+        } finally { busy = false; }
+        return status();
+    }
+    return { status, install, uninstall, rollback };
 }
 module.exports = { createComponentManager, validateRelease };

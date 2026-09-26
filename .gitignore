@@ -88,3 +88,5 @@ dist-runtime/
 build/native-audio/
 native/windows-audio/bin/
 native/windows-audio/obj/
+# Generated sanitized validation bundle; attach separately rather than adding screenshots to source PRs.
+docs/native-audio-validation/

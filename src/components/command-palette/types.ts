@@ -249,6 +249,7 @@ export type CommandPaletteSettingsContext = {
      */
     canReportNeteasePlayback: () => boolean;
     toggleNeteaseScrobble: () => void;
+    toggleNativeAudioAutoFallback: () => void;
     toggleNativeAudioSignalPath: () => void;
     toggleNativeAudioIntegerDirect: () => void;
     voiceInputPauseSupported: boolean;

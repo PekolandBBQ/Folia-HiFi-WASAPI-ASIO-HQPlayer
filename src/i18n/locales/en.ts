@@ -11,6 +11,33 @@ export default {
     "caveat": "Engine telemetry is not a DAC measurement. Integer mode alone does not prove bit-perfect output. Unreported source and resampling details are not inferred."
   },
   "nativeAudio": {
+    "autoFallback": "Automatically return to Web playback on component crash or timeout",
+    "returnedToBrowser": "Native output disabled; returned to Web playback.",
+    "updateAvailable": "A compatible component update is available.",
+    "recoveryTitle": "Recover native audio",
+    "recovery": {
+        "retry": "Retry",
+        "browser": "Return to default playback",
+        "rollback": "Try previous component version"
+    },
+    "errors": {
+        "COMPONENT_CRASHED": "The component exited unexpectedly.",
+        "COMPONENT_TIMEOUT": "The component timed out.",
+        "COMPONENT_UNAVAILABLE": "Install and enable the native audio component first.",
+        "COMPONENT_INTEGRITY": "Component integrity verification failed. Reinstall it.",
+        "COMPONENT_INCOMPATIBLE": "The component version or protocol is incompatible.",
+        "COMPONENT_UPDATE_FAILED": "Component update failed. The previous version was retained.",
+        "ROLLBACK_UNAVAILABLE": "No verified previous version is available.",
+        "SOURCE_UNAVAILABLE": "Unable to read the audio source. Check network or account access.",
+        "SOURCE_EXPIRED": "The audio URL expired. Attempting to refresh it.",
+        "SOURCE_TOO_LARGE": "The source exceeds the preparation size limit.",
+        "DECODE_FAILED": "Audio decoding failed.",
+        "DEVICE_UNAVAILABLE": "The audio device is unavailable. Check the device and driver.",
+        "FORMAT_UNSUPPORTED": "The device does not support this audio format.",
+        "INVALID_REQUEST": "Invalid audio request.",
+        "CANCELLED": "The audio operation was cancelled.",
+        "NATIVE_REQUEST_FAILED": "Native audio failed. See diagnostic logs."
+    },
     "componentPending": "No component release is approved in this build yet.",
     "removeComponent": "Disable component",
     "installComponent": "Install / update component",
@@ -388,6 +415,7 @@ export default {
       "ponder-hints-unseen": { "title": "Ponder hints: only where I have not looked", "description": "Stop hinting a control once its tutorial has been watched" },
       "ponder-hints-off": { "title": "Ponder hints: off", "description": "Never show the hold-G hint" },
       "ponder-touch-button-toggle": { "title": "Ponder button on touch", "description": "Show or hide the lightbulb in the top-right corner on touch devices" },
+      "settings-toggle-native-auto-fallback": {"title": "Native audio auto fallback", "description": "Return to browser playback after component crash or timeout"},
       "settings-native-audio": { "title": "Windows native audio", "description": "Select WASAPI exclusive or ASIO output for local files and online tracks" },
       "native-audio-signal-path-toggle": { "title": "Show audio signal path", "description": "Toggle the native audio signal path display" },
       "native-audio-integer-direct-toggle": { "title": "Native audio integer direct", "description": "Toggle the integer-only PCM path for WASAPI exclusive and compatible ASIO drivers" },

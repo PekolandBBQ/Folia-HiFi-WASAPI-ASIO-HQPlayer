@@ -1,5 +1,6 @@
 import type { NativeAudioApi, NativeAudioBackend, NativeAudioEvent, NativeAudioProcessingMode, NativeAudioState } from '../../types/nativeAudio';
 import { publishSignalPath, clearSignalPath } from '../../stores/useSignalPathStore';
+import { getNativeErrorCode } from './errors';
 import { loadNativeOnlineSource } from './loadOnlineSource';
 import { loadNativeLocalFile } from './loadLocalFile';
 
@@ -14,7 +15,7 @@ export class NativeAudioTransport extends EventTarget {
     ended = false;
     readyState = 0;
     seeking = false;
-    error: { code: number; message: string } | null = null;
+    error: { code: number; message: string; nativeCode: string } | null = null;
     loop = false;
     playbackRate = 1;
     defaultPlaybackRate = 1;
@@ -165,7 +166,7 @@ export class NativeAudioTransport extends EventTarget {
     }
     private receive(event: NativeAudioEvent) {
         if (this.disposed || event.session !== this.session) return;
-        if (event.event === 'error') { this.fail(new Error(event.error)); return; }
+        if (event.event === 'error') { this.fail(Object.assign(new Error(event.errorCode || 'NATIVE_REQUEST_FAILED'), { code: event.errorCode })); return; }
         if (!event.state || this.seeking || (this.paused && event.state.playing)) return;
         const wasEnded = this.ended;
         this.apply(event.state); this.emit('timeupdate');
@@ -176,10 +177,10 @@ export class NativeAudioTransport extends EventTarget {
     }
     private fail(error: unknown) {
         if (this.disposed || (error instanceof DOMException && error.name === 'AbortError')) return;
-        const message = error instanceof Error ? error.message : String(error);
+        const message = getNativeErrorCode(error);
         if (this.error?.message === message) return;
         this.position = this.currentTime; this.paused = true; this.seeking = false;
-        this.error = { code: 4, message };
+        this.error = { code: message === 'DECODE_FAILED' ? 3 : ['SOURCE_EXPIRED', 'SOURCE_UNAVAILABLE'].includes(message) ? 2 : 4, message, nativeCode: message };
         this.emit('error');
     }
     private emit(name: string) { if (!this.disposed) this.dispatchEvent(new Event(name)); }
@@ -189,6 +190,18 @@ export class NativeAudioTransport extends EventTarget {
         clearSignalPath(this.session);
         if (this.session) void this.api.request({ action: 'stop', session: this.session }).catch(() => {});
         this.session = '';
+    }
+    async stopForRecovery() {
+        this.abort.abort();
+        if (this.session) await this.api.request({ action: 'stop', session: this.session });
+    }
+    async retryFrom(position: number, playing: boolean) {
+        const source = this.src;
+        this.setSource(''); this.setSource(source);
+        await this.loading;
+        const state = await this.command('seek', { position });
+        this.presentedTime = state.position; this.apply(state);
+        if (playing) await this.play();
     }
     dispose() { this.disposed = true; this.cancel(); this.unsubscribe(); }
 }

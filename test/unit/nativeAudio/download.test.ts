@@ -28,3 +28,14 @@ it('rejects HTTP failures, empty files, oversized responses and interrupted bodi
         await expect(downloadRemoteAudio('https://example.com/song', await destination(), new AbortController().signal, async () => response)).rejects.toThrow();
     }
 });
+it('preserves the Electron session and distinguishes expiry, network failure and cancellation', async () => {
+    const file = await destination();
+    const controller = new AbortController();
+    await expect(downloadRemoteAudio('https://example.com/song', file, controller.signal, async (_url: string, options: RequestInit) => {
+        expect(options.credentials).toBe('include');
+        return new Response('', { status: 403 });
+    })).rejects.toMatchObject({ code: 'SOURCE_EXPIRED' });
+    await expect(downloadRemoteAudio('https://example.com/song', file, controller.signal, async () => { throw new TypeError('fetch failed'); })).rejects.toMatchObject({ code: 'SOURCE_UNAVAILABLE' });
+    controller.abort();
+    await expect(downloadRemoteAudio('https://example.com/song', file, controller.signal, async () => { throw new Error('aborted'); })).rejects.toMatchObject({ code: 'CANCELLED' });
+});

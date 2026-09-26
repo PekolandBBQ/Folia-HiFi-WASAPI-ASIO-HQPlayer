@@ -1,16 +1,17 @@
 const { spawn } = require('node:child_process');
 const { createInterface } = require('node:readline');
+const { audioError, errorCode, diagnostic } = require('./errors.cjs');
 
 // electron/nativeAudio/helper.cjs — bounded JSON-line RPC to the isolated audio driver host.
-function createHelper(executable, onEvent, spawnProcess = spawn) {
+function createHelper(executable, onEvent, spawnProcess = spawn, timeoutMs = 15000) {
     let child = null, nextId = 0;
     const pending = new Map();
-    function fail(error, process) {
+    function fail(error, process, notify = true) {
         if (child !== process) return;
         child = null;
         for (const item of pending.values()) { clearTimeout(item.timer); item.reject(error); }
         pending.clear();
-        onEvent({ event: 'error', error: error.message });
+        if (notify) { diagnostic(error); onEvent({ event: 'error', errorCode: errorCode(error) }); }
     }
     function start() {
         if (child) return child;
@@ -23,29 +24,37 @@ function createHelper(executable, onEvent, spawnProcess = spawn) {
             if (child !== process) return;
             let message;
             try { message = JSON.parse(line); } catch { return; }
-            if (message.event) { onEvent(message); return; }
+            if (message.event) {
+                if (message.event === 'error') {
+                    const error = audioError(message.errorCode, message.error);
+                    diagnostic(error);
+                    onEvent({ event: 'error', session: message.session, errorCode: errorCode(error) });
+                } else onEvent(message);
+                return;
+            }
             const item = pending.get(message.id);
             if (!item) return;
             clearTimeout(item.timer); pending.delete(message.id);
             if (message.ok) item.resolve(message.result);
-            else item.reject(new Error(message.error || 'Audio driver request failed'));
+            else { const error = audioError(message.errorCode, message.error); diagnostic(error); item.reject(error); }
         });
-        process.on('error', error => fail(error, process));
+        process.on('error', error => fail(audioError('COMPONENT_CRASHED', error.message), process));
         process.on('exit', code => {
             lines.close();
-            fail(new Error(`Audio driver host exited (${code}). ${diagnostics}`), process);
+            fail(audioError('COMPONENT_CRASHED', `Audio driver host exited (${code}). ${diagnostics}`), process);
         });
-        process.stdin.on('error', error => fail(error, process));
+        process.stdin.on('error', error => fail(audioError('COMPONENT_CRASHED', error.message), process));
         return process;
     }
     function request(command) {
+        if (!child && command.action === 'stop') return Promise.resolve({ ok: true });
         const process = start();
         const id = ++nextId;
         return new Promise((resolve, reject) => {
             const timer = setTimeout(() => {
-                fail(new Error('Audio driver timed out; select the device again to retry'), process);
+                fail(audioError('COMPONENT_TIMEOUT', 'Driver request exceeded deadline'), process);
                 process.kill();
-            }, 15000);
+            }, timeoutMs);
             pending.set(id, { resolve, reject, timer });
             process.stdin.write(JSON.stringify({ ...command, id }) + '\n');
         });
@@ -53,7 +62,7 @@ function createHelper(executable, onEvent, spawnProcess = spawn) {
     function dispose() {
         if (!child) return;
         const process = child;
-        fail(new Error('Audio driver host closed'), process);
+        fail(audioError('CANCELLED', 'Audio driver host closed'), process, false);
         process.kill();
     }
     return { request, dispose };

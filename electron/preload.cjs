@@ -3,7 +3,11 @@ const { contextBridge, ipcRenderer, webUtils } = require('electron');
 contextBridge.exposeInMainWorld('electron', {
     nativeAudio: {
       supported: process.platform === 'win32' && process.arch === 'x64',
-      request: request => ipcRenderer.invoke('native-audio:request', request),
+      request: async request => {
+        const result = await ipcRenderer.invoke('native-audio:request', request);
+        if (result?.nativeAudioError) throw Object.assign(new Error(result.nativeAudioError.code), { code: result.nativeAudioError.code });
+        return result;
+      },
       onEvent: listener => {
         const handler = (_event, message) => listener(message);
         ipcRenderer.on('native-audio:event', handler);

@@ -1,6 +1,9 @@
 import { test, expect } from './fixtures';
 
 // test/component/nativeAudio.spec.ts — validates StrictMode and real settings controls in Chromium.
+test.afterEach(async ({ page }, testInfo) => {
+    if (testInfo.status !== testInfo.expectedStatus) await page.screenshot({ path: testInfo.outputPath('failure.png') });
+});
 test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => {
         localStorage.setItem('folia_native_audio_backend', 'wasapi-exclusive');
@@ -10,13 +13,16 @@ test.beforeEach(async ({ page }) => {
             sampleRate: 96000, channels: 2, latency: 0.02, backend: 'wasapi-exclusive', deviceId: 'wasapi-device' };
         const listeners = new Set<(value: unknown) => void>();
         const requests: Array<Record<string, unknown>> = [];
-        Object.assign(window, { __nativeRequests: requests, electron: {
+        Object.assign(window, { __nativeRequests: requests,
+            __nativeFailure: (errorCode: string) => listeners.forEach(listener => listener({ event: 'error', session: state.session, errorCode })),
+            electron: {
             webUtils: { getPathForFile: () => 'C:\\fixture.flac' },
             nativeAudio: {
                 supported: true,
                 onEvent: (listener: (value: unknown) => void) => { listeners.add(listener); return () => listeners.delete(listener); },
                 request: async (request: Record<string, unknown>) => {
                     requests.push(request);
+                    if (request.action === 'component-rollback') return { ok: true };
                     if (request.action === 'status') return { supported: true, available: true, installed: true, installable: true, version: '0.1.0' };
                     if (request.action === 'devices') return [
                         { backend: 'wasapi-exclusive', id: 'wasapi-device', name: 'Test DAC' },
@@ -38,6 +44,51 @@ test.beforeEach(async ({ page }) => {
             listeners.forEach(listener => listener({ event: 'state', session: state.session, state: { ...state } }));
         }, 40);
     });
+});
+
+test('fatal crash defaults to browser fallback and clears the selected native output', async ({ mount, page }) => {
+    await mount('nativeAudio');
+    await expect(page.getByTestId('status')).toHaveText('ready');
+    await page.getByRole('button', { name: 'Play', exact: true }).click();
+    await page.screenshot({ path: 'test-results/native-recovery-before-crash.png' });
+    await page.evaluate(() => (window as unknown as { __nativeFailure: (code: string) => void }).__nativeFailure('COMPONENT_CRASHED'));
+    await expect.poll(() => page.evaluate(() => localStorage.getItem('folia_native_audio_backend'))).toBe('browser');
+    await expect.poll(() => page.evaluate(() => localStorage.getItem('folia_native_audio_device'))).toBe('');
+    await expect(page.getByTestId('status')).toHaveText('playing');
+    await page.screenshot({ path: 'test-results/native-recovery-browser.png' });
+});
+
+test('disabled automatic fallback offers three explicit recovery choices', async ({ mount, page }) => {
+    await page.addInitScript(() => localStorage.setItem('folia_native_audio_auto_fallback', 'false'));
+    await mount('nativeAudio');
+    await expect(page.getByTestId('status')).toHaveText('ready');
+    await page.getByRole('button', { name: 'Play', exact: true }).click();
+    await page.evaluate(() => (window as unknown as { __nativeFailure: (code: string) => void }).__nativeFailure('COMPONENT_TIMEOUT'));
+    await expect(page.getByRole('alert')).toContainText('timed out');
+    await expect(page.getByRole('button', { name: 'Retry', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Return to default playback', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Try previous component version', exact: true })).toBeVisible();
+    await expect(page.locator('[data-folia-keyboard-window]')).toHaveCSS('opacity', '1');
+    await expect(page.locator('[data-folia-keyboard-window] > div')).toHaveCSS('opacity', '1');
+    await page.screenshot({ path: 'test-results/native-recovery-choices.png' });
+    await page.getByRole('button', { name: 'Retry', exact: true }).click();
+    await expect(page.getByTestId('status')).toHaveText('playing');
+    await expect(page.getByRole('alert')).toHaveCount(0);
+    await page.screenshot({ path: 'test-results/native-recovery-retry.png' });
+});
+
+for (const choice of ['browser', 'rollback']) test(`manual ${choice} recovery resumes playback`, async ({ mount, page }) => {
+    await page.addInitScript(() => localStorage.setItem('folia_native_audio_auto_fallback', 'false'));
+    await mount('nativeAudio');
+    await expect(page.getByTestId('status')).toHaveText('ready');
+    await page.getByRole('button', { name: 'Play', exact: true }).click();
+    await page.evaluate(() => (window as unknown as { __nativeFailure: (code: string) => void }).__nativeFailure('COMPONENT_CRASHED'));
+    await page.getByRole('button', { name: choice === 'browser' ? 'Return to default playback' : 'Try previous component version', exact: true }).click();
+    await expect(page.getByTestId('status')).toHaveText('playing');
+    await expect(page.getByRole('alert')).toHaveCount(0);
+    if (choice === 'rollback') await expect.poll(() => page.evaluate(() =>
+        (window as unknown as { __nativeRequests: Array<{ action: string }> }).__nativeRequests.some(request => request.action === 'component-rollback'))).toBe(true);
+    await page.screenshot({ path: `test-results/native-recovery-manual-${choice}.png` });
 });
 
 test('selects ASIO and preserves basic control and clock behavior through native deck remounts', async ({ mount, page }) => {

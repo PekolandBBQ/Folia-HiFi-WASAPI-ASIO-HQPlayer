@@ -1,3 +1,4 @@
+import { nativeErrorKey } from '../../../services/nativeAudio/errors';
 import { useEffect, useState } from 'react';
 import { AudioLines, RefreshCw } from 'lucide-react';
 import { SettingsAnchor } from './navigation/SettingsAnchorContext';
@@ -16,6 +17,8 @@ export default function NativeAudioSettingsSection({ isDaylight, theme, classNam
     isDaylight: boolean; theme?: Theme; className: string;
 }) {
     const { t } = useTranslation();
+    const autoFallback = useAudioSettingsStore(state => state.nativeAudioAutoFallback);
+    const setAutoFallback = useAudioSettingsStore(state => state.handleSetNativeAudioAutoFallback);
     const backend = useAudioSettingsStore(state => state.nativeAudioBackend);
     const deviceId = useAudioSettingsStore(state => state.nativeAudioDeviceId);
     const apply = useAudioSettingsStore(state => state.handleSetNativeAudioOutput);
@@ -26,26 +29,26 @@ export default function NativeAudioSettingsSection({ isDaylight, theme, classNam
     const [error, setError] = useState('');
     const showSignalPath = useAudioSettingsStore(state => state.showAudioSignalPath);
     const setShowSignalPath = useAudioSettingsStore(state => state.handleSetShowAudioSignalPath);
-    const [component, setComponent] = useState<{ installed?: boolean; installable?: boolean; version?: string }>({});
+    const [component, setComponent] = useState<{ installed?: boolean; installable?: boolean; version?: string; updateAvailable?: boolean }>({});
     const [available, setAvailable] = useState(false);
     const supported = isNativeAudioSupported();
     const refresh = async () => {
         if (!supported) return;
         setBusy(true); setError('');
         try {
-            const status = await window.electron!.nativeAudio!.request({ action: 'status' }) as { available: boolean; installed?: boolean; installable?: boolean; version?: string; error?: string };
+            const status = await window.electron!.nativeAudio!.request({ action: 'status' }) as { available: boolean; installed?: boolean; installable?: boolean; version?: string; error?: string; errorCode?: string };
             setComponent(status);
             setAvailable(status.available);
-            if (!status.available) { setError(status.error || t('nativeAudio.unavailable')); return; }
+            if (!status.available) { setError(status.errorCode ? t(nativeErrorKey({ code: status.errorCode })) : t('nativeAudio.unavailable')); return; }
             const next = await window.electron!.nativeAudio!.request({ action: 'devices' }) as NativeAudioDevice[];
             setDevices(next);
-        } catch (error) { setError(error instanceof Error ? error.message : String(error)); }
+        } catch (error) { setError(t(nativeErrorKey(error))); }
         finally { setBusy(false); }
     };
     const manage = async (action: string) => {
         setBusy(true); setError('');
         try { await window.electron!.nativeAudio!.request({ action }); await refresh(); }
-        catch (error) { setError(error instanceof Error ? error.message : String(error)); }
+        catch (error) { setError(t(nativeErrorKey(error))); }
         finally { setBusy(false); }
     };
     useEffect(() => { if (supported) void refresh(); }, [supported]);
@@ -75,6 +78,7 @@ export default function NativeAudioSettingsSection({ isDaylight, theme, classNam
                 className="rounded-lg border px-3 py-2 disabled:opacity-40"
                 onClick={() => void manage('component-uninstall')}>{t('nativeAudio.removeComponent')}</button>}
             {!component.installable && <p>{t('nativeAudio.componentPending')}</p>}
+            {component.updateAvailable && <span role="status">{t('nativeAudio.updateAvailable')}</span>}
             {component.version && <span>v{component.version}</span>}
         </div>
         <p className="my-3 text-xs opacity-70">{t('nativeAudio.description')}</p>
@@ -87,6 +91,15 @@ export default function NativeAudioSettingsSection({ isDaylight, theme, classNam
                 apply(mode as NativeAudioBackend, id);
             }} />
         <p className="mt-3 text-xs opacity-70">{t('nativeAudio.limitations')}</p>
+        <div className="mt-4 flex items-center justify-between gap-4 text-sm">
+            {t('nativeAudio.autoFallback')}
+            <button type="button" role="switch" aria-checked={autoFallback} aria-label={t('nativeAudio.autoFallback')}
+                onClick={() => setAutoFallback(!autoFallback)}
+                className={`h-6 w-12 shrink-0 rounded-full p-1 transition-colors ${autoFallback ? '' : settingsToggleOffClassFor(isDaylight)}`}
+                style={{ backgroundColor: autoFallback ? theme?.secondaryColor || 'rgba(114,119,134,1)' : undefined }}>
+                <div className={`h-4 w-4 rounded-full bg-white shadow-sm transition-transform ${autoFallback ? 'translate-x-6' : 'translate-x-0'}`} />
+            </button>
+        </div>
         {available && !devices.some(device => device.backend === 'asio') &&
             <p className="mt-2 text-xs opacity-70">{t('nativeAudio.noAsio')}</p>}
         {error && <p role="alert" className="mt-2 text-xs">{error}</p>}

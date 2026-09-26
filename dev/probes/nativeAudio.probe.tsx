@@ -7,6 +7,9 @@ import PlaybackDeck from '../../src/components/app/playback/PlaybackDeck';
 import { useAudioSettingsStore } from '../../src/stores/useAudioSettingsStore';
 import { DEFAULT_THEME } from '../../src/services/baseThemes';
 import type { ProbeDefinition } from './definition';
+import { useNativeAudioRecovery } from '../../src/hooks/useNativeAudioRecovery';
+import NativeAudioRecoveryDialog from '../../src/components/audio/NativeAudioRecoveryDialog';
+import { PlayerState } from '../../src/types';
 
 // dev/probes/nativeAudio.probe.tsx — real React lifecycle with a test-injected native bridge.
 function silentLocalFile() {
@@ -26,10 +29,19 @@ function NativeAudioProbe() {
     const device = useAudioSettingsStore(state => state.nativeAudioDeviceId);
     const processingMode = useAudioSettingsStore(state => state.nativeAudioProcessingMode);
     const audio = useRef<HTMLAudioElement | null>(null);
+    const recover = useNativeAudioRecovery(audio, backend !== 'browser');
     const register = useCallback((element: HTMLAudioElement | null) => { audio.current = element; }, []);
     const [status, setStatus] = useState('waiting');
     const [source, setSource] = useState(() => sourceKind === 'remote' && remoteUrl ? remoteUrl : URL.createObjectURL(silentLocalFile()));
-    useEffect(() => () => URL.revokeObjectURL(source), [source]);
+    const revocations = useRef(new Map<string, ReturnType<typeof setTimeout>>());
+    useEffect(() => {
+        // StrictMode's simulated unmount must not revoke the still-active source.
+        clearTimeout(revocations.current.get(source));
+        revocations.current.delete(source);
+        return () => { revocations.current.set(source, setTimeout(() => {
+            URL.revokeObjectURL(source); revocations.current.delete(source);
+        }, 0)); };
+    }, [source]);
     useEffect(() => {
         const song = { id: 'native-probe', name: 'Native probe', artists: [],
             album: { id: 'probe', name: 'Probe', picUrl: '' }, durationMs: 10000, localRef: { songId: 'probe' }, isLocal: true };
@@ -43,10 +55,11 @@ function NativeAudioProbe() {
             nativeProcessingMode={processingMode}
             getLocalFile={async () => sourceKind ? null : silentLocalFile()}
             onLoadedMetadata={() => setStatus('ready')}
-            onPlay={() => setStatus('playing')} onPause={() => setStatus('paused')}
+            onPlay={() => { setStatus('playing'); usePlaybackStore.setState({ playerState: PlayerState.PLAYING }); }} onPause={() => setStatus('paused')}
             onTimeUpdate={event => clock.set(event.currentTarget.currentTime)}
             onSeeked={event => clock.set(event.currentTarget.currentTime)}
-            onError={event => setStatus(event.currentTarget.error?.message || 'error')} />
+            onError={event => { setStatus(event.currentTarget.error?.message || 'error'); recover(event.currentTarget); }} />
+        <NativeAudioRecoveryDialog />
         <SignalPath />
         <div data-testid="status">{status}</div><motion.div data-testid="clock">{label}</motion.div>
         <div className="flex gap-4">

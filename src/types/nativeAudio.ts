@@ -9,7 +9,7 @@ export type NativeAudioState = {
     sourceSampleRate?: number; sourceBitsPerSample?: number; sourceCodec?: string; sourceBitrate?: number;
     effectiveGain?: number; replayGain?: number; volume?: number; sampleValuesPreserved?: boolean;
 };
-export type NativeAudioEvent = { event: 'state' | 'error'; session: string; state?: NativeAudioState; error?: string };
+export type NativeAudioEvent = { event: 'state' | 'error'; session: string; state?: NativeAudioState; error?: string; errorCode?: string };
 export type NativeAudioApi = {
     supported: boolean;
     request: (request: { action: string; session?: string; backend?: string; deviceId?: string;

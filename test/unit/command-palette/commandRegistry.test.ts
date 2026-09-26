@@ -117,6 +117,7 @@ const createContext = (overrides: CommandPaletteContextOverrides = {}): CommandP
             toggleAlwaysShowTrackSwitchButtons: vi.fn(),
             toggleAutoPlayOnLaunch: vi.fn(),
             toggleNativeAudioIntegerDirect: vi.fn(),
+            toggleNativeAudioAutoFallback: vi.fn(),
             toggleNativeAudioSignalPath: vi.fn(),
             toggleTranscodeFallback: vi.fn(),
             toggleAlwaysShowMainWindowTitlebar: vi.fn(),

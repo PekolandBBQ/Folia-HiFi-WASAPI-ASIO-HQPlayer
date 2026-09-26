@@ -21,7 +21,7 @@
 
 ```json
 {"id":1,"action":"hello","protocolMajor":1}
-{"id":1,"ok":true,"result":{"protocolMajor":1,"componentVersion":"0.1.0","capabilities":["local-pcm","integer-pcm","replaygain","format-telemetry"]}}
+{"id":1,"ok":true,"result":{"protocolMajor":1,"componentVersion":"0.1.1","capabilities":["local-pcm","integer-pcm","replaygain","format-telemetry"]}}
 ```
 
 每次建立组件连接先验证主版本、组件版本和所需能力。协议 v1 可以追加可选字段，不能改变既有字段语义或单位；破坏性变更必须升级主版本，主程序拒绝不认识的版本。
@@ -30,12 +30,14 @@
 | --- | --- |
 | devices | 无会话；返回 WASAPI/ASIO 名称和设备 id |
 | load | session、绝对本地 PCM WAV path、backend、deviceId、processingMode；只准备/探测，不立即播放 |
-| play / pause / stop | 必须匹配会话；暂停释放输出；stop 不触发自然结束 |
+| play / pause / stop | 必须匹配会话；暂停时可以释放输出，协议允许未来保持设备打开；stop 不触发自然结束 |
 | seek | position，秒；夹在当前时长内，重新基准化时钟 |
 | volume | 线性 0–1；支持静音 |
 | replaygain | 线性 0–16；来自 Folia 既有 ReplayGain 计算，结合软件音量 |
 
-响应为 `{id,ok,result}` 或 `{id,ok:false,error}`。错误文本仅用于显示；是否释放引擎根据命令类型及会话归属判断，不匹配错误字符串。load 或当前会话的 play/pause/seek 失败可释放部分初始化资源；枚举/增益/版本/旧会话错误不停止当前播放。
+响应为 `{id,ok,result}` 或 `{id,ok:false,errorCode}`。错误事件使用固定 `errorCode`，前端按错误码翻译；原始错误仅写诊断日志（中文说明在前、英文在后，并脱敏 URL/凭据）。是否释放引擎根据命令类型及会话归属判断，不匹配错误字符串。load 或当前会话的 play/pause/seek 失败可释放部分初始化资源；枚举/增益/版本/旧会话错误不停止当前播放。
+
+当前实现每 40 ms 尝试发送一次播放状态（约 25 Hz），命令响应也携带状态。调度延迟不构成协议违约；消费者不得假定固定间隔，应以实际到达时间校准。进程无响应的请求期限为 15 秒，超时终止进程。`COMPONENT_CRASHED`、`COMPONENT_TIMEOUT` 默认提示并切回 Web 后端，取消原生输出选择；关闭自动回退时提供重试、默认播放、上一版本三种操作。停止清理不会重启已崩溃进程，恢复操作受歌曲身份和请求代次保护。音源过期/下载失败走现有刷新路径，解码失败走现有转码恢复，不伪装成组件崩溃。
 
 状态事件包含 session、position/duration（秒）、playing/ended、sampleRate（Hz）、channels、latency（秒）、backend/deviceId、processingMode/outputFormat、volume/replayGain/effectiveGain。`sampleValuesPreserved` 只描述准备后的整数 PCM 在软件输出提供器中的单位增益复制，不能据此推断源解码和 DAC 的逐位一致。
 
@@ -44,10 +46,10 @@
 ## 安装、更新与停用
 
 1. Folia 内置受审查的固定版本清单：版本、win32-x64、协议主版本、HTTPS URL、SHA-256。不从网络发现 latest，也不接受渲染进程提供任意下载 URL。
-2. 独立可选 CI 从该清单获取、校验和握手；原型清单为空时显式输出 PENDING，不假装完成生产验证。清单审核与发布策略需维护者确认。
+2. `packaging/native-audio/component-candidate.json` 由审查确定贡献者版本、固定 URL、SHA-256。Folia 上游 main 的手动 CI 下载、校验并握手，通过后把原字节上传 Folia 自己的 Release；客户端清单只能指向 Folia Release。候选清单目前为空，发布任务会明确失败而不会伪造验证结果。常规构建不依赖该手动发布任务。
 3. 用户在原 Folia 的设置里按需安装。主进程限长下载，限制解压大小与扁平文件名，检查归档哈希及包内版本/协议；完整验证后才切换激活指针。
-4. 更新失败保留旧激活版本。安装/停用需要先切回浏览器后端；旧版本目录保留以便恢复，当前“停用”不等于清理全部磁盘文件。
-5. 普通 Folia 包、应用标识、音乐库和更新通道不变，不引入 .NET SDK 构建依赖。组件缺失/不兼容时无法开启原生播放，但浏览器仍可用；原生播放错误不静默回退到可能不同响度的其他后端。
+4. 更新失败保留旧激活版本。安装/停用需要先切回浏览器后端；磁盘最多保留当前和上一版本，停用保存可恢复指针。主程序清单保留所有协议兼容版本，有更新只提示用户，不自动停用旧组件。
+5. 普通 Folia 包、应用标识、音乐库和更新通道不变，不引入 .NET SDK 构建依赖。组件缺失/不兼容时无法开启原生播放，但浏览器仍可用；崩溃/超时按上述可配置策略回退并明确提示。
 6. 本地开发可用环境变量指定固定开发清单；打包后的应用不接受这一覆盖，也不接受清单里的 localPath。
 
 ## 首阶段审查范围
@@ -60,6 +62,6 @@ Windows x64、本地文件及在线音源完整准备后播放、WASAPI 独占/A
 
 - 独立组件仓库归属、公开发布/签名流程、组件清单批准及分发方式。
 - 官方 FFmpeg 合并并发布 PCM24/PCM32 编码后，更新 Folia 已有 FFmpeg 固定版本/哈希；当前发布版不能直接开启此原型。
-- 接入代码的审查边界、是否将两个可选开关同批审查；若需拆 PR，保持依赖顺序而非一次提交全部自用功能。
+- 按维护者要求拆成基础接入、整数模式、音频链路展示三个审查单元。当前工作分支仍为完整验证分支，正式 PR 不应一次提交全部功能。
 - 主线回归安排和兼容性问题收集。当前只实测 XingCore，其他设备须独立验证。
-- 本地通过不等于跨平台/公开 CI 通过；此轮没有发布任何远程改动。
+- 本地通过不等于跨平台/公开 CI 通过。FFmpeg 补丁已单独提交 PR #1；组件和 Folia 接入尚未作为正式上游 PR 提交。

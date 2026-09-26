@@ -132,6 +132,8 @@ const readStoredVolume = () => {
 
 export type AudioSettingsState = {
     nativeAudioBackend: NativeAudioBackend;
+    nativeAudioAutoFallback: boolean;
+    handleSetNativeAudioAutoFallback: (enabled: boolean) => void;
     nativeAudioDeviceId: string;
     showAudioSignalPath: boolean;
     handleSetShowAudioSignalPath: (enabled: boolean) => void;
@@ -184,6 +186,8 @@ export const useAudioSettingsStore = create<AudioSettingsState>((set, get) => ({
     ),
     // Off unless asked for: it writes to the listener's music account, so it is never a default.
     neteaseScrobbleEnabled: getStoredBoolean(NETEASE_SCROBBLE_KEY, false),
+    nativeAudioAutoFallback: getStoredBoolean('folia_native_audio_auto_fallback', true),
+    handleSetNativeAudioAutoFallback: enabled => { setStoredBoolean('folia_native_audio_auto_fallback', enabled); set({ nativeAudioAutoFallback: enabled }); },
     nativeAudioBackend: typeof localStorage !== 'undefined' && ['wasapi-exclusive', 'asio'].includes(localStorage.getItem('folia_native_audio_backend') || '')
         ? localStorage.getItem('folia_native_audio_backend') as NativeAudioBackend : 'browser',
     nativeAudioDeviceId: typeof localStorage !== 'undefined' ? localStorage.getItem('folia_native_audio_device') || '' : '',

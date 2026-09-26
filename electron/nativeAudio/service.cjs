@@ -3,6 +3,7 @@ const path = require('node:path');
 const { createHelper } = require('./helper.cjs');
 const { decodeLocalAudio } = require('./decode.cjs');
 const { downloadRemoteAudio } = require('./download.cjs');
+const { audioError, errorCode, diagnostic } = require('./errors.cjs');
 
 // electron/nativeAudio/service.cjs — a single, session-owned local playback resource.
 function registerNativeAudio({ app, ipcMain, isTrustedSender, helperFactory = createHelper, decode = decodeLocalAudio, download = downloadRemoteAudio, componentManager, decoderResolver = require('./decoder.cjs').resolveNativeDecoder }) {
@@ -13,7 +14,7 @@ function registerNativeAudio({ app, ipcMain, isTrustedSender, helperFactory = cr
         if (helperReady) return helperReady;
         helperReady = (async () => {
             const installed = await components.status();
-            if (!installed.available) throw new Error(installed.error || 'Install a compatible native audio component first');
+            if (!installed.available) throw audioError(installed.errorCode || 'COMPONENT_UNAVAILABLE', installed.error || 'Install a compatible native audio component first');
             decoder = await decoderResolver(app);
             helper = helperFactory(installed.executable, event => {
                 if (event.event === 'error' && !event.session) helperReady = null;
@@ -26,7 +27,7 @@ function registerNativeAudio({ app, ipcMain, isTrustedSender, helperFactory = cr
             if (hello.protocolMajor !== 1 || !['integer-pcm', 'replaygain', 'format-telemetry'].every(capability => hello.capabilities?.includes(capability))
                 || (installed.version && hello.componentVersion !== installed.version)) {
                 helper?.dispose(); helper = null;
-                throw new Error('Unsupported native audio component protocol or capabilities');
+                throw audioError('COMPONENT_INCOMPATIBLE', 'Unsupported native audio component protocol or capabilities');
             }
             return helper;
         })().catch(error => { helperReady = null; throw error; });
@@ -34,12 +35,12 @@ function registerNativeAudio({ app, ipcMain, isTrustedSender, helperFactory = cr
     }
 
     function assertCurrent(session) {
-        if (active !== session || session.abort.signal.aborted) throw new Error('Playback request was cancelled');
+        if (active !== session || session.abort.signal.aborted) throw audioError('CANCELLED', 'Playback request was cancelled');
     }
     async function release(session) {
         if (!session) return;
         session.abort.abort();
-        await helper?.request({ action: 'stop', session: session.id }).catch(() => {});
+        if (session.loadRequested) await helper?.request({ action: 'stop', session: session.id }).catch(() => {});
         await session.decoding?.catch(() => {});
         await session.creating?.catch(() => {});
         if (session.directory) await fs.rm(session.directory, { recursive: true, force: true }).catch(() => {});
@@ -56,7 +57,7 @@ function registerNativeAudio({ app, ipcMain, isTrustedSender, helperFactory = cr
         if (request.url != null) {
             if (typeof request.url !== 'string' || request.url.length > 16384) throw new Error('Invalid audio URL');
             const url = new URL(request.url);
-            if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password) throw new Error('Only HTTP(S) audio URLs are supported');
+            if ((!['http:', 'https:'].includes(url.protocol) && !require('../transcode/protocol.cjs').parseTranscodeUrl(request.url)) || url.username || url.password) throw new Error('Only HTTP(S) audio URLs are supported');
         }
         const processingMode = request.processingMode ?? 'compatibility';
         if (!['compatibility', 'integer-direct'].includes(processingMode)) throw new Error('Invalid processing mode');
@@ -88,16 +89,17 @@ function registerNativeAudio({ app, ipcMain, isTrustedSender, helperFactory = cr
             if (!supported) return { supported, available: false };
             const state = await components.status();
             let decoderError;
-            if (state.available) try { await decoderResolver(app); } catch (error) { decoderError = error.message; }
-            const { executable, ...publicState } = state;
-            return { ...publicState, supported, available: state.available && !decoderError, error: decoderError || state.error };
+            if (state.available) try { await decoderResolver(app); } catch (error) { decoderError = 'COMPONENT_UNAVAILABLE'; diagnostic(audioError(decoderError, error.message)); }
+            const { executable, error, ...publicState } = state;
+            return { ...publicState, supported, available: state.available && !decoderError, errorCode: decoderError || state.errorCode };
         }
         if (!supported) throw new Error('Native playback requires Windows x64');
-        if (['component-install', 'component-uninstall'].includes(request?.action)) {
+        if (['component-install', 'component-uninstall', 'component-rollback'].includes(request?.action)) {
             if (active || managingComponent) throw new Error('Switch to browser playback and wait for any component operation to finish');
             managingComponent = true;
             helper?.dispose(); helper = null; helperReady = null;
-            try { await (request.action === 'component-install' ? components.install() : components.uninstall()); }
+            try { await (request.action === 'component-install' ? components.install() : request.action === 'component-rollback' ? components.rollback() : components.uninstall()); }
+            catch (error) { throw error.code ? error : audioError('COMPONENT_UPDATE_FAILED', error.message); }
             finally { managingComponent = false; }
             return { ok: true };
         }
@@ -122,12 +124,18 @@ function registerNativeAudio({ app, ipcMain, isTrustedSender, helperFactory = cr
         if (request.action === 'finish') {
             if (current.decoding) throw new Error('File is already being prepared');
             current.decoding = (async () => {
-                if (current.remoteUrl) await download(current.remoteUrl, current.input, current.abort.signal);
+                if (current.remoteUrl) {
+                    const sessionFetch = current.sender.session?.fetch?.bind(current.sender.session);
+                    if (!sessionFetch && download === downloadRemoteAudio) throw audioError('SOURCE_UNAVAILABLE', 'Electron session fetch is unavailable');
+                    await download(current.remoteUrl, current.input, current.abort.signal, sessionFetch);
+                }
                 assertCurrent(current);
                 current.sourceInfo = await require('./sourceInfo.cjs').readSourceInfo(current.input);
                 assertCurrent(current);
-                const wav = await decode(decoder, current.input, current.directory, current.abort.signal, current.processingMode);
+                const wav = await decode(decoder, current.input, current.directory, current.abort.signal, current.processingMode)
+                    .catch(error => { throw audioError(current.abort.signal.aborted ? 'CANCELLED' : 'DECODE_FAILED', error.message); });
                 assertCurrent(current);
+                current.loadRequested = true;
                 const result = await helper.request({ action: 'load', session: current.id, path: wav,
                     backend: current.backend, deviceId: current.deviceId, processingMode: current.processingMode });
                 assertCurrent(current);
@@ -147,7 +155,10 @@ function registerNativeAudio({ app, ipcMain, isTrustedSender, helperFactory = cr
         if (request.action === 'replaygain' && (!Number.isFinite(request.gain) || request.gain < 0 || request.gain > 16)) throw new Error('Invalid ReplayGain');
         return { ...await helper.request({ action: request.action, session: current.id, position: request.position, volume: request.volume, gain: request.gain }), ...current.sourceInfo };
     }
-    ipcMain.handle('native-audio:request', handle);
+    ipcMain.handle('native-audio:request', async (event, request) => {
+        try { return await handle(event, request); }
+        catch (error) { diagnostic(error); return { nativeAudioError: { code: errorCode(error) } }; }
+    });
     app.on('web-contents-created', (_, contents) => {
         const stop = () => { if (active?.sender === contents) { const previous = active; active = null; void release(previous); } };
         contents.on('destroyed', stop);

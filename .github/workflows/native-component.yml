@@ -13,9 +13,49 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
           cache: npm
       - run: npm ci
+      - name: Check retained compatible catalog
+        shell: pwsh
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: node packaging/native-audio/check-catalog.cjs $env:BASE_SHA
       - run: node packaging/native-audio/verify-component.cjs
+  prepare-mirror:
+    if: github.event_name == 'workflow_dispatch' && github.repository == 'chthollyphile/folia-major' && github.ref == 'refs/heads/main'
+    runs-on: windows-latest
+    outputs:
+      tag: ${{ steps.verify.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm ci
+      - id: verify
+        run: node packaging/native-audio/prepare-mirror.cjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: verified-native-component
+          path: artifacts/native-mirror/*
+  publish-mirror:
+    needs: prepare-mirror
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: verified-native-component
+          path: verified
+      - name: Publish verified bytes to Folia release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ needs.prepare-mirror.outputs.tag }}
+        run: gh release create "$TAG" verified/* --title "$TAG" --notes "经校验的可选 Windows 音频组件 / Verified optional Windows audio component" --latest=false

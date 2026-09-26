@@ -67,7 +67,13 @@ npm run dev:electron
 3. 在线歌曲：使用已有账号和音质设置，分别测试未缓存和已缓存歌曲。必须完整准备后才播放；准备期间切歌/停止，旧曲不能抢占新曲。
 4. 整数模式与 ReplayGain：沿用现有 off/track/album 设置，确认音量及静音仍有效；整数模式不等于无条件 bit-perfect。
 5. 信号路径：查看真实源采样率/位深、引擎格式与合并增益；未知信息应显示未知。缓存仍可能是旧音质，不会因切换档位自动升级。
-6. 设备不支持的格式、无效设备或网络失败：应明确报错，不静默切换为共享模式/浏览器，也不播放部分文件。
+6. 设备不支持的格式、无效设备或网络失败：应明确报错，不播放部分文件。仅组件崩溃/超时按默认开启的自动回退选项切换 Web 并提示；关闭此选项时提供三种恢复操作。
+
+## 本轮真实账号验证
+
+见 [专项报告](native-audio-validation-report.md)。使用隔离 profile，保留原有登录 UI，不导出 token。测试脚本 `test/manual/nativeAudioProviderReview.cjs` 使用真实 Omni/Subsonic、Electron 会话下载、FFmpeg 和 XingCore；与 UI mock、进程 mock 测试分开统计。截图的「专项验证记录」为测试脚本显示的实际返回数据，不是产品新增界面。
+
+启动隔离窗口前设置 `$env:FOLIA_REVIEW_DEBUG='1'`，随后运行 `node test/manual/nativeAudioProviderReview.cjs` 或追加 `--navidrome`。每次新建证据目录，不覆盖旧失败。仅在本机登录后运行；不要把包含账号的 profile 或完整运行时日志上传。
 
 自动化入口：
 

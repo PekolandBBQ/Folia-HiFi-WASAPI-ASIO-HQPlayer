@@ -5,7 +5,7 @@ import { loadNativeLocalFile } from './loadLocalFile';
 export async function loadNativeOnlineSource(api: NativeAudioApi, session: string, src: string,
     backend: NativeAudioBackend, deviceId: string, signal: AbortSignal, processingMode: NativeAudioProcessingMode): Promise<NativeAudioState> {
     signal.throwIfAborted();
-    if (/^https?:\/\//i.test(src)) {
+    if (/^https?:\/\//i.test(src) || /^folia-transcode:\/\/media\/[a-f0-9]{64}\/audio\.(flac|wav)$/.test(src)) {
         await api.request({ action: 'begin', session, backend, deviceId, processingMode, url: src });
         signal.throwIfAborted();
         const state = await api.request({ action: 'finish', session }) as NativeAudioState;

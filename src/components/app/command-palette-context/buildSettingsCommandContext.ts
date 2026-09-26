@@ -149,6 +149,10 @@ export const buildSettingsCommandContext = (
         toggleNeteaseScrobble: () => audio.handleToggleNeteaseScrobble(
             !useAudioSettingsStore.getState().neteaseScrobbleEnabled,
         ),
+        toggleNativeAudioAutoFallback: () => {
+            const state = useAudioSettingsStore.getState();
+            state.handleSetNativeAudioAutoFallback(!state.nativeAudioAutoFallback);
+        },
         toggleNativeAudioSignalPath: () => {
             const state = useAudioSettingsStore.getState();
             state.handleSetShowAudioSignalPath(!state.showAudioSignalPath);

@@ -11,6 +11,33 @@ export default {
     "caveat": "引擎回报不等于 DAC 实测。整数模式本身不代表全链路位完美；未回报的音源和升频参数不作推断。"
   },
   "nativeAudio": {
+    "autoFallback": "组件崩溃或超时后自动返回 Web 播放",
+    "returnedToBrowser": "已取消原生输出并返回 Web 播放。",
+    "updateAvailable": "发现兼容的新组件版本，可更新。",
+    "recoveryTitle": "原生音频需要恢复",
+    "recovery": {
+        "retry": "重试",
+        "browser": "返回默认播放模式",
+        "rollback": "尝试上一版本组件"
+    },
+    "errors": {
+        "COMPONENT_CRASHED": "组件已意外退出。",
+        "COMPONENT_TIMEOUT": "组件响应超时。",
+        "COMPONENT_UNAVAILABLE": "请先安装并启用原生音频组件。",
+        "COMPONENT_INTEGRITY": "组件完整性校验失败，请重新安装。",
+        "COMPONENT_INCOMPATIBLE": "组件版本或协议不兼容。",
+        "COMPONENT_UPDATE_FAILED": "组件更新失败，已保留原版本。",
+        "ROLLBACK_UNAVAILABLE": "没有可用且通过校验的上一版本。",
+        "SOURCE_UNAVAILABLE": "无法读取音源，请检查网络或账号。",
+        "SOURCE_EXPIRED": "音源链接已失效，正在尝试重新获取。",
+        "SOURCE_TOO_LARGE": "音源超过准备大小上限。",
+        "DECODE_FAILED": "音源解码失败。",
+        "DEVICE_UNAVAILABLE": "音频设备不可用，请检查设备及驱动。",
+        "FORMAT_UNSUPPORTED": "设备不支持此音频格式。",
+        "INVALID_REQUEST": "音频请求参数无效。",
+        "CANCELLED": "音频操作已取消。",
+        "NATIVE_REQUEST_FAILED": "原生音频操作失败，请查看诊断日志。"
+    },
     "componentPending": "此构建尚未配置已审核的组件发布。",
     "removeComponent": "停用组件",
     "installComponent": "安装／更新组件",
@@ -388,6 +415,7 @@ export default {
       "ponder-hints-unseen": { "title": "思索提示：仅未看过的区域", "description": "某个控件的教程看过之后就不再提示它" },
       "ponder-hints-off": { "title": "思索提示：关闭", "description": "不再显示长按 G 的提示" },
       "ponder-touch-button-toggle": { "title": "触屏思索按钮", "description": "显示或隐藏触屏右上角那颗灯泡" },
+      "settings-toggle-native-auto-fallback": {"title": "原生音频自动回退", "description": "组件崩溃或超时后返回浏览器播放"},
       "settings-native-audio": { "title": "Windows 原生音频", "description": "为本地文件和在线歌曲选择 WASAPI 独占或 ASIO 输出" },
       "native-audio-signal-path-toggle": { "title": "显示音频链路", "description": "开启或关闭原生音频链路显示" },
       "native-audio-integer-direct-toggle": { "title": "原生音频整数直通", "description": "开启或关闭 WASAPI 独占与兼容 ASIO 驱动的纯整数 PCM 链路" },

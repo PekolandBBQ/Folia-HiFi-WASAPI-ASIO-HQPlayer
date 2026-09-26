@@ -119,7 +119,7 @@ describe('native transport', () => {
         transport.setSource('blob:one'); await flush(); await transport.play();
         await new Promise(resolve => setTimeout(resolve, 160));
         expect(transport.currentTime).toBeLessThanOrEqual(0.12);
-        event({ event: 'error', session: state().session, error: 'device removed' });
-        expect(transport.paused).toBe(true); expect(transport.error?.message).toBe('device removed');
+        event({ event: 'error', session: state().session, errorCode: 'DEVICE_UNAVAILABLE' });
+        expect(transport.paused).toBe(true); expect(transport.error?.nativeCode).toBe('DEVICE_UNAVAILABLE');
     });
 });
