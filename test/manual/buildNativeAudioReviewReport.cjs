@@ -8,7 +8,8 @@ async function main() {
     await fs.mkdir(output, { recursive: true });
     const report = await fs.readFile('docs/native-audio-validation-report.md', 'utf8');
     await fs.writeFile(path.join(output, 'report.md'), report.replaceAll('(native-audio-validation/index.html)', '(index.html)'));
-    await fs.copyFile('docs/native-audio-pr-series.md', path.join(output, 'native-audio-pr-series.md'));
+    const series = await fs.readFile('docs/native-audio-pr-series.md', 'utf8');
+    await fs.writeFile(path.join(output, 'native-audio-pr-series.md'), series.replaceAll('(native-audio-validation-report.md)', '(report.md)'));
     const folders = ['.', ...(await fs.readdir(root, { withFileTypes: true })).filter(entry => entry.isDirectory()).map(entry => entry.name)];
     const records = [];
     for (const folder of folders) {
