@@ -3,7 +3,7 @@
 const fs = require('fs');
 const { spawn } = require('child_process');
 
-// Runs one strict, bounded FFmpeg encode and validates that its published output fully decodes.
+// Runs a strict encode, retries damaged input once tolerantly, then strictly validates the output.
 
 const MAX_STDERR_CHARS = 32 * 1024;
 
@@ -53,8 +53,8 @@ const runProcess = ({ executable, args, spawnProcess = spawn, signal, timeoutMs 
     if (signal?.aborted) abort();
 });
 
-const encodeArgs = (inputPath, outputPath, format) => [
-    '-hide_banner', '-nostdin', '-v', 'error', '-xerror', '-y',
+const encodeArgs = (inputPath, outputPath, format, tolerant = false) => [
+    '-hide_banner', '-nostdin', '-v', 'error', ...(tolerant ? [] : ['-xerror']), '-y',
     '-i', inputPath,
     '-map', '0:a:0', '-vn', '-sn', '-dn', '-map_metadata', '-1',
     '-ac', '2',
@@ -70,7 +70,18 @@ const validateArgs = outputPath => [
 ];
 
 const transcodeAudioFile = async ({ executable, inputPath, outputPath, format, signal, spawnProcess }) => {
-    await runProcess({ executable, args: encodeArgs(inputPath, outputPath, format), signal, spawnProcess });
+    let tolerant = false;
+    try {
+        await runProcess({ executable, args: encodeArgs(inputPath, outputPath, format), signal, spawnProcess });
+    } catch (error) {
+        // Retry only decode corruption, using the same downloaded bytes. Cancellation, missing
+        // encoders, disk failures and invalid output must never turn into a second encode loop.
+        if (signal?.aborted || error.code !== 'FFMPEG_FAILED'
+            || !/(?:invalid sync code|invalid frame header|error (?:while )?decoding|corrupt(?:ed)? (?:frame|packet)|crc mismatch)/i.test(error.message)) throw error;
+        tolerant = true;
+        console.info('[TranscodeFallback]', 'tolerant-decode-retry', { format });
+        await runProcess({ executable, args: encodeArgs(inputPath, outputPath, format, true), signal, spawnProcess });
+    }
     const stat = await fs.promises.stat(outputPath);
     if (!stat.isFile() || stat.size < 128) {
         const error = new Error('FFmpeg produced an empty audio file');
@@ -78,7 +89,7 @@ const transcodeAudioFile = async ({ executable, inputPath, outputPath, format, s
         throw error;
     }
     await runProcess({ executable, args: validateArgs(outputPath), signal, spawnProcess });
-    return { size: stat.size };
+    return { size: stat.size, tolerant };
 };
 
 module.exports = { encodeArgs, runProcess, transcodeAudioFile, validateArgs };

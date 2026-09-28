@@ -200,14 +200,15 @@ const createTranscodeService = ({ app, protocol, net, spawnProcess, onCacheWrite
             let format = 'flac';
             let outputPath = path.join(jobDirectory, 'output.flac');
             let outputBytes = 0;
+            let tolerant = false;
             try {
-                ({ size: outputBytes } = await transcodeAudioFile({ executable, inputPath, outputPath, format, signal: controller.signal, spawnProcess }));
+                ({ size: outputBytes, tolerant } = await transcodeAudioFile({ executable, inputPath, outputPath, format, signal: controller.signal, spawnProcess }));
             } catch (error) {
                 if (!shouldUseWavFallback(error)) throw error;
                 log('warn', 'wav-fallback', { cacheKey: logId });
                 format = 'wav';
                 outputPath = path.join(jobDirectory, 'output.wav');
-                ({ size: outputBytes } = await transcodeAudioFile({ executable, inputPath, outputPath, format, signal: controller.signal, spawnProcess }));
+                ({ size: outputBytes, tolerant } = await transcodeAudioFile({ executable, inputPath, outputPath, format, signal: controller.signal, spawnProcess }));
             }
             const entry = await publishCacheEntry({
                 cacheDirectory,
@@ -218,6 +219,7 @@ const createTranscodeService = ({ app, protocol, net, spawnProcess, onCacheWrite
                     songKey: source.songKey,
                     sourceRevision: source.sourceRevision,
                     createdAt: Date.now(),
+                    decodeMode: tolerant ? 'tolerant' : 'strict',
                 },
             });
             // The size comes from the encode rather than a fresh stat of the published file: a
