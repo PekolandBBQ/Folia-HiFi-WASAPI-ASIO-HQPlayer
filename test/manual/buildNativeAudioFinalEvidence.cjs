@@ -7,7 +7,7 @@ const { execFileSync } = require('node:child_process');
 async function main() {
     const root = path.resolve('docs/native-audio-final-validation');
     const repositories = [
-        ['latest', '.'], ['complete-078', '../folia-windows-contribution'],
+        ['latest', '.'], ['integration', '../folia-windows-contribution'],
         ['A', '../folia-final-core'], ['B', '../folia-final-integer'], ['C', '../folia-native-review-split'],
     ];
     const files = [], runs = [], heads = {};
@@ -20,7 +20,7 @@ async function main() {
         heads[label] = execFileSync('git',['-C',repository,'rev-parse','HEAD'],{encoding:'utf8'}).trim();
         const results = path.join(repository,'test-results');
         for (const entry of await fs.readdir(results,{withFileTypes:true})) {
-            if (entry.isFile() && /^(final-|latest-)/.test(entry.name) && /\.(log|json|txt|png)$/.test(entry.name)
+            if (entry.isFile() && /^(final-|latest-|delivery-|tolerant-|parallel-)/.test(entry.name) && /\.(log|json|txt|png)$/.test(entry.name)
                 && !/vite|electron.*(?:error|retest|\.log)|package-build|delivery-build/.test(entry.name))
                 await copy(path.join(results,entry.name),`${label}/checks/${entry.name}`);
         }
@@ -36,6 +36,9 @@ async function main() {
             }
             if (Array.isArray(records)) runs.push({ repository: label, run: entry.name, path: relative, records });
         }
+    }
+    for (const name of ['remaining-strict-decode.json', 'remaining-strict-decode-audio-only.json']) {
+        await copy(path.join('../folia-windows-contribution/docs/native-audio-remaining-validation/checks', name), `history/${name}`);
     }
     const manifest = { generated:new Date().toISOString(), heads, files };
     await fs.writeFile(path.join(root,'sha256-manifest.json'),JSON.stringify(manifest,null,2));
