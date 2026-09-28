@@ -1,34 +1,47 @@
 # Folia 原生音频最终验证报告
 
-日期：2026-09-29（Asia/Shanghai）。发行件源码：`a1c97ec`（并行恢复功能提交 `3c31c37`），已整合官方 v0.7.9。独立组件源码：`a6a073f`，运行组件 0.1.2。后续文档及测试工具提交不改变被测程序。报告接续 [初次补测](native-audio-validation-supplement.md) 与 [9 月 28 日后续验证](native-audio-validation-remaining.md)。
+日期：2026-09-29（Asia/Shanghai），已补入人工验证后的最新修正。我以已整合官方 v0.7.9 的发行基线 `a1c97ec` 为基础（并行恢复功能提交 `3c31c37`），追加了设置与环境检查修正 `269dab8`。独立组件源码仍为 `a6a073f`，运行组件 0.1.2。本报告接续 [初次补测](native-audio-validation-supplement.md) 与 [9 月 28 日后续验证](native-audio-validation-remaining.md)，分别记录基线全量验证和最新修正的增量验证。
 
 ## 验收结论
 
-**本机已执行的功能与回归矩阵通过，可以交付人工使用验证。** 这一结论限定于下列场景、Windows x64 和 XingCore WASAPI/ASIO 设备；不是“以后绝不会出现异常”，也不是官方发布或远程 CI 已获批准。未修改原始失败记录。
+**我已完成下列功能与回归矩阵，当前修复版可以交付人工使用验证。** 这一结论限定于已执行的场景、Windows x64 和 XingCore WASAPI/ASIO 设备；不代表以后绝不会出现异常，也不代表官方发布或远程 CI 已获批准。我保留了原始失败记录。
 
-新增修正包括 Windows 清理失败后 busy 不释放、临时文件占用导致安装目录重命名失败、原始 rename 错误被 ENOENT 覆盖，以及组件 stderr 实时诊断缺失。此前的首次甲板挂载丢失播放意图和启动恢复覆盖用户选曲修正均保留。全量验证还修复了 Windows 检出换行、真实 junction 测试和悬浮目标移动造成的测试不稳定。
+我此前完成的修正包括 Windows 清理失败后 busy 不释放、临时文件占用导致安装目录重命名失败、原始 rename 错误被 ENOENT 覆盖，以及组件 stderr 实时诊断缺失。此前的首次甲板挂载丢失播放意图和启动恢复覆盖用户选曲修正均保留。全量验证还修复了 Windows 检出换行、真实 junction 测试和悬浮目标移动造成的测试不稳定。
 
-[人工验证说明](native-audio-manual-validation.md) · [原始截图与逐项记录](native-audio-final-validation/index.html) · [文件哈希清单](native-audio-final-validation/sha256-manifest.json)
+[人工验证说明](native-audio-manual-validation.md) · [原始截图与逐项记录](../../artifacts/final-evidence-20260929/docs/native-audio-final-validation/index.html) · [基线文件哈希清单](../../artifacts/final-evidence-20260929/docs/native-audio-final-validation/sha256-manifest.json) · [最新设置修正说明](native-audio-settings-followup.md)
+
+## 最新阶段的补充工作
+
+| 工作 | 我已完成的修改 | 验证与范围 |
+| --- | --- | --- |
+| 严格／容错并行解码 | 在媒体失败恢复阶段共享一次下载，并行准备两个输出；严格成功优先，只有损坏音频错误才允许容错接替，采用前仍严格校验输出 | 两首指定曲目的处理时间中位数缩短约 38%；完整 App 冷恢复 12/12 通过。同曲、位置和暂停意图保持；不将自动恢复称为零停顿 |
+| 系统和环境检查 | 统一检查 Windows、受支持的进程架构（当前 x64）及原生 IPC 桥，自动决定设置模块、侧栏和命令入口的显示或隐藏 | 非 Windows、普通浏览器及不受支持环境隐藏；兼容 Windows 缺少组件时仍显示安装入口。平台验证采用能力边界模拟，未执行 macOS/Linux 实机测试 |
+| 缺失组件提示 | 选择 WASAPI/ASIO、自动回退、整数直通或音频链路前重新查询组件状态；缺失时提示安装，拒绝写入无效选择 | 覆盖安装失败／重试／成功、缓存状态失效、没有已批准安装源；被拒绝的操作不改变当前设置或播放状态 |
+| 名称与功能归属 | 统一使用“WASAPI及ASIO独占播放”；整数直通和显示音频链路仍放在该模块内 | 当前整数实现依赖 Windows 引擎，链路展示只有原生引擎提供数据；独立审查拆分不等于已支持其他系统 |
+
+并行解码已有基线全量及音频实测记录。最新设置修正另外通过类型检查、139 项单测、17 项组件界面测试和 5 项包内完整 App 隔离检查。我没有把两阶段数量相加后称为一次全量测试，也没有把基线 A/B/C 的通过结果写成已覆盖 `269dab8`。
 
 ## 最新官方版本兼容性
 
-应用户追加要求，在最终归档前重新查询[官方最新稳定版](https://github.com/chthollyphile/folia-major/releases/tag/v0.7.9)：v0.7.9，于 2026-09-26 17:29:50 UTC 发布，提交 `c249bde0173c92d053838eb79b63ca06fb7fe2f3`。较原验证基线 `d2b8467` 有 139 个文件变化，已整合到完整候选及 A/B/C。依赖锁只有根版本号变化，未替换依赖版本。
+在基线最终归档前，我重新查询了[官方最新稳定版](https://github.com/chthollyphile/folia-major/releases/tag/v0.7.9)：v0.7.9，于 2026-09-26 17:29:50 UTC 发布，提交 `c249bde0173c92d053838eb79b63ca06fb7fe2f3`。较原验证基线 `d2b8467` 有 139 个文件变化，我已将其整合到完整候选及 A/B/C。依赖锁只有根版本号变化，未替换依赖版本。
+
+设置修正版打包前，我于北京时间 2026-09-29 再次核对官方 API，最新正式版仍为 v0.7.9。当时 main 已到 `481805873a0b04ca6277dd21c0968ab1e1c4ab02`，相对此前基线新增 3 个提交，涉及 Folium 文档、Grid3DSlider 及其单测。交付仍基于经过验证的 v0.7.9 集成；我没有将“音频设置路径无重叠修改”表述为最新 main 已整合并全量复测。查询及差异快照见[本次证据目录](../../artifacts/settings-fix-20260929-evidence)。
 
 官方 Windows 安装包 SHA-256 为 `b90310535f024b5a8bb02de6f037ce47c69208ceedb24b395a059afad92a0113`，与官方资产 digest 一致。仅解包，在独立目录运行，没有执行安装器或覆盖正式版。原版 exe 的隔离启动、真实标签导入及浏览器播放／定位／暂停续播三项通过。
 
 未修改 v0.7.9 源码另作基线，与修复版在相同 Chrome、完整 App 中各跑九项：缓存播放／定位／暂停续播、自然下一首、track/album/off 的真实 AudioContext 增益、单曲循环、双甲板交接、HTTP 404 恢复、无效音频恢复。两边 18 项全部通过。无声生成素材的双甲板用的是普通交叉淡化；另在真实 QQ 音源上完成非 plain automix，观察到两甲板同时播放、约 7 秒 cue 和自然下一首。
 
-官方原版尚未包含本次原生音频扩展，因此不能把“兼容”理解为将组件 exe 丢进任意官方版即可启用。交付的是合入最新官方代码后的完整修复版。新增 Windows 截图基线来自未修改的 v0.7.9，再由候选对比通过；没有用候选失败截图直接覆盖基线。
+官方原版尚未包含本次原生音频扩展，因此不能把“兼容”理解为将组件 exe 丢进任意官方版即可启用。我交付的是合入上述官方 v0.7.9 的完整修复版。新增 Windows 截图基线来自未修改的 v0.7.9，再由候选对比通过；没有用候选失败截图直接覆盖基线。
 
 ## 仓库要求的测试方法
 
-已核对 `skills/testing-strategy/SKILL.md`、项目 README、`.github/workflows/pr-unit-tests.yml`、`.github/workflows/native-component.yml` 以及独立组件工作流。
+我已核对 `skills/testing-strategy/SKILL.md`、项目 README、`.github/workflows/pr-unit-tests.yml`、`.github/workflows/native-component.yml` 以及独立组件工作流。下表记录并行恢复发行基线的验证；设置修正的增量结果在后文单列。表中原始证据相对路径以[基线证据目录](../../artifacts/final-evidence-20260929/docs/native-audio-final-validation)为根。
 
 | 方法 | 实际结果与证据 |
 | --- | --- |
 | 主工程 TypeScript 检查 | 通过，`latest/checks/latest-typecheck.log`；A/B/C 分别通过 |
 | 全量 Vitest | 最终并行恢复代码：431 文件、4023 测试通过；1 文件／1 测试跳过。`latest/checks/parallel-full-unit.log` |
-| 完整 Playwright UI／截图 | 275/275，通过；两个 worker，无 retry 放宽，11.4 分钟。`latest/checks/latest-ui.log`。之后只改主进程恢复代码，追加 15 项单测、12 项完整 App 冷恢复和实际发行件检查 |
+| 完整 Playwright UI／截图 | 基线 275/275，通过；两个 worker，无 retry 放宽，11.4 分钟。`latest/checks/latest-ui.log`。随后基线阶段的主进程恢复改动追加 15 项单测、12 项完整 App 冷恢复和实际发行件检查；更晚的设置界面修正另有增量回归 |
 | sync-server 独立编译 | `npm run build:node` 通过，`latest/checks/latest-sync-server.log` |
 | 独立 .NET 组件测试 | 35 个增益样本、EOF 静音和 PCM16/24/32 描述头；7 项格式协商、20 项错误隔离均通过。前轮同一组件源码的构建和硬件记录仍保留 |
 | 宿主组件目录验证 | `check-catalog.cjs` 通过；正式 `verify-component.cjs` 返回 PENDING，原因是官方批准清单仍为空，不把退出码 0 计作正式组件下载通过 |
@@ -64,7 +77,7 @@ Vitest 的唯一跳过项为显式 opt-in 的真实歌词来源偏移审计，�
 
 修正后完整候选连续三轮 21/21；A/B/C 各七项通过。硬件稳定性采用五次 renderer 冷启动，每轮两后端及两固定曲目，共 20 步，检查真实时钟、定位、暂停、设备枚举和恢复；它不是五次完整操作系统／Electron 冷启动。历史单次 WASAPI `DEVICE_UNAVAILABLE` 仍未找到唯一原因，追加 stderr 实时诊断后本轮没有再现，不将它虚标为“根因已修”。
 
-## A/B/C 最终迁移
+## A/B/C 已验证快照与最新修正的迁移状态
 
 | 分支 | 实际测试提交 | 类型 | 全量单测 | 原生 UI | Windows |
 | --- | --- | --- | --- | --- | --- |
@@ -72,22 +85,41 @@ Vitest 的唯一跳过项为显式 opt-in 的真实歌词来源偏移审计，�
 | B `codex/review-native-integer` | `8bebb40` | 通过 | 4022 通过／1 opt-in 跳过 | 6/6 | 7/7 |
 | C `codex/review-native-signal-path` | `a722963` | 通过 | 4023 通过／1 opt-in 跳过 | 21/21（三次七项） | 7/7 |
 
-C 与完整候选的 `src`、`electron`、`.github`、`test/unit`、`test/component` 内容一致；因此最新硬件全 App 结果对应相同产品代码。各分支类型和全量单测均在表中最终提交重跑；UI 和 Windows 矩阵在加入本轮解码修正前的最新官方合并提交运行，随后这些模块未改。A/B 之前独立硬件测试保持原日期，不冒充最终提交重新实播。B 只增加整数模式，C 只增加信号链，两个增量各 23 文件；旧快照保留，未推送。
+在设置修正 `269dab8` 之前，C 与完整候选的 `src`、`electron`、`.github`、`test/unit`、`test/component` 内容一致，因此该阶段硬件全 App 结果对应相同产品代码。我已在表中提交分别重跑类型和全量单测；UI 和 Windows 矩阵在加入并行解码修正前的官方合并提交运行，随后这些模块在该阶段未改。A/B 之前独立硬件测试保持原日期，不冒充最终提交重新实播。B 只增加整数模式，C 只增加信号链，两个增量各 23 文件；旧快照保留，未推送。
+
+最新的环境可见性、安装提示及改名修正目前只进入集成分支 `269dab8`，尚未迁入以上 A/B/C 快照。更新独立审查分支时，我还需将通用组件检查放入 A、整数和链路开关的检查分别放入 B/C，并分别复测；当前不能将集成版的 139／17／5 项结果代替分支验证。
 
 ## 严格与容错并行恢复
 
-媒体解码失败触发恢复后，下载一次源文件，同时启动严格（`-xerror`）和容错转码，各自写独立临时文件。严格成功时取消容错任务并优先采用严格输出；仅在严格错误匹配损坏帧／同步字／CRC／解码错误时允许采用容错结果。磁盘、权限、编码器和认证错误不会伪装为音频损坏。切歌或取消会终止两路；两路均失败才进入终止恢复流程，不无限重试。选中结果仍必须通过完整严格解码与最小大小校验，才可发布到缓存。
+我已将媒体解码失败后的恢复改为并行准备：下载一次源文件，同时启动严格（`-xerror`）和容错转码，各自写独立临时文件。严格成功时取消容错任务并优先采用严格输出；仅在严格错误匹配损坏帧／同步字／CRC／解码错误时允许采用容错结果。磁盘、权限、编码器和认证错误不会伪装为音频损坏。切歌或取消会终止两路；两路均失败才进入终止恢复流程，不无限重试。选中结果仍必须通过完整严格解码与最小大小校验，才可发布到缓存。
 
 服务每次只处理一个恢复作业，该作业内最多两个编码进程；普通健康播放不启动这对进程。容错可能丢弃原件坏帧，不代表还原了缺失音频或位透明。播放意图、同一曲目和原位置保持，严格失败不弹出错误提示。现有架构需要完成转码和校验后再交接，因此**可以自动恢复，但不能承诺零停顿或听觉完全无感**。
 
-同一真实输入、三轮交替串行／并行、排除网络和设备打开时间的实测如下。原始逐轮结果为 `latest/checks/tolerant-benchmark.log`。
+我使用同一真实输入，交替执行三轮串行／并行测量，排除网络和设备打开时间，结果如下。原始逐轮结果为 `latest/checks/tolerant-benchmark.log`。
 
 | 曲目 | 串行中位数 | 并行中位数 | 缩短 |
 | --- | --- | --- | --- |
 | HUMMING LIFE — Spica | 847.8 ms | 521.7 ms | 38.5% |
 | ピコ — 桜音 | 784.9 ms | 488.5 ms | 37.8% |
 
-最终完整 App 冷恢复 12/12 通过：两曲 × 播放／暂停 × 浏览器／WASAPI／ASIO。记录全部显示 `sameSong=true`、`decodeMode=tolerant`、无错误 toast 和严格输出校验通过。浏览器约 659–719 ms、原生约 837–1003 ms。通过测试副本的 sourceRevision 增加唯一后缀强制缓存未命中，实际 URL、音频字节和用户曲库不改；媒体失败事件受控注入，后续 FFmpeg 及引擎恢复是真实执行。另有缓存命中复测，不能将其速度算作并行解码收益。新增 15 项单测涵盖严格优先、两路取消、两路失败、非音频错误、坏输出拒绝及重试上限。
+我完成的并行恢复基线完整 App 冷恢复检查为 12/12 通过：两曲 × 播放／暂停 × 浏览器／WASAPI／ASIO。记录全部显示 `sameSong=true`、`decodeMode=tolerant`、无错误 toast 和严格输出校验通过。浏览器约 659–719 ms、原生约 837–1003 ms。通过测试副本的 sourceRevision 增加唯一后缀强制缓存未命中，实际 URL、音频字节和用户曲库不改；媒体失败事件受控注入，后续 FFmpeg 及引擎恢复是真实执行。另有缓存命中复测，不能将其速度算作并行解码收益。新增 15 项单测涵盖严格优先、两路取消、两路失败、非音频错误、坏输出拒绝及重试上限。
+
+## 环境可见性、安装提示与功能归属
+
+我将原“Windows 本地音频输出”统一改为“WASAPI及ASIO独占播放”，同步了设置标题、侧栏标签和三种语言的命令名称。设置模块、导航和命令共用同一环境判断：仅 Windows 桌面端、preload 确认架构受支持且 IPC 请求桥可用时显示。项目支持 macOS、Linux 和 Web，但这些平台当前没有可用的此类原生后端，因此隐藏对应入口。兼容 Windows 尚未安装组件时，仍保留安装入口。
+
+我修正了“列表仍有设备，但选择后无反应”的流程。每次选择原生设备或操作自动回退、整数直通、显示音频链路时，都重新读取组件状态。组件未安装、已停用或当前不可用时，设置界面显示安装提示，命令面板引导到对应设置区域；不会先暂停当前播放或保存无效选择。用户明确安装成功后重新选择，功能才会生效。没有已批准安装源时说明原因并不显示不可执行的安装按钮；安装失败显示固定错误码对应的翻译，可再次重试。
+
+我也核对了两项独立功能的实际依赖。整数直通使用 `net8.0-windows`、`win-x64` 的 .NET/NAudio 引擎；音频链路的 React 界面虽可复用，但当前只有 `NativeAudioTransport` 提供实时数据，浏览器输出没有接入等价数据源。因此我暂时将两项都保留在该模块内，没有仅因审查拆分就把它们作为跨平台同级功能展示。
+
+| 最新增量检查 | 结果与原始证据 |
+| --- | --- |
+| 类型检查和针对性单测 | 通过；7 文件、139 项。[类型日志](../../artifacts/settings-fix-20260929-evidence/component-gate-typecheck.log)、[单测日志](../../artifacts/settings-fix-20260929-evidence/component-gate-unit.log) |
+| Chromium 组件界面 | 17/17；覆盖 WASAPI／ASIO、三个依赖开关、安装失败／重试／成功、无批准源及平台隐藏。[UI 日志](../../artifacts/settings-fix-20260929-evidence/component-gate-ui-retest.log) |
+| 包内完整 App | 5/5；隔离 Electron 宿主加载实际 `app.asar` 的 `file:` 界面，检查中文入口、两个缺失提示、真实设备停用后选择和离线安装。[逐项 JSON](../../artifacts/settings-fix-20260929-evidence/component-gate-bundle.json)、[安装提示截图](../../artifacts/settings-fix-20260929-evidence/component-gate-bundle-wasapi.png) |
+| 交付内容核对 | 185 个界面文件与构建逐字节一致；8,354 个非界面 ASAR 文件与基线一致，旧包已裁剪的 12 个其他平台解包条目保持原状；ZIP 内 ASAR 哈希一致。[核对记录](../../artifacts/settings-fix-20260929-evidence/component-gate-package.json) |
+
+此轮我没有重新执行基线 4023 项全量单测、275 项完整 UI 或全部音频硬件矩阵；5 项包内 App 检查也不记为新 EXE 的独立首次启动。平台隐藏是能力边界模拟和 Chromium 实际渲染验证，不表述为在 macOS/Linux 实机通过。测试期间未启动音频输出，已有人工验证程序和配置未受操作。
 
 ## 失败记录与测试工具修正
 
@@ -103,8 +135,10 @@ C 与完整候选的 `src`、`electron`、`.github`、`test/unit`、`test/compon
 
 ## 交付件与仍需人工确认的边界
 
+当前人工使用入口为[设置修正版完整包](../../artifacts/Folia-Native-Validation-0.7.9-20260929-settings-fix-win-x64.zip)，对应[本轮源码](../../artifacts/Folia-Native-Validation-20260929-settings-fix-source.zip)、[设置修正原始证据](../../artifacts/Folia-Native-Validation-20260929-settings-fix-evidence.zip)和[SHA-256 清单](../../artifacts/Folia-Native-Validation-20260929-settings-fix-SHA256.txt)。我另外保留了[基线程序](../../artifacts/Folia-Native-Validation-0.7.9-20260929-win-x64.zip)及其历史证据；旧程序包不包含 `269dab8` 的设置修正。本次文档更新不覆盖已归档 ZIP，也不改变既有哈希。
+
 交付目录为 `Folia Native Validation.exe` 及全部依赖，ZIP 需整体解压。最终包基于 v0.7.9，使用独立 profile、自带已核验的离线组件及 PCM24/PCM32 FFmpeg。普通官方入口的组件信任策略未放宽；人工入口只在本发行件启用，不进入 A/B/C 审查增量。
 
-最终发行件检查：**13/13 通过**（`integration/checks/delivery-packaged-final-retest.log`）。包括离线组件就绪、真实本地标签导入、两后端×两模式×两曲的播放／定位／暂停续播／ReplayGain、离线更新及回退，以及包内实际转码 runner 和内置 FFmpeg 对两首指定损坏曲目的严格失败→容错输出→严格校验。实际通过截图在 `integration/runs/packaged-*`，对应环境 JSON 含发行 exe 和 app.asar 哈希。另将自动测试 profile 完整保留到非交付目录后，使用全新 profile 验证首次启动：离线安装 0.1.2、上一版回退可用、默认浏览器后端、无自动测试导入目录，1/1 通过（`delivery-first-run.log`）。构建／源码／组件和二进制哈希另存交付清单。原始账号 profile、授权 URL、音乐原件、开发依赖不随验证证据分发。
+基线发行件检查：**13/13 通过**（`integration/checks/delivery-packaged-final-retest.log`）。包括离线组件就绪、真实本地标签导入、两后端×两模式×两曲的播放／定位／暂停续播／ReplayGain、离线更新及回退，以及包内实际转码 runner 和内置 FFmpeg 对两首指定损坏曲目的严格失败→容错输出→严格校验。实际通过截图在 `integration/runs/packaged-*`，对应环境 JSON 含发行 exe 和 app.asar 哈希。另将自动测试 profile 完整保留到非交付目录后，使用全新 profile 验证首次启动：离线安装 0.1.2、上一版回退可用、默认浏览器后端、无自动测试导入目录，1/1 通过（`delivery-first-run.log`）。构建／源码／组件和二进制哈希另存交付清单。原始账号 profile、授权 URL、音乐原件、开发依赖不随验证证据分发。
 
-报告仍明确保留三个边界：官方镜像 CI／批准清单尚待维护者；历史一次设备拒绝未唯一定位；两首损坏 FLAC 严格阶段仍失败，但已验证自动容错续播同曲，原文件未被修复。实际听感、其他 DAC／ASIO 驱动、断电／磁盘满／杀毒隔离不在这次矩阵内。这些边界不会因为本机测试通过而消失。
+我仍保留以下边界：官方镜像 CI／批准清单尚待维护者；历史一次设备拒绝未唯一定位；两首损坏 FLAC 严格阶段仍失败，但已验证自动容错续播同曲，原文件未被修复。实际听感、其他 DAC／ASIO 驱动、断电／磁盘满／杀毒隔离不在这次矩阵内。这些边界不会因为本机测试通过而消失。
