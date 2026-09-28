@@ -7,6 +7,8 @@ async function main() {
     const local = process.argv.includes('--local');
     const h = await connect(local ? 'tagged-local-import' : 'tagged-cache'); const { page, record } = h;
     try {
+        await page.evaluate(() => { localStorage.setItem('folia_last_seen_guide_version', '0.7.9'); localStorage.setItem('folia_last_seen_ponder_onboarding_version', '0.7.9'); });
+        await page.reload();
         await attach(page);
         const songs = await (local ? importLocal : seed)(page, await fixtures(h.output));
         await page.reload(); await attach(page);

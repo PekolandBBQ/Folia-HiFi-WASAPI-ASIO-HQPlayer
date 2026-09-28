@@ -47,26 +47,29 @@ module.exports = { fixtures, seed };
 
 // Only the picker is supplied by the harness: real OPFS handles, scanning, tags and IndexedDB persist normally.
 async function importLocal(page, entries) {
-    await page.evaluate(async entries => {
+    const releaseNotes = page.getByTestId('release-notes-close');
+    if (await releaseNotes.isVisible()) await releaseNotes.click();
+    const folderName = `NativeValidationTags-${Date.now()}`;
+    await page.evaluate(async ({ entries, folderName }) => {
         const root = await navigator.storage.getDirectory();
-        const directory = await root.getDirectoryHandle('NativeValidationTags', { create: true });
+        const directory = await root.getDirectoryHandle(folderName, { create: true });
         for (const entry of entries) {
             const handle = await directory.getFileHandle(`tagged-${entry.id}.flac`, { create: true });
             const writer = await handle.createWritable();
             await writer.write(Uint8Array.from(atob(entry.bytes), c => c.charCodeAt(0))); await writer.close();
         }
         window.showDirectoryPicker = async () => directory;
-    }, entries);
+    }, { entries, folderName });
     await page.getByRole('button', { name: /^(本地|Folder)$/ }).last().click();
     await page.getByRole('button', { name: /^(导入文件夹|Import Folder)$/ }).last().click();
-    await page.waitForFunction(() => {
-        const songs = window.__remaining.walk(f => f.type?.name === 'Grid3D' && f)?.memoizedProps?.localSongs.filter(s => s.folderName?.startsWith('NativeValidationTags'));
+    await page.waitForFunction(folderName => {
+        const songs = window.__remaining.walk(f => f.type?.name === 'Grid3D' && f)?.memoizedProps?.localSongs.filter(s => s.folderName === folderName);
         return songs?.length === 2 && songs.every(s => s.duration === 24000 && s.replayGainAlbumGain === -12);
-    }, null, { timeout: 30000 });
-    return page.evaluate(async () => {
+    }, folderName, { timeout: 30000 });
+    return page.evaluate(async folderName => {
         const { getLocalSongs } = await import('/src/services/db.ts');
         const { buildLocalQueue } = await import('/src/services/playbackAdapters.ts');
-        return buildLocalQueue((await getLocalSongs()).filter(s => s.folderName?.startsWith('NativeValidationTags')).sort((a, b) => a.title.localeCompare(b.title)));
-    });
+        return buildLocalQueue((await getLocalSongs()).filter(s => s.folderName === folderName).sort((a, b) => a.title.localeCompare(b.title)));
+    }, folderName);
 }
 module.exports.importLocal = importLocal;

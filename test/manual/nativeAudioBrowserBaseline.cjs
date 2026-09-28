@@ -27,7 +27,7 @@ async function main() {
             // Chromium cannot reliably seek the last block of the tiny generated FLAC (demuxer seek failed).
             // Use the identical uncompressed PCM for transport tests; tag parsing still uses the physical FLAC.
             const songs = await seed(page, samples.map(s => ({ ...s, cachePcm: true })));
-            const commit = repository ? execFileSync('git', ['-C', repository, 'rev-parse', 'HEAD'], { encoding: 'utf8' }).trim() : 'd2b84674ce83329c1d62a371305e691de20e0950';
+            const commit = repository ? execFileSync('git', ['-C', repository, 'rev-parse', 'HEAD'], { encoding: 'utf8' }).trim() : 'c249bde0173c92d053838eb79b63ca06fb7fe2f3';
             const dirty = repository ? execFileSync('git', ['-C', repository, 'diff', '--name-only'], { encoding: 'utf8' }).trim() : 'read-only git archive; test configuration only';
             async function record(name, action) {
                 let result; try { result = { status: 'PASS', ...await action() }; } catch (e) { result = { status: 'FAIL', error: e.message.replace(/https?:\/\/\S+/g, '[URL]').slice(0, 400) }; }

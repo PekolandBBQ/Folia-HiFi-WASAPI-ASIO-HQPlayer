@@ -41,7 +41,7 @@ async function main() {
         const host = await app.evaluate(({ app }) => ({ packaged: app.isPackaged, version: app.getVersion(), profile: app.getPath('userData') }));
         await fs.writeFile(path.join(output, 'environment.json'), JSON.stringify({ ...host, asarSha256: crypto.createHash('sha256').update(await fs.readFile(asar)).digest('hex'), executableSha256: crypto.createHash('sha256').update(await fs.readFile(executablePath)).digest('hex'), source: 'packaged-file-renderer-no-dev-server' }, null, 2));
         await attach(page);
-        await page.evaluate(() => { localStorage.setItem('folia_last_seen_ponder_onboarding_version', '0.7.8'); localStorage.setItem('auto_use_best_lyric', 'false'); localStorage.setItem('player_volume', '.1'); localStorage.setItem('folia_automix_enabled', 'false'); localStorage.setItem('folia_native_audio_backend', 'browser'); });
+        await page.evaluate(() => { localStorage.setItem('folia_last_seen_ponder_onboarding_version', '0.7.9'); localStorage.setItem('folia_last_seen_guide_version', '0.7.9'); localStorage.setItem('auto_use_best_lyric', 'false'); localStorage.setItem('player_volume', '.1'); localStorage.setItem('folia_automix_enabled', 'false'); localStorage.setItem('folia_native_audio_backend', 'browser'); });
         await page.reload(); await attach(page);
         await record('offline-component-ready', async () => {
             const status = await page.evaluate(() => window.electron.nativeAudio.request({ action: 'status' }));

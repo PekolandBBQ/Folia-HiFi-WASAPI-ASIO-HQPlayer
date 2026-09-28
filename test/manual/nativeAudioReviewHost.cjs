@@ -14,4 +14,5 @@ if (process.env.FOLIA_REVIEW_DEBUG === '1') {
 process.env.ELECTRON_DEV = 'true';
 process.env.NODE_ENV = 'development';
 process.env.FOLIA_TRANSCODE_FFMPEG_PATH ||= path.resolve(__dirname, '../../ffmpeg-audio/ffmpeg.exe');
+process.env.FOLIA_NATIVE_FFMPEG_PATH ||= path.resolve(__dirname, '../../build/ffmpeg/win-x64/ffmpeg.exe');
 require('../../electron/main.cjs');

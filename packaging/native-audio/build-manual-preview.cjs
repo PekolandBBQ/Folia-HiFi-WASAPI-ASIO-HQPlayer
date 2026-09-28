@@ -31,7 +31,7 @@ async function main() {
     await build({ targets: Platform.WINDOWS.createTarget('dir'), config: {
         productName: 'Folia Native Validation',
         directories: { output: 'release/manual-20260929' },
-        extraMetadata: { main: 'electron/manual-preview.cjs', version: '0.7.8-native.validation.20260929' },
+        extraMetadata: { main: 'electron/manual-preview.cjs', version: '0.7.9-native.validation.20260929' },
         beforePack: async () => {}, // The reviewed PCM-enabled candidate above replaces the unpatched official FFmpeg.
         files: [
             'dist/**/*', 'electron/**/*', 'shared/**/*', 'package.json', 'build/miao.png', 'build/thumbar/*.png',
@@ -45,7 +45,7 @@ async function main() {
             { from: 'build/trayTemplate.png', to: 'trayTemplate.png' },
             { from: 'build/trayTemplate@2x.png', to: 'trayTemplate@2x.png' },
         ],
-        win: { signAndEditExecutable: false }, publish: null,
+        win: { signExecutable: false }, publish: null,
     }, publish: 'never' });
 }
 main().catch(error => { console.error(error); process.exitCode = 1; });
