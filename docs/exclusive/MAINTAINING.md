@@ -1,0 +1,42 @@
+<!-- docs/exclusive/MAINTAINING.md -->
+# 独立维护与构建
+
+专版分支为 `codex/folia-exclusive`。上游为 `chthollyphile/folia-major`，专版发布到 `PekolandBBQ/folia-major`，使用独立应用标识 `io.github.pekolandbbq.folia-exclusive` 和配置目录 `FoliaExclusive`。
+
+我在更新时先核对最新稳定 Release，再评估主线差异、整合和复测。上游 A/B/C 审查分支保留最小范围；HQPlayer 与专版启动、品牌及离线分发入口属于独立 fork，不自动混入上游 PR。
+
+## 构建输入
+
+- `package-lock.json` 固定宿主依赖。Node 24+；安装时遵循仓库 `.npmrc` 及供应链设置。
+- `packaging/exclusive/release.json` 固定版本、FFmpeg 二进制 SHA-256 和允许的组件 ZIP SHA-256。
+- `FOLIA_COMPONENT_CATALOG` 指向组件构建生成的开发目录 JSON；每个条目的 `localPath` 指向其 ZIP。构建程序只接受固定哈希对应的组件。
+- `FOLIA_FFMPEG_DIR` 指向含 `ffmpeg.exe` 和许可证/构建说明的目录。缺少 PCM24 或 PCM32 编码器时拒绝构建。
+- Release 附件包含本次组件与 FFmpeg 构建仓库源码快照；HQPlayer 为用户自行安装的软件，不包含在构建输入中。
+
+```powershell
+npm ci
+$env:ELECTRON='true'
+$env:ELECTRON_DEV='false'
+npx vite build
+$env:FOLIA_COMPONENT_CATALOG='C:\build\components\development-catalog.json'
+$env:FOLIA_FFMPEG_DIR='C:\build\ffmpeg\win-x64'
+node packaging/exclusive/build.cjs
+```
+
+可用 `FOLIA_EXCLUSIVE_OUTPUT` 指定新输出目录。开发机器有共享依赖目录时，`FOLIA_BUILD_ROOT` 只指定依赖与公共构建资源所在项目；实际 renderer、Electron 和 shared 源码始终来自本脚本所在专版 checkout。不能将旧集成分支的构建产物当作最新专版。
+
+## 发布前检查
+
+```powershell
+npm run typecheck
+npm run test:unit
+npx playwright test -c playwright.exclusive.config.ts test/component/nativeAudio.spec.ts --project=components --output=test-results/exclusive-ui-final
+node test/manual/exclusiveReleaseSmoke.cjs
+node test/manual/exclusivePlaybackReview.cjs
+```
+
+手工脚本中发行件路径、真实设备匹配和两首故障样本路径为本轮复现配置；移到其他机器时应按实际环境调整，不能把找不到硬件或样本的情况算作通过。配置独立的测试用户目录，避免干扰日常播放。
+
+发布前检查 ASAR 确实包含 HQPlayer 的生产依赖 `@xmldom/xmldom`。保留失败与修复后证据，记录检查层级（模拟 IPC UI／实际 ASAR／真实设备），生成 SHA256SUMS 后上传资产并核对服务器回报的摘要。
+
+上游测试要求与已完成矩阵见 [最终验证报告](../native-audio-final-validation.md)。新的完整报告只把本轮真正执行过的项目计为最新通过，其余保留基线日期与版本。

@@ -11,12 +11,24 @@ import { latticePosterTintSurface } from '../surfaces/latticePosterTintSurface';
 import { gridViewCardsSurface } from '../surfaces/gridViewCardsSurface';
 import { reduceMotionSurface } from '../surfaces/reduceMotionSurface';
 import { openCurrentPagePonder } from '../../../services/ponder/pagePonderTarget';
+import { toggleHQPlayerOutput, toggleHQPlayerRememberGain, chooseHQPlayerPath } from '../../../services/nativeAudio/hqplayerSettings';
 import { isNativeAudioSupported } from '../../../services/nativeAudio/capabilities';
 
 // src/components/command-palette/commands/settingsCommands.ts
 // Commands in the `settings` group: settings subviews, app toggles, theme, sync, and desktop-only switches.
 
 export const settingsCommands: CommandPaletteCommand[] = [
+    createToggleCommand('hqplayer-select-path', 'settings', 'Select HQPlayer program', 'Choose a Desktop executable when automatic connection fails',
+        ['hqplayer', 'path', '连接', '程序路径'], () => { void chooseHQPlayerPath(); }, { platform: ['win'], isAvailable: isNativeAudioSupported }),
+    createToggleCommand('hqplayer-reset-path', 'settings', 'Auto-detect HQPlayer', 'Restore automatic discovery of installed Desktop versions',
+        ['hqplayer', 'auto', '自动检测'], () => { void chooseHQPlayerPath(true); }, { platform: ['win'], isAvailable: isNativeAudioSupported }),
+    createToggleCommand('hqplayer-output-toggle', 'settings', 'Toggle HQPlayer output', 'Switch between HQPlayer and browser playback',
+        ['hqplayer', 'output', 'HQPlayer输出'], toggleHQPlayerOutput, { platform: ['win'], isAvailable: isNativeAudioSupported }),
+    createToggleCommand('hqplayer-remember-gain-toggle', 'settings', 'Remember HQPlayer gain', 'Remember gain adjustments reported by HQPlayer',
+        ['hqplayer', 'gain', '记住增益'], toggleHQPlayerRememberGain, { platform: ['win'], isAvailable: isNativeAudioSupported }),
+    createSettingsAnchorCommand('settings-hqplayer', 'HQPlayer Desktop', 'Configure HQPlayer output and gain headroom',
+        ['hqplayer', 'hifi', '升频', '增益', 'hq'], 'hqPlayerOutput',
+        { platform: ['electron'], isAvailable: isNativeAudioSupported }),
     createSettingsAnchorCommand('settings-native-audio', 'WASAPI / ASIO exclusive playback', 'Select WASAPI exclusive or ASIO output',
         ['wasapi', 'asio', 'sound card', '原生音频', '独占', '声卡'], 'nativeAudioOutput',
         { platform: ['win'], isAvailable: isNativeAudioSupported }),

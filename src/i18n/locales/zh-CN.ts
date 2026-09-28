@@ -1,7 +1,27 @@
 
 
 export default {
+  "hqPlayer": {
+  "selectPath": "选择程序路径…",
+  "resetPath": "恢复自动检测",
+  "customPath": "自定义程序路径",
+  "autoPath": "自动检测的程序",
+  "notFound": "未发现，请手动选择",
+  "nativeSelectorPlaceholder": "选择 WASAPI / ASIO 设备",
+  "activeOutput": "当前输出：HQPlayer。请在独立的 HQPlayer 设置项管理连接；选择下方设备将切换输出。",
+  "title": "HQPlayer 连接",
+  "description": "将完整准备的本地或在线音频交给 HQPlayer Desktop 解码和 DSP；Folia 同步播放控制和歌词，必要时后台启动 HQPlayer，退出时只关闭由 Folia 启动的实例。",
+  "installRequired": "请单独安装 HQPlayer Desktop 后刷新。此功能不依赖 WASAPI/ASIO 原生组件。",
+  "controlHint": "自动发现多个 Desktop 版本（含 6）。若连接失败，请启用 Allow control from network，或手动选择程序路径。输出设备与 DSP 在 HQPlayer 内配置；使用本机 4321 端口。",
+  "refresh": "刷新 HQPlayer 可用状态",
+  "enable": "使用 HQPlayer 输出",
+  "disable": "返回浏览器播放",
+  "gain": "HQPlayer 增益余量（dB）",
+  "gainDescription": "默认 −2 dB。播放器音量和 ReplayGain 继续参与增益计算，合并后的数字音量不超过 0 dB。",
+  "remember": "记忆在 HQPlayer 中调整的增益"
+},
   "signalPath": {
+    "hqProcessing": "由 HQPlayer 执行解码与 DSP",
     "preparing": "原生输出准备中", "conversion": "采样率转换", "gain": "ReplayGain／软件音量",
     "conversionUnknown": "未回报", "upsampling": "升频／调制", "downsampling": "降采样", "sameRate": "采样率未改变",
     "title": "音频链路", "close": "关闭音频链路", "unknown": "未回报",
@@ -21,7 +41,11 @@ export default {
         "rollback": "尝试上一版本组件"
     },
     "errors": {
-        "COMPONENT_CRASHED": "组件已意外退出。",
+        "HQPLAYER_PATH_INVALID": "所选路径不是有效的 HQPlayer Desktop 程序，请选择 HQPlayerDesktop.exe 或带版本号的 HQPlayer*Desktop.exe。", "HQPLAYER_UNAVAILABLE": "请先单独安装 HQPlayer Desktop，再刷新设置。",
+      "HQPLAYER_CONTROL_UNAVAILABLE": "HQPlayer 控制接口不可用。请启用 Allow control from network，或在“HQPlayer 连接”中选择程序路径。",
+      "HQPLAYER_COMMAND_REJECTED": "HQPlayer 拒绝了控制请求，请检查控制权限、许可证和当前状态。",
+      "HQPLAYER_SOURCE_REJECTED": "HQPlayer 无法接受此音源。",
+      "COMPONENT_CRASHED": "组件已意外退出。",
         "COMPONENT_TIMEOUT": "组件响应超时。",
         "COMPONENT_UNAVAILABLE": "请先安装并启用原生音频组件。",
         "COMPONENT_INTEGRITY": "组件完整性校验失败，请重新安装。",
@@ -420,6 +444,11 @@ export default {
       "ponder-hints-off": { "title": "思索提示：关闭", "description": "不再显示长按 G 的提示" },
       "ponder-touch-button-toggle": { "title": "触屏思索按钮", "description": "显示或隐藏触屏右上角那颗灯泡" },
       "settings-toggle-native-auto-fallback": {"title": "原生音频自动回退", "description": "组件崩溃或超时后返回浏览器播放"},
+      "hqplayer-output-toggle": {"title":"切换 HQPlayer 输出","description":"在 HQPlayer 与浏览器播放之间切换"},
+      "hqplayer-remember-gain-toggle": {"title":"记住 HQPlayer 增益","description":"记住 HQPlayer 回报的增益调整"},
+      "hqplayer-select-path": {"title":"选择 HQPlayer 程序","description":"自动连接失败时手动指定 Desktop 程序"},
+      "hqplayer-reset-path": {"title":"自动检测 HQPlayer","description":"恢复自动查找已安装的 Desktop 版本"},
+      "settings-hqplayer": {"title":"HQPlayer Desktop","description":"请在 HQPlayer 中启用 Allow control from network。输出设备和 DSP 参数仍在 HQPlayer 中配置；当前通过本机 4321 端口连接。"},
       "settings-native-audio": { "title": "WASAPI及ASIO独占播放", "description": "为本地文件和在线歌曲选择 WASAPI 独占或 ASIO 输出" },
       "native-audio-signal-path-toggle": { "title": "显示音频链路", "description": "开启或关闭原生音频链路显示" },
       "native-audio-integer-direct-toggle": { "title": "原生音频整数直通", "description": "开启或关闭 WASAPI 独占与兼容 ASIO 驱动的纯整数 PCM 链路" },

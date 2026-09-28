@@ -1,7 +1,27 @@
 
 
 export default {
+  "hqPlayer": {
+  "selectPath": "Pilih jalur program…",
+  "resetPath": "Pulihkan deteksi otomatis",
+  "customPath": "Jalur program khusus",
+  "autoPath": "Program terdeteksi otomatis",
+  "notFound": "Tidak ditemukan; pilih program secara manual",
+  "nativeSelectorPlaceholder": "Pilih perangkat WASAPI / ASIO",
+  "activeOutput": "Output saat ini: HQPlayer. Kelola koneksi di pengaturan HQPlayer. Memilih perangkat di bawah akan mengganti output.",
+  "title": "Koneksi HQPlayer",
+  "description": "Kirim audio lokal atau online yang telah disiapkan ke HQPlayer Desktop untuk dekode dan DSP. Folia menyinkronkan kontrol dan lirik, memulai HQPlayer di latar belakang bila perlu, dan hanya menutup instans yang dimulainya.",
+  "installRequired": "Pasang HQPlayer Desktop secara terpisah lalu segarkan. Fitur ini tidak memerlukan komponen WASAPI/ASIO.",
+  "controlHint": "Mendeteksi versi Desktop termasuk 6. Jika koneksi gagal, aktifkan Allow control from network atau pilih program secara manual. Atur perangkat dan DSP di HQPlayer; koneksi memakai port lokal 4321.",
+  "refresh": "Segarkan ketersediaan HQPlayer",
+  "enable": "Gunakan output HQPlayer",
+  "disable": "Kembali ke pemutaran browser",
+  "gain": "Headroom gain HQPlayer (dB)",
+  "gainDescription": "Default −2 dB. Volume pemutar dan ReplayGain tetap diterapkan; level digital gabungan tidak melebihi 0 dB.",
+  "remember": "Ingat perubahan gain dari HQPlayer"
+},
   "signalPath": {
+    "hqProcessing": "Dekode dan DSP di HQPlayer",
     "preparing": "Menyiapkan output asli",
     "conversion": "Konversi laju sampel",
     "gain": "ReplayGain / volume perangkat lunak",
@@ -28,7 +48,11 @@ export default {
         "rollback": "Coba versi komponen sebelumnya"
     },
     "errors": {
-        "COMPONENT_CRASHED": "Komponen berhenti secara tidak terduga.",
+        "HQPLAYER_PATH_INVALID": "Pilih program HQPlayerDesktop.exe atau HQPlayer*Desktop.exe dengan nomor versi yang valid.", "HQPLAYER_UNAVAILABLE": "Pasang HQPlayer Desktop lalu segarkan pengaturan.",
+      "HQPLAYER_CONTROL_UNAVAILABLE": "Kontrol HQPlayer tidak tersedia. Aktifkan Allow control from network atau pilih jalur program di pengaturan koneksi HQPlayer.",
+      "HQPLAYER_COMMAND_REJECTED": "HQPlayer menolak perintah. Periksa izin kontrol, lisensi, dan statusnya.",
+      "HQPLAYER_SOURCE_REJECTED": "HQPlayer menolak sumber audio ini.",
+      "COMPONENT_CRASHED": "Komponen berhenti secara tidak terduga.",
         "COMPONENT_TIMEOUT": "Komponen melewati batas waktu.",
         "COMPONENT_UNAVAILABLE": "Pasang dan aktifkan komponen audio asli terlebih dahulu.",
         "COMPONENT_INTEGRITY": "Verifikasi integritas komponen gagal. Pasang ulang komponen.",
@@ -426,6 +450,11 @@ export default {
       "ponder-hints-off": { "title": "Petunjuk Ponder: nonaktif", "description": "Jangan pernah tampilkan petunjuk tahan G" },
       "ponder-touch-button-toggle": { "title": "Tombol Ponder di layar sentuh", "description": "Tampilkan atau sembunyikan bohlam di sudut kanan atas pada perangkat sentuh" },
       "settings-toggle-native-auto-fallback": {"title": "Native audio auto fallback", "description": "Return to browser playback after component crash or timeout"},
+      "hqplayer-output-toggle": {"title":"Alihkan output HQPlayer","description":"Beralih antara HQPlayer dan pemutar browser"},
+      "hqplayer-remember-gain-toggle": {"title":"Ingat gain HQPlayer","description":"Ingat penyesuaian gain dari HQPlayer"},
+      "hqplayer-select-path": {"title":"Pilih program HQPlayer","description":"Pilih program Desktop jika koneksi otomatis gagal"},
+      "hqplayer-reset-path": {"title":"Deteksi otomatis HQPlayer","description":"Pulihkan deteksi versi Desktop terpasang"},
+      "settings-hqplayer": {"title":"HQPlayer Desktop","description":"Aktifkan Allow control from network di HQPlayer. Atur perangkat dan DSP di HQPlayer; koneksi memakai localhost port 4321."},
       "settings-native-audio": { "title": "Pemutaran eksklusif WASAPI / ASIO", "description": "Pilih WASAPI eksklusif atau ASIO untuk file lokal" },
       "native-audio-signal-path-toggle": { "title": "Tampilkan jalur audio", "description": "Aktifkan atau matikan tampilan jalur audio asli" },
       "native-audio-integer-direct-toggle": { "title": "Integer direct audio native", "description": "Aktifkan atau matikan jalur PCM integer untuk WASAPI eksklusif dan driver ASIO yang kompatibel" },

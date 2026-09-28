@@ -22,6 +22,7 @@ import { useThemeQuickEditorStore } from '../../../stores/useThemeQuickEditorSto
 import { usePlayerBottomBarLayoutStore } from '../../../stores/usePlayerBottomBarLayoutStore';
 import { PlayerState, type SongResult } from '../../../types';
 import { setPlayerState } from '../../../stores/usePlaybackStore';
+import { withHQPlayer } from '../../../services/nativeAudio/hqplayerSettings';
 import { withNativeAudioComponent } from '../../../services/nativeAudio/settingsGate';
 
 // src/components/app/command-palette-context/buildSettingsCommandContext.ts
@@ -154,7 +155,7 @@ export const buildSettingsCommandContext = (
             const state = useAudioSettingsStore.getState();
             state.handleSetNativeAudioAutoFallback(!state.nativeAudioAutoFallback);
         }),
-        toggleNativeAudioSignalPath: () => withNativeAudioComponent(() => {
+        toggleNativeAudioSignalPath: () => (useAudioSettingsStore.getState().nativeAudioBackend === 'hqplayer' ? withHQPlayer : withNativeAudioComponent)(() => {
             const state = useAudioSettingsStore.getState();
             state.handleSetShowAudioSignalPath(!state.showAudioSignalPath);
         }),

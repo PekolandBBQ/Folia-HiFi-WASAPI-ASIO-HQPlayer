@@ -188,7 +188,7 @@ export const useAudioSettingsStore = create<AudioSettingsState>((set, get) => ({
     neteaseScrobbleEnabled: getStoredBoolean(NETEASE_SCROBBLE_KEY, false),
     nativeAudioAutoFallback: getStoredBoolean('folia_native_audio_auto_fallback', true),
     handleSetNativeAudioAutoFallback: enabled => { setStoredBoolean('folia_native_audio_auto_fallback', enabled); set({ nativeAudioAutoFallback: enabled }); },
-    nativeAudioBackend: typeof localStorage !== 'undefined' && ['wasapi-exclusive', 'asio'].includes(localStorage.getItem('folia_native_audio_backend') || '')
+    nativeAudioBackend: typeof localStorage !== 'undefined' && ['wasapi-exclusive', 'asio', 'hqplayer'].includes(localStorage.getItem('folia_native_audio_backend') || '')
         ? localStorage.getItem('folia_native_audio_backend') as NativeAudioBackend : 'browser',
     nativeAudioDeviceId: typeof localStorage !== 'undefined' ? localStorage.getItem('folia_native_audio_device') || '' : '',
     showAudioSignalPath: getStoredBoolean('folia_show_audio_signal_path', false),

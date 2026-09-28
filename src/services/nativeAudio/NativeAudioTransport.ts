@@ -23,6 +23,17 @@ export class NativeAudioTransport extends EventTarget {
     private position = 0;
     private presentedTime = 0;
     private timestamp = 0;
+    private outputLatency = 0;
+    private hqplayerGainDb = -2;
+    private rememberHQPlayerGain = false;
+    private onHQPlayerGainObserved: (gainDb: number) => void = () => {};
+    setHQPlayerGainSettings(gainDb: number, remember: boolean, onObserved: (gainDb: number) => void) {
+        const changed = gainDb !== this.hqplayerGainDb;
+        this.hqplayerGainDb = gainDb; this.rememberHQPlayerGain = remember; this.onHQPlayerGainObserved = onObserved;
+        if (this.backend === 'hqplayer' && this.readyState && changed) {
+            void this.command('gain', { gainDb }).then(state => this.apply(state)).catch(error => this.fail(error));
+        }
+    }
     private level = 1;
     private replayGain = 1;
     setReplayGain(gain: number) {
@@ -46,7 +57,7 @@ export class NativeAudioTransport extends EventTarget {
     }
     get currentSrc() { return this.src; }
     get currentTime() {
-        const elapsed = this.paused || this.seeking ? 0 : Math.min(0.12, (performance.now() - this.timestamp) / 1000);
+        const elapsed = this.paused || this.seeking ? 0 : Math.min(this.backend === 'hqplayer' ? 2 : 0.12, (performance.now() - this.timestamp) / 1000);
         // IPC snapshots can lag the interpolated frame already shown. Hold that frame until
         // the device catches up; do not repeatedly rewind lyric animations on every packet.
         this.presentedTime = Math.max(this.presentedTime,
@@ -99,8 +110,8 @@ export class NativeAudioTransport extends EventTarget {
             const file = await this.getFile();
             signal.throwIfAborted();
             const state = file
-                ? await loadNativeLocalFile(this.api, session, file, this.backend, this.deviceId, signal, this.processingMode)
-                : await loadNativeOnlineSource(this.api, session, this.src, this.backend, this.deviceId, signal, this.processingMode);
+                ? await loadNativeLocalFile(this.api, session, file, this.backend, this.deviceId, signal, this.processingMode, this.hqplayerGainDb)
+                : await loadNativeOnlineSource(this.api, session, this.src, this.backend, this.deviceId, signal, this.processingMode, this.hqplayerGainDb);
             this.apply(state); this.readyState = 4;
             this.emit('loadedmetadata'); this.emit('loadeddata'); this.emit('canplay');
         })();
@@ -135,7 +146,7 @@ export class NativeAudioTransport extends EventTarget {
             if (revision === this.revision) this.apply(state);
         }).catch(error => this.fail(error));
     }
-    private command(action: string, values: { position?: number; volume?: number; gain?: number } = {}) {
+    private command(action: string, values: { position?: number; volume?: number; gain?: number; gainDb?: number } = {}) {
         const session = this.session;
         const run = this.queue.catch(() => {}).then(async () => {
             await this.loading;
@@ -160,20 +171,40 @@ export class NativeAudioTransport extends EventTarget {
     private apply(state: NativeAudioState) {
         if (state.session !== this.session) return;
         publishSignalPath(state);
-        if (this.ended && !state.ended) this.presentedTime = state.position;
-        this.position = state.position; this.timestamp = performance.now(); this.duration = state.duration;
+        const wasPaused = this.paused;
+        const now = performance.now();
+        const hqplayerStartupDelay = this.backend === 'hqplayer' && state.playing && state.position === 0
+            && state.latency > this.outputLatency + 0.01;
+        const hqplayerSeekDelay = this.backend === 'hqplayer' && this.seeking && state.playing && state.latency > 0;
+        const delayedHqplayerAnchor = hqplayerStartupDelay || hqplayerSeekDelay;
+        const repeatedHqplayerSample = this.backend === 'hqplayer' && state.playing && !wasPaused
+            && Math.abs(state.position - this.position) < 0.0005 && !delayedHqplayerAnchor;
+        const stoppedAtStart = !state.playing && !state.ended && state.position === 0;
+        if ((this.ended && !state.ended) || stoppedAtStart || delayedHqplayerAnchor) this.presentedTime = state.position;
+        this.position = state.position;
+        if (hqplayerSeekDelay || (hqplayerStartupDelay && wasPaused)) this.timestamp = now + state.latency * 1000;
+        else if (hqplayerStartupDelay) this.timestamp += (state.latency - this.outputLatency) * 1000;
+        else if (!repeatedHqplayerSample) this.timestamp = now;
+        this.duration = state.duration; this.outputLatency = state.latency;
         this.paused = !state.playing; this.ended = state.ended;
+        if (this.backend === 'hqplayer' && this.rememberHQPlayerGain && Number.isFinite(state.hqplayerGainDb)) {
+            const observed = Math.round(Math.max(-120, Math.min(0, state.hqplayerGainDb!)) * 10) / 10;
+            if (observed !== this.hqplayerGainDb) {
+                this.hqplayerGainDb = observed;
+                this.onHQPlayerGainObserved(observed);
+            }
+        }
     }
     private receive(event: NativeAudioEvent) {
         if (this.disposed || event.session !== this.session) return;
         if (event.event === 'error') { this.fail(Object.assign(new Error(event.errorCode || 'NATIVE_REQUEST_FAILED'), { code: event.errorCode })); return; }
         if (!event.state || this.seeking || (this.paused && event.state.playing)) return;
-        const wasEnded = this.ended;
+        const wasEnded = this.ended; const wasPaused = this.paused;
         this.apply(event.state); this.emit('timeupdate');
         if (this.ended && !wasEnded) {
             if (this.loop) { void this.play().catch(error => this.fail(error)); }
             else this.emit('ended');
-        }
+        } else if (!wasPaused && this.paused) this.emit('pause');
     }
     private fail(error: unknown) {
         if (this.disposed || (error instanceof DOMException && error.name === 'AbortError')) return;

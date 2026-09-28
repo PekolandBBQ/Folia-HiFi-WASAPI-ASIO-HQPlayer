@@ -1,4 +1,5 @@
 import React, { useLayoutEffect, useRef } from 'react';
+import { useHQPlayerSettingsStore } from '../../../stores/useHQPlayerSettingsStore';
 import { NativeAudioTransport } from '../../../services/nativeAudio/NativeAudioTransport';
 import type { NativeAudioBackend, NativeAudioProcessingMode } from '../../../types/nativeAudio';
 
@@ -17,6 +18,8 @@ const eventProps = {
 } as const;
 
 function NativeDeck(props: Props) {
+    const gainDb = useHQPlayerSettingsStore(state => state.gainDb);
+    const remember = useHQPlayerSettingsStore(state => state.remember);
     const latest = useRef(props);
     latest.current = props;
     const transport = useRef<NativeAudioTransport | null>(null);
@@ -29,6 +32,8 @@ function NativeDeck(props: Props) {
             transport.current?.dispose();
             const created = new NativeAudioTransport(window.electron!.nativeAudio!, props.nativeBackend,
                 props.nativeDeviceId, props.nativeProcessingMode, () => latest.current.getLocalFile());
+            const hq = useHQPlayerSettingsStore.getState();
+            created.setHQPlayerGainSettings(hq.gainDb, hq.remember, hq.setGain);
             transport.current = created;
             configuration.current = key;
             for (const [event, handler] of Object.entries(eventProps)) {
@@ -58,6 +63,9 @@ function NativeDeck(props: Props) {
         transport.current.loop = Boolean(props.loop);
         transport.current.setSource(props.src || '');
     }, [props.src, props.loop]);
+    useLayoutEffect(() => {
+        transport.current?.setHQPlayerGainSettings(gainDb, remember, useHQPlayerSettingsStore.getState().setGain);
+    }, [gainDb, remember]);
     return null;
 }
 

@@ -1,0 +1,11 @@
+{
+  "version": "0.7.9-exclusive.1",
+  "upstreamVersion": "0.7.9",
+  "profile": "FoliaExclusive",
+  "ffmpegSha256": "d28a1c5730520de13dfe947f39366032a77eee5c4ba7e78b63fd82e409294cfb",
+  "componentHashes": [
+    "4a8f4ba66f1d8cf772b8bc14056b884000d9c9ca6780164a3e5f318b02ba9cc6",
+    "7a9b24859ec74280357e1571892ad211eb1e55a2b989fe65bffa36b1e99a0f5f",
+    "e5d081a6115390ada67f912c2ab94ca3ccd685b2da5aef7bcaf47fa11487285a"
+  ]
+}

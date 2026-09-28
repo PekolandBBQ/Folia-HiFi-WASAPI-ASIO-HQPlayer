@@ -2,10 +2,10 @@ import type { NativeAudioApi, NativeAudioBackend, NativeAudioProcessingMode, Nat
 
 // src/services/nativeAudio/loadLocalFile.ts — stage a library File or an already-resolved cache blob in bounded chunks.
 export async function loadNativeLocalFile(api: NativeAudioApi, session: string, file: File,
-    backend: NativeAudioBackend, deviceId: string, signal: AbortSignal, processingMode: NativeAudioProcessingMode = 'compatibility'): Promise<NativeAudioState> {
+    backend: NativeAudioBackend, deviceId: string, signal: AbortSignal, processingMode: NativeAudioProcessingMode = 'compatibility', hqplayerGainDb = -2): Promise<NativeAudioState> {
     signal.throwIfAborted();
     const path = window.electron?.webUtils?.getPathForFile(file) || '';
-    await api.request({ action: 'begin', session, backend, deviceId, processingMode, ...(path ? { path } : {}) });
+    await api.request({ action: 'begin', session, backend, deviceId, processingMode, hqplayerGainDb, sourceName: file.name, mimeType: file.type, ...(path ? { path } : {}) });
     signal.throwIfAborted();
     if (!path) {
         // File System Access handles do not always expose an OS path. Bounded chunks keep a

@@ -9,21 +9,23 @@ const cleanups: Array<() => void> = [];
 afterEach(() => { cleanups.splice(0).forEach(cleanup => cleanup()); vi.clearAllMocks(); });
 const flush = () => new Promise(resolve => setTimeout(resolve, 0));
 
-function fixture() {
+function fixture(backend: 'asio' | 'hqplayer' = 'asio', rememberGain = false, onGain = vi.fn()) {
     let listener: (event: NativeAudioEvent) => void = () => {};
     let state: NativeAudioState = { session: '', position: 0, duration: 10, playing: false, ended: false,
-        sampleRate: 48000, channels: 2, latency: 0.02, backend: 'asio', deviceId: 'test' };
-    const request = vi.fn(async ({ action, position, session }: Parameters<NativeAudioApi['request']>[0]) => {
+        sampleRate: 48000, channels: 2, latency: backend === 'hqplayer' ? 0 : 0.02, backend, deviceId: 'test' };
+    const request = vi.fn(async ({ action, position, session, gainDb }: Parameters<NativeAudioApi['request']>[0]) => {
         if (action === 'stop') return {};
         if (session !== state.session) throw new Error('Stale playback session');
         if (action === 'play') state = { ...state, playing: true, ended: false, position: state.ended ? 0 : state.position };
         if (action === 'pause') state = { ...state, playing: false };
         if (action === 'seek') state = { ...state, position: position!, ended: false };
+        if (action === 'gain') state = { ...state, hqplayerGainDb: gainDb };
         return { ...state };
     });
     const api: NativeAudioApi = { supported: true, request, onEvent: fn => { listener = fn; return vi.fn(); } };
     mocks.load.mockImplementation(async (_api, session) => { state = { ...state, session, position: 0, playing: false }; return { ...state }; });
-    const transport = new NativeAudioTransport(api, 'asio', 'test', 'compatibility', async () => new File(['audio'], 'song.flac'));
+    const transport = new NativeAudioTransport(api, backend, 'test', 'compatibility', async () => new File(['audio'], 'song.flac'));
+    transport.setHQPlayerGainSettings(-2, rememberGain, onGain);
     cleanups.push(() => transport.dispose());
     const send = (patch: Partial<NativeAudioState>) => {
         state = { ...state, ...patch };
@@ -33,6 +35,41 @@ function fixture() {
 }
 
 describe('native transport', () => {
+    it('keeps the HQPlayer clock linear between its one-second position steps', async () => {
+        let now = 0;
+        const clock = vi.spyOn(performance, 'now').mockImplementation(() => now);
+        try {
+            const { transport, send } = fixture('hqplayer');
+            transport.setSource('blob:hqplayer'); await flush(); await transport.play();
+            now = 100; send({ position: 0, playing: true, latency: 1 });
+            for (now = 200; now <= 800; now += 200) send({ position: 0, playing: true, latency: 1 });
+            now = 900; expect(transport.currentTime).toBe(0);
+            now = 2000; expect(transport.currentTime).toBeCloseTo(1, 3);
+            now = 2133; send({ position: 1.133, playing: true, latency: 1 });
+            now = 2500; send({ position: 1.133, playing: true, latency: 1 });
+            expect(transport.currentTime).toBeCloseTo(1.5, 3);
+        } finally { clock.mockRestore(); }
+    });
+    it('treats an external HQPlayer stop as pause at the beginning, not track completion', async () => {
+        const { transport, send } = fixture('hqplayer');
+        const ended = vi.fn(); const paused = vi.fn();
+        transport.addEventListener('ended', ended); transport.addEventListener('pause', paused);
+        transport.setSource('blob:hqplayer'); await flush(); await transport.play();
+        send({ position: 12, duration: 180, playing: true, ended: false });
+        send({ position: 0, duration: 180, playing: false, ended: false });
+        expect(transport.currentTime).toBe(0); expect(transport.paused).toBe(true);
+        expect(paused).toHaveBeenCalledTimes(1); expect(ended).not.toHaveBeenCalled();
+    });
+    it('applies live HQPlayer gain changes and remembers gain reported by Desktop', async () => {
+        const observed = vi.fn();
+        const { transport, request, send } = fixture('hqplayer', true, observed);
+        transport.setSource('blob:hqplayer'); await flush();
+        transport.setHQPlayerGainSettings(-3, true, observed); await flush();
+        expect(request).toHaveBeenCalledWith(expect.objectContaining({ action: 'gain', gainDb: -3 }));
+        send({ hqplayerGainDb: -4.5 });
+        expect(observed).toHaveBeenCalledWith(-4.5);
+    });
+
     it('reloads an errored native source when provider refresh returns the same URL', async () => {
         const { transport, event, state } = fixture();
         transport.setSource('blob:same'); await flush();

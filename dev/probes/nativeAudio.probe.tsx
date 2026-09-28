@@ -2,6 +2,7 @@ import SignalPath from '../../src/components/audio/SignalPath';
 import { usePlaybackStore } from '../../src/stores/usePlaybackStore';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { motion, useMotionValue, useTransform } from 'framer-motion';
+import HQPlayerSettingsSection from '../../src/components/modal/settings/HQPlayerSettingsSection';
 import NativeAudioSettingsSection from '../../src/components/modal/settings/NativeAudioSettingsSection';
 import PlaybackDeck from '../../src/components/app/playback/PlaybackDeck';
 import { useAudioSettingsStore } from '../../src/stores/useAudioSettingsStore';
@@ -22,7 +23,7 @@ function silentLocalFile() {
     view.setUint16(34, 24, true); text(36, 'data'); view.setUint32(40, size, true);
     return new File([bytes], 'silence.wav', { type: 'audio/wav' });
 }
-function NativeAudioProbe() {
+function NativeAudioProbe({ hqplayer = false }: { hqplayer?: boolean } = {}) {
     const sourceKind = new URLSearchParams(location.search).get('sourceKind');
     const remoteUrl = new URLSearchParams(location.search).get('audioUrl');
     const backend = useAudioSettingsStore(state => state.nativeAudioBackend);
@@ -56,6 +57,7 @@ function NativeAudioProbe() {
     const clock = useMotionValue(0);
     const label = useTransform(clock, value => value.toFixed(2));
     return <div className="mx-auto max-w-xl space-y-5 p-8" style={{ color: 'var(--text-primary)' }}>
+        {hqplayer && <HQPlayerSettingsSection className="border-white/20" />}
         <NativeAudioSettingsSection isDaylight={false} theme={DEFAULT_THEME} className="rounded-xl border border-white/20 p-5" />
         <PlaybackDeck register={register} nativeBackend={backend} nativeDeviceId={device} src={source}
             nativeProcessingMode={processingMode}

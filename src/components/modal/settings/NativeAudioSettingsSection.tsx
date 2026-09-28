@@ -68,13 +68,13 @@ export default function NativeAudioSettingsSection({ isDaylight, theme, classNam
     };
     useEffect(() => { if (supported) void refresh(); }, [supported]);
     if (!supported) return null;
-    const value = backend === 'browser' ? 'browser' : JSON.stringify([backend, deviceId]);
+    const value = backend === 'hqplayer' ? '' : backend === 'browser' ? 'browser' : JSON.stringify([backend, deviceId]);
     const options = [
         { value: 'browser', label: t('nativeAudio.browser') },
         ...devices.map(device => ({ value: JSON.stringify([device.backend, device.id]),
             label: `${device.backend === 'asio' ? 'ASIO' : t('nativeAudio.wasapi')} — ${device.name}` })),
     ];
-    if (!options.some(option => option.value === value)) options.push({ value, label: t('nativeAudio.savedUnavailable') });
+    if (backend !== 'hqplayer' && !options.some(option => option.value === value)) options.push({ value, label: t('nativeAudio.savedUnavailable') });
     return <SettingsAnchor anchorId="nativeAudioOutput" label={t('nativeAudio.title')}>
         <SettingsSectionHeading icon={AudioLines} label={t('nativeAudio.title')} />
         <div className={`p-4 rounded-xl border ${className}`} style={{ color: 'var(--text-primary)' }}>
@@ -97,8 +97,9 @@ export default function NativeAudioSettingsSection({ isDaylight, theme, classNam
             {component.version && <span>v{component.version}</span>}
         </div>
         <p className="my-3 text-xs opacity-70">{t('nativeAudio.description')}</p>
+        {backend === 'hqplayer' && <p className="mb-3 text-xs">{t('hqPlayer.activeOutput')}</p>}
         <CustomSelect value={value} options={options} isDaylight={isDaylight} theme={theme}
-            ariaLabel={t('nativeAudio.title')} disabled={busy}
+            ariaLabel={t('nativeAudio.title')} placeholder={t('hqPlayer.nativeSelectorPlaceholder')} disabled={busy}
             onChange={next => {
                 const [mode, id] = next === 'browser' ? ['browser', ''] : JSON.parse(next) as [NativeAudioBackend, string];
                 const change = () => { setError(''); setPlayerState(PlayerState.PAUSED); apply(mode as NativeAudioBackend, id); };

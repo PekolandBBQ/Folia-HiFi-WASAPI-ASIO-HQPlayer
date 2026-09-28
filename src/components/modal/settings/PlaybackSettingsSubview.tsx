@@ -9,6 +9,7 @@ import { LYRIC_MATCH_SOURCES } from '../../../utils/lyrics/lyricMatchSources';
 import { getLyricProviderPreferenceLabel } from '../../../utils/lyrics/lyricSourceLabels';
 import TransitionSettingsSection from './TransitionSettingsSection';
 import LocalLyricFormatOrderSetting from './LocalLyricFormatOrderSetting';
+import HQPlayerSettingsSection from './HQPlayerSettingsSection';
 import NativeAudioSettingsSection from './NativeAudioSettingsSection';
 import { SettingsAnchor } from './navigation/SettingsAnchorContext';
 import SettingsSectionHeading from './navigation/SettingsSectionHeading';
@@ -485,6 +486,7 @@ const PlaybackSettingsSubview: React.FC<PlaybackSettingsSubviewProps> = ({
                     )}
                 </div>
             </SettingsAnchor>
+            <HQPlayerSettingsSection className={settingsCardClass} />
             <NativeAudioSettingsSection isDaylight={isDaylight} theme={theme} className={settingsCardClass} />
         </div>
     );

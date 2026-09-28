@@ -35,6 +35,7 @@ export const SETTINGS_ANCHOR_DEFINITIONS = {
     replayGainSettings: { section: 'playback', labelKey: 'options.replayGainSettings' },
     lyrics: { section: 'playback', labelKey: 'options.lyrics' },
     audioOutputSettings: { section: 'playback', labelKey: 'options.audioOutputSettings' },
+    hqPlayerOutput: { section: 'playback', labelKey: 'hqPlayer.title', electronOnly: true, isAvailable: isNativeAudioSupported },
     nativeAudioOutput: { section: 'playback', labelKey: 'nativeAudio.title', electronOnly: true, isAvailable: isNativeAudioSupported },
 
     // InteractionSettingsSubview

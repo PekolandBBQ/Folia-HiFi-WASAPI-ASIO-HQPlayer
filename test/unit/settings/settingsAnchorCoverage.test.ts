@@ -53,6 +53,7 @@ describe('settings section anchors', () => {
             ['replayGainSettings', 'anchorId="replayGainSettings"'],
             ['lyrics', 'anchorId="lyrics"'],
             ['audioOutputSettings', 'anchorId="audioOutputSettings"'],
+            ['hqPlayerOutput', '<HQPlayerSettingsSection'],
             ['nativeAudioOutput', '<NativeAudioSettingsSection'],
         ]
             .map(([id, marker]) => {

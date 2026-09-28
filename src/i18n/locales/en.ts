@@ -1,7 +1,27 @@
 
 
 export default {
+  "hqPlayer": {
+  "selectPath": "Choose program path…",
+  "resetPath": "Restore automatic detection",
+  "customPath": "Custom program path",
+  "autoPath": "Automatically detected program",
+  "notFound": "Not found; choose a program manually",
+  "nativeSelectorPlaceholder": "Select a WASAPI / ASIO device",
+  "activeOutput": "Current output: HQPlayer. Manage the connection in the separate HQPlayer settings. Selecting a device below switches output.",
+  "title": "HQPlayer connection",
+  "description": "Hand prepared local and online audio to HQPlayer Desktop for decoding and DSP. Folia synchronizes playback and lyrics, starts HQPlayer in the background if needed, and closes only the instance it launched.",
+  "installRequired": "Install HQPlayer Desktop separately, then refresh. This feature does not require the WASAPI/ASIO component.",
+  "controlHint": "Detects installed Desktop versions, including 6. If connection fails, enable Allow control from network or choose the executable manually. Configure the device and DSP in HQPlayer; the connection uses localhost port 4321.",
+  "refresh": "Refresh HQPlayer availability",
+  "enable": "Use HQPlayer output",
+  "disable": "Return to browser playback",
+  "gain": "HQPlayer gain headroom (dB)",
+  "gainDescription": "Default −2 dB. Player volume and ReplayGain apply additional gain; the combined digital level never exceeds 0 dB.",
+  "remember": "Remember gain changes made in HQPlayer"
+},
   "signalPath": {
+    "hqProcessing": "Decoding and DSP in HQPlayer",
     "preparing": "Preparing native output", "conversion": "Sample-rate conversion", "gain": "ReplayGain / software volume",
     "conversionUnknown": "Not reported", "upsampling": "Upsampling / modulation", "downsampling": "Downsampling", "sameRate": "Unchanged sample rate",
     "title": "Signal path", "close": "Close signal path", "unknown": "Not reported",
@@ -21,7 +41,11 @@ export default {
         "rollback": "Try previous component version"
     },
     "errors": {
-        "COMPONENT_CRASHED": "The component exited unexpectedly.",
+        "HQPLAYER_PATH_INVALID": "Choose a valid HQPlayerDesktop.exe or versioned HQPlayer*Desktop.exe executable.", "HQPLAYER_UNAVAILABLE": "Install HQPlayer Desktop and refresh its settings.",
+      "HQPLAYER_CONTROL_UNAVAILABLE": "HQPlayer control is unavailable. Enable Allow control from network, or choose the program path in HQPlayer connection settings.",
+      "HQPLAYER_COMMAND_REJECTED": "HQPlayer rejected the command. Check its control access, license and current state.",
+      "HQPLAYER_SOURCE_REJECTED": "HQPlayer rejected this audio source.",
+      "COMPONENT_CRASHED": "The component exited unexpectedly.",
         "COMPONENT_TIMEOUT": "The component timed out.",
         "COMPONENT_UNAVAILABLE": "Install and enable the native audio component first.",
         "COMPONENT_INTEGRITY": "Component integrity verification failed. Reinstall it.",
@@ -420,6 +444,11 @@ export default {
       "ponder-hints-off": { "title": "Ponder hints: off", "description": "Never show the hold-G hint" },
       "ponder-touch-button-toggle": { "title": "Ponder button on touch", "description": "Show or hide the lightbulb in the top-right corner on touch devices" },
       "settings-toggle-native-auto-fallback": {"title": "Native audio auto fallback", "description": "Return to browser playback after component crash or timeout"},
+      "hqplayer-output-toggle": {"title":"Toggle HQPlayer output","description":"Switch between HQPlayer and browser playback"},
+      "hqplayer-remember-gain-toggle": {"title":"Remember HQPlayer gain","description":"Remember gain adjustments reported by HQPlayer"},
+      "hqplayer-select-path": {"title":"Select HQPlayer program","description":"Choose a Desktop executable when automatic connection fails"},
+      "hqplayer-reset-path": {"title":"Auto-detect HQPlayer","description":"Restore automatic discovery of installed Desktop versions"},
+      "settings-hqplayer": {"title":"HQPlayer Desktop","description":"Enable Allow control from network in HQPlayer. Configure its output device and DSP in HQPlayer; this integration uses localhost port 4321."},
       "settings-native-audio": { "title": "WASAPI / ASIO exclusive playback", "description": "Select WASAPI exclusive or ASIO output for local files and online tracks" },
       "native-audio-signal-path-toggle": { "title": "Show audio signal path", "description": "Toggle the native audio signal path display" },
       "native-audio-integer-direct-toggle": { "title": "Native audio integer direct", "description": "Toggle the integer-only PCM path for WASAPI exclusive and compatible ASIO drivers" },

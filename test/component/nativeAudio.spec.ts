@@ -25,6 +25,13 @@ test.beforeEach(async ({ page }) => {
                 request: async (request: Record<string, unknown>) => {
                     requests.push(request);
                     if (request.action === 'component-rollback') return { ok: true };
+                    if (request.action === 'hqplayer-status') return { available: localStorage.getItem('hqplayer_installed') === 'true' || Boolean(localStorage.getItem('hqplayer_mock_path')), custom: Boolean(localStorage.getItem('hqplayer_mock_path')), executablePath: localStorage.getItem('hqplayer_mock_path') || '' };
+                    if (request.action === 'hqplayer-select-executable') {
+                        if (localStorage.getItem('hqplayer_mock_cancel') === 'true') return { canceled: true };
+                        localStorage.setItem('hqplayer_mock_path', 'C:/HQPlayer 5 Desktop/HQPlayer5Desktop.exe');
+                        return { canceled: false, available: true, custom: true, executablePath: localStorage.getItem('hqplayer_mock_path') };
+                    }
+                    if (request.action === 'hqplayer-reset-executable') { localStorage.removeItem('hqplayer_mock_path'); return { canceled: false, available: false, custom: false }; }
                     if (request.action === 'status') return { supported: true, ...component, version: component.installed ? '0.1.0' : undefined };
                     if (request.action === 'component-uninstall') { component.available = false; component.installed = false; return { ok: true }; }
                     if (request.action === 'component-install') {
@@ -122,7 +129,8 @@ for (const platform of ['darwin', 'linux', 'win32']) {
             localStorage.setItem('native_probe_platform', platform);
             localStorage.setItem('native_probe_supported', platform === 'win32' ? 'false' : 'true');
         }, platform);
-        await mount('nativeAudio');
+        await mount('nativeAudio', { hqplayer: true });
+        await expect(page.getByRole('button', { name: 'Use HQPlayer output' })).toHaveCount(0);
         await expect(page.getByRole('button', { name: 'WASAPI / ASIO exclusive playback' })).toHaveCount(0);
         await expect(page.getByRole('switch', { name: 'Integer direct (experimental)' })).toHaveCount(0);
         await expect(page.getByRole('switch', { name: 'Show audio signal path' })).toHaveCount(0);
@@ -250,4 +258,47 @@ test('signal path is optional, reports source resolution, and responds to narrow
     await page.screenshot({ path: 'test-results/native-signal-path-narrow.png' });
     await page.keyboard.press('Escape');
     await expect(panel).toHaveCount(0);
+});
+
+for (const installed of [false, true]) {
+    test('HQPlayer dependency independent of disabled native component: installed=' + installed, async ({ mount, page }) => {
+        await page.addInitScript(value => {
+            localStorage.setItem('folia_native_audio_backend', 'browser');
+            localStorage.setItem('hqplayer_installed', String(value));
+        }, installed);
+        await mount('nativeAudio', { hqplayer: true });
+        await page.getByRole('button', { name: 'Disable component', exact: true }).click();
+        const hq = page.locator('#settings-hqPlayerOutput');
+        await hq.getByRole('button', { name: 'Use HQPlayer output', exact: true }).click();
+        if (installed) {
+            await expect(hq.getByRole('button', { name: 'Return to browser playback', exact: true })).toBeVisible();
+            await expect.poll(() => page.evaluate(() => localStorage.getItem('folia_native_audio_backend'))).toBe('hqplayer');
+            await hq.getByRole('switch', { name: 'Show audio signal path' }).click();
+            await expect(hq.getByRole('switch', { name: 'Show audio signal path' })).toBeChecked();
+            await page.getByRole('button', { name: 'WASAPI / ASIO exclusive playback', exact: true }).click();
+            await expect(page.getByRole('option').filter({ hasText: 'HQPlayer' })).toHaveCount(0);
+            await expect(page.getByRole('button', { name: 'WASAPI / ASIO exclusive playback', exact: true })).toContainText('Select a WASAPI / ASIO device');
+        } else {
+            await expect(hq.getByRole('status')).toContainText('Install HQPlayer');
+            await expect(hq.getByRole('spinbutton')).toBeDisabled();
+            expect(await page.evaluate(() => localStorage.getItem('folia_native_audio_backend'))).toBe('browser');
+        }
+    });
+}
+
+test('HQPlayer offers a manual path when automatic discovery fails and preserves cancellation', async ({ mount, page }) => {
+    await page.addInitScript(() => { localStorage.setItem('folia_native_audio_backend', 'browser'); localStorage.setItem('hqplayer_mock_cancel','true'); });
+    await mount('nativeAudio', { hqplayer: true });
+    const hq=page.locator('#settings-hqPlayerOutput');
+    await expect(hq.getByRole('status')).toContainText('Install HQPlayer');
+    await hq.getByRole('button', { name: 'Choose program path…', exact:true }).click();
+    await expect(hq.getByTestId('hqplayer-program-path')).toContainText('Not found');
+    await page.evaluate(()=>localStorage.setItem('hqplayer_mock_cancel','false'));
+    await hq.getByRole('button', { name: 'Choose program path…', exact:true }).click();
+    await expect(hq.getByTestId('hqplayer-program-path')).toContainText('HQPlayer5Desktop.exe');
+    await expect(hq.getByRole('spinbutton')).toBeEnabled();
+    expect(await page.evaluate(()=>localStorage.getItem('folia_native_audio_backend'))).toBe('browser');
+    await hq.getByRole('button', { name: 'Restore automatic detection', exact:true }).click();
+    await expect(hq.getByTestId('hqplayer-program-path')).toContainText('Not found');
+    await expect(hq.getByRole('spinbutton')).toBeDisabled();
 });
