@@ -82,7 +82,18 @@ function createComponentManager({ app, catalogPath, fetchImpl = fetch }) {
             staging = await fs.mkdtemp(path.join(directory, '.install-'));
             for (const [name, bytes] of Object.entries(files)) await fs.writeFile(path.join(staging, name), bytes);
             const destination = path.join(directory, `${release.version}-${release.sha256.slice(0, 12)}`);
-            try { await fs.rename(staging, destination); staging = null; }
+            try {
+                // Windows can briefly hold newly extracted executables. Retry only sharing/access
+                // failures, with a fixed ceiling; persistent locks still leave activation unchanged.
+                for (let attempt = 0; ; attempt++) {
+                    try { await fs.rename(staging, destination); break; }
+                    catch (error) {
+                        if (attempt >= 5 || !['EBUSY', 'EPERM', 'EACCES'].includes(error.code)) throw error;
+                        await new Promise(resolve => setTimeout(resolve, 100 * (attempt + 1)));
+                    }
+                }
+                staging = null;
+            }
             catch (error) {
                 // Reinstall never replaces an executable that might still be mapped by a process.
                 // Preserve the original Windows rename failure if no valid destination exists.

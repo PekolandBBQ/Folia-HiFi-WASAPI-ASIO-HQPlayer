@@ -25,6 +25,19 @@ async function fixture() {
     return { manager: createComponentManager({ app, catalogPath }), directory, archive, catalog, release, catalogPath, app };
 }
 describe('optional component activation', () => {
+    it('recovers from a transient Windows extraction lock before activation', async () => {
+        const { manager } = await fixture();
+        const fs = createRequire(import.meta.url)('node:fs/promises');
+        const rename = fs.rename;
+        let attempts = 0;
+        fs.rename = async (from: string, to: string) => {
+            if (path.basename(from).startsWith('.install-') && ++attempts < 3)
+                throw Object.assign(new Error('temporary sharing lock'), { code: 'EPERM' });
+            return rename(from, to);
+        };
+        try { expect((await manager.install()).available).toBe(true); expect(attempts).toBe(3); }
+        finally { fs.rename = rename; }
+    });
     it('preserves the original staging rename error and permits a later retry', async () => {
         const { manager } = await fixture();
         const fs = createRequire(import.meta.url)('node:fs/promises');

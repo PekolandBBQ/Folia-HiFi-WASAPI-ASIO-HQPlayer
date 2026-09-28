@@ -57,7 +57,7 @@ async function main() {
             if (scenario === 'staging-cleanup-locked') {
                 fs.rename = async (from, to) => {
                     if (path.basename(from).startsWith('.install-')) {
-                        unlock = await lock(path.join(from, 'folia-audio.exe'));
+                        if (!unlock) unlock = await lock(path.join(from, 'folia-audio.exe'));
                         return originalRename(from, to); // Windows rejects renaming the locked staging tree.
                     }
                     return originalRename(from, to);
