@@ -56,4 +56,3 @@ async function main() {
     console.log(JSON.stringify({ output, version: release.version, componentVersions: releases.map(r => r.version) }));
 }
 main().catch(error => { console.error(error); process.exitCode = 1; });
-

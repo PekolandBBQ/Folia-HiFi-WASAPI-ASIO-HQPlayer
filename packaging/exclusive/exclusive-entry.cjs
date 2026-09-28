@@ -49,4 +49,3 @@ const Store = require('electron-store').default || require('electron-store');
 const store = new Store({ projectName: 'Folia' });
 store.set('ENABLE_UPDATE_CHECK', false); store.set('ENABLE_AUTO_UPDATE', false);
 require('./main.cjs');
-
