@@ -20,8 +20,10 @@ async function expandBar(page: Page): Promise<Locator> {
 
 /** 把指针移到标题区右侧感应区（箭头附近但不在箭头上） */
 async function hoverNextZone(page: Page, titleArea: Locator): Promise<void> {
-    const box = (await titleArea.boundingBox())!;
-    await page.mouse.move(box.x + box.width - 8, box.y + box.height / 2);
+    // The expanded bar can still be moving. Locator hover waits for its actual hit area to settle.
+    const zone = titleArea.getByRole('button', { name: 'Next track' }).locator('..');
+    const box = (await zone.boundingBox())!;
+    await zone.hover({ position: { x: box.width - 8, y: box.height / 2 } });
 }
 
 /** 采样当前标题层在一段时间内出现过的横向位移，用来判断有没有播方向性入场动画 */

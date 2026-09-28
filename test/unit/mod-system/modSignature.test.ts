@@ -134,7 +134,9 @@ describe('signed digest and message (shared vector)', () => {
 
     it('refuses trees that cannot hash the same on every machine', () => {
         const dir = writeVectorTree();
-        fs.symlinkSync('client.mjs', path.join(dir, 'link.mjs'));
+        // Junctions exercise the same real lstat rejection without Windows symlink privileges.
+        if (process.platform === 'win32') fs.symlinkSync(path.join(dir, 'lib'), path.join(dir, 'link'), 'junction');
+        else fs.symlinkSync('client.mjs', path.join(dir, 'link.mjs'));
         expect(computeSignedDigest(dir)).toBeNull();
     });
 });
