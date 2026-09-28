@@ -202,13 +202,13 @@ const createTranscodeService = ({ app, protocol, net, spawnProcess, onCacheWrite
             let outputBytes = 0;
             let tolerant = false;
             try {
-                ({ size: outputBytes, tolerant } = await transcodeAudioFile({ executable, inputPath, outputPath, format, signal: controller.signal, spawnProcess }));
+                ({ size: outputBytes, tolerant } = await transcodeAudioFile({ executable, inputPath, outputPath, format, signal: controller.signal, spawnProcess, parallel: true }));
             } catch (error) {
                 if (!shouldUseWavFallback(error)) throw error;
                 log('warn', 'wav-fallback', { cacheKey: logId });
                 format = 'wav';
                 outputPath = path.join(jobDirectory, 'output.wav');
-                ({ size: outputBytes, tolerant } = await transcodeAudioFile({ executable, inputPath, outputPath, format, signal: controller.signal, spawnProcess }));
+                ({ size: outputBytes, tolerant } = await transcodeAudioFile({ executable, inputPath, outputPath, format, signal: controller.signal, spawnProcess, parallel: true }));
             }
             const entry = await publishCacheEntry({
                 cacheDirectory,

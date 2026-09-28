@@ -69,18 +69,53 @@ const validateArgs = outputPath => [
     '-i', outputPath, '-map', '0:a:0', '-f', 'null', '-',
 ];
 
-const transcodeAudioFile = async ({ executable, inputPath, outputPath, format, signal, spawnProcess }) => {
+const isDecodeCorruption = error => error?.code === 'FFMPEG_FAILED'
+    && /(?:invalid sync code|invalid frame header|error (?:while )?decoding|corrupt(?:ed)? (?:frame|packet)|crc mismatch)/i.test(error.message);
+
+// Only recovery jobs opt in: two encodes share one input, strict success wins, cancellation
+// stops both. The speculative file can never overwrite strict output before its verdict.
+async function encodeInParallel({ executable, inputPath, outputPath, format, signal, spawnProcess }) {
+    const controller = new AbortController();
+    const abort = () => controller.abort();
+    signal?.addEventListener('abort', abort, { once: true });
+    if (signal?.aborted) controller.abort();
+    const speculativePath = `${outputPath}.tolerant`;
+    const strict = runProcess({ executable, args: encodeArgs(inputPath, outputPath, format), signal, spawnProcess });
+    const speculative = runProcess({ executable, args: encodeArgs(inputPath, speculativePath, format, true), signal: controller.signal, spawnProcess })
+        .then(() => ({ ok: true }), error => ({ ok: false, error }));
+    try {
+        try { await strict; controller.abort(); await speculative; return false; }
+        catch (error) {
+            if (signal?.aborted || !isDecodeCorruption(error)) throw error;
+            const result = await speculative;
+            if (!result.ok) throw result.error;
+            if (signal?.aborted) throw Object.assign(new Error('Transcode cancelled'), { code: 'CANCELLED' });
+            await fs.promises.rename(speculativePath, outputPath);
+            console.info('[TranscodeFallback]', 'tolerant-parallel-selected', { format });
+            return true;
+        }
+    } finally {
+        controller.abort(); await speculative;
+        signal?.removeEventListener('abort', abort);
+        await fs.promises.rm(speculativePath, { force: true }).catch(() => {});
+    }
+}
+
+const transcodeAudioFile = async ({ executable, inputPath, outputPath, format, signal, spawnProcess, parallel = false }) => {
     let tolerant = false;
+    if (parallel) {
+        tolerant = await encodeInParallel({ executable, inputPath, outputPath, format, signal, spawnProcess });
+    } else {
     try {
         await runProcess({ executable, args: encodeArgs(inputPath, outputPath, format), signal, spawnProcess });
     } catch (error) {
         // Retry only decode corruption, using the same downloaded bytes. Cancellation, missing
         // encoders, disk failures and invalid output must never turn into a second encode loop.
-        if (signal?.aborted || error.code !== 'FFMPEG_FAILED'
-            || !/(?:invalid sync code|invalid frame header|error (?:while )?decoding|corrupt(?:ed)? (?:frame|packet)|crc mismatch)/i.test(error.message)) throw error;
+        if (signal?.aborted || !isDecodeCorruption(error)) throw error;
         tolerant = true;
         console.info('[TranscodeFallback]', 'tolerant-decode-retry', { format });
         await runProcess({ executable, args: encodeArgs(inputPath, outputPath, format, true), signal, spawnProcess });
+    }
     }
     const stat = await fs.promises.stat(outputPath);
     if (!stat.isFile() || stat.size < 128) {
