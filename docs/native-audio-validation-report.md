@@ -1,5 +1,9 @@
 # Windows 原生音频专项验证报告
 
+> **当前状态更新（2026-09-27）：** 已按审计补测，并发现修正相同 URL 恢复和发布门禁问题。最新结果、实际进程故障恢复、Navidrome 输入文件校验及未关闭项见 [补测报告](native-audio-validation-supplement.md)。下文是首轮组件 0.1.1 的历史明细；其中“过期恢复”是模块级串联，恢复 UI 主要是模拟桥接，不应误读为本轮真实 App 覆盖。A/B/C 后续已于 2026-09-28 迁移修正并分别复测；见 [后续验证报告](native-audio-validation-remaining.md)。
+>
+> **Current update:** see the supplemental report for live App evidence, fixes and open issues. The following is the historical 0.1.1 report. Its expiry orchestration was module-level and recovery UI primarily mocked; the split branches are previous snapshots.
+
 日期：2026-09-27。基础：Folia 0.7.8 / `d2b8467`，工作分支 `codex/native-component-stage1`；独立组件 0.1.1、协议 v1。此报告记录本机候选实现，不代表作者批准、正式发布或所有设备兼容。
 
 Date: 2026-09-27. Local review candidate based on Folia 0.7.8; component 0.1.1, protocol v1. This is not upstream approval or a production release.
