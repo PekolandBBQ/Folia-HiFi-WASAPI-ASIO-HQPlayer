@@ -74,6 +74,12 @@ export type CommandPaletteCommand = {
     getPreview?: (input: string, context: CommandPaletteContext) => string | null;
     queueIndex?: number;
     queueSong?: SongResult;
+    /**
+     * Where in the options tab this command lands, set by the settings factories. The settings
+     * sidebar search reads it to reuse the command's titles, synonyms and pinyin as extra ways to
+     * find that section.
+     */
+    settingsTarget?: { subview: SettingsSubviewId; anchorId?: SettingsAnchorId };
     execute: (input: string, context: CommandPaletteContext) => Promise<boolean> | boolean;
 };
 
@@ -318,6 +324,8 @@ export type CommandPaletteVisualizerContext = {
     visualizerBackgroundMode: VisualizerBackgroundMode | null;
     setVisualizerMode: (mode: VisualizerMode) => void;
     toggleRandomVisualizerModePerSong: () => void;
+    /** Lab > Fix lyric animation freeze on Linux: the Linux renderer fd leak workaround. */
+    toggleGlowBlurQuantize: () => void;
     setVisualizerBackgroundMode: (mode: VisualizerBackgroundMode) => void;
     setMonetBackgroundTuning: (patch: Partial<MonetBackgroundTuning>) => void;
     setLatentBackgroundTuning: (patch: Partial<LatentBackgroundTuning>) => void;

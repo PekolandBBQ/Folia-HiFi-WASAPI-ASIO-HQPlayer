@@ -239,6 +239,8 @@ export default {
     "noPlayableSongs": "列表中没有可播放的歌曲",
     "songUnavailableTag": "已下架",
     "queueShuffled": "播放队列已打乱",
+    "loopShuffleHint": "想找随机播放吗？",
+    "loopShuffleHintAction": "点这里了解",
     "queueCleared": "播放队列已清空",
     "queueUpdated": "已添加到播放队列",
     "queueBatchRemoved": "已从队列移除 {{count}} 首歌曲",
@@ -469,12 +471,15 @@ export default {
       "settings-update-channel": { "title": "更新通道", "description": "选择桌面端发布通道" },
       "desktop-toggle-voice-input-pause": { "title": "语音输入时暂停", "description": "切换语音输入时自动暂停播放" },
       "desktop-toggle-prevent-display-sleep": { "title": "播放时阻止休眠", "description": "播放音乐时保持显示器唤醒" },
+      "settings-graphics": { "title": "图形设置", "description": "打开静态模式、帧率限制、Linux 发光修复和降低动态效果" },
+      "settings-mods": { "title": "模组设置", "description": "打开模组系统开关和已安装的模组" },
       "settings-lab": { "title": "实验设置", "description": "打开实验功能设置" },
       "settings-player-bottom-bar-position": { "title": "调整底部控制条位置", "description": "拖动底部控制条、歌曲卡片和面板按钮到新的高度" },
       "settings-player-control-slots": { "title": "进度条按钮槽位", "description": "选择进度条右侧两个按钮对应的功能" },
       "video-layer-toggle": { "title": "歌词后方视频层", "description": "显示或隐藏歌词后方的静音视频层" },
       "video-layer-pick": { "title": "视频层：选择本地视频", "description": "选择在歌词后方播放的本地视频" },
       "visualizer-toggle-random-per-song": { "title": "每首歌随机歌词动画", "description": "歌曲切换时随机使用一种歌词动画模式" },
+      "visualizer-toggle-glow-blur-quantize": { "title": "修复 Linux 歌词动画卡死", "description": "改变部分歌词动画的发光绘制方式，修复 Linux 下长时间播放后偶发的卡死问题" },
       "settings-visualizer": { "title": "歌词动画样式设置", "description": "打开歌词动画实验台" },
       "settings-theme-park": { "title": "配色", "description": "打开主题编辑器" },
       "settings-global-lyric-offset": { "title": "全局时间偏移", "description": "校准蓝牙等设备造成的音画延迟" },
@@ -505,6 +510,7 @@ export default {
       "grid-export-playlist": { "title": "导出此歌单", "description": "把这个本地歌单保存为 m3u8 文件" },
       "grid-edit-entity": { "title": "编辑此专辑或艺人", "description": "为这个合集打开本地曲库的实体编辑面板" },
       "grid-toggle-edit-mode": { "title": "切换编辑模式", "description": "进入或退出可以从这个合集里移除歌曲的模式" },
+      "grid-reload-online-collection": { "title": "重新加载此合集", "description": "跳过缓存，重新拉取这个在线合集的全部歌曲" },
       "settings-interaction": { "title": "交互设置", "description": "打开键盘、快捷键与网格交互设置" },
       "settings-custom-shortcut": { "title": "自定义快捷键", "description": "直接跳到自定义键盘快捷键的绑定处" },
       "settings-grid-action-button": { "title": "海报墙操作按钮", "description": "直接跳到海报墙操作按钮的滑动目标设置" },
@@ -825,8 +831,8 @@ export default {
   "mods": {
     "title": "模组管理",
     "experimental": "实验性",
-    "experimentalHint": "模组系统仍在实验阶段：API 可能在后续版本中变更，已安装的模组可能需要更新。",
-    "securityWarning": "标有「官方认证」的模组经过 Folium 官方审查并签名，其余模组由第三方提供，未经官方审查。无论是否认证，启用后模组将以应用的完整权限运行（含 Node.js 运行时与任意设置，如 AI 服务地址与密钥）。启用前会弹出确认窗口，请仅启用可信来源的模组。",
+    "warning": "模组兼容版本Folium v{{version}}。标有「官方认证」的模组经过 Folium 官方审查并签名，其余模组由第三方提供，未经官方审查。无论是否认证，启用后模组将以应用的完整权限运行（含 Node.js 运行时与任意设置，如 AI 服务地址与密钥）。请仅启用可信来源的模组。",
+    "market": "模组市场",
     "trustRevoked": "该模组的文件在你上次确认之后发生了变化，已自动禁用。请确认来源无误后重新启用。",
     "devSourceHint": "开发目录中的模组：确认后修改文件不会撤销授权（仅开发版）。",
     "signatureVerified": "官方认证",
@@ -852,6 +858,10 @@ export default {
     "enabled": "已启用",
     "disabled": "已禁用",
     "desktopOnly": "模组仅在桌面端可用。",
+    "systemOffTitle": "模组系统未开启",
+    "systemOffHint": "打开上方的模组系统开关后，这里会列出已安装的模组。",
+    "count_one": "{{count}} 个模组",
+    "count_other": "{{count}} 个模组",
     "notLoaded": "该模组加载失败。",
     "modDisabledHint": "启用该模组后可使用其命令。",
     "recentLogs": "最近日志",
@@ -884,7 +894,7 @@ export default {
       "install-unsafe-path": "zip 内包含不安全路径，已拒绝",
       "install-no-manifest": "zip 内未找到唯一定义，缺少 mod.json",
       "install-invalid-manifest": "mod.json 无效：{{value}}",
-      "mod-system-disabled": "模组系统未启用，请先在「设置 → 实验室 → 模组系统」中开启",
+      "mod-system-disabled": "模组系统未启用，请先在「设置 → 模组 → 模组系统」中开启",
       "install-too-large": "模组包体积超出限制（最大 64 MB）",
       "install-too-many-files": "模组包文件数量超出限制（最多 2000 个）",
       "install-main-missing": "模组包缺少 mod.json 中声明的 main 文件",
@@ -937,7 +947,12 @@ export default {
     "headerTime": "时长",
     "loading": "加载中",
     "loadFailed": "加载失败：{{error}}",
-    "loadNotPublic": "这个歌单不是公开歌单，当前音源接口读不到它的内容"
+    "loadNotPublic": "这个歌单不是公开歌单，当前音源接口读不到它的内容",
+    "reload": "重新加载",
+    "syncProgress": "已加载 {{loaded}} / {{total}}",
+    "syncInterrupted": "加载中断",
+    "syncInterruptedProgress": "加载中断 {{loaded}} / {{total}}",
+    "syncFailedHint": "还有歌曲没加载成功（{{error}}）。点击从中断处继续加载"
   },
   "search": {
     "placeholder": "搜索歌曲...",
@@ -1071,6 +1086,14 @@ export default {
     "restartBackend": "重启后端服务",
     "restartingBackend": "正在重启…",
     "retryQr": "刷新二维码",
+    "qrDiagnosticsPrompt": "登录遇到问题？复制诊断信息反馈给我们，能帮助定位原因。",
+    "qrDiagnosticsPromptScanned": "已经在手机上确认，却没有登录成功？复制诊断信息反馈给我们，能帮助定位原因。",
+    "qrDiagnosticsPrivacy": "诊断信息不含 cookie、token、IP 或账号信息。",
+    "qrDiagnosticsCopy": "复制诊断信息",
+    "qrDiagnosticsCopied": "已复制",
+    "qrDiagnosticsCopyFailed": "复制失败",
+    "qrDiagnosticsReport": "去 GitHub 反馈",
+    "qrDiagnosticsPasteHint": "请把 Folia 复制的诊断信息粘贴在这里，并简单描述当时的情况（网络环境、是否开了代理等）。",
     "closeLogin": "关闭登录窗口",
     "logout": "退出登录",
     "backToPlayer": "返回播放器",
@@ -1506,6 +1529,13 @@ export default {
     "enableStaticMode": "静态模式",
     "enableStaticModeDesc": "禁用几何背景以节省资源。",
     "enableStaticModeDescSub": "不会影响歌词文本效果或渲染。",
+    "graphicsSettings": "图形",
+    "graphicsSettingsDesc": "静态模式、动态背景、原生模糊、帧率限制、Linux 发光修复和降低动态效果。",
+    "modSettings": "模组",
+    "modSettingsDesc": "模组系统总开关，以及已安装模组的启用、安装和命令。",
+    "settingsSearchPlaceholder": "搜索设置",
+    "settingsSearchClear": "清除搜索",
+    "settingsSearchEmpty": "没有匹配的设置",
     "labSettings": "实验室",
     "labSettingsDesc": "高级自定义功能",
     "developerSettings": "开发者",
@@ -2080,6 +2110,9 @@ export default {
     "visualizerOpacity": "整体透明度",
     "visualizerFrameRate": "实验性动画帧率限制",
     "visualizerFrameRateDesc": "限制 requestAnimationFrame 驱动的动画帧率，可能导致意外问题，请谨慎使用。",
+    "glowBlurQuantize": "修复 Linux 歌词动画卡死",
+    "glowBlurQuantizeDesc": "改变部分歌词动画的发光绘制方式，修复 Linux 下长时间播放后偶发的卡死问题。Linux下默认开启，其他平台默认关闭。详见",
+    "glowBlurQuantizeDocs": "chromium FD耗尽问题",
     "visualizerFrameRateValue": "限制档位",
     "themePresets": "配色主题预设",
     "themePresetsDefault": "墨染 / 素白",
@@ -2586,6 +2619,29 @@ export default {
         "title": "QQ 音乐不公开歌单",
         "description": "登录后，自己创建的不公开歌单也能读取歌曲，并支持真正的分页加载。自建后端需要升级到 qq-music-api 3.1.2 或更新版本；旧后端会自动回退，读不到时会明确提示「不是公开歌单」，不再静默显示为空。"
       }
+    },
+    "v0_7_9": {
+      "intro": "0.7.9 新增歌词导入导出、视频层和模组认证，设置页更好找，并修复 Linux 歌词卡死。",
+      "lyricFiles": {
+        "title": "歌词导入与导出",
+        "description": "在侧栏歌词页导入或导出歌词文件，也可在命令面板批量导出。"
+      },
+      "videoLayer": {
+        "title": "歌词后方视频层",
+        "description": "在歌词后面播放一段静音视频，跟随音乐同步。在外观设置中开启。"
+      },
+      "modPlatform": {
+        "title": "模组平台 Folium 1.3",
+        "description": "模组能做的更多，官方认证模组带绿色盾牌。旧模组可能需要更新。"
+      },
+      "settingsSearch": {
+        "title": "设置页搜索",
+        "description": "设置新增图形和模组页，宽屏下可在侧栏直接搜索设置项。"
+      },
+      "linuxFixes": {
+        "title": "Linux 修复",
+        "description": "修复长时间播放后歌词动画卡死，以及 dock 栏不显示图标。"
+      }
     }
   },
   "export": {
@@ -3083,6 +3139,7 @@ export default {
       "seen": "已看过"
     },
     "summaries": {
+      "queue_shuffle": "Folia 没有随机播放模式，而是打乱队列；以及打乱队列的四个入口。",
       "audio_equalizer": "十段均衡和效果链；拖动推子会改写自定义槽。",
       "vis_playground": "预览上的三块隐藏点击区。",
       "lyric_style": "每种样式的专属设置、莫奈部件的隐藏、背景搭配和通用副字幕。",
@@ -3492,6 +3549,7 @@ export default {
         "autoSwitch": "主题自动切换"
       },
       "sidePanel": {
+        "queueShuffle": "打乱队列",
         "modeRow": "模式取景器那一行",
         "modeName": "中间那块名称",
         "modeList": "全部模式",
@@ -3562,6 +3620,7 @@ export default {
       }
     },
     "targets": {
+      "queueShuffle": "随机播放在哪",
       "audioEqualizer": "音频效果对话框",
       "visPlayground": "歌词动画调参台",
       "lyricStyle": "歌词样式",
@@ -3614,6 +3673,11 @@ export default {
       "settingsPage": "设置页面"
     },
     "scenes": {
+      "queueShuffleNoMode": "没有随机模式，只有打乱队列",
+      "queueShuffleCommand": "用命令打乱",
+      "queueShuffleSlot": "放进控制条按钮",
+      "queueShufflePanel": "队列面板上的按钮",
+      "queueShufflePinned": "固定在命令窗口底部",
       "visPlaygroundCommon": "四页各管什么，以及「通用」里有什么",
       "visPlaygroundVisuals": "动画与背景",
       "visPlaygroundSubtitle": "字幕",
@@ -3746,6 +3810,15 @@ export default {
       "panelSlideKeyboard": "用键盘打开"
     },
     "captions": {
+      "queueShuffle": {
+        "noMode": "Folia 不提供传统的随机播放模式，循环按钮也不会切到随机。想随机听，就打乱当前队列。",
+        "once": "打乱是一次操作：当前队列原地洗一次牌，之后按新顺序播放。想换个顺序，再打乱一次。",
+        "command": "最快的是命令：命令窗口关着、焦点不在输入框时按冒号进入执行模式，再按 r。也可以在命令窗口里搜「打乱队列」。",
+        "slot": "常用的话，在设置 · 界面设置的「进度条右侧按钮」里选「随机队列」，控制条上就多一颗打乱按钮。",
+        "panel": "右侧控制面板的队列页，顶部最右那颗按钮也会打乱队列。",
+        "pinSlot": "在设置 · 界面设置的「快捷命令」里，把「打乱队列」放进任意一个槽位。",
+        "pinRow": "它会一直显示在命令窗口底部，打开窗口点一下就行。"
+      },
       "audioEqualizer": {
         "enable": "音量行右端打开均衡器。左上角可关闭整条效果链；关闭后设置保留，但不再生效。",
         "presets": "顶上一排是六个内置预设。每一个同时带着一条均衡曲线和一整套效果链，所以点一下是两样一起换。它们不可编辑。",
@@ -3853,7 +3926,7 @@ export default {
         "shortcutP": "{{mod}} + P 打开播放队列；输入行可筛选，也支持 @artist: 等条件。",
         "shortcutB": "{{mod}} + B 打开 Lattice；已在 Lattice 时返回。",
         "shortcutG": "Ctrl + G 就是刚才那一下：打开当前页面的思索教程。任何时候迷路了，先按它。",
-        "hintSettings": "可在设置 · 实验室关闭思索提示，或只提示未看过的区域。下方按钮可直接打开设置。",
+        "hintSettings": "可在设置 · 界面关闭思索提示，或只提示未看过的区域。下方按钮可直接打开设置。",
         "docs": "这四章只是入门。命令、快捷键、在线来源、本地曲库、可视化和主题见文档站。"
       },
       "pages": {
@@ -3907,11 +3980,11 @@ export default {
         "latticeTools": "右下角工具依次提供：聚焦当前歌曲、切歌时自动跟随、打开队列命令、灯光开关与快捷键说明；向左滑这个按钮会打开命令面板。",
         "latticeLights": "灯光关闭后海报退暗，只保留必要层次；这是显示设置，不会暂停播放或修改队列。",
         "latticePosterKeys": "收起时 Enter/Space 展开；展开后 Enter 播放/暂停，Space 显示控制，Esc 收起。",
-        "latticePageKeys": "Shift+;+C 当前歌曲；{{mod}} + P 队列；{{mod}} + B 返回；{{mod}} + K 命令；方向键移动。",
+        "latticePageKeys": ": + C 当前歌曲；{{mod}} + P 队列；{{mod}} + B 返回；{{mod}} + K 命令；方向键移动。",
         "help": "Folia 分开处理浏览、播放、命令和设置。Ctrl+G 说明当前页面，有特殊操作的组件也有独立教程。",
         "helpCommands": "{{mod}} + K 可以搜索全部命令和设置。对于藏得较深的选项，直接搜名称通常比记住它在哪一级更快。",
         "helpOperatingModel": "网格选歌，Player 或 Lattice 播放；底部控制条负责播放，帮助和设置覆盖当前页面。",
-        "settings": "左侧按外观、界面、播放、交互、集成、存储、桌面和实验室分组；右侧显示当前分组里的具体设置。",
+        "settings": "左侧按外观、界面、播放、交互、集成、存储、桌面、图形、模组和实验室分组；右侧显示当前分组里的具体设置。",
         "settingsDirectNavigation": "不必逐层翻找：在命令面板搜索设置名称，Folia 会直接打开对应分组并滚到准确位置。"
       },
       "playerBar": {

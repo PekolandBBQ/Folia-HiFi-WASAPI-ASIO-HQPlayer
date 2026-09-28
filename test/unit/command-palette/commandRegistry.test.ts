@@ -160,6 +160,7 @@ const createContext = (overrides: CommandPaletteContextOverrides = {}): CommandP
             visualizerBackgroundMode: 'latent',
             setVisualizerMode: vi.fn(),
             toggleRandomVisualizerModePerSong: vi.fn(),
+            toggleGlowBlurQuantize: vi.fn(),
             setVisualizerBackgroundMode: vi.fn(),
             setMonetBackgroundTuning: vi.fn(),
             setLatentBackgroundTuning: vi.fn(),
@@ -833,6 +834,15 @@ describe('command palette registry', () => {
         expect(match.command.id).toBe('visualizer-toggle-random-per-song');
         match.command.execute('', context);
         expect(context.visualizer.toggleRandomVisualizerModePerSong).toHaveBeenCalled();
+    });
+
+    it('toggles the stepped glow radius', () => {
+        const context = createContext();
+        const [match] = getCommandPaletteMatches('发光半径分档');
+
+        expect(match.command.id).toBe('visualizer-toggle-glow-blur-quantize');
+        match.command.execute('', context);
+        expect(context.visualizer.toggleGlowBlurQuantize).toHaveBeenCalled();
     });
 });
 

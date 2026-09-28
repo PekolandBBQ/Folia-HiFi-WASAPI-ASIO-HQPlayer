@@ -245,6 +245,8 @@ export default {
     "noPlayableSongs": "Tidak ada lagu yang bisa diputar di daftar ini",
     "songUnavailableTag": "Tidak Tersedia",
     "queueShuffled": "Antrean diacak",
+    "loopShuffleHint": "Mencari putar acak?",
+    "loopShuffleHintAction": "Pelajari caranya",
     "queueCleared": "Antrean dikosongkan",
     "queueUpdated": "Ditambahkan ke antrean",
     "queueBatchRemoved": "{{count}} lagu dihapus dari antrean",
@@ -475,12 +477,15 @@ export default {
       "settings-update-channel": { "title": "Saluran pembaruan", "description": "Pilih saluran rilis aplikasi desktop" },
       "desktop-toggle-voice-input-pause": { "title": "Jeda input suara", "description": "Alihkan jeda pemutaran saat input suara aktif" },
       "desktop-toggle-prevent-display-sleep": { "title": "Cegah layar tidur saat pemutaran", "description": "Jaga layar tetap menyala selama musik diputar" },
+      "settings-graphics": { "title": "Pengaturan grafis", "description": "Buka mode statis, batas frame rate, perbaikan glow Linux, dan pengurangan gerak" },
+      "settings-mods": { "title": "Pengaturan mod", "description": "Buka sakelar sistem mod dan mod yang terpasang" },
       "settings-lab": { "title": "Pengaturan lab", "description": "Buka pengaturan eksperimental" },
       "settings-player-bottom-bar-position": { "title": "Atur ulang posisi bilah bawah", "description": "Seret bilah bawah pemutar, kartu lagu dan tombol panel ke ketinggian baru" },
       "settings-player-control-slots": { "title": "Slot tombol pemutar", "description": "Pilih aksi untuk dua tombol di samping bilah progres" },
       "video-layer-toggle": { "title": "Lapisan video di belakang lirik", "description": "Tampilkan atau sembunyikan lapisan video tanpa suara di belakang lirik" },
       "video-layer-pick": { "title": "Lapisan video: pilih video lokal", "description": "Pilih video lokal untuk diputar di belakang lirik" },
       "visualizer-toggle-random-per-song": { "title": "Visualizer acak tiap lagu", "description": "Alihkan mode animasi lirik acak tiap pergantian lagu" },
+      "visualizer-toggle-glow-blur-quantize": { "title": "Perbaiki animasi lirik macet di Linux", "description": "Ubah cara beberapa animasi lirik menggambar glow, memperbaiki macet yang sesekali terjadi setelah pemutaran lama di Linux" },
       "settings-visualizer": { "title": "Pengaturan visualizer", "description": "Buka bengkel animasi lirik" },
       "settings-theme-park": { "title": "Warna", "description": "Buka editor tema" },
       "settings-global-lyric-offset": { "title": "Offset waktu global", "description": "Kalibrasi waktu lirik terhadap latensi audio Bluetooth atau perangkat" },
@@ -511,6 +516,7 @@ export default {
       "grid-export-playlist": { "title": "Ekspor daftar putar ini", "description": "Simpan daftar putar lokal ini sebagai berkas m3u8" },
       "grid-edit-entity": { "title": "Sunting album atau artis ini", "description": "Buka penyunting entitas pustaka lokal untuk koleksi ini" },
       "grid-toggle-edit-mode": { "title": "Alihkan mode sunting", "description": "Masuk atau keluar dari mode yang memungkinkan menghapus lagu dari koleksi ini" },
+      "grid-reload-online-collection": { "title": "Muat ulang koleksi ini", "description": "Lewati cache dan muat ulang semua lagu dari koleksi online ini" },
       "settings-interaction": { "title": "Pengaturan interaksi", "description": "Buka pengaturan papan ketik, pintasan, dan interaksi kisi" },
       "settings-custom-shortcut": { "title": "Pintasan khusus", "description": "Langsung ke pengaturan pintasan papan ketik khusus" },
       "settings-grid-action-button": { "title": "Tombol aksi kisi", "description": "Langsung ke pengaturan target geser tombol aksi kisi" },
@@ -830,8 +836,8 @@ export default {
   "mods": {
     "title": "Manajer Mod",
     "experimental": "Eksperimental",
-    "experimentalHint": "Sistem mod masih eksperimental: API dapat berubah pada versi mendatang dan mod yang terpasang mungkin perlu diperbarui.",
-    "securityWarning": "Mod bertanda Terverifikasi telah ditinjau dan ditandatangani Folium; selebihnya mod pihak ketiga yang belum ditinjau. Terverifikasi atau tidak, setelah diaktifkan mod berjalan dengan hak penuh aplikasi (termasuk runtime Node.js dan pengaturan apa pun seperti URL dan kunci layanan AI). Mengaktifkannya akan meminta konfirmasi terlebih dahulu; aktifkan hanya mod dari sumber tepercaya.",
+    "warning": "Mod kompatibel dengan Folium v{{version}}. Mod bertanda Terverifikasi telah ditinjau dan ditandatangani Folium; selebihnya mod pihak ketiga yang belum ditinjau. Terverifikasi atau tidak, setelah diaktifkan mod berjalan dengan hak penuh aplikasi (termasuk runtime Node.js dan pengaturan apa pun seperti URL dan kunci layanan AI). Aktifkan hanya mod dari sumber tepercaya.",
+    "market": "Pasar mod",
     "trustRevoked": "Berkas mod ini berubah sejak terakhir Anda konfirmasi, jadi mod dinonaktifkan otomatis. Periksa sumbernya, lalu aktifkan kembali.",
     "devSourceHint": "Mod di direktori pengembangan: setelah dikonfirmasi, mengubah berkasnya tidak membatalkan persetujuan (hanya build pengembangan).",
     "signatureVerified": "Terverifikasi",
@@ -857,6 +863,10 @@ export default {
     "enabled": "Aktif",
     "disabled": "Nonaktif",
     "desktopOnly": "Mod hanya tersedia di aplikasi desktop.",
+    "systemOffTitle": "Sistem mod nonaktif",
+    "systemOffHint": "Aktifkan sakelar sistem mod di atas, lalu mod yang terpasang akan tampil di sini.",
+    "count_one": "{{count}} mod",
+    "count_other": "{{count}} mod",
     "notLoaded": "Mod ini gagal dimuat.",
     "modDisabledHint": "Aktifkan mod ini untuk menggunakan perintahnya.",
     "recentLogs": "Log terbaru",
@@ -889,7 +899,7 @@ export default {
       "install-unsafe-path": "Zip berisi jalur tidak aman dan ditolak",
       "install-no-manifest": "Manifest tidak ditemukan; zip tidak memiliki mod.json",
       "install-invalid-manifest": "mod.json tidak valid: {{value}}",
-      "mod-system-disabled": "Sistem mod nonaktif. Aktifkan dulu di Pengaturan → Lab → Sistem mod.",
+      "mod-system-disabled": "Sistem mod nonaktif. Aktifkan dulu di Pengaturan → Mod → Sistem mod.",
       "install-too-large": "Paket mod melebihi batas ukuran (maks 64 MB)",
       "install-too-many-files": "Paket mod berisi terlalu banyak berkas (maks 2000)",
       "install-main-missing": "Paket tidak memiliki berkas main yang dideklarasikan di mod.json",
@@ -942,7 +952,12 @@ export default {
     "headerTime": "Waktu",
     "loading": "Memuat",
     "loadFailed": "Gagal memuat: {{error}}",
-    "loadNotPublic": "Daftar putar ini tidak publik, sehingga sumber musik saat ini tidak dapat membaca isinya"
+    "loadNotPublic": "Daftar putar ini tidak publik, sehingga sumber musik saat ini tidak dapat membaca isinya",
+    "reload": "Muat ulang",
+    "syncProgress": "Dimuat {{loaded}} / {{total}}",
+    "syncInterrupted": "Pemuatan terputus",
+    "syncInterruptedProgress": "Terputus di {{loaded}} / {{total}}",
+    "syncFailedHint": "Beberapa lagu gagal dimuat ({{error}}). Klik untuk melanjutkan dari titik terakhir"
   },
   "search": {
     "placeholder": "Cari lagu...",
@@ -1076,6 +1091,14 @@ export default {
     "restartBackend": "Mulai ulang backend",
     "restartingBackend": "Memulai ulang…",
     "retryQr": "Muat ulang kode QR",
+    "qrDiagnosticsPrompt": "Kesulitan masuk? Salin info diagnostik dan kirimkan kepada kami agar penyebabnya bisa ditemukan.",
+    "qrDiagnosticsPromptScanned": "Sudah dikonfirmasi di ponsel tetapi belum masuk? Salin info diagnostik dan kirimkan kepada kami agar penyebabnya bisa ditemukan.",
+    "qrDiagnosticsPrivacy": "Info diagnostik tidak berisi cookie, token, alamat IP, atau detail akun.",
+    "qrDiagnosticsCopy": "Salin diagnostik",
+    "qrDiagnosticsCopied": "Tersalin",
+    "qrDiagnosticsCopyFailed": "Gagal menyalin",
+    "qrDiagnosticsReport": "Laporkan di GitHub",
+    "qrDiagnosticsPasteHint": "Tempel info diagnostik yang disalin Folia di sini, dan jelaskan singkat apa yang terjadi (jaringan, apakah proxy aktif, dll.).",
     "closeLogin": "Tutup login",
     "logout": "Logout",
     "backToPlayer": "Kembali ke Pemutar",
@@ -1508,6 +1531,13 @@ export default {
     "enableStaticMode": "Mode Statis",
     "enableStaticModeDesc": "Hanya menonaktifkan latar belakang geometris.",
     "enableStaticModeDescSub": "Tidak memengaruhi efek atau rendering teks lirik.",
+    "graphicsSettings": "Grafis",
+    "graphicsSettingsDesc": "Mode statis, latar dinamis, blur native, batas frame rate, perbaikan glow Linux, dan pengurangan gerak.",
+    "modSettings": "Mod",
+    "modSettingsDesc": "Sakelar utama sistem mod, serta mengaktifkan, memasang, dan menjalankan mod yang terpasang.",
+    "settingsSearchPlaceholder": "Cari pengaturan",
+    "settingsSearchClear": "Hapus pencarian",
+    "settingsSearchEmpty": "Tidak ada pengaturan yang cocok",
     "labSettings": "Pengaturan Lab",
     "labSettingsDesc": "Buka halaman terpisah untuk pengaturan eksperimental perilaku pemutaran dan panel.",
     "developerSettings": "Pengembang",
@@ -1998,6 +2028,9 @@ export default {
     "visualizerOpacity": "Opasitas Animasi Lirik",
     "visualizerFrameRate": "Batas FPS Animasi Eksperimental",
     "visualizerFrameRateDesc": "Pengaturan eksperimental. Saat diaktifkan, membatasi animasi berbasis requestAnimationFrame dan dapat menyebabkan masalah tak terduga dalam animasi, pengukuran, atau kode gerakan pihak ketiga.",
+    "glowBlurQuantize": "Perbaiki animasi lirik macet di Linux",
+    "glowBlurQuantizeDesc": "Mengubah cara beberapa animasi lirik menggambar glow, memperbaiki macet yang sesekali terjadi setelah pemutaran lama di Linux. Aktif secara default di Linux, nonaktif di platform lain. Lihat",
+    "glowBlurQuantizeDocs": "kehabisan FD Chromium",
     "visualizerFrameRateValue": "Batas",
     "themePresets": "Preset Tema",
     "themePresetsDefault": "Bawaan",
@@ -2527,6 +2560,29 @@ export default {
         "title": "Playlist Pribadi QQ Music",
         "description": "Setelah masuk, playlist pribadi buatan Anda kini dapat memuat lagu dengan paging sungguhan. Backend yang di-host sendiri harus memakai qq-music-api 3.1.2 atau lebih baru; backend lama beralih otomatis, dan playlist yang tidak dapat dibaca kini menjelaskan bahwa playlist itu tidak publik, alih-alih tampil kosong tanpa keterangan."
       }
+    },
+    "v0_7_9": {
+      "intro": "0.7.9 menghadirkan impor dan ekspor lirik, lapisan video, dan mod terverifikasi, membuat pengaturan lebih mudah dicari, serta memperbaiki lirik macet di Linux.",
+      "lyricFiles": {
+        "title": "Impor dan Ekspor Lirik",
+        "description": "Impor atau ekspor file lirik dari tab lirik di panel samping, atau ekspor sekaligus dari palet perintah."
+      },
+      "videoLayer": {
+        "title": "Video di Belakang Lirik",
+        "description": "Putar video tanpa suara di belakang lirik, selaras dengan musik. Aktifkan di pengaturan Tampilan."
+      },
+      "modPlatform": {
+        "title": "Platform Mod: Folium 1.3",
+        "description": "Mod bisa berbuat lebih banyak, dan mod terverifikasi resmi menampilkan perisai hijau. Mod lama mungkin perlu diperbarui."
+      },
+      "settingsSearch": {
+        "title": "Pencarian Pengaturan",
+        "description": "Halaman Grafis dan Mod baru, dan di layar lebar Anda bisa mencari pengaturan dari bilah samping."
+      },
+      "linuxFixes": {
+        "title": "Perbaikan Linux",
+        "description": "Memperbaiki animasi lirik yang macet setelah pemutaran lama dan ikon aplikasi yang hilang dari dock."
+      }
     }
   },
   "export": {
@@ -3022,6 +3078,7 @@ export default {
       "seen": "Sudah ditonton"
     },
     "summaries": {
+      "queue_shuffle": "Folia tidak punya mode acak; yang ada adalah mengacak antrean. Ini empat cara melakukannya.",
       "audio_equalizer": "Sepuluh pita dan satu rantai efek \u2014 dan satu tarikan menimpa slot kustom.",
       "vis_playground": "Ada tiga area klik tak terlihat di atas pratinjau.",
       "lyric_style": "Pengaturan khusus tiap gaya, menyembunyikan elemen Monet, memadukan latar, dan subtitel bersama.",
@@ -3431,6 +3488,7 @@ export default {
         "autoSwitch": "Ganti tema otomatis"
       },
       "sidePanel": {
+        "queueShuffle": "Acak antrean",
         "modeRow": "Baris jendela bidik mode",
         "modeName": "Nama di tengahnya",
         "modeList": "Semua mode",
@@ -3501,6 +3559,7 @@ export default {
       }
     },
     "targets": {
+      "queueShuffle": "Di mana putar acak",
       "audioEqualizer": "Dialog efek audio",
       "visPlayground": "Meja setel animasi lirik",
       "lyricStyle": "Gaya lirik",
@@ -3553,6 +3612,11 @@ export default {
       "settingsPage": "Halaman Opsi"
     },
     "scenes": {
+      "queueShuffleNoMode": "Tanpa mode acak, hanya acak antrean",
+      "queueShuffleCommand": "Acak lewat perintah",
+      "queueShuffleSlot": "Taruh di bilah kontrol",
+      "queueShufflePanel": "Tombol di panel antrean",
+      "queueShufflePinned": "Sematkan di bawah jendela perintah",
       "visPlaygroundCommon": "Empat halaman, dan isi \u201cumum\u201d",
       "visPlaygroundVisuals": "Animasi dan latar",
       "visPlaygroundSubtitle": "Subtitel",
@@ -3685,6 +3749,15 @@ export default {
       "panelSlideKeyboard": "Buka dari papan tombol"
     },
     "captions": {
+      "queueShuffle": {
+        "noMode": "Folia tidak menyediakan mode putar acak tradisional, dan tombol ulang tidak akan beralih ke acak. Untuk mendengar secara acak, acak antrean saat ini.",
+        "once": "Mengacak adalah satu tindakan: antrean saat ini diacak di tempat lalu diputar dengan urutan baru. Acak lagi untuk urutan lain.",
+        "command": "Cara tercepat adalah perintah: saat jendela perintah tertutup dan tidak ada kolom teks yang fokus, tekan titik dua untuk masuk mode eksekusi, lalu tekan r. Kamu juga bisa mencari “Acak antrean” di jendela perintah.",
+        "slot": "Kalau sering dipakai, pilih “Acak antrean” di “Tombol bilah progres” pada Pengaturan · Pengaturan umum, maka bilah kontrol mendapat tombol acak.",
+        "panel": "Di tab antrean pada panel kanan, tombol paling kanan di bagian atas juga mengacak antrean.",
+        "pinSlot": "Di Pengaturan · Pengaturan umum, taruh “Acak antrean” di slot mana pun pada “Perintah favorit”.",
+        "pinRow": "Setelah itu ia selalu ada di bagian bawah jendela perintah, tinggal klik saat jendelanya terbuka."
+      },
       "audioEqualizer": {
         "enable": "Dialog di balik ikon fader di ujung kanan baris volume. Sakelar di kiri atas menyalakan atau mematikan seluruh rantai; saat mati, semua nilai di bawah tetap tersimpan, hanya saja tidak diterapkan.",
         "presets": "Enam praset bawaan berjajar di atas. Masing-masing membawa kurva EQ sekaligus satu rantai efek utuh, jadi memilih satu mengganti keduanya sekaligus. Praset ini tidak bisa disunting.",
@@ -3792,7 +3865,7 @@ export default {
         "shortcutP": "{{mod}} + P membuka antrean putar. Ia juga jendela perintah: baris masukannya adalah kotak pencarian antrean, dan hal seperti @artist: mempersempitnya sebelum aksi massal.",
         "shortcutB": "{{mod}} + B menuju Lattice, yang membentangkan seluruh antrean putar sebagai dinding poster. Tekan di dalam Lattice dan ia kembali.",
         "shortcutG": "Ctrl + G adalah yang baru saja kamu lakukan: membuka tutorial untuk halaman saat ini. Kapan pun kamu tersesat, tekan ini dulu.",
-        "hintSettings": "Sudah paham betul cara pakai Folia? Kamu bisa mematikan petunjuk Ponder di pengaturan, atau menyisakannya hanya di tempat yang belum kamu lihat \u2014 sakelarnya ada di Pengaturan \u00b7 Lab, \u201cPetunjuk tutorial Ponder\u201d, dengan tiga posisi: selalu tampil, hanya yang belum dilihat, dan mati. Tombol di bawah membawamu langsung ke sana.",
+        "hintSettings": "Sudah paham betul cara pakai Folia? Kamu bisa mematikan petunjuk Ponder di pengaturan, atau menyisakannya hanya di tempat yang belum kamu lihat \u2014 sakelarnya ada di Pengaturan \u00b7 Umum, \u201cPetunjuk tutorial Ponder\u201d, dengan tiga posisi: selalu tampil, hanya yang belum dilihat, dan mati. Tombol di bawah membawamu langsung ke sana.",
         "docs": "Empat bab ini baru pembuka. Perintah, pintasan, sumber daring, pustaka lokal, visualizer dan tema semuanya punya penjelasan lebih lengkap di situs dokumentasi \u2014 tombol di bawah membukanya."
       },
       "pages": {
@@ -3846,11 +3919,11 @@ export default {
         "latticeTools": "Alat kanan bawah memfokuskan lagu aktif, mengikuti pergantian lagu, membuka antrean, mengatur lampu, dan menampilkan bantuan tombol. Geser ke kiri membuka perintah.",
         "latticeLights": "Lampu mati meredupkan dinding namun mempertahankan strukturnya. Ini hanya tampilan; pemutaran dan urutan antrean tidak berubah.",
         "latticePosterKeys": "Enter atau Spasi memperluas poster tertutup. Setelah terbuka, Enter memutar atau menjeda, Spasi mengubah kontrol, dan Escape menutup serta membersihkan fokus.",
-        "latticePageKeys": "Shift+;+C memfokuskan lagu aktif, {{mod}} + P membuka antrean, {{mod}} + B kembali, {{mod}} + K membuka jendela perintah; tombol panah memindahkan fokus poster.",
+        "latticePageKeys": ": + C memfokuskan lagu aktif, {{mod}} + P membuka antrean, {{mod}} + B kembali, {{mod}} + K membuka jendela perintah; tombol panah memindahkan fokus poster.",
         "help": "Folia memisahkan penelusuran, pemutaran, perintah, dan opsi. Ctrl+G menjelaskan halaman terdepan; panduan komponen tersedia terpisah saat suatu komponen memiliki perilaku khusus.",
         "helpCommands": "{{mod}} + K mencari semua perintah dan pengaturan. Untuk opsi yang tersembunyi jauh, mencari namanya biasanya lebih cepat daripada mengingat letaknya.",
         "helpOperatingModel": "Pilih musik di kisi, lalu pemutaran berlanjut secara mandiri di Player atau Lattice. Bilah bawah mengontrol pemutaran di semua halaman; Bantuan dan Opsi adalah lapisan di atas halaman saat ini.",
-        "settings": "Sisi kiri mengelompokkan opsi berdasarkan tampilan, antarmuka, pemutaran, interaksi, integrasi, penyimpanan, desktop, dan lab. Sisi kanan berisi pengaturan grup terpilih.",
+        "settings": "Sisi kiri mengelompokkan opsi berdasarkan tampilan, antarmuka, pemutaran, interaksi, integrasi, penyimpanan, desktop, grafis, mod, dan lab. Sisi kanan berisi pengaturan grup terpilih.",
         "settingsDirectNavigation": "Anda tidak perlu menelusuri setiap kategori: cari nama pengaturan di palette perintah dan Folia membuka bagian serta jangkar yang tepat."
       },
       "playerBar": {

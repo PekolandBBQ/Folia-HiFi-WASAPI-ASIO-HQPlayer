@@ -239,6 +239,8 @@ export default {
     "noPlayableSongs": "No playable songs in this list",
     "songUnavailableTag": "Unavailable",
     "queueShuffled": "Queue shuffled",
+    "loopShuffleHint": "Looking for shuffle?",
+    "loopShuffleHintAction": "Learn how",
     "queueCleared": "Queue cleared",
     "queueUpdated": "Added to queue",
     "queueBatchRemoved": "Removed {{count}} songs from the queue",
@@ -469,12 +471,15 @@ export default {
       "settings-update-channel": { "title": "Update channel", "description": "Choose the desktop app release channel" },
       "desktop-toggle-voice-input-pause": { "title": "Voice input pause", "description": "Toggle pausing playback during voice input" },
       "desktop-toggle-prevent-display-sleep": { "title": "Prevent display sleep during playback", "description": "Keep the display awake while music is playing" },
+      "settings-graphics": { "title": "Graphics settings", "description": "Open static mode, frame rate cap, Linux glow fix and reduced motion" },
+      "settings-mods": { "title": "Mod settings", "description": "Open the mod system switch and the installed mods" },
       "settings-lab": { "title": "Lab settings", "description": "Open experimental settings" },
       "settings-player-bottom-bar-position": { "title": "Reposition bottom bar", "description": "Drag the player bottom bar, song card and panel button to a new height" },
       "settings-player-control-slots": { "title": "Player button slots", "description": "Choose which actions the two buttons beside the progress bar run" },
       "video-layer-toggle": { "title": "Video layer behind lyrics", "description": "Show or hide the muted video layer behind the lyrics" },
       "video-layer-pick": { "title": "Video layer: pick a local video", "description": "Choose a local video to play behind the lyrics" },
       "visualizer-toggle-random-per-song": { "title": "Random visualizer for every song", "description": "Toggle a random lyric animation mode whenever the song changes" },
+      "visualizer-toggle-glow-blur-quantize": { "title": "Fix lyric animation freeze on Linux", "description": "Change how some lyric animations draw their glow, fixing occasional freezes after long playback on Linux" },
       "settings-visualizer": { "title": "Visualizer settings", "description": "Open lyrics animation workbench" },
       "settings-theme-park": { "title": "Color", "description": "Open theme editor" },
       "settings-global-lyric-offset": { "title": "Global timing offset", "description": "Calibrate lyric timing against Bluetooth or device audio latency" },
@@ -505,6 +510,7 @@ export default {
       "grid-export-playlist": { "title": "Export this playlist", "description": "Save this local playlist as an m3u8 file" },
       "grid-edit-entity": { "title": "Edit this album or artist", "description": "Open the local library entity editor for this collection" },
       "grid-toggle-edit-mode": { "title": "Toggle edit mode", "description": "Enter or leave the mode that lets you remove songs from this collection" },
+      "grid-reload-online-collection": { "title": "Reload this collection", "description": "Skip the cache and load every song of this online collection again" },
       "settings-interaction": { "title": "Interaction settings", "description": "Open keyboard, shortcut and grid interaction settings" },
       "settings-custom-shortcut": { "title": "Custom shortcuts", "description": "Jump to the custom keyboard shortcut bindings" },
       "settings-grid-action-button": { "title": "Grid action button", "description": "Jump to what the grid action button slides to" },
@@ -826,8 +832,8 @@ export default {
   "mods": {
     "title": "Mod Manager",
     "experimental": "Experimental",
-    "experimentalHint": "The mod system is still experimental: the API may change in future versions and installed mods may need updating.",
-    "securityWarning": "Mods marked Verified were reviewed and signed by Folium; all others are third-party and unreviewed. Verified or not, once enabled a mod runs with the full privileges of the app (including the Node.js runtime and any setting, such as the AI service URL and key). Enabling one asks for confirmation first; only enable mods from trusted sources.",
+    "warning": "Mods are compatible with Folium v{{version}}. Mods marked Verified were reviewed and signed by Folium; all others are third-party and unreviewed. Verified or not, once enabled a mod runs with the full privileges of the app (including the Node.js runtime and any setting, such as the AI service URL and key). Only enable mods from trusted sources.",
+    "market": "Mod market",
     "trustRevoked": "This mod's files changed since you last confirmed it, so it was disabled automatically. Check the source, then enable it again.",
     "devSourceHint": "Development source mod: once confirmed, editing its files keeps the approval (development builds only).",
     "signatureVerified": "Verified",
@@ -853,6 +859,10 @@ export default {
     "enabled": "Enabled",
     "disabled": "Disabled",
     "desktopOnly": "Mods are available in the desktop app only.",
+    "systemOffTitle": "The mod system is off",
+    "systemOffHint": "Turn on the mod system switch above and your installed mods will be listed here.",
+    "count_one": "{{count}} mod",
+    "count_other": "{{count}} mods",
     "notLoaded": "This mod failed to load.",
     "modDisabledHint": "Enable this mod to use its commands.",
     "recentLogs": "Recent logs",
@@ -885,7 +895,7 @@ export default {
       "install-unsafe-path": "The zip contains an unsafe path and was rejected",
       "install-no-manifest": "No single manifest found; the zip is missing mod.json",
       "install-invalid-manifest": "Invalid mod.json: {{value}}",
-      "mod-system-disabled": "The mod system is off. Turn it on in Settings → Lab → Mod system first.",
+      "mod-system-disabled": "The mod system is off. Turn it on in Settings → Mods → Mod system first.",
       "install-too-large": "The mod package is over the size limit (64 MB max)",
       "install-too-many-files": "The mod package has too many files (2000 max)",
       "install-main-missing": "The package is missing the main file declared in mod.json",
@@ -938,7 +948,12 @@ export default {
     "headerTime": "Time",
     "loading": "Loading",
     "loadFailed": "Failed to load: {{error}}",
-    "loadNotPublic": "This playlist is not public, so the current music source cannot read its contents"
+    "loadNotPublic": "This playlist is not public, so the current music source cannot read its contents",
+    "reload": "Reload",
+    "syncProgress": "Loaded {{loaded}} / {{total}}",
+    "syncInterrupted": "Loading interrupted",
+    "syncInterruptedProgress": "Interrupted at {{loaded}} / {{total}}",
+    "syncFailedHint": "Some songs failed to load ({{error}}). Click to continue from where it stopped"
   },
   "search": {
     "placeholder": "Search songs...",
@@ -1072,6 +1087,14 @@ export default {
     "restartBackend": "Restart backend",
     "restartingBackend": "Restarting…",
     "retryQr": "Refresh QR code",
+    "qrDiagnosticsPrompt": "Having trouble signing in? Copy the diagnostics and send them to us so we can find the cause.",
+    "qrDiagnosticsPromptScanned": "Confirmed on your phone but still not signed in? Copy the diagnostics and send them to us so we can find the cause.",
+    "qrDiagnosticsPrivacy": "Diagnostics contain no cookies, tokens, IP addresses or account details.",
+    "qrDiagnosticsCopy": "Copy diagnostics",
+    "qrDiagnosticsCopied": "Copied",
+    "qrDiagnosticsCopyFailed": "Copy failed",
+    "qrDiagnosticsReport": "Report on GitHub",
+    "qrDiagnosticsPasteHint": "Paste the diagnostics Folia copied here, and briefly describe what happened (network, whether a proxy was on, etc.).",
     "closeLogin": "Close login",
     "logout": "Logout",
     "backToPlayer": "Back to Player",
@@ -1507,6 +1530,13 @@ export default {
     "enableStaticMode": "Static Mode",
     "enableStaticModeDesc": "Only disable geometric backgrounds.",
     "enableStaticModeDescSub": "Does not affect lyric text effects or rendering.",
+    "graphicsSettings": "Graphics",
+    "graphicsSettingsDesc": "Static mode, dynamic backgrounds, native blur, the frame rate cap, the Linux glow fix and reduced motion.",
+    "modSettings": "Mods",
+    "modSettingsDesc": "The mod system master switch, plus enabling, installing and running installed mods.",
+    "settingsSearchPlaceholder": "Search settings",
+    "settingsSearchClear": "Clear search",
+    "settingsSearchEmpty": "No matching settings",
     "labSettings": "Lab Settings",
     "labSettingsDesc": "Open a separate page for experimental playback and panel behavior settings.",
     "developerSettings": "Developer",
@@ -2079,6 +2109,9 @@ export default {
     "visualizerOpacity": "Lyrics Animation Opacity",
     "visualizerFrameRate": "Experimental Animation FPS Limit",
     "visualizerFrameRateDesc": "Experimental setting. When enabled, it limits requestAnimationFrame-driven animation and may cause unexpected issues in animation, measurement, or third-party motion code.",
+    "glowBlurQuantize": "Fix lyric animation freeze on Linux",
+    "glowBlurQuantizeDesc": "Changes how some lyric animations draw their glow, fixing occasional freezes after long playback on Linux. On by default on Linux, off elsewhere. See",
+    "glowBlurQuantizeDocs": "Chromium FD exhaustion",
     "visualizerFrameRateValue": "Limit",
     "themePresets": "Theme Presets",
     "themePresetsDefault": "Default",
@@ -2587,6 +2620,29 @@ export default {
         "title": "Private QQ Music Playlists",
         "description": "When signed in, your own private playlists now load their songs, with real paging. Self-hosted backends must run qq-music-api 3.1.2 or later; older backends fall back automatically, and a playlist that cannot be read now says it is not public instead of silently showing as empty."
       }
+    },
+    "v0_7_9": {
+      "intro": "0.7.9 adds lyric import and export, a video layer and verified mods, makes settings easier to find, and fixes a Linux lyric freeze.",
+      "lyricFiles": {
+        "title": "Lyric Import and Export",
+        "description": "Import or export lyric files from the side panel's lyric tab, or export in bulk from the command palette."
+      },
+      "videoLayer": {
+        "title": "Video Behind Lyrics",
+        "description": "Play a muted video behind the lyrics, synced to the music. Turn it on in Appearance settings."
+      },
+      "modPlatform": {
+        "title": "Mod Platform: Folium 1.3",
+        "description": "Mods can do more, and officially verified mods show a green shield. Older mods may need an update."
+      },
+      "settingsSearch": {
+        "title": "Settings Search",
+        "description": "New Graphics and Mods pages, and on wide screens you can search settings from the sidebar."
+      },
+      "linuxFixes": {
+        "title": "Linux Fixes",
+        "description": "Fixes lyric animations freezing after long playback and the app icon missing from the dock."
+      }
     }
   },
   "export": {
@@ -3084,6 +3140,7 @@ export default {
       "seen": "Already watched"
     },
     "summaries": {
+      "queue_shuffle": "Folia has no shuffle mode; it shuffles the queue instead. Here are the four ways to do it.",
       "audio_equalizer": "Ten bands and an effect chain \u2014 and one drag rewrites a custom slot.",
       "vis_playground": "Three invisible click regions sit on the preview.",
       "lyric_style": "Each style's own settings, hiding Monet's extras, pairing backgrounds, and the shared subtitle.",
@@ -3493,6 +3550,7 @@ export default {
         "autoSwitch": "Switch theme automatically"
       },
       "sidePanel": {
+        "queueShuffle": "Shuffle queue",
         "modeRow": "Mode viewfinder row",
         "modeName": "The name in the middle",
         "modeList": "Every mode",
@@ -3563,6 +3621,7 @@ export default {
       }
     },
     "targets": {
+      "queueShuffle": "Where is shuffle",
       "audioEqualizer": "Audio effects dialog",
       "visPlayground": "Lyric animation workbench",
       "lyricStyle": "Lyric styles",
@@ -3615,6 +3674,11 @@ export default {
       "settingsPage": "Options page"
     },
     "scenes": {
+      "queueShuffleNoMode": "No shuffle mode, just a queue shuffle",
+      "queueShuffleCommand": "Shuffle with a command",
+      "queueShuffleSlot": "Put it on the control bar",
+      "queueShufflePanel": "The button in the queue panel",
+      "queueShufflePinned": "Pin it under the command window",
       "visPlaygroundCommon": "The four pages, and what \u201cgeneral\u201d holds",
       "visPlaygroundVisuals": "Animation and background",
       "visPlaygroundSubtitle": "Subtitles",
@@ -3747,6 +3811,15 @@ export default {
       "panelSlideKeyboard": "Open it from the keyboard"
     },
     "captions": {
+      "queueShuffle": {
+        "noMode": "Folia has no traditional shuffle mode, and the loop button never switches to one. To listen in random order, shuffle the current queue.",
+        "once": "Shuffling is a single action: the current queue is reordered in place and plays in the new order. Shuffle again for a different order.",
+        "command": "The quickest way is a command: with the command window closed and no text field focused, press the colon key to open execute mode, then press r. You can also search “Shuffle queue” in the command window.",
+        "slot": "If you use it often, choose “Shuffle queue” under “Progress bar buttons” in Settings · General settings to get a shuffle button on the control bar.",
+        "panel": "In the right-side panel's queue tab, the rightmost button at the top also shuffles the queue.",
+        "pinSlot": "In Settings · General settings, put “Shuffle queue” in any slot under “Pinned commands”.",
+        "pinRow": "It then stays at the bottom of the command window, one click away whenever the window is open."
+      },
       "audioEqualizer": {
         "enable": "The dialog behind the fader icon at the right of the volume row. The switch top-left turns the whole chain on or off; with it off, everything below still holds its values but nothing is applied.",
         "presets": "Six built-in presets across the top. Each one carries both an EQ curve and a full effect chain, so picking one replaces both at once. They cannot be edited.",
@@ -3854,7 +3927,7 @@ export default {
         "shortcutP": "{{mod}} + P opens the play queue. It is a command window too: the input line is the queue\u2019s search box, and things like @artist: narrow it down before a bulk action.",
         "shortcutB": "{{mod}} + B goes to Lattice, which lays the whole play queue out as a poster wall. Press it inside Lattice and it goes back.",
         "shortcutG": "Ctrl + G is what you just did: it opens the tutorial for the current page. Whenever you are lost, press it first.",
-        "hintSettings": "Know your way around Folia already? You can turn the Ponder hints off in settings, or keep them only where you have not looked yet \u2014 the switch is under Settings \u00b7 Lab, \u201cPonder tutorial hints\u201d, with three positions: always show, only where you have not looked yet, and off. The button below takes you straight there.",
+        "hintSettings": "Know your way around Folia already? You can turn the Ponder hints off in settings, or keep them only where you have not looked yet \u2014 the switch is under Settings \u00b7 General, \u201cPonder tutorial hints\u201d, with three positions: always show, only where you have not looked yet, and off. The button below takes you straight there.",
         "docs": "These four chapters are only the opening. Commands, shortcuts, online sources, the local library, visualizers and themes all have fuller write-ups on the docs site \u2014 the button below opens it."
       },
       "pages": {
@@ -3908,11 +3981,11 @@ export default {
         "latticeTools": "The bottom-right tools focus the current song, follow track changes, open the queue command, switch lights, and show key help. Sliding the button left opens commands.",
         "latticeLights": "Lights Off dims the wall while retaining its structure. It is only a display setting: playback and queue order are unchanged.",
         "latticePosterKeys": "Enter or Space expands a closed poster. Once open, Enter plays or pauses, Space toggles controls, and Escape collapses and clears focus first.",
-        "latticePageKeys": "Shift+;+C focuses the current song, {{mod}} + P opens the queue, {{mod}} + B goes back, {{mod}} + K opens the command window; arrow keys move poster focus.",
+        "latticePageKeys": ": + C focuses the current song, {{mod}} + P opens the queue, {{mod}} + B goes back, {{mod}} + K opens the command window; arrow keys move poster focus.",
         "help": "Folia separates browsing, playback, commands, and options. Ctrl+G explains the page currently in front of you; component guides appear separately when that component has special behavior.",
         "helpCommands": "{{mod}} + K searches every command and setting. For options buried deep, searching the name is usually faster than remembering which level it sits on.",
         "helpOperatingModel": "Choose music in a grid, then playback continues independently in Player or Lattice. The bottom bar controls transport everywhere; Help and Options are overlays above the current page.",
-        "settings": "The left side groups options by appearance, interface, playback, interaction, integrations, storage, desktop, and labs. The right side contains the settings in the selected group.",
+        "settings": "The left side groups options by appearance, interface, playback, interaction, integrations, storage, desktop, graphics, mods, and labs. The right side contains the settings in the selected group.",
         "settingsDirectNavigation": "You rarely need to browse every category: search the setting name in the command palette and Folia opens the exact section and anchor."
       },
       "playerBar": {

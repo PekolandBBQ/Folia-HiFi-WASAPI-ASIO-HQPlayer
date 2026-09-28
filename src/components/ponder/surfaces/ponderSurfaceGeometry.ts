@@ -156,14 +156,19 @@ export const GRID_VIEW_GEOMETRY = {
     filter: { left: 0.22, right: 0.22, top: 0.08, height: 0.11 },
 } satisfies Record<string, PonderRelativeRect>;
 
-/** 本地 Grid3D 右上角的分类切换与导入维护操作。 */
+/**
+ * 本地 Grid3D 顶栏：居中的是顶部视图胶囊的第二层（「全部」、分隔线、分类），右侧是导入维护操作。
+ * 分类里当前的「文件夹」带文字、较宽，其余三个只有图标，所以「歌单」是最右那一格窄的。
+ */
 export const LOCAL_GRID_CONTROLS_GEOMETRY = {
-    tabs: { left: 0.03, top: 0.18, width: 0.52, height: 0.32 },
-    folders: { left: 0.03, top: 0.18, width: 0.13, height: 0.32 },
-    playlists: { left: 0.42, top: 0.18, width: 0.13, height: 0.32 },
-    imports: { left: 0.58, top: 0.18, right: 0.03, height: 0.32 },
-    refresh: { left: 0.75, top: 0.18, width: 0.09, height: 0.32 },
-    playlistImport: { right: 0.03, top: 0.56, width: 0.18, height: 0.28 },
+    capsule: { left: 0.14, top: 0.18, width: 0.42, height: 0.32 },
+    map: { left: 0.15, top: 0.2, width: 0.1, height: 0.28 },
+    tabs: { left: 0.275, top: 0.18, width: 0.285, height: 0.32 },
+    folders: { left: 0.28, top: 0.2, width: 0.12, height: 0.28 },
+    playlists: { left: 0.505, top: 0.2, width: 0.05, height: 0.28 },
+    imports: { left: 0.6, top: 0.18, right: 0.03, height: 0.32 },
+    refresh: { left: 0.77, top: 0.18, width: 0.09, height: 0.32 },
+    playlistImport: { left: 0.88, top: 0.18, right: 0.03, height: 0.32 },
 } satisfies Record<string, PonderRelativeRect>;
 
 /** GridView 在线集合信息面板底部的通用与来源专属动作。 */
@@ -297,6 +302,16 @@ export const SIDE_PANEL_CONTROLS_PAGE = {
      */
     modeList: { left: 0.04, right: 0.04, top: 0.53, bottom: 0.02 },
     modeListFooter: { left: 0.04, right: 0.04, bottom: 0.02, height: 0.11 },
+} satisfies Record<string, PonderRelativeRect>;
+
+/**
+ * 队列页里的一块，坐标系是 body。
+ *
+ * 队列页是 flex 排的：顶上一行占 body 高的 12%，打乱按钮是那一行最右端的图标。
+ * 这里只圈出它所在的那一角，给「队列面板上也能打乱」那一章指过去。
+ */
+export const SIDE_PANEL_QUEUE_PAGE = {
+    shuffle: { right: 0, top: 0, width: 0.12, height: 0.12 },
 } satisfies Record<string, PonderRelativeRect>;
 
 /**
