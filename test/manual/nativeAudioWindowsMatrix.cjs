@@ -38,7 +38,7 @@ async function main() {
         const catalogPath = path.join(root, 'catalog.json');
         const writeCatalog = releases => fs.writeFile(catalogPath, JSON.stringify({ schema: 1, releases }));
         const manager = createComponentManager({ app: { isPackaged: false, getPath: () => root }, catalogPath });
-        let unlock, helper, installer;
+        let unlock, helper, installer, operationError;
         const originalRename = fs.rename;
         try {
             await writeCatalog([catalog.releases[2]]);
@@ -68,7 +68,7 @@ async function main() {
                 installer = fork(__filename, ['--child', root, scenario], { stdio: ['ignore', 'ignore', 'pipe', 'ipc'] });
                 await Promise.race([once(installer, 'message'), new Promise((_, reject) => setTimeout(() => reject(new Error('checkpoint timeout')), 15000).unref())]);
                 const stopped = once(installer, 'exit'); installer.kill(); await stopped; installer = null;
-            } else { try { await manager.install(); } catch (e) { error = e.code || e.message; } }
+            } else { try { await manager.install(); } catch (e) { error = e.code || e.message; operationError = { code: e.code, message: e.message, syscall: e.syscall }; } }
             const state = await manager.status();
             fs.rename = originalRename;
             const expectedOld = ['active-pointer-locked', 'archive-locked', 'staging-cleanup-locked', 'before-active'].includes(scenario);
@@ -81,7 +81,7 @@ async function main() {
             const fresh = createHelper(retried.executable, () => {});
             try { assert.equal((await fresh.request({ action: 'hello', protocolMajor: 1 })).componentVersion, '0.1.2'); } finally { fresh.dispose(); }
             results.push({ scenario, status: 'PASS', observedVersion: state.version, error, retryVersion: retried.version });
-        } catch (e) { results.push({ scenario, status: 'FAIL', error: e.message, state: await manager.status().then(({ executable, ...s }) => s).catch(() => null) }); }
+        } catch (e) { results.push({ scenario, status: 'FAIL', error: e.message, operationError, state: await manager.status().then(({ executable, ...s }) => s).catch(() => null) }); }
         finally { fs.rename = originalRename; if (unlock) await unlock(); helper?.dispose(); installer?.kill(); }
         console.log(JSON.stringify(results.at(-1)));
         await fs.writeFile(path.join(output, 'results.json'), JSON.stringify(results, null, 2));

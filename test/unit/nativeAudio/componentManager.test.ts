@@ -25,6 +25,21 @@ async function fixture() {
     return { manager: createComponentManager({ app, catalogPath }), directory, archive, catalog, release, catalogPath, app };
 }
 describe('optional component activation', () => {
+    it('preserves the original staging rename error and permits a later retry', async () => {
+        const { manager } = await fixture();
+        const fs = createRequire(import.meta.url)('node:fs/promises');
+        const rename = fs.rename;
+        const locked = Object.assign(new Error('staging locked'), { code: 'EPERM' });
+        fs.rename = async (from: string, to: string) => {
+            if (path.basename(from).startsWith('.install-')) throw locked;
+            return rename(from, to);
+        };
+        try {
+            await expect(manager.install()).rejects.toBe(locked);
+            expect((await manager.status()).busy).toBe(false);
+        } finally { fs.rename = rename; }
+        expect((await manager.install()).available).toBe(true);
+    });
     it('keeps the current activation when no previous version is available', async () => {
         const { manager, directory } = await fixture();
         await manager.install();

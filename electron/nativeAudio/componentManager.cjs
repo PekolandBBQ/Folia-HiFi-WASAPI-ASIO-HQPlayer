@@ -85,7 +85,9 @@ function createComponentManager({ app, catalogPath, fetchImpl = fetch }) {
             try { await fs.rename(staging, destination); staging = null; }
             catch (error) {
                 // Reinstall never replaces an executable that might still be mapped by a process.
-                if (digest(await fs.readFile(path.join(destination, 'folia-audio.exe'))) !== digest(files['folia-audio.exe'])) throw error;
+                // Preserve the original Windows rename failure if no valid destination exists.
+                const existing = await fs.readFile(path.join(destination, 'folia-audio.exe')).catch(() => null);
+                if (!existing || digest(existing) !== digest(files['folia-audio.exe'])) throw error;
             }
             const previous = await readPointer(directory) || await readPointer(directory, 'inactive.json');
             if (previous && previous.archiveSha256 !== release.sha256) await writePointer(directory, 'previous.json', previous);
