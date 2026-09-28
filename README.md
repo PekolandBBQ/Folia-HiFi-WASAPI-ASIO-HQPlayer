@@ -1,8 +1,8 @@
 # Folia Exclusive HiFi · WASAPI / ASIO / HQPlayer
 
-基于 [Folia](https://github.com/chthollyphile/folia-major) 的个人维护 fork，由 [PekolandBBQ](https://github.com/PekolandBBQ) 维护。我在原有歌词与音乐库体验上追加 Windows WASAPI/ASIO 独占播放、HQPlayer 独立连接、整数直通、音频链路展示与解码恢复功能。
+基于 [Folia](https://github.com/chthollyphile/folia-major) 的个人维护 fork，由 [PekolandBBQ](https://github.com/PekolandBBQ) 维护。在原有歌词与音乐库体验上追加 Windows WASAPI/ASIO 独占播放、HQPlayer 独立连接、整数直通、音频链路展示。
 
-**这是独立维护的预发布专版，不是上游官方发行版。** 目前基于 Folia v0.7.9；上游暂未合入这些扩展，我会在本分支维护、验证并独立发布。原项目及贡献者的署名和许可证保留。
+**独立维护的预发布专版，非上游官方发行版。** 目前基于 Folia v0.7.9；上游暂未合入这些扩展，我会在本分支维护、验证并独立发布。原项目及贡献者的署名和许可证保留。
 
 [下载 Windows x64 专版](https://github.com/PekolandBBQ/folia-major/releases/tag/v0.7.9-exclusive.1) · [使用说明](docs/exclusive/USAGE.md) · [验证结果](docs/exclusive/VALIDATION.md) · [反馈问题](https://github.com/PekolandBBQ/folia-major/issues)
 
