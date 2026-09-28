@@ -105,6 +105,6 @@ C 与完整候选的 `src`、`electron`、`.github`、`test/unit`、`test/compon
 
 交付目录为 `Folia Native Validation.exe` 及全部依赖，ZIP 需整体解压。最终包基于 v0.7.9，使用独立 profile、自带已核验的离线组件及 PCM24/PCM32 FFmpeg。普通官方入口的组件信任策略未放宽；人工入口只在本发行件启用，不进入 A/B/C 审查增量。
 
-最终发行件检查：**13/13 通过**（`integration/checks/delivery-packaged-final-retest.log`）。包括离线组件就绪、真实本地标签导入、两后端×两模式×两曲的播放／定位／暂停续播／ReplayGain、离线更新及回退，以及包内实际转码 runner 和内置 FFmpeg 对两首指定损坏曲目的严格失败→容错输出→严格校验。实际通过截图在 `integration/runs/packaged-*`，对应环境 JSON 含发行 exe 和 app.asar 哈希。构建／源码／组件和二进制哈希另存交付清单。原始账号 profile、授权 URL、音乐原件、开发依赖不随验证证据分发。
+最终发行件检查：**13/13 通过**（`integration/checks/delivery-packaged-final-retest.log`）。包括离线组件就绪、真实本地标签导入、两后端×两模式×两曲的播放／定位／暂停续播／ReplayGain、离线更新及回退，以及包内实际转码 runner 和内置 FFmpeg 对两首指定损坏曲目的严格失败→容错输出→严格校验。实际通过截图在 `integration/runs/packaged-*`，对应环境 JSON 含发行 exe 和 app.asar 哈希。另将自动测试 profile 完整保留到非交付目录后，使用全新 profile 验证首次启动：离线安装 0.1.2、上一版回退可用、默认浏览器后端、无自动测试导入目录，1/1 通过（`delivery-first-run.log`）。构建／源码／组件和二进制哈希另存交付清单。原始账号 profile、授权 URL、音乐原件、开发依赖不随验证证据分发。
 
 报告仍明确保留三个边界：官方镜像 CI／批准清单尚待维护者；历史一次设备拒绝未唯一定位；两首损坏 FLAC 严格阶段仍失败，但已验证自动容错续播同曲，原文件未被修复。实际听感、其他 DAC／ASIO 驱动、断电／磁盘满／杀毒隔离不在这次矩阵内。这些边界不会因为本机测试通过而消失。
