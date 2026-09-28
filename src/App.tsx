@@ -59,7 +59,7 @@ import { Album, Artist, LyricData, Theme, PlayerState, SongResult, ReplayGainMod
 import type { LocalSong } from './types';
 import { getLocalSongArrayBuffer, getFileFromLocalSong } from './services/localMusicService';
 import PlaybackDeck from './components/app/playback/PlaybackDeck';
-import { isNativeAudioElement } from './services/nativeAudio/NativeAudioTransport';
+import { isNativeAudioElement, reloadRecoveredNativeSource } from './services/nativeAudio/NativeAudioTransport';
 import type { MediaId, OnlineProviderId, ProviderCollection } from './types/onlineMusic';
 import { resolveSongCatalogRef } from './services/onlineMusic/catalogRefs';
 import { omni } from './services/onlineMusic/omni';
@@ -2635,6 +2635,15 @@ export default function App() {
 
                         if (!recovered) {
                             skipAfterPlaybackFailure();
+                        } else if (audioRef.current === audioElement) {
+                            reloadRecoveredNativeSource(audioElement, usePlaybackStore.getState().audioSrc, () => {
+                                // With an unchanged URL the autoplay effect does not rerun. Preserve later user pauses.
+                                if (audioRef.current !== audioElement || !shouldAutoPlay.current) return;
+                                shouldAutoPlay.current = false;
+                                void audioElement.play().catch(() => {
+                                    if (audioRef.current === audioElement) setPlayerState(PlayerState.PAUSED);
+                                });
+                            });
                         }
                     })();
                     return;

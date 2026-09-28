@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { NativeAudioTransport } from '../../../src/services/nativeAudio/NativeAudioTransport';
+import { NativeAudioTransport, reloadRecoveredNativeSource } from '../../../src/services/nativeAudio/NativeAudioTransport';
 import type { NativeAudioApi, NativeAudioEvent, NativeAudioState } from '../../../src/types/nativeAudio';
 
 // test/unit/nativeAudio/transport.test.ts — race and clock contracts at the media adapter boundary.
@@ -33,6 +33,29 @@ function fixture() {
 }
 
 describe('native transport', () => {
+    it('reloads an errored native source when provider refresh returns the same URL', async () => {
+        const { transport, event, state } = fixture();
+        transport.setSource('blob:same'); await flush();
+        const previous = state().session;
+        event({ event: 'error', session: previous, errorCode: 'SOURCE_EXPIRED' });
+        const ready = vi.fn(() => { void transport.play(); });
+        expect(reloadRecoveredNativeSource(transport.asMediaElement(), 'blob:same', ready)).toBe(true);
+        await flush();
+        expect(state().session).not.toBe(previous);
+        expect(transport.error).toBeNull();
+        expect(transport.readyState).toBe(4);
+        expect(ready).toHaveBeenCalledOnce();
+        expect(transport.paused).toBe(false);
+    });
+    it('never reloads a healthy source, a changed source, or the browser deck', async () => {
+        const { transport } = fixture();
+        transport.setSource('blob:same'); await flush();
+        expect(reloadRecoveredNativeSource(transport.asMediaElement(), 'blob:same')).toBe(false);
+        expect(reloadRecoveredNativeSource(transport.asMediaElement(), 'blob:new')).toBe(false);
+        const browser = { currentSrc: 'blob:same', error: {}, removeAttribute: vi.fn(), setAttribute: vi.fn() };
+        expect(reloadRecoveredNativeSource(browser as unknown as HTMLAudioElement, 'blob:same')).toBe(false);
+        expect(browser.removeAttribute).not.toHaveBeenCalled();
+    });
     it('does not rewind poster lyric frames when IPC snapshots lag interpolation, but allows backward seeks', async () => {
         let now = 0;
         const clock = vi.spyOn(performance, 'now').mockImplementation(() => now);

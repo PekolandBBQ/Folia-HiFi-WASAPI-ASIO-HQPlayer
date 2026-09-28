@@ -51,6 +51,7 @@ type RestorePlaybackSourceParams = {
     }) => Promise<unknown>;
     persistLastPlaybackCache?: (song: SongResult | null, queue: SongResult[]) => Promise<void>;
     queue?: SongResult[];
+    isCurrent?: () => boolean;
 };
 
 const replaceBlobUrl = (
@@ -75,6 +76,7 @@ export const restorePlaybackSourceForSong = async (
         restoreCachedThemeForSong,
         persistLastPlaybackCache,
         queue,
+        isCurrent = () => true,
     }: RestorePlaybackSourceParams,
 ) => {
     await restoreCachedThemeForSong?.(song, {
@@ -82,7 +84,10 @@ export const restorePlaybackSourceForSong = async (
         preserveCurrentOnMiss: false,
     });
 
-    setCachedCoverUrl(await getCachedSongCoverUrl(song));
+    if (!isCurrent()) return false;
+    const cachedSongCover = await getCachedSongCoverUrl(song);
+    if (!isCurrent()) return false;
+    setCachedCoverUrl(cachedSongCover);
 
     if (isNavidromePlaybackSong(song)) {
         const navidromeSongToRestore = (song as unknown as SongResult & { navidromeData?: NavidromeSong }).navidromeData;
@@ -96,6 +101,7 @@ export const restorePlaybackSourceForSong = async (
 
         currentOnlineAudioUrlFetchedAtRef.current = null;
         const serverSong = await navidromeApi.getSong(config, navidromeId);
+        if (!isCurrent()) return false;
         if (serverSong?.replayGain) {
             navidromeSongToRestore.navidromeData.replayGain = serverSong.replayGain;
         }
@@ -111,6 +117,7 @@ export const restorePlaybackSourceForSong = async (
         } else {
             await hydrateNavidromeLyricPayload(config, navidromeSongToRestore);
             const restoredLyrics = await resolvePreferredNavidromeLyrics(navidromeSongToRestore);
+            if (!isCurrent()) return false;
             if (hasRenderableLyrics(restoredLyrics)) {
                 navidromeSongToRestore.lyricsSource = 'navi';
             }
@@ -134,6 +141,7 @@ export const restorePlaybackSourceForSong = async (
         const localSongId = isLocalPlaybackSong(song) ? song.localRef.songId : legacyLocalData?.id;
         let songToRestore: LocalSong | undefined;
         const songs = await getLocalSongs();
+        if (!isCurrent()) return false;
 
         if (localSongId) {
             songToRestore = songs.find(candidate => candidate.id === localSongId);
@@ -156,6 +164,7 @@ export const restorePlaybackSourceForSong = async (
         }
 
         const blobUrl = await getAudioFromLocalSong(songToRestore);
+        if (!isCurrent()) { if (blobUrl) URL.revokeObjectURL(blobUrl); return false; }
         if (!blobUrl) {
             console.warn('[restorePlaybackSourceForSong] Local song file not accessible - needs resync');
             setStatusMsg({
@@ -168,6 +177,7 @@ export const restorePlaybackSourceForSong = async (
         songToRestore = await ensureLocalSongCoverAsset(songToRestore);
         const localCoverUrl = getLocalCoverAssetUrl(songToRestore.localCoverAssetId, 1024);
         const catalog = await getLocalLibraryCatalogSnapshot();
+        if (!isCurrent()) { URL.revokeObjectURL(blobUrl); return false; }
         const restoredSong = applyLocalLibraryEntityDisplay(buildUnifiedLocalSong({
             localSong: songToRestore,
             matchedSong: null,
@@ -185,6 +195,7 @@ export const restorePlaybackSourceForSong = async (
             songToRestore,
             useLyricSettingsStore.getState().localLyricsPriority,
         );
+        if (!isCurrent()) return false;
         setLyrics(resolvedLyrics.lyrics);
         setActiveLocalLyricsSource(resolvedLyrics.source);
 
@@ -192,9 +203,12 @@ export const restorePlaybackSourceForSong = async (
         const cachedCoverUrl = songToRestore.useOnlineCover
             ? await getCachedCoverUrl(cacheKey)
             : null;
+        if (!isCurrent()) return false;
         if (cachedCoverUrl) setCachedCoverUrl(cachedCoverUrl);
         else if (songToRestore.useOnlineCover && songToRestore.onlineMetadata?.coverUrl) {
-            setCachedCoverUrl(await loadCachedOrFetchCover(cacheKey, songToRestore.onlineMetadata.coverUrl));
+            const cover = await loadCachedOrFetchCover(cacheKey, songToRestore.onlineMetadata.coverUrl);
+            if (!isCurrent()) return false;
+            setCachedCoverUrl(cover);
         } else if (localCoverUrl) {
             setCachedCoverUrl(localCoverUrl);
         } else {
@@ -206,6 +220,7 @@ export const restorePlaybackSourceForSong = async (
     }
 
     const onlineLyricsState = await loadOnlineLyricsState(song);
+    if (!isCurrent()) return false;
     if (onlineLyricsState) {
         setCurrentSong(prev => {
             if (!prev || !isSamePlaybackSong(prev, song)) return prev;
@@ -219,6 +234,10 @@ export const restorePlaybackSourceForSong = async (
     }
 
     const audioResult = await loadOnlineSongAudioSource(song, audioQuality, null);
+    if (!isCurrent()) {
+        if (audioResult.kind === 'ok' && audioResult.blobUrl) URL.revokeObjectURL(audioResult.blobUrl);
+        return false;
+    }
     if (audioResult.kind === 'unavailable') {
         setStatusMsg({ type: 'error', text: i18n.t('status.playbackFailed') });
         return false;
@@ -244,6 +263,7 @@ export const restorePlaybackSourceForSong = async (
     }
 
     const cachedLyrics = await getSongCacheWithLegacyMigration<LyricData>('lyric', song, migrateLyricDataRenderHints);
+    if (!isCurrent()) return false;
     const restoredPreferredLyrics = resolveOnlineLyrics(onlineLyricsState, cachedLyrics);
     if (restoredPreferredLyrics) {
         const cachedText = restoredPreferredLyrics.lines.map(line => line.fullText).join('\n');
@@ -265,6 +285,7 @@ export const restorePlaybackSourceForSong = async (
         ? (useOnlineProviderAccountStore.getState().accounts[songProviderId]?.user?.id ?? userId)
         : userId;
     const processed = await omni.getLyrics(song, { userId: effectiveUserId });
+    if (!isCurrent()) return false;
     const resolvedLyrics = resolveOnlineLyrics(onlineLyricsState, processed.lyrics);
     setCurrentSong(prev => {
         if (!prev || !isSamePlaybackSong(prev, song)) return prev;

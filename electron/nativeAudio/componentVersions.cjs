@@ -24,7 +24,13 @@ async function pruneVersions(directory, releases) {
         if (!/^\d+\.\d+\.\d+(?:-[a-zA-Z0-9.-]+)?-[a-f0-9]{12}$/.test(entry.name) || keep.has(entry.name)) continue;
         const target = path.resolve(directory, entry.name);
         if (path.dirname(target) !== path.resolve(directory) || entry.isSymbolicLink()) continue;
-        await fs.rm(target, { recursive: true, force: true });
+        try { await fs.rm(target, { recursive: true, force: true }); }
+        catch (error) {
+            // Activation has already committed. Windows may retain mapped/locked old files;
+            // retry their cleanup on the next operation without reporting the update as failed.
+            if (!['EBUSY', 'EPERM', 'EACCES'].includes(error.code)) throw error;
+            console.warn('[NativeAudio] Obsolete component cleanup deferred:', entry.name, error.code);
+        }
     }
 }
 function assertCompatibleCatalog(previous, next) {

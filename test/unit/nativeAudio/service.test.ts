@@ -31,6 +31,15 @@ async function fixture(decode: (exe: string, input: string, directory: string, s
 }
 
 describe.skipIf(process.platform !== 'win32' || process.arch !== 'x64')('native service', () => {
+    it('does not tear down a ready session when device enumeration fails', async () => {
+        const { request, begin, helper } = await fixture();
+        await begin('playing'); await request({ action: 'finish', session: 'playing' });
+        helper.request.mockRejectedValueOnce(Object.assign(new Error('DEVICE_UNAVAILABLE'), { code: 'DEVICE_UNAVAILABLE' }));
+        await expect(request({ action: 'devices' })).rejects.toMatchObject({ code: 'DEVICE_UNAVAILABLE' });
+        expect(helper.dispose).not.toHaveBeenCalled();
+        await request({ action: 'play', session: 'playing' });
+        expect(helper.request.mock.calls.at(-1)?.[0]).toMatchObject({ action: 'play', session: 'playing' });
+    });
     it('rejects unrelated renderers, subframes and non-local sources', async () => {
         const { service, event, request } = await fixture();
         await expect(service.handle({ ...event, sender: {} }, { action: 'devices' })).rejects.toThrow('Untrusted');

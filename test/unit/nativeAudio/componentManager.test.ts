@@ -25,6 +25,30 @@ async function fixture() {
     return { manager: createComponentManager({ app, catalogPath }), directory, archive, catalog, release, catalogPath, app };
 }
 describe('optional component activation', () => {
+    it('keeps the current activation when no previous version is available', async () => {
+        const { manager, directory } = await fixture();
+        await manager.install();
+        const pointer = path.join(directory, 'components/native-audio/active.json');
+        const before = await readFile(pointer, 'utf8');
+        await expect(manager.rollback()).rejects.toMatchObject({ code: 'ROLLBACK_UNAVAILABLE' });
+        expect(await readFile(pointer, 'utf8')).toBe(before);
+        expect((await manager.status()).available).toBe(true);
+    });
+    it('rejects a tampered previous executable without changing the current activation', async () => {
+        const { manager, directory, catalogPath, release } = await fixture();
+        const old = await manager.install();
+        const zip = zipSync({ 'folia-audio.exe': strToU8('new'), 'component.json': strToU8(JSON.stringify({ version: '0.1.1', protocolMajor: 1 })) });
+        const localPath = path.join(directory, 'new.zip');
+        await writeFile(localPath, zip);
+        await writeFile(catalogPath, JSON.stringify({ schema: 1, releases: [{ ...release, version: '0.1.1', localPath, sha256: createHash('sha256').update(zip).digest('hex') }, release] }));
+        await manager.install();
+        const pointer = path.join(directory, 'components/native-audio/active.json');
+        const before = await readFile(pointer, 'utf8');
+        await writeFile(old.executable, 'tampered');
+        await expect(manager.rollback()).rejects.toMatchObject({ code: 'COMPONENT_INTEGRITY' });
+        expect(await readFile(pointer, 'utf8')).toBe(before);
+        expect((await manager.status()).version).toBe('0.1.1');
+    });
     it('allows deactivation before first install and repeated deactivation', async () => {
         const { manager } = await fixture();
         expect((await manager.uninstall()).installed).toBe(false);

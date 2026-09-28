@@ -93,7 +93,8 @@ async function main() {
                 return { status: 'PASS', song: song.name, requestedQuality: 'hires', returnedQuality: source.quality, sourceScheme: new URL(source.url).protocol };
             }, { provider, useCurrent, playlistId }));
             if (source.status !== 'PASS') continue;
-            if (!navidrome) await step(`${provider}-expired-refresh`, '注入 HTTP 403 后通过原恢复控制器重新解析真实音源', 'Inject HTTP 403, then refresh a real source through the existing recovery controller', async () => {
+            if (!navidrome) await step(`${provider}-expired-refresh`, '模块级注入 HTTP 403 并重新解析真实音源（非 App 端到端）', 'Module-level HTTP 403 and real source refresh (not App end-to-end)', async () => {
+                sessionCookieObserved = false;
                 const result = await page.evaluate(async ({ provider, expiredUrl }) => {
                     const api = window.electron.nativeAudio;
                     const device = window.__reviewDevices[0];
@@ -129,7 +130,8 @@ async function main() {
                         injectedStatus: 403, rejectedCode, recovered, resumeAt: resume.current, autoplayIntent: auto.current,
                         sourceScheme: refreshed ? new URL(refreshed).protocol : null };
                 }, { provider, expiredUrl });
-                return { ...result, electronSessionCookieObserved: sessionCookieObserved };
+                return { ...result, status: result.status === 'PASS' && !sessionCookieObserved ? 'FAIL' : result.status,
+                    electronSessionCookieObserved: sessionCookieObserved, coverage: 'module-composition' };
             });
             for (const target of ['wasapi-exclusive', 'asio', ...(!navidrome ? ['wasapi-exclusive-cached', 'asio-cached'] : [])]) {
                 const cached = target.endsWith('-cached'), backend = target.replace('-cached', '');

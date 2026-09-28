@@ -17,7 +17,7 @@ async function main() {
     let latest, error;
     const helper = createHelper(path.resolve(process.env.FOLIA_NATIVE_HELPER_PATH || '../folia-native-audio-component/artifacts/publish/folia-audio.exe'), event => {
         if (event.state) latest = event.state;
-        if (event.event === 'error') error = event.error;
+        if (event.event === 'error') error = event.errorCode;
     });
     const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
     try {
@@ -63,7 +63,10 @@ async function main() {
                 assert.equal(latest.ended, true); assert.equal(latest.position, 4);
                 const replay = await request('play'); assert.equal(replay.ended, false);
                 await wait(100);
-                await assert.rejects(helper.request({ action: 'pause', session: 'stale' }), /Stale/);
+                const beforeStale = latest.position;
+                await assert.rejects(helper.request({ action: 'pause', session: 'stale' }), { code: 'INVALID_REQUEST' });
+                await wait(100);
+                assert.ok(latest.playing && latest.position > beforeStale, 'Rejected stale command must not interrupt active playback');
                 await request('stop');
                 console.log(JSON.stringify({ backend: device.backend, device: device.name, sampleRate: rate,
                     processingMode, outputFormat: loaded.outputFormat, result: 'PASS',

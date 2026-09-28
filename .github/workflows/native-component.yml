@@ -1,6 +1,11 @@
 name: Optional native audio component
 on:
   workflow_dispatch:
+    inputs:
+      catalog_base:
+        description: '上一已批准清单的提交 SHA / Commit SHA of the previous approved catalog'
+        required: true
+        type: string
   pull_request:
     paths:
       - 'electron/nativeAudio/component-catalog.json'
@@ -23,10 +28,11 @@ jobs:
       - name: Check retained compatible catalog
         shell: pwsh
         env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha || inputs.catalog_base }}
         run: node packaging/native-audio/check-catalog.cjs $env:BASE_SHA
       - run: node packaging/native-audio/verify-component.cjs
   prepare-mirror:
+    needs: verify
     if: github.event_name == 'workflow_dispatch' && github.repository == 'chthollyphile/folia-major' && github.ref == 'refs/heads/main'
     runs-on: windows-latest
     outputs:

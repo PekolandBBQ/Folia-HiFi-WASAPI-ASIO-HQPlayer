@@ -20,20 +20,38 @@ function NativeDeck(props: Props) {
     const latest = useRef(props);
     latest.current = props;
     const transport = useRef<NativeAudioTransport | null>(null);
+    const generation = useRef(0);
+    const configuration = useRef('');
     useLayoutEffect(() => {
-        const audio = new NativeAudioTransport(window.electron!.nativeAudio!, props.nativeBackend,
-            props.nativeDeviceId, props.nativeProcessingMode, () => latest.current.getLocalFile());
-        transport.current = audio;
-        for (const [event, handler] of Object.entries(eventProps)) {
-            audio.addEventListener(event, nativeEvent => {
-                latest.current[handler]?.({ currentTarget: audio.asMediaElement(), target: audio.asMediaElement(),
-                    nativeEvent } as unknown as React.SyntheticEvent<HTMLAudioElement>);
-            });
+        const currentGeneration = ++generation.current;
+        const key = JSON.stringify([props.nativeBackend, props.nativeDeviceId, props.nativeProcessingMode]);
+        if (!transport.current || configuration.current !== key) {
+            transport.current?.dispose();
+            const created = new NativeAudioTransport(window.electron!.nativeAudio!, props.nativeBackend,
+                props.nativeDeviceId, props.nativeProcessingMode, () => latest.current.getLocalFile());
+            transport.current = created;
+            configuration.current = key;
+            for (const [event, handler] of Object.entries(eventProps)) {
+                created.addEventListener(event, nativeEvent => {
+                    latest.current[handler]?.({ currentTarget: created.asMediaElement(), target: created.asMediaElement(),
+                        nativeEvent } as unknown as React.SyntheticEvent<HTMLAudioElement>);
+                });
+            }
         }
+        const audio = transport.current;
         props.register(audio.asMediaElement());
         audio.loop = Boolean(props.loop);
         audio.setSource(props.src || '');
-        return () => { audio.dispose(); props.register(null); transport.current = null; };
+        return () => {
+            props.register(null);
+            // StrictMode replays layout effects synchronously. Keep its in-flight play request;
+            // a real unmount still disposes at the next microtask, and a backend change replaces it.
+            queueMicrotask(() => {
+                if (generation.current !== currentGeneration) return;
+                audio.dispose();
+                if (transport.current === audio) transport.current = null;
+            });
+        };
     }, [props.register, props.nativeBackend, props.nativeDeviceId, props.nativeProcessingMode]);
     useLayoutEffect(() => {
         if (!transport.current) return;

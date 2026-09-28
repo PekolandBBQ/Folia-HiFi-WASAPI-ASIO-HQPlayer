@@ -11,7 +11,7 @@ import { getPlaybackSongKey, isStagePlaybackSong, normalizePlaybackSongSource } 
 import type { LyricData, SongResult, StatusMessage } from '../types';
 import type { AudioQualityPreference, MediaId } from '../types/onlineMusic';
 import { setStatusMessage as setStatusMsg } from '../stores/useStatusMessageStore';
-import { setCurrentSong, setPlayQueue } from '../stores/usePlaybackStore';
+import { setCurrentSong, setPlayQueue, usePlaybackStore } from '../stores/usePlaybackStore';
 import { useAudioSettingsStore } from '../stores/useAudioSettingsStore';
 
 // src/hooks/useSessionRestoreController.ts
@@ -79,9 +79,11 @@ export function useSessionRestoreController({
         hasInitializedRef.current = true;
 
         const restoreSession = async () => {
+            const initialSong = usePlaybackStore.getState().currentSong;
             try {
                 let lastSong = await getFromCache<SongResult>('last_song');
                 let lastQueue = await getFromCache<SongResult[]>('last_queue');
+                if (usePlaybackStore.getState().currentSong !== initialSong) return;
 
                 if (lastSong) lastSong = normalizePlaybackSongSource(lastSong);
                 if (lastQueue) lastQueue = lastQueue.map(normalizePlaybackSongSource);
@@ -123,6 +125,7 @@ export function useSessionRestoreController({
                     await persistLastPlaybackCache(lastSong, lastQueue);
                 }
 
+                if (usePlaybackStore.getState().currentSong !== initialSong) return;
                 console.log('[Session] Restoring last song:', lastSong.name);
                 if (lastSong.sourceRef?.kind === 'online' && lastSong.sourceRef.providerId) {
                     const currentActiveProviderId = useOnlineProviderAccountStore.getState().activeProviderId;
@@ -133,6 +136,11 @@ export function useSessionRestoreController({
                 }
                 setCurrentSong(lastSong);
                 setPlayQueue(lastQueue && lastQueue.length > 0 ? lastQueue : [lastSong]);
+                const restoredKey = getPlaybackSongKey(lastSong);
+                const isCurrent = () => {
+                    const current = usePlaybackStore.getState().currentSong;
+                    return Boolean(current && getPlaybackSongKey(current) === restoredKey);
+                };
 
                 // Read at restore time rather than subscribed: this effect runs once, and the
                 // switch only ever has to answer for this one launch.
@@ -154,11 +162,12 @@ export function useSessionRestoreController({
                         restoreCachedThemeForSong,
                         persistLastPlaybackCache,
                         queue: lastQueue || [lastSong],
+                        isCurrent,
                     });
                 } catch (error) {
                     // No source ever landed, so the intent was never spent. Left standing it would
                     // fire on whatever the listener plays next, which they did not ask for.
-                    shouldAutoPlayRef.current = false;
+                    if (isCurrent()) shouldAutoPlayRef.current = false;
                     console.warn('Failed to restore audio/lyrics for last session', error);
                 }
 
@@ -167,7 +176,7 @@ export function useSessionRestoreController({
                 // are cold, and neither track has been measured for automix. That makes the first
                 // song change of every session the slowest one and the only one that blends blind.
                 // Every other entry into playback prefetches; this one was simply never wired to.
-                void prefetchNearbySongs(lastSong, lastQueue || [lastSong], audioQuality, userId);
+                if (isCurrent()) void prefetchNearbySongs(lastSong, lastQueue || [lastSong], audioQuality, userId);
             } catch (error) {
                 console.error('Session restore failed', error);
             }

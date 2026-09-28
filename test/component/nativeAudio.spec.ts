@@ -46,6 +46,16 @@ test.beforeEach(async ({ page }) => {
     });
 });
 
+test('mount-time autoplay survives StrictMode layout replay without spending its intent twice', async ({ mount, page }) => {
+    await page.addInitScript(() => localStorage.setItem('native_probe_autoplay', 'true'));
+    await mount('nativeAudio');
+    await expect(page.getByTestId('status')).toHaveText('playing');
+    await expect.poll(async () => Number(await page.getByTestId('clock').textContent())).toBeGreaterThan(.2);
+    const requests = await page.evaluate(() => (window as unknown as { __nativeRequests: Array<{ action: string }> }).__nativeRequests);
+    expect(requests.filter(r => r.action === 'play')).toHaveLength(1);
+    expect(requests.filter(r => r.action === 'begin')).toHaveLength(1);
+});
+
 test('fatal crash defaults to browser fallback and clears the selected native output', async ({ mount, page }) => {
     await mount('nativeAudio');
     await expect(page.getByTestId('status')).toHaveText('ready');

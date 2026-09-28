@@ -208,3 +208,12 @@ export class NativeAudioTransport extends EventTarget {
 
 export const isNativeAudioElement = (element: HTMLAudioElement | null): boolean =>
     Boolean(element && 'nativeAudio' in element);
+
+// A refreshed provider URL can be byte-for-byte identical. React then has no src change to apply.
+export function reloadRecoveredNativeSource(element: HTMLAudioElement, source: string | null, onReady?: () => void) {
+    if (!isNativeAudioElement(element) || !source || !element.error || element.currentSrc !== source) return false;
+    if (onReady) element.addEventListener('canplay', onReady, { once: true });
+    element.removeAttribute('src');
+    element.setAttribute('src', source);
+    return true;
+}

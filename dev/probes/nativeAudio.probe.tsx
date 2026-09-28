@@ -32,6 +32,12 @@ function NativeAudioProbe() {
     const recover = useNativeAudioRecovery(audio, backend !== 'browser');
     const register = useCallback((element: HTMLAudioElement | null) => { audio.current = element; }, []);
     const [status, setStatus] = useState('waiting');
+    const autoplaySpent = useRef(false);
+    useEffect(() => {
+        if (localStorage.getItem('native_probe_autoplay') !== 'true' || autoplaySpent.current) return;
+        autoplaySpent.current = true;
+        void audio.current?.play().catch(error => setStatus(error.name));
+    }, []);
     const [source, setSource] = useState(() => sourceKind === 'remote' && remoteUrl ? remoteUrl : URL.createObjectURL(silentLocalFile()));
     const revocations = useRef(new Map<string, ReturnType<typeof setTimeout>>());
     useEffect(() => {
