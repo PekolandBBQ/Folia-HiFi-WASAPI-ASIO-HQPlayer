@@ -7,6 +7,9 @@ const { build, Platform } = require('electron-builder');
 // packaging/native-audio/build-manual-preview.cjs — build the isolated manual validation distribution.
 async function main() {
     const root = path.resolve(__dirname, '../..');
+    const html = await fs.readFile(path.join(root, 'dist/index.html'), 'utf8');
+    if (/\b(?:src|href)="\/(?:assets|runtime-config)/.test(html))
+        throw new Error('Renderer has web-root URLs. Build with ELECTRON=true before packaging.');
     const staging = path.join(root, 'build/manual-native-audio'); await fs.mkdir(staging, { recursive: true });
     const catalog = JSON.parse(await fs.readFile(path.resolve(root, '../folia-native-audio-component/artifacts/development-catalog.json'), 'utf8'));
     const releases = [];

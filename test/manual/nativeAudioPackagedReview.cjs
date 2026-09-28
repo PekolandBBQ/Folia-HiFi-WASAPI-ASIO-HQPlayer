@@ -51,13 +51,14 @@ async function main() {
         await record('real-local-folder-import', async () => {
             const entries = await fixtures(output);
             await page.evaluate(async entries => {
-                const root = await navigator.storage.getDirectory(); const directory = await root.getDirectoryHandle('PackagedTaggedMusic', { create: true });
+                const folder = `PackagedTaggedMusic-${Date.now()}`; localStorage.setItem('native_review_folder', folder);
+                const root = await navigator.storage.getDirectory(); const directory = await root.getDirectoryHandle(folder, { create: true });
                 for (const entry of entries) { const file = await directory.getFileHandle(`tagged-${entry.id}.flac`, { create: true }); const writer = await file.createWritable(); await writer.write(Uint8Array.from(atob(entry.bytes), c => c.charCodeAt(0))); await writer.close(); }
                 window.showDirectoryPicker = async () => directory;
             }, entries);
             await page.getByRole('button', { name: /^(本地|Folder)$/ }).last().click();
             await page.getByRole('button', { name: /^(导入文件夹|Import Folder)$/ }).last().click();
-            await page.waitForFunction(() => { const songs = window.__packageReview.props().localSongs.filter(s => s.folderName?.startsWith('PackagedTaggedMusic')); return songs.length === 2 && songs.every(s => s.replayGainAlbumGain === -12 && s.duration === 24000); });
+            await page.waitForFunction(() => { const songs = window.__packageReview.props().localSongs.filter(s => s.folderName === localStorage.getItem('native_review_folder')); return songs.length === 2 && songs.every(s => s.replayGainAlbumGain === -12 && s.duration === 24000); });
             return { files: 2, realTags: true, picker: 'real-persistent-OPFS-directory' };
         });
         const devices = await page.evaluate(() => window.electron.nativeAudio.request({ action: 'devices' }));
@@ -66,10 +67,10 @@ async function main() {
             await page.evaluate(({ backend, device, processing }) => { localStorage.setItem('folia_native_audio_backend', backend); localStorage.setItem('folia_native_audio_device', device); localStorage.setItem('folia_native_audio_processing_mode', processing); localStorage.setItem('local_replaygain_mode', 'track'); }, { backend, device: device.id, processing });
             await page.reload(); await attach(page);
             for (const index of [0, 1]) await record(`${backend}-${processing}-local-${index}`, async () => {
-                await page.waitForFunction(() => window.__packageReview.props().localSongs.filter(s => s.folderName?.startsWith('PackagedTaggedMusic')).length === 2);
+                await page.waitForFunction(() => window.__packageReview.props().localSongs.filter(s => s.folderName === localStorage.getItem('native_review_folder')).length === 2);
                 await page.evaluate(async index => {
                     const r = window.__packageReview, props = r.props();
-                    const localSongs = props.localSongs.filter(s => s.folderName?.startsWith('PackagedTaggedMusic')).sort((a,b) => a.title.localeCompare(b.title));
+                    const localSongs = props.localSongs.filter(s => s.folderName === localStorage.getItem('native_review_folder')).sort((a,b) => a.title.localeCompare(b.title));
                     const songs = localSongs.map((s,i) => ({ id: -i-1, name: s.title, artists: [], album: { id: 0, name: '' }, durationMs: s.duration, isLocal: true, localRef: { songId: s.id }, sourceRef: { kind: 'local', mediaId: s.id } }));
                     r.expected = localSongs[index].id; await props.onPlaySong(songs[index], songs, false, { shouldNavigateToPlayer: false });
                 }, index);
@@ -87,6 +88,17 @@ async function main() {
             for (const action of ['component-rollback', 'component-install']) await page.evaluate(action => window.electron.nativeAudio.request({ action }), action);
             const status = await page.evaluate(() => window.electron.nativeAudio.request({ action: 'status' })); assert.equal(status.version, '0.1.2'); return { version: status.version, busy: status.busy };
         });
+        for (const [label, inputPath] of [['Spica','D:/Music/QQMusic/HUMMING LIFE - Spica.flac'],['Sakurane','D:/Music/QQMusic/ピコ - 桜音.flac']]) {
+            await record(`packaged-tolerant-${label}`, async () => {
+                const result = await app.evaluate(async ({ app }, { inputPath, label }) => {
+                    const path = require('node:path'), fs = require('node:fs/promises');
+                    const { transcodeAudioFile } = require(path.join(app.getAppPath(),'electron/transcode/runner.cjs'));
+                    const root = path.join(app.getPath('userData'),'validation-output'); await fs.mkdir(root,{recursive:true});
+                    return transcodeAudioFile({executable:path.join(process.resourcesPath,'ffmpeg-audio/ffmpeg.exe'),inputPath,outputPath:path.join(root,`${label}.flac`),format:'flac',parallel:true});
+                }, { inputPath, label });
+                assert.equal(result.tolerant,true); assert.ok(result.size>128); return {...result,packagedRunner:true,strictOutputValidation:true};
+            });
+        }
     } finally { await app.close(); }
     if (results.some(r => r.status === 'FAIL')) process.exitCode = 1;
 }
