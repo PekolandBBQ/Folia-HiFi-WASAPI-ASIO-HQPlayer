@@ -37,3 +37,16 @@ it('never sends legacy raw error strings or URLs to the renderer', async () => {
     expect(event).toHaveBeenCalledWith({ event: 'error', session: 'track', errorCode: 'NATIVE_REQUEST_FAILED' });
     helper.dispose();
 });
+it('logs sanitized driver diagnostics before process exit without emitting a playback failure', async () => {
+    const { child, event, helper } = fixture();
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+        const pending = helper.request({ action: 'hello' });
+        child.stdout.write(JSON.stringify({ id: 1, ok: true, result: {} }) + '\n');
+        await pending;
+        child.stderr.write('device busy 0x8889000A token=private https://example.org/secret');
+        expect(log).toHaveBeenCalledWith(expect.stringContaining('device busy 0x8889000A'));
+        expect(log.mock.calls.flat().join(' ')).not.toMatch(/private|example.org/);
+        expect(event).not.toHaveBeenCalled();
+    } finally { helper.dispose(); log.mockRestore(); }
+});

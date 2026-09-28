@@ -92,7 +92,14 @@ function createComponentManager({ app, catalogPath, fetchImpl = fetch }) {
             await writePointer(directory, 'active.json', { archiveSha256: release.sha256, executableSha256: digest(files['folia-audio.exe']) });
             await fs.rm(path.join(directory, 'inactive.json'), { force: true });
             await pruneVersions(directory, await catalog());
-        } finally { if (staging) await fs.rm(staging, { recursive: true, force: true }); busy = false; }
+        } finally {
+            try {
+                if (staging) await fs.rm(staging, { recursive: true, force: true }).catch(error => {
+                    if (!['EBUSY', 'EPERM', 'EACCES'].includes(error.code)) throw error;
+                    console.warn('[Native audio] Staging cleanup deferred:', error.code);
+                });
+            } finally { busy = false; }
+        }
         return status();
     }
     async function uninstall() {

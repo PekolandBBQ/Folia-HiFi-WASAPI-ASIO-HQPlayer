@@ -33,12 +33,13 @@ async function main() {
     await fs.mkdir(output, { recursive: true });
     const catalog = JSON.parse(await fs.readFile('../folia-native-audio-component/artifacts/development-catalog.json', 'utf8'));
     const results = [];
-    for (const scenario of ['active-pointer-locked', 'archive-locked', 'running-old-executable', 'obsolete-executable-locked', 'before-active', 'after-active']) {
+    for (const scenario of ['active-pointer-locked', 'archive-locked', 'running-old-executable', 'obsolete-executable-locked', 'staging-cleanup-locked', 'before-active', 'after-active']) {
         const root = path.join(output, scenario); await fs.mkdir(root);
         const catalogPath = path.join(root, 'catalog.json');
         const writeCatalog = releases => fs.writeFile(catalogPath, JSON.stringify({ schema: 1, releases }));
         const manager = createComponentManager({ app: { isPackaged: false, getPath: () => root }, catalogPath });
         let unlock, helper, installer;
+        const originalRename = fs.rename;
         try {
             await writeCatalog([catalog.releases[2]]);
             const old = await manager.install();
@@ -53,6 +54,15 @@ async function main() {
                 await writeCatalog([{ ...catalog.releases[0], localPath: copy }, ...catalog.releases.slice(1)]);
             } else await writeCatalog(catalog.releases);
             if (scenario === 'running-old-executable') { helper = createHelper(old.executable, () => {}); await helper.request({ action: 'hello', protocolMajor: 1 }); }
+            if (scenario === 'staging-cleanup-locked') {
+                fs.rename = async (from, to) => {
+                    if (path.basename(from).startsWith('.install-')) {
+                        unlock = await lock(path.join(from, 'folia-audio.exe'));
+                        return originalRename(from, to); // Windows rejects renaming the locked staging tree.
+                    }
+                    return originalRename(from, to);
+                };
+            }
             let error;
             if (scenario.endsWith('-active')) {
                 installer = fork(__filename, ['--child', root, scenario], { stdio: ['ignore', 'ignore', 'pipe', 'ipc'] });
@@ -60,7 +70,8 @@ async function main() {
                 const stopped = once(installer, 'exit'); installer.kill(); await stopped; installer = null;
             } else { try { await manager.install(); } catch (e) { error = e.code || e.message; } }
             const state = await manager.status();
-            const expectedOld = ['active-pointer-locked', 'archive-locked', 'before-active'].includes(scenario);
+            fs.rename = originalRename;
+            const expectedOld = ['active-pointer-locked', 'archive-locked', 'staging-cleanup-locked', 'before-active'].includes(scenario);
             assert.equal(state.available, true); assert.equal(state.version, expectedOld ? '0.1.0' : '0.1.2');
             assert.equal(state.busy, false);
             if (scenario === 'obsolete-executable-locked') assert.equal(error, undefined, 'successful activation must not report failed update solely because obsolete cleanup is locked');
@@ -71,7 +82,7 @@ async function main() {
             try { assert.equal((await fresh.request({ action: 'hello', protocolMajor: 1 })).componentVersion, '0.1.2'); } finally { fresh.dispose(); }
             results.push({ scenario, status: 'PASS', observedVersion: state.version, error, retryVersion: retried.version });
         } catch (e) { results.push({ scenario, status: 'FAIL', error: e.message, state: await manager.status().then(({ executable, ...s }) => s).catch(() => null) }); }
-        finally { if (unlock) await unlock(); helper?.dispose(); installer?.kill(); }
+        finally { fs.rename = originalRename; if (unlock) await unlock(); helper?.dispose(); installer?.kill(); }
         console.log(JSON.stringify(results.at(-1)));
         await fs.writeFile(path.join(output, 'results.json'), JSON.stringify(results, null, 2));
     }

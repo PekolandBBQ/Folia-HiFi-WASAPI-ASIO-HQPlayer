@@ -18,7 +18,11 @@ function createHelper(executable, onEvent, spawnProcess = spawn, timeoutMs = 150
         const process = spawnProcess(executable, [], { windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] });
         child = process;
         let diagnostics = '';
-        process.stderr.on('data', data => { diagnostics = (diagnostics + data).slice(-4096); });
+        process.stderr.on('data', data => {
+            diagnostics = (diagnostics + data).slice(-4096);
+            // Keep driver details in the sanitized host log even when the helper survives.
+            diagnostic(audioError('NATIVE_REQUEST_FAILED', data.toString().slice(-4096)));
+        });
         const lines = createInterface({ input: process.stdout });
         lines.on('line', line => {
             if (child !== process) return;
