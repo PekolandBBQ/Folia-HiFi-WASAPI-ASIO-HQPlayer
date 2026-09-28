@@ -1,8 +1,8 @@
 # Folia-HiFi-WASAPI-ASIO-HQPlayer
 
-基于 [Folia](https://github.com/chthollyphile/folia-major) 的个人维护 fork，由 [PekolandBBQ](https://github.com/PekolandBBQ) 维护。我在原有歌词与音乐库体验上追加 Windows WASAPI/ASIO 独占播放、HQPlayer 独立连接、整数直通、音频链路展示与解码恢复功能。
+基于 [Folia](https://github.com/chthollyphile/folia-major) 的个人维护 fork，由 [PekolandBBQ](https://github.com/PekolandBBQ) 维护。在原有歌词与音乐库体验上追加 Windows WASAPI/ASIO 独占播放、HQPlayer 独立连接、整数直通、音频链路展示。
 
-**这是独立维护的正式专版，不是上游官方发行版。** 目前基于 Folia v0.7.9；上游暂未合入这些扩展，我会在本分支维护、验证并独立发布。原项目及贡献者的署名和许可证保留。
+**独立维护的正式专版，非上游官方发行版。** 目前基于 Folia v0.7.9；上游暂未合入这些扩展，我会在本分支维护、验证并独立发布。原项目及贡献者的署名和许可证保留。
 
 [下载 Windows x64 专版](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/releases/tag/hifi-v0.7.9) · [使用说明](docs/exclusive/USAGE.md) · [验证结果](docs/exclusive/VALIDATION.md) · [反馈问题](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/issues)
 
@@ -11,8 +11,8 @@
 | 功能 | 实际体验 |
 | --- | --- |
 | **WASAPI / ASIO 独占播放** | 在“设置 → 播放 → WASAPI及ASIO独占播放”中选择设备；支持本地音乐、Navidrome 及现有在线源的完整准备播放，保留歌词和基本播放控制 |
-| **HQPlayer 独立连接** | 独立设置及侧栏入口，使用本机 HQPlayer Desktop 播放，自动发现多个版本（含 6），也可指定程序路径；支持后台启动、同曲时钟、暂停与定位、格式识别及 PCM32 回退、默认 −2 dB 余量与可选增益记忆。不列入 WASAPI/ASIO 设备选择器，也不依赖其组件 |
-| **整数直通（实验性）** | 可选整数 PCM 处理，仍保留软件音量、静音及 ReplayGain；合并增益为 1 时保持准备后的 PCM 采样值，不把它等同于全链路 bit-perfect |
+| **HQPlayer 独立连接** | 独立设置及侧栏入口，使用本机 HQPlayer Desktop 播放，自动发现多个版本（含 6），也可指定程序路径；支持后台启动、同曲时钟、暂停与定位、24/32 位音频输入、格式识别及 PCM32 回退、默认 −2 dB 余量与可选增益记忆。不列入 WASAPI/ASIO 设备选择器，也不依赖其组件 |
+| **整数直通（实验性）** | 可选整数 PCM 处理，仍保留软件音量、静音及 ReplayGain；合并增益为 1 时保持准备后的 PCM 采样值，我的主观试听感受是在部分设备上信息量与听感密度、背景宁静度有所改善；这不是客观测量或所有设备的效果保证，也不等同于全链路 bit-perfect |
 | **音频链路展示** | 可选显示音源规格、引擎输出格式和增益，帮助确认当前播放路径；界面基于实际读取和引擎回报的数据 |
 | **严格／容错并行恢复** | 媒体解码失败时并行准备严格与容错结果，严格成功优先；坏帧时采用经过校验的容错输出，保留同曲、位置和暂停意图。两首实测曲目处理时间中位数缩短约 38% |
 | **环境与组件检查** | 非 Windows、不受支持的架构或 IPC 环境隐藏原生设置；兼容环境缺少组件时显示安装提示，不保存无效设备或开关选择 |
@@ -42,8 +42,8 @@
 
 - **发行包仅面向 Windows x64。** 项目原有其他平台能力仍归上游维护，本专版没有新增 macOS/Linux 原生输出实现。
 - 原生后端需要完整准备音频后播放；当前不提供流式原生解码、无缝切歌或原生 automix。浏览器模式仍可用于原有音效、频谱和 automix。
-- 并行恢复用于媒体失败后的恢复作业，普通健康播放不启动双路转码。完整 App 实测冷恢复约 0.66–1.00 秒，仍可能听到停顿；坏帧容错不等于修好源文件。
-- 完整硬件矩阵目前为 XingCore；其他 DAC/ASIO 驱动需实际验证。本正式版尚未进行代码签名；Windows 可能显示未知发布者，请核对本仓库下载来源和 SHA256SUMS。
+- 并行解码用于媒体失败后的恢复作业，普通健康播放不启动双路转码。完整 App 实测冷恢复约 0.66–1.00 秒，仍可能听到停顿；坏帧容错不等于修好源文件。
+- 我的使用反馈涵盖 XingCore、拓品解码界面；本轮附原始证据的自动硬件矩阵为 XingCore，其他 DAC/ASIO 驱动需独立验证。本正式版尚未进行代码签名；Windows 可能显示未知发布者，请核对本仓库下载来源和 SHA256SUMS。
 - 整数直通依赖 Windows 引擎；音频链路目前接收原生引擎和 HQPlayer 回报，分别在对应模块中提供开关；未回报的输出规格明确显示“未回报”。浏览器和其他系统不展示空功能入口。
 
 ## 维护与验证
