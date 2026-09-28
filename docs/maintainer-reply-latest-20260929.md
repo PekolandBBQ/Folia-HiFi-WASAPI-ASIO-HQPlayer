@@ -30,7 +30,7 @@
 
 我也修正了组件未安装或已停用时，选择缓存设备列表中的 WASAPI/ASIO 却没有反馈的问题。设备选择、自动回退、整数直通及显示音频链路都在操作前重新查询组件状态；不可用时，设置界面提示安装，命令面板引导到对应设置，不保存无效选择，也不因被拒绝的操作暂停当前播放。没有已批准安装源时说明原因；安装失败可重试，成功后重新选择才生效。
 
-用于审查的上游接入方案仍复用原应用和音乐库。另外，我在自己的 fork 中独立维护 Windows 专版 **Folia Exclusive HiFi · WASAPI / ASIO / HQPlayer**，使用独立配置目录，随包提供固定哈希的离线组件。它用于在上游暂不合入时供个人和其他用户试用，不要求主线采用专版应用标识；专版入口也没有迁入 A/B/C 审查增量。
+用于审查的上游接入方案仍复用原应用和音乐库。另外，我在自己的 fork 中独立维护 Windows 专版 **Folia-HiFi-WASAPI-ASIO-HQPlayer**，使用独立配置目录，随包提供固定哈希的离线组件。它用于在上游暂不合入时供个人和其他用户试用，不要求主线采用专版应用标识；专版入口也没有迁入 A/B/C 审查增量。
 
 ### 4. 能否跟进每周一到两次主线更新，不阻碍正常发布
 
@@ -184,7 +184,7 @@ RPC 期限为 15 秒，超时终止故障进程。`COMPONENT_CRASHED` / `COMPONE
 
 ### 23. 不要求赶近期合入窗口
 
-我理解目前 Folium 和现有 bug 修复的优先级。近期即使暂不合入，我也会先在个人 fork 独立维护 Folia Exclusive，公开说明功能、限制、源码和验证结果，并以独立 Release 提供 Windows x64 预发布版。这轮先整理实现、验证和审查拆分，继续人工使用验证，不要求为该功能调整近期发布节奏。后续正式提交前，我仍需迁移最新设置修正并分别复测 A/B/C，完成官方 FFmpeg `.2` 的宿主固定版本更新及产物复测、组件正式发版，以及需要上游配合的批准和镜像分发，再按 A、B、C 分别提供可审查的 PR。
+我理解目前 Folium 和现有 bug 修复的优先级。近期即使暂不合入，我也会先在个人 fork 独立维护 Folia Exclusive，公开说明功能、限制、源码和验证结果，并以独立 Release 提供 Windows x64 正式专版。这轮先整理实现、验证和审查拆分，继续人工使用验证，不要求为该功能调整近期发布节奏。后续正式提交前，我仍需迁移最新设置修正并分别复测 A/B/C，完成官方 FFmpeg `.2` 的宿主固定版本更新及产物复测、组件正式发版，以及需要上游配合的批准和镜像分发，再按 A、B、C 分别提供可审查的 PR。
 
 ---
 
@@ -199,10 +199,16 @@ RPC 期限为 15 秒，超时终止故障进程。`COMPONENT_CRASHED` / `COMPONE
 
 ### 24. 独立维护版及 HQPlayer 扩展的边界
 
-我已将自己的发行分支命名为 **Folia Exclusive HiFi · WASAPI / ASIO / HQPlayer**，准备在[个人 fork](https://github.com/PekolandBBQ/folia-major)维护说明、截图、源码和独立预发布包。它保留最新并行严格／容错恢复、系统检查和安装提示，并加入此前自用的 HQPlayer 播放控制；这些扩展不要求上游一并接收。
+我已将自己的发行分支命名为 **Folia-HiFi-WASAPI-ASIO-HQPlayer**，在[个人 fork](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer)维护说明、截图、源码和独立正式发行包。它保留最新并行严格／容错恢复、系统检查和安装提示，并加入此前自用的 HQPlayer 播放控制；这些扩展不要求上游一并接收。
 
 我将 HQPlayer 放在同级的“HQPlayer 连接”独立设置项，移出了 WASAPI/ASIO 设备列表。自动发现多个 Desktop 版本（含 6），可复用运行中的实例；找不到程序或连接失败时提供手动路径选择与恢复自动检测。HQPlayer 与 WASAPI/ASIO 的安装检查相互独立，增益和链路显示也按实际播放后端检查依赖。
 
 专版本轮通过类型检查、4074 项全量单测（1 项明确 opt-in 审计跳过）、20 项相关 UI、10 项真实 EXE 设置和 15 项真实 EXE 播放检查。HQPlayer Desktop 6 的两首真实标签样本完成播放、暂停、定位、续播和切歌，增益回报符合余量、音量与 ReplayGain 的合并结果。Desktop 4/5 仅验证了模拟安装发现和路径关联，尚未做旧版硬件播放验证；自定义路径自动测试替代了文件对话框返回值，未冒称人工点选系统对话框。
 
-本轮还处理了 XML 库生产打包缺失、HQPlayer 定位时旧状态回报和增益余量污染的风险，并保留失败与后续通过证据。详细边界见[独立版验证报告](https://github.com/PekolandBBQ/folia-major/blob/codex/folia-exclusive/docs/exclusive/VALIDATION.md)。我不会将独立版 Release、历史测试或本机硬件通过，表述为官方组件批准、A/B/C 已迁移复测或跨硬件通用保证。
+本轮还处理了 XML 库生产打包缺失、HQPlayer 定位时旧状态回报和增益余量污染的风险，并保留失败与后续通过证据。详细边界见[独立版验证报告](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/blob/codex/folia-exclusive/docs/exclusive/VALIDATION.md)。我不会将独立版 Release、历史测试或本机硬件通过，表述为官方组件批准、A/B/C 已迁移复测或跨硬件通用保证。
+
+### 25. 专版发行与后续可拆分维护
+
+我将专版名称统一为 **Folia-HiFi-WASAPI-ASIO-HQPlayer**，软件版本与上游基线保持一致（本版 0.7.9），使用独立的 `hifi-v0.7.9` 标签。主要提供 EXE 安装版和 ZIP 免安装版，配置位于 `%APPDATA%\Folia HiFi`，从旧专版目录复制迁移并保留旧数据。专版包装和配置迁移仅位于 `packaging/exclusive`，不要求上游采用。
+
+我保留上游类型检查、全量单测及 sync-server 构建流程，并给专版分支增加同等触发与设置 UI 检查。原生组件、核心宿主接入、整数处理、链路展示、HQPlayer 和专版包装按 [架构约束](exclusive/ARCHITECTURE.md)分别维护；拆分 PR 时逐个说明基础依赖、实际 diff 与复测结果。现有 A/B/C 历史快照仍需迁移最新修改并分别复测，我不会把专版正式发行或新增 CI 视为作者已经批准接入。

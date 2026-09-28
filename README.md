@@ -1,10 +1,10 @@
-# Folia Exclusive HiFi · WASAPI / ASIO / HQPlayer
+# Folia-HiFi-WASAPI-ASIO-HQPlayer
 
 基于 [Folia](https://github.com/chthollyphile/folia-major) 的个人维护 fork，由 [PekolandBBQ](https://github.com/PekolandBBQ) 维护。我在原有歌词与音乐库体验上追加 Windows WASAPI/ASIO 独占播放、HQPlayer 独立连接、整数直通、音频链路展示与解码恢复功能。
 
-**这是独立维护的预发布专版，不是上游官方发行版。** 目前基于 Folia v0.7.9；上游暂未合入这些扩展，我会在本分支维护、验证并独立发布。原项目及贡献者的署名和许可证保留。
+**这是独立维护的正式专版，不是上游官方发行版。** 目前基于 Folia v0.7.9；上游暂未合入这些扩展，我会在本分支维护、验证并独立发布。原项目及贡献者的署名和许可证保留。
 
-[下载 Windows x64 专版](https://github.com/PekolandBBQ/folia-major/releases/tag/v0.7.9-exclusive.1) · [使用说明](docs/exclusive/USAGE.md) · [验证结果](docs/exclusive/VALIDATION.md) · [反馈问题](https://github.com/PekolandBBQ/folia-major/issues)
+[下载 Windows x64 专版](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/releases/tag/hifi-v0.7.9) · [使用说明](docs/exclusive/USAGE.md) · [验证结果](docs/exclusive/VALIDATION.md) · [反馈问题](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/issues)
 
 ## 我追加了哪些功能
 
@@ -32,8 +32,8 @@
 
 ## 下载与开始使用
 
-1. 从 [v0.7.9-exclusive.1 Release](https://github.com/PekolandBBQ/folia-major/releases/tag/v0.7.9-exclusive.1) 下载 **Folia-Exclusive-HiFi-0.7.9-exclusive.1-win-x64.zip**，完整解压后运行 **Folia Exclusive HiFi.exe**。
-2. 专版使用独立配置目录 **%APPDATA%\FoliaExclusive**，不会自动读取或迁移官方 Folia / 旧人工验证版的账号和音乐库；首次请自行配置音源。
+1. 从 [v0.7.9 正式版](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/releases/tag/hifi-v0.7.9) 选择以下一种方式：**[EXE 安装版（推荐）](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/releases/download/hifi-v0.7.9/Folia-HiFi-WASAPI-ASIO-HQPlayer-0.7.9-win-x64-Setup.exe)** 提供安装向导、目录选择、开始菜单快捷方式和卸载入口；**[ZIP 免安装版](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/releases/download/hifi-v0.7.9/Folia-HiFi-WASAPI-ASIO-HQPlayer-0.7.9-win-x64.zip)** 完整解压后运行 `Folia-HiFi-WASAPI-ASIO-HQPlayer.exe`，不要单独移动 EXE。
+2. 专版使用独立配置目录 **%APPDATA%\Folia HiFi**，不会自动读取或迁移官方 Folia / 旧人工验证版的账号和音乐库；首次请自行配置音源。旧 Exclusive HiFi 专版的 `FoliaExclusive` 目录会在新目录不存在时复制迁移，旧目录保留。
 3. 先确认浏览器模式正常播放，再选择 WASAPI 或已安装厂商 x64 驱动的 ASIO 设备。整数直通与链路展示默认关闭，按需启用。
 4. HQPlayer 用户需另行安装并授权 HQPlayer Desktop，在 HQPlayer 中配置 DAC、DSP 和 `Allow control from network`，再使用独立的“HQPlayer 连接”设置项启用连接；自动连接失败可选择程序路径。
 5. 本版随附经哈希校验的原生组件和 PCM24/PCM32 FFmpeg，无需安装 Node 或 .NET SDK。专版关闭上游自动更新，请从本 fork 的 Releases 手动更新。
@@ -43,14 +43,14 @@
 - **发行包仅面向 Windows x64。** 项目原有其他平台能力仍归上游维护，本专版没有新增 macOS/Linux 原生输出实现。
 - 原生后端需要完整准备音频后播放；当前不提供流式原生解码、无缝切歌或原生 automix。浏览器模式仍可用于原有音效、频谱和 automix。
 - 并行恢复用于媒体失败后的恢复作业，普通健康播放不启动双路转码。完整 App 实测冷恢复约 0.66–1.00 秒，仍可能听到停顿；坏帧容错不等于修好源文件。
-- 完整硬件矩阵目前为 XingCore；其他 DAC/ASIO 驱动需实际验证。本首版未签名，作为 **Pre-release** 提供。
+- 完整硬件矩阵目前为 XingCore；其他 DAC/ASIO 驱动需实际验证。本正式版尚未进行代码签名；Windows 可能显示未知发布者，请核对本仓库下载来源和 SHA256SUMS。
 - 整数直通依赖 Windows 引擎；音频链路目前接收原生引擎和 HQPlayer 回报，分别在对应模块中提供开关；未回报的输出规格明确显示“未回报”。浏览器和其他系统不展示空功能入口。
 
 ## 维护与验证
 
 [验证摘要](docs/exclusive/VALIDATION.md)区分基线全量测试、最新设置回归和本次独立发行件检查。源码和构建入口位于 [packaging/exclusive](packaging/exclusive)，维护流程见 [MAINTAINING](docs/exclusive/MAINTAINING.md)。上游审查的 A/B/C 拆分与本专版并行维护；独立发布不代表上游已经批准合入。
 
-Folia Exclusive is an independently maintained Windows x64 fork of Folia, adding WASAPI/ASIO output, a separate HQPlayer connection, optional integer PCM, signal-path display, and validated parallel decoding recovery. It is a prerelease, not an official upstream build.
+Folia-HiFi-WASAPI-ASIO-HQPlayer is an independently maintained Windows x64 fork of Folia, adding WASAPI/ASIO output, a separate HQPlayer connection, optional integer PCM, signal-path display, and validated parallel decoding recovery. This stable fork release is available as an EXE installer and a ZIP archive. It is maintained independently from upstream.
 
 ---
 

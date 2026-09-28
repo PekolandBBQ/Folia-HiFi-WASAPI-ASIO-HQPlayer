@@ -2,19 +2,20 @@ const { _electron } = require('playwright');
 const fs = require('node:fs');
 const path = require('node:path');
 const assert = require('node:assert/strict');
+const release = require('../../packaging/exclusive/release.json');
 
 // test/manual/exclusiveReleaseSmoke.cjs — inspect the actual fork executable in its own profile.
 async function main() {
-    const output = path.resolve('test-results/exclusive-release'); fs.mkdirSync(output, { recursive: true });
-    const executablePath = path.resolve('release/0.7.9-exclusive.1-hifi/win-unpacked/Folia Exclusive HiFi.exe');
+    const output = path.resolve(process.env.FOLIA_REVIEW_OUTPUT || 'test-results/exclusive-release'); fs.mkdirSync(output, { recursive: true });
+    const executablePath = path.resolve(process.env.FOLIA_REVIEW_EXE || `release/folia-exclusive-${release.version}/win-unpacked/${release.productName}.exe`);
     const app = await _electron.launch({ executablePath, timeout: 60000 });
     const results = [];
     try {
         const page = await app.firstWindow(); page.setDefaultTimeout(15000);
         await page.waitForFunction(() => document.querySelector('#root')?.children.length > 0 && window.electron?.nativeAudio);
         const host = await app.evaluate(({ app }) => ({ version: app.getVersion(), name: app.getName(), packaged: app.isPackaged, profile: app.getPath('userData') }));
-        assert.equal(host.version, '0.7.9-exclusive.1'); assert.equal(host.name, 'Folia Exclusive HiFi');
-        assert.equal(host.packaged, true); assert.equal(path.basename(host.profile), 'FoliaExclusive');
+        assert.equal(host.version, release.version); assert.equal(host.name, release.productName);
+        assert.equal(host.packaged, true); assert.equal(path.basename(host.profile), release.profile);
         results.push({ id: 'packaged-identity-and-isolated-profile', status: 'PASS' });
         let status = await page.evaluate(() => window.electron.nativeAudio.request({ action: 'status' }));
         if (!status.available) { await page.evaluate(() => window.electron.nativeAudio.request({action:'component-install'})); status=await page.evaluate(() => window.electron.nativeAudio.request({action:'status'})); }

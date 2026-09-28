@@ -4,6 +4,7 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 const assert = require('node:assert/strict');
 const { fixtures } = require('./remainingFixtures.cjs');
+const release = require('../../packaging/exclusive/release.json');
 
 // test/manual/exclusivePlaybackReview.cjs — exercise the actual packaged renderer and offline bootstrap.
 async function attach(page) {
@@ -26,8 +27,8 @@ async function attach(page) {
     await page.waitForFunction(() => !!window.__packageReview.props());
 }
 async function main() {
-    const output = path.resolve('test-results/exclusive-playback'); await fs.mkdir(output, { recursive: true });
-    const executablePath = path.resolve('release/0.7.9-exclusive.1-hifi/win-unpacked/Folia Exclusive HiFi.exe');
+    const output = path.resolve(process.env.FOLIA_REVIEW_OUTPUT || 'test-results/exclusive-playback'); await fs.mkdir(output, { recursive: true });
+    const executablePath = path.resolve(process.env.FOLIA_REVIEW_EXE || `release/folia-exclusive-${release.version}/win-unpacked/${release.productName}.exe`);
     const app = await electron.launch({ executablePath, timeout: 60000 });
     const page = await app.firstWindow(), results = [];
     async function record(id, action) {

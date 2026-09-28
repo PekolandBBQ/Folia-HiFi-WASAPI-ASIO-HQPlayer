@@ -1,16 +1,24 @@
-const { app } = require('electron');
+const { app, dialog } = require('electron');
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
 const { unzipSync } = require('fflate');
+const { prepareProfile } = require('./profile.cjs');
 
 // packaging/exclusive/exclusive-entry.cjs — fork-only distribution with an isolated profile and pinned offline components.
 const resources = path.join(process.resourcesPath, 'exclusive-native-audio');
 const approved = require('./exclusive-approved.json');
-const profile = path.join(app.getPath('appData'), 'FoliaExclusive');
-app.setName('Folia Exclusive HiFi');
+const release = require('./release.json');
+let profile;
+try {
+    profile = prepareProfile(app.getPath('appData'), release.profile, release.legacyProfile);
+} catch {
+    dialog.showErrorBox('Folia HiFi', '无法迁移旧配置。请关闭旧版程序并检查磁盘空间和目录权限后重试。原 FoliaExclusive 目录未修改。\nUnable to migrate the legacy profile. Close the old app and check disk space and permissions. The original profile has been preserved.');
+    app.exit(1);
+    return;
+}
+app.setName(release.productName);
 app.setPath('userData', profile);
-fs.mkdirSync(profile, { recursive: true });
 process.env.ELECTRON_DEV = 'false';
 process.env.NODE_ENV = 'production';
 

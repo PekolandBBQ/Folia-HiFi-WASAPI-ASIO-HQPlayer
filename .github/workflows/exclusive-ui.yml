@@ -1,0 +1,29 @@
+# .github/workflows/exclusive-ui.yml — additional fork UI checks; upstream unit/type checks remain intact.
+name: HiFi settings regression
+on:
+  push:
+    branches: [codex/folia-exclusive]
+  pull_request:
+    branches: [codex/folia-exclusive]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  settings:
+    if: github.repository == 'PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer'
+    runs-on: windows-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install chromium
+      - run: npx playwright test -c playwright.exclusive.config.ts test/component/nativeAudio.spec.ts --project=components --output=test-results/exclusive-ui
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: hifi-settings-evidence
+          path: test-results/exclusive-ui

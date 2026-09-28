@@ -37,21 +37,34 @@ async function main() {
     const encoders = execFileSync(ffmpeg, ['-hide_banner', '-encoders'], { encoding: 'utf8', windowsHide: true });
     if (!/\bpcm_s24le\b/.test(encoders) || !/\bpcm_s32le\b/.test(encoders)) throw new Error('PCM encoders missing');
     const output = path.resolve(process.env.FOLIA_EXCLUSIVE_OUTPUT || path.join(root, `release/folia-exclusive-${release.version}`));
-    await build({ projectDir: root, targets: Platform.WINDOWS.createTarget('dir'), config: {
-        appId: 'io.github.pekolandbbq.folia-exclusive', productName: 'Folia Exclusive HiFi',
+    await build({ projectDir: root, targets: Platform.WINDOWS.createTarget(['nsis', 'zip']), config: {
+        appId: 'io.github.pekolandbbq.folia-exclusive', productName: release.productName,
         directories: { output },
-        extraMetadata: { name: 'folia-exclusive', productName: 'Folia Exclusive HiFi', main: 'electron/exclusive-entry.cjs', version: release.version, dependencies: codePackage.dependencies },
+        extraMetadata: { name: 'folia-exclusive', productName: release.productName, main: 'electron/exclusive-entry.cjs', version: release.version, dependencies: codePackage.dependencies },
         beforePack: async () => {},
         files: ['package.json', 'build/miao.png', 'build/thumbar/*.png',
             ...['dist', 'electron', 'shared'].map(name => ({ from: path.join(codeRoot, name), to: name, filter: ['**/*'] })),
             { from: path.join(root, 'node_modules/@xmldom/xmldom'), to: 'node_modules/@xmldom/xmldom', filter: ['**/*'] },
-            { from: __dirname, to: 'electron', filter: ['exclusive-entry.cjs'] },
+            { from: __dirname, to: 'electron', filter: ['exclusive-entry.cjs', 'profile.cjs', 'release.json'] },
             { from: staging, to: 'electron', filter: ['exclusive-approved.json'] }],
         extraResources: [
             { from: ffmpegDir, to: 'ffmpeg-audio' }, { from: staging, to: 'exclusive-native-audio' },
             { from: 'build/icon.png', to: 'icon.png' }, { from: 'build/trayTemplate.png', to: 'trayTemplate.png' },
             { from: 'build/trayTemplate@2x.png', to: 'trayTemplate@2x.png' }],
-        win: { signExecutable: false }, publish: null,
+        extraFiles: [
+            { from: path.join(codeRoot, 'README.md'), to: 'README.md' },
+            { from: path.join(codeRoot, 'LICENSE'), to: 'LICENSE' },
+            { from: path.join(codeRoot, 'docs/exclusive'), to: 'docs/exclusive' },
+            { from: path.join(codeRoot, 'docs/native-audio-final-validation.md'), to: 'docs/native-audio-final-validation.md' },
+        ],
+        win: { signExecutable: false, executableName: release.productName, artifactName: '${productName}-${version}-win-${arch}.${ext}' },
+        nsis: {
+            artifactName: '${productName}-${version}-win-${arch}-Setup.${ext}',
+            oneClick: false, perMachine: false, allowElevation: false, packElevateHelper: false, allowToChangeInstallationDirectory: true,
+            createDesktopShortcut: false, createStartMenuShortcut: true, runAfterFinish: false,
+            deleteAppDataOnUninstall: false, include: path.join(__dirname, 'installer.nsh'),
+        },
+        publish: null,
     }, publish: 'never' });
     console.log(JSON.stringify({ output, version: release.version, componentVersions: releases.map(r => r.version) }));
 }

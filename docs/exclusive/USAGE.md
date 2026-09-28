@@ -1,13 +1,24 @@
 <!-- docs/exclusive/USAGE.md -->
-# Folia Exclusive HiFi 人工验证与使用说明
+# Folia-HiFi-WASAPI-ASIO-HQPlayer 使用与人工验证说明
 
-这是我维护的 Windows x64 预发布专版，完整名称为 **Folia Exclusive HiFi · WASAPI / ASIO / HQPlayer**。它基于 Folia v0.7.9，保留原项目的许可证和署名。
+这是我维护的 Windows x64 正式专版，名称为 **Folia-HiFi-WASAPI-ASIO-HQPlayer**，当前版本 **0.7.9**。它基于 Folia v0.7.9，保留原项目的许可证和署名。
 
 ## 安装与更新
 
-从 [本 fork 的 Release](https://github.com/PekolandBBQ/folia-major/releases/tag/v0.7.9-exclusive.1) 下载 Windows ZIP，完整解压后运行 `Folia Exclusive HiFi.exe`。不要单独移动 EXE。配置保存在 `%APPDATA%\FoliaExclusive`，不会自动导入官方版或先前人工验证版的账号、曲库和设置。
+从 [v0.7.9 正式版](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/releases/tag/hifi-v0.7.9) 选择一种安装方式：
 
-原生组件 0.1.2 和支持 PCM24/PCM32 的 FFmpeg 已随包提供；无需安装 Node 或 .NET SDK。ASIO 需要另行安装厂商的 x64 驱动。专版关闭上游自动更新；更新时退出专版，将新 ZIP 解压到新的目录。个人配置保留在上述目录。
+| 方式 | 下载与使用 |
+| --- | --- |
+| **EXE 安装版（推荐）** | 下载 [Folia-HiFi-WASAPI-ASIO-HQPlayer-0.7.9-win-x64-Setup.exe](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/releases/download/hifi-v0.7.9/Folia-HiFi-WASAPI-ASIO-HQPlayer-0.7.9-win-x64-Setup.exe)，运行安装向导并选择目录；安装后从开始菜单启动。仅为当前用户安装，提供 Windows“已安装的应用”卸载入口。 |
+| **ZIP 免安装版** | 下载 [Folia-HiFi-WASAPI-ASIO-HQPlayer-0.7.9-win-x64.zip](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/releases/download/hifi-v0.7.9/Folia-HiFi-WASAPI-ASIO-HQPlayer-0.7.9-win-x64.zip)，完整解压到可写目录，运行 `Folia-HiFi-WASAPI-ASIO-HQPlayer.exe`。不要在压缩包内直接运行，也不要单独移动 EXE。 |
+
+两种方式包含相同程序、原生组件 0.1.2 和支持 PCM24/PCM32 的 FFmpeg，无需安装 Node 或 .NET SDK。ASIO 需要另行安装厂商的 x64 驱动，HQPlayer 需另行安装并授权。
+
+两种方式共用 `%APPDATA%\Folia HiFi`，首次运行在新目录不存在时，将旧 `%APPDATA%\FoliaExclusive` 完整复制迁移，保留旧目录作为备份；新目录已存在则不合并、不覆盖。迁移前请退出旧版。不会自动导入官方版或旧人工验证版的账号、曲库。ZIP 免安装不等于配置随身携带，不要同时运行安装版和 ZIP 版。
+
+更新前先退出专版。EXE 用户重新运行新版安装程序；ZIP 用户将新版完整解压到新目录。配置保留，正常卸载安装版也保留配置。专版关闭上游自动更新，请从本 fork 的 Releases 手动更新。源码 ZIP 与证据 ZIP 用于审查，不是运行包。
+
+发行包尚未进行代码签名。Windows 可能显示未知发布者；请确认下载来源为本仓库，再用 `Get-FileHash -Algorithm SHA256 文件路径` 与 Release 的 `SHA256SUMS.txt` 比对。
 
 ## 三种输出方式
 
