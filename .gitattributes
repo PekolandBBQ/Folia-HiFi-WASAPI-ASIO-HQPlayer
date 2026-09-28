@@ -6,3 +6,7 @@
 # Signed mods and fixtures: the signature covers exact bytes, so no line-ending conversion.
 mods/** -text
 test/fixtures/folium-signature/** -text
+
+# These checked-in outputs are byte-compared or hashed by the repository checks.
+docs/folium/api.md text eol=lf
+packaging/aur/folia-major-bin/folia-major.desktop text eol=lf
