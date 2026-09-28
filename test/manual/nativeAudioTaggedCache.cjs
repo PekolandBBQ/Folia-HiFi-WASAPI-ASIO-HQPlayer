@@ -23,7 +23,7 @@ async function main() {
                 r.settings.getState().handleSetNativeAudioOutput(backend, r.devices.find(d => d.backend === backend).id);
                 await new Promise(resolve => setTimeout(resolve, 350));
             }, { backend, processing });
-            for (const mode of ['track', 'album', 'off']) for (const index of [0, 1]) await record(`${backend}-${processing}-${mode}-${index}`, async () => {
+            for (const mode of process.argv.includes('--quick') ? ['track'] : ['track', 'album', 'off']) for (const index of [0, 1]) await record(`${backend}-${processing}-${mode}-${index}`, async () => {
                 const expected = mode === 'off' ? 1 : 10 ** ((mode === 'album' ? -12 : index ? -3 : -6) / 20);
                 await page.evaluate(async ({ mode, index }) => {
                     const r = window.__remaining; r.playback.setState({ replayGainMode: mode }); r.events.length = 0;

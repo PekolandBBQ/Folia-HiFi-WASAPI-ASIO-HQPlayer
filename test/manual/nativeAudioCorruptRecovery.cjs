@@ -1,6 +1,6 @@
 const { attach, connect } = require('./remainingHarness.cjs');
 
-// Two identified library failures, naturally triggered decoding, and subsequent healthy playback.
+// Native decoding is tolerant; a controlled media error exercises strict transcode failure recovery.
 async function main() {
     const h = await connect('nav-corrupt-recovery'); const { page, record } = h;
     try {
@@ -27,9 +27,14 @@ async function main() {
                 }, 10);
                 void r.entry()(songs[0], songs, false, { shouldNavigateToPlayer: false });
             }, { backend, id });
-            await record(`${backend}-${id}-decode-failure`, async () => {
+            await record(`${backend}-${id}-native-tolerant-play`, async () => {
+                await page.waitForFunction(() => { const t = window.__remaining.active(); return t?.readyState === 4 && !t.paused && t.currentTime > .3; }, null, { timeout: 20000 });
+                return { sourceHasStrictDecodeErrors: true, nativeDecoderToleratesErrors: true };
+            });
+            await record(`${backend}-${id}-controlled-error`, async () => {
+                await page.evaluate(async () => { const t = window.__remaining.active(); await window.electron.nativeAudio.request({ action: 'pause', session: t.session }); t.fail(new Error('DECODE_FAILED')); });
                 await page.waitForFunction(() => window.__remaining.errors.some(e => e.code === 'DECODE_FAILED'), null, { timeout: 20000 });
-                return page.evaluate(() => ({ expectedRejection: true, faultInjection: false, errors: window.__remaining.errors }));
+                return page.evaluate(() => ({ faultInjection: 'DECODE_FAILED-media-event', errors: window.__remaining.errors }));
             });
             await record(`${backend}-${id}-healthy-next`, async () => {
                 await page.waitForFunction(() => { const r = window.__remaining, t = r.active(), s = r.playback.getState(); return s.currentSong && r.getPlaybackSongKey(s.currentSong) === r.getPlaybackSongKey(r.good) && t?.readyState === 4 && !t.paused && t.currentTime > .3; }, null, { timeout: 30000 });
