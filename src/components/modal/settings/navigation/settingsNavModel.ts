@@ -114,6 +114,7 @@ export const buildSettingsNavGroups = (t: Translate, options: { isElectron: bool
                         .filter(([, definition]) => (
                             definition.section === section.id
                             && (!('electronOnly' in definition) || !definition.electronOnly || options.isElectron)
+                            && (!('isAvailable' in definition) || definition.isAvailable())
                         ))
                         .map(([id, definition]) => ({ id, label: t(definition.labelKey) })),
                 })),

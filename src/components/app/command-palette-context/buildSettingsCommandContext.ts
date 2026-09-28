@@ -22,6 +22,7 @@ import { useThemeQuickEditorStore } from '../../../stores/useThemeQuickEditorSto
 import { usePlayerBottomBarLayoutStore } from '../../../stores/usePlayerBottomBarLayoutStore';
 import { PlayerState, type SongResult } from '../../../types';
 import { setPlayerState } from '../../../stores/usePlaybackStore';
+import { withNativeAudioComponent } from '../../../services/nativeAudio/settingsGate';
 
 // src/components/app/command-palette-context/buildSettingsCommandContext.ts
 // The `settings` namespace of the palette context.
@@ -149,21 +150,21 @@ export const buildSettingsCommandContext = (
         toggleNeteaseScrobble: () => audio.handleToggleNeteaseScrobble(
             !useAudioSettingsStore.getState().neteaseScrobbleEnabled,
         ),
-        toggleNativeAudioAutoFallback: () => {
+        toggleNativeAudioAutoFallback: () => withNativeAudioComponent(() => {
             const state = useAudioSettingsStore.getState();
             state.handleSetNativeAudioAutoFallback(!state.nativeAudioAutoFallback);
-        },
-        toggleNativeAudioSignalPath: () => {
+        }),
+        toggleNativeAudioSignalPath: () => withNativeAudioComponent(() => {
             const state = useAudioSettingsStore.getState();
             state.handleSetShowAudioSignalPath(!state.showAudioSignalPath);
-        },
-        toggleNativeAudioIntegerDirect: () => {
+        }),
+        toggleNativeAudioIntegerDirect: () => withNativeAudioComponent(() => {
             const current = useAudioSettingsStore.getState();
             setPlayerState(PlayerState.PAUSED);
             current.handleSetNativeAudioProcessingMode(
                 current.nativeAudioProcessingMode === 'integer-direct' ? 'compatibility' : 'integer-direct',
             );
-        },
+        }),
         voiceInputPauseSupported: deps.voiceInputPauseSupported,
         modSystemEnabled: desktop.modSystemEnabled,
         toggleVoiceInputPause: () => desktop.handleToggleVoiceInputPause(

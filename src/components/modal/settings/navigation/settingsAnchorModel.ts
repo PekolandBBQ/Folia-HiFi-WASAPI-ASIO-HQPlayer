@@ -1,4 +1,5 @@
 import type { SettingsSubviewId } from '../../../../stores/useSettingsModalStore';
+import { isNativeAudioSupported } from '../../../../services/nativeAudio/capabilities';
 
 // src/components/modal/settings/navigation/settingsAnchorModel.ts
 // Which options-tab section each <SettingsAnchor> lives in and which translated label its expanded
@@ -34,7 +35,7 @@ export const SETTINGS_ANCHOR_DEFINITIONS = {
     replayGainSettings: { section: 'playback', labelKey: 'options.replayGainSettings' },
     lyrics: { section: 'playback', labelKey: 'options.lyrics' },
     audioOutputSettings: { section: 'playback', labelKey: 'options.audioOutputSettings' },
-    nativeAudioOutput: { section: 'playback', labelKey: 'nativeAudio.title', electronOnly: true },
+    nativeAudioOutput: { section: 'playback', labelKey: 'nativeAudio.title', electronOnly: true, isAvailable: isNativeAudioSupported },
 
     // InteractionSettingsSubview
     gridActionButton: { section: 'interaction', labelKey: 'options.gridActionButton' },
@@ -72,7 +73,7 @@ export const SETTINGS_ANCHOR_DEFINITIONS = {
     // LabSettingsModal
     labPlayerUi: { section: 'lab', labelKey: 'options.labPlayerUiSection' },
     labWindowAndTools: { section: 'lab', labelKey: 'options.labWindowAndToolsSection' },
-} as const satisfies Record<string, { section: SettingsSubviewId; labelKey: string; electronOnly?: boolean }>;
+} as const satisfies Record<string, { section: SettingsSubviewId; labelKey: string; electronOnly?: boolean; isAvailable?: () => boolean }>;
 
 export type SettingsAnchorId = keyof typeof SETTINGS_ANCHOR_DEFINITIONS;
 

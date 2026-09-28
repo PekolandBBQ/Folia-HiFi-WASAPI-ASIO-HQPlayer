@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { SETTINGS_ANCHOR_DEFINITIONS } from '../../../src/components/modal/settings/navigation/settingsAnchorModel';
 import { SETTINGS_NAV_GROUP_SPECS, buildSettingsNavGroups, findSettingsNavItem, flattenSettingsNavItems, type SettingsSectionId } from '../../../src/components/modal/settings/navigation/settingsNavModel';
 import en from '../../../src/i18n/locales/en';
@@ -10,6 +10,7 @@ import id from '../../../src/i18n/locales/in';
 // section still appears exactly once and that every key it points at actually exists in all locales.
 
 const echo = (key: string) => key;
+afterEach(() => vi.unstubAllGlobals());
 
 const ALL_SECTIONS: SettingsSectionId[] = [
     'appearance', 'general', 'playback', 'interaction', 'integration', 'storage', 'desktop', 'graphics', 'mods', 'lab', 'developer',
@@ -50,6 +51,7 @@ describe('settingsNavModel', () => {
     });
 
     it('expands every declared anchor under its owning section', () => {
+        vi.stubGlobal('window', { electron: { platform: 'win32', nativeAudio: { supported: true, request: vi.fn() } } });
         const items = flattenSettingsNavItems(buildSettingsNavGroups(echo, { isElectron: true }));
         const rendered = items.flatMap(item => item.anchors.map(anchor => [anchor.id, item.id]));
         const declared = Object.entries(SETTINGS_ANCHOR_DEFINITIONS).map(([id, definition]) => [id, definition.section]);
