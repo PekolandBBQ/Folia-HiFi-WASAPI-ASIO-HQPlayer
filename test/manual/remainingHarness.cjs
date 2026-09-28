@@ -8,6 +8,7 @@ const { execFileSync } = require('node:child_process');
 async function attach(page) {
     await page.waitForFunction(() => document.querySelector('#root')?.children.length > 0);
     await page.evaluate(async () => {
+        Error.stackTraceLimit = 30;
         const loaded = p => performance.getEntriesByType('resource').map(e => e.name).findLast(n => new URL(n).pathname === p) || p;
         const { usePlaybackStore: playback } = await import(loaded('/src/stores/usePlaybackStore.ts'));
         const { useAudioSettingsStore: settings } = await import(loaded('/src/stores/useAudioSettingsStore.ts'));
@@ -25,7 +26,7 @@ async function attach(page) {
         });
         r.unsubscribe = playback.subscribe((s, p) => {
             if (s.currentSong !== p.currentSong || s.audioSrc !== p.audioSrc || s.playerState !== p.playerState)
-                r.trace.push({ at: performance.now(), song: s.currentSong?.name, key: s.currentSong && getPlaybackSongKey(s.currentSong), state: s.playerState, scheme: s.audioSrc?.split(':')[0], stack: new Error().stack?.split('\n').slice(2, 9).map(l => l.replace(/https?:\/\/[^/]+/g, '[origin]')) });
+                r.trace.push({ at: performance.now(), song: s.currentSong?.name, key: s.currentSong && getPlaybackSongKey(s.currentSong), state: s.playerState, scheme: s.audioSrc?.split(':')[0], stack: new Error().stack?.split('\n').slice(2, 25).map(l => l.replace(/https?:\/\/[^/]+/g, '[origin]')) });
         });
         if (window.electron?.nativeAudio) {
             r.off = window.electron.nativeAudio.onEvent(e => { if (e.state) { r.events.push(e.state); if (r.events.length > 500) r.events.shift(); } });

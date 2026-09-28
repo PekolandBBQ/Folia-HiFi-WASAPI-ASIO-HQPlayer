@@ -24,7 +24,9 @@ async function main() {
     let requests = 0;
     const server = http.createServer((_q, r) => { requests++; r.writeHead(403); r.end('Controlled expiry / 受控过期'); });
     await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
-    const browser = await chromium.connectOverCDP('http://127.0.0.1:19333');
+    const browser = await chromium.connectOverCDP('http://127.0.0.1:19333').catch(error => {
+        server.close(); throw error;
+    });
     const page = browser.contexts()[0].pages().find(p => p.url().startsWith('http://localhost:3000/'));
     const records = [];
     const startup = [];
@@ -213,6 +215,27 @@ async function main() {
                     return page.evaluate(() => { const r = window.__appReview, t = r.active();
                         return { position: t.currentTime, paused: t.paused, errorInjection: 'transport-media-event', layer: 'real-App-recovery-real-driver' }; });
                 });
+            if (process.argv.includes('--bounded')) await record(`${provider}-${backend}-bounded-refresh-failure`, '连续刷新失败后停止自动重试', 'Repeated preparation failures stop refreshing', async () => {
+                await page.evaluate(async () => {
+                    const r = window.__appReview, t = r.active(); r.failedFinishes = 0; r.originalApi = t.api;
+                    await t.play(); await new Promise(resolve => setTimeout(resolve, 200));
+                    await window.electron.nativeAudio.request({ action: 'pause', session: t.session });
+                    t.api = { ...t.api, request: async request => {
+                        if (request.action === 'finish') { r.failedFinishes++; throw Object.assign(new Error('SOURCE_EXPIRED'), { code: 'SOURCE_EXPIRED' }); }
+                        return r.originalApi.request(request);
+                    } };
+                    t.fail(new Error('SOURCE_EXPIRED'));
+                });
+                try {
+                    await page.waitForTimeout(5000);
+                    const count = await page.evaluate(() => window.__appReview.failedFinishes);
+                    if (count < 1 || count > 3) throw new Error(`Unexpected refresh count: ${count}`);
+                    await page.waitForTimeout(5000);
+                    const after = await page.evaluate(() => window.__appReview.failedFinishes);
+                    if (after !== count) throw new Error(`Unbounded retry: ${count} -> ${after}`);
+                    return { failedFinishes: count, stableForMs: 5000, fault: 'controlled finish rejection through real App orchestration' };
+                } finally { await page.evaluate(() => { const r = window.__appReview; r.active().api = r.originalApi; }); }
+            });
             await page.evaluate(() => window.__appReview.active()?.pause());
         }
         if (process.argv.includes('--faults')) await require('./nativeAudioAppFaults.cjs').runFaultReview(page, record);

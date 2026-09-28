@@ -14,7 +14,7 @@ async function fixtures(output) {
     for (const [id, gain] of [['A', -6], ['B', -3]]) {
         const file = path.join(output, `tagged-${id}.flac`);
         execFileSync(path.resolve('../folia-major/build/native-audio/ffmpeg.exe'), ['-v', 'error', '-y', '-i', input, '-c:a', 'flac', '-metadata', `title=Tagged validation ${id}`, '-metadata', `REPLAYGAIN_TRACK_GAIN=${gain} dB`, '-metadata', 'REPLAYGAIN_ALBUM_GAIN=-12 dB', '-metadata', 'REPLAYGAIN_TRACK_PEAK=0.8', file]);
-        entries.push({ id, gain, bytes: (await fs.readFile(file)).toString('base64') });
+        entries.push({ id, gain, bytes: (await fs.readFile(file)).toString('base64'), pcmBytes: wav.toString('base64') });
     }
     return entries;
 }
@@ -33,7 +33,9 @@ async function seed(page, entries) {
             if (parsed?.replayGainTrackGain !== entry.gain || parsed?.replayGainAlbumGain !== -12) throw new Error(`Real tag parse failed: ${JSON.stringify(parsed)}`);
             const id = `remaining-validation-${entry.id}`;
             const song = { id, name: `Tagged validation ${entry.id}`, artists: [{ id: 'validation', name: 'Validation' }], album: { id: 'validation', name: 'Validation' }, durationMs: 24000, sourceRef: { kind: 'online', providerId: 'qq', mediaId: id }, isPureMusic: true };
-            await saveAudioBlob(getSongResourceCacheKey('audio', song), file);
+            const cachedAudio = entry.cachePcm
+                ? new File([Uint8Array.from(atob(entry.pcmBytes), c => c.charCodeAt(0))], `tagged-${entry.id}.wav`, { type: 'audio/wav' }) : file;
+            await saveAudioBlob(getSongResourceCacheKey('audio', song), cachedAudio);
             await saveSongReplayGain(song, { trackGain: parsed.replayGainTrackGain, albumGain: parsed.replayGainAlbumGain, trackPeak: parsed.replayGainTrackPeak });
             await saveToCache(getSongResourceCacheKey('lyric', song), { lines: [{ time: 0, fullText: '纯音乐，请欣赏', words: [] }] });
             songs.push(song);
@@ -42,3 +44,29 @@ async function seed(page, entries) {
     }, entries);
 }
 module.exports = { fixtures, seed };
+
+// Only the picker is supplied by the harness: real OPFS handles, scanning, tags and IndexedDB persist normally.
+async function importLocal(page, entries) {
+    await page.evaluate(async entries => {
+        const root = await navigator.storage.getDirectory();
+        const directory = await root.getDirectoryHandle('NativeValidationTags', { create: true });
+        for (const entry of entries) {
+            const handle = await directory.getFileHandle(`tagged-${entry.id}.flac`, { create: true });
+            const writer = await handle.createWritable();
+            await writer.write(Uint8Array.from(atob(entry.bytes), c => c.charCodeAt(0))); await writer.close();
+        }
+        window.showDirectoryPicker = async () => directory;
+    }, entries);
+    await page.getByRole('button', { name: /^(本地|Folder)$/ }).last().click();
+    await page.getByRole('button', { name: /^(导入文件夹|Import Folder)$/ }).last().click();
+    await page.waitForFunction(() => {
+        const songs = window.__remaining.walk(f => f.type?.name === 'Grid3D' && f)?.memoizedProps?.localSongs.filter(s => s.folderName?.startsWith('NativeValidationTags'));
+        return songs?.length === 2 && songs.every(s => s.duration === 24000 && s.replayGainAlbumGain === -12);
+    }, null, { timeout: 30000 });
+    return page.evaluate(async () => {
+        const { getLocalSongs } = await import('/src/services/db.ts');
+        const { buildLocalQueue } = await import('/src/services/playbackAdapters.ts');
+        return buildLocalQueue((await getLocalSongs()).filter(s => s.folderName?.startsWith('NativeValidationTags')).sort((a, b) => a.title.localeCompare(b.title)));
+    });
+}
+module.exports.importLocal = importLocal;

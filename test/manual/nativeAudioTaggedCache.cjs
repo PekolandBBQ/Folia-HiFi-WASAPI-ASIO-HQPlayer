@@ -1,20 +1,27 @@
 const { attach, connect } = require('./remainingHarness.cjs');
-const { fixtures, seed } = require('./remainingFixtures.cjs');
+const { fixtures, seed, importLocal } = require('./remainingFixtures.cjs');
 const assert = require('node:assert/strict');
 
 // File tags -> metadata worker -> persistent cache -> new renderer -> App -> real output engine.
 async function main() {
-    const h = await connect('tagged-cache'); const { page, record } = h;
+    const local = process.argv.includes('--local');
+    const h = await connect(local ? 'tagged-local-import' : 'tagged-cache'); const { page, record } = h;
     try {
         await attach(page);
-        const songs = await seed(page, await fixtures(h.output));
+        const songs = await (local ? importLocal : seed)(page, await fixtures(h.output));
         await page.reload(); await attach(page);
         await page.evaluate(async songs => {
             const r = window.__remaining; r.songs = songs;
             const { useAutomixSettingsStore } = await import('/src/stores/useAutomixSettingsStore.ts'); useAutomixSettingsStore.setState({ automixEnabled: false });
             r.settings.setState({ volume: .1, isMuted: false });
             const { hasCachedSongAudio, getCachedSongReplayGain } = await import('/src/services/onlineMusic/resourceCache.ts');
-            r.persisted = await Promise.all(songs.map(async s => ({ audio: await hasCachedSongAudio(s), gain: await getCachedSongReplayGain(s), inputHadGain: !!s.replayGain })));
+            r.persisted = await Promise.all(songs.map(async s => {
+                if (!s.isLocal) return { audio: await hasCachedSongAudio(s), gain: await getCachedSongReplayGain(s), inputHadGain: !!s.replayGain };
+                const { getLocalSongs } = await import('/src/services/db.ts');
+                const saved = (await getLocalSongs()).find(item => item.id === s.localRef.songId);
+                const file = await (await import('/src/services/localMusicService.ts')).getFileFromLocalSong(saved);
+                return { audio: !!file, inputHadGain: !!s.replayGain, metadata: saved.embeddedMetadata, importedThroughUI: true, fileHandleSurvivedReload: !!file };
+            }));
         }, songs);
         for (const backend of ['wasapi-exclusive', 'asio']) for (const processing of process.argv.includes('--core') ? ['compatibility'] : ['compatibility', 'integer-direct']) {
             await page.evaluate(async ({ backend, processing }) => {

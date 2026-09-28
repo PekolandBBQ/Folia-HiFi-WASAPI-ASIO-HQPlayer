@@ -90,3 +90,6 @@ native/windows-audio/bin/
 native/windows-audio/obj/
 # Generated sanitized validation bundle; attach separately rather than adding screenshots to source PRs.
 docs/native-audio-validation/
+docs/native-audio-remaining-validation/
+docs/native-audio-final-validation/
+build/manual-native-audio/
