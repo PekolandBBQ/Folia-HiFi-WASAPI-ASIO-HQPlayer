@@ -91,6 +91,7 @@ async function main() {
         for (const [label, inputPath] of [['Spica','D:/Music/QQMusic/HUMMING LIFE - Spica.flac'],['Sakurane','D:/Music/QQMusic/ピコ - 桜音.flac']]) {
             await record(`packaged-tolerant-${label}`, async () => {
                 const result = await app.evaluate(async ({ app }, { inputPath, label }) => {
+                    const require = process.mainModule.require.bind(process.mainModule);
                     const path = require('node:path'), fs = require('node:fs/promises');
                     const { transcodeAudioFile } = require(path.join(app.getAppPath(),'electron/transcode/runner.cjs'));
                     const root = path.join(app.getPath('userData'),'validation-output'); await fs.mkdir(root,{recursive:true});
