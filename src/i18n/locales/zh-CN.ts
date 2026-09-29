@@ -1,6 +1,17 @@
 
 
 export default {
+ hqpComponent: { title: 'HQPlayer 控制组件', description: '独立版本与安装目录，不依赖 WASAPI/ASIO 组件。HQPlayer Desktop 需另行安装。', missing: '未安装', ready: '组件可用', disabled: '组件未启用或不可用', updateAvailable: '有已批准的新版本可更新', install: '安装 / 更新 HQPlayer 组件', uninstall: '停用 HQPlayer 组件', rollback: '回退 HQPlayer 组件', switchFirst: '请先切换到其他输出后再管理此组件。', noRelease: '尚无上游批准的组件下载版本。' },
+ hqpLaunch: {
+  "existingTitle": "检测到已打开的 HQPlayer",
+  "existingDescription": "是否直接连接已有的 HQPlayer 实例？选择“是”不会启动新实例；选择“否”将返回先前的输出设置。",
+  "yes": "是，连接已有实例",
+  "no": "否，返回先前设置",
+  "silent": "后台静默开启 HQPlayer",
+  "silentDescription": "默认关闭。关闭时启动完整的 HQPlayer 前台窗口；仅影响 Folia 新启动的实例。"
+},
+ hqpDsp: {"button":"HQPlayer设置","defaultsTitle":"默认升频设置","defaultsDescription":"保存后，每首歌曲加载前应用。浮窗中当前歌曲 / 下一首的设置优先于默认值。读取选项会连接或启动 HQPlayer。","saveDefaults":"保存为默认值","clearDefaults":"使用 HQPlayer 当前设置","defaultsSaved":"默认值已保存，后续歌曲生效。","defaultsCleared":"默认值已清除，保留 HQPlayer 当前设置。","title":"HQPlayer 升频设置","input":"输入：Folia 当前歌曲（文件 / 流媒体）","devices":"输入输出设备请在 HQPlayer Desktop 中选择；官方控制接口未提供设备切换。","mode":"升频模式","filter":"滤波器","shaper":"整形器 / 调制器","rate":"目标采样率","auto":"自动","current":"应用到当前歌曲","next":"下一首歌曲生效","applied":"已应用，保留当前播放位置。","queued":"已保存，下一首歌曲开始前生效。","loading":"正在读取 / 应用 HQPlayer 设置…","refresh":"刷新选项","stopToRead":"该模式的选项尚未读取。请在 HQPlayer 中停止播放后刷新；不会为读取选项中断当前歌曲。"},
+  loadProgress: {inspect: '正在读取音频信息',"compatibility":"兼容模式","compatibilityDesc":"默认关闭。开启后在失败恢复时并行准备严格和容错解码结果；可能跳过损坏音频帧。","strictError":"当前歌曲严格解码失败。是否开启兼容模式重试？容错处理可能跳过损坏音频帧。","once":"仅当前歌曲","always":"后续保持开启","cancel":"取消","cache":"正在读取音频缓存","source":"正在获取流媒体地址","download":"正在下载完整音频","upload":"正在准备本地音频","decode":"正在解码音频","validate":"正在校验解码结果","connect":"正在连接 HQPlayer","load":"正在加载音频","buffer":"正在等待播放缓冲"},
   "hqPlayer": {
   "selectPath": "选择程序路径…",
   "resetPath": "恢复自动检测",
@@ -10,9 +21,9 @@ export default {
   "nativeSelectorPlaceholder": "选择 WASAPI / ASIO 设备",
   "activeOutput": "当前输出：HQPlayer。请在独立的 HQPlayer 设置项管理连接；选择下方设备将切换输出。",
   "title": "HQPlayer 连接",
-  "description": "将完整准备的本地或在线音频交给 HQPlayer Desktop 解码和 DSP；Folia 同步播放控制和歌词，必要时后台启动 HQPlayer，退出时只关闭由 Folia 启动的实例。",
+  "description": "将完整准备的本地或在线音频交给 HQPlayer Desktop 解码和 DSP；Folia 同步播放控制和歌词，默认以前台窗口启动 HQPlayer，退出时只关闭由 Folia 启动的实例。",
   "installRequired": "请单独安装 HQPlayer Desktop 后刷新。此功能不依赖 WASAPI/ASIO 原生组件。",
-  "controlHint": "自动发现多个 Desktop 版本（含 6）。若连接失败，请启用 Allow control from network，或手动选择程序路径。输出设备与 DSP 在 HQPlayer 内配置；使用本机 4321 端口。",
+  "controlHint": "自动发现多个 Desktop 版本（含 6）。若连接失败，请启用 Allow control from network，或手动选择程序路径。硬件设备在 HQPlayer 内选择；升频参数可用音频链路旁的设置按钮调整。",
   "refresh": "刷新 HQPlayer 可用状态",
   "enable": "使用 HQPlayer 输出",
   "disable": "返回浏览器播放",
@@ -41,7 +52,11 @@ export default {
         "rollback": "尝试上一版本组件"
     },
     "errors": {
-        "HQPLAYER_PATH_INVALID": "所选路径不是有效的 HQPlayer Desktop 程序，请选择 HQPlayerDesktop.exe 或带版本号的 HQPlayer*Desktop.exe。", "HQPLAYER_UNAVAILABLE": "请先单独安装 HQPlayer Desktop，再刷新设置。",
+        "STRICT_DECODE_FAILED": "严格解码失败，可开启兼容模式后重试。",
+ "HQPLAYER_CONFIRM_EXISTING": "请确认是否连接已打开的 HQPlayer。",
+ "HQPLAYER_MULTIPLE_INSTANCES": "检测到多个 HQPlayer 实例，请保留一个后重试；Folia 不会启动新实例。",
+ "HQPLAYER_SETTINGS_FAILED": "设置应用失败，无法确认恢复；请检查 HQPlayer 设置后重试。",
+ "HQPLAYER_PATH_INVALID": "所选路径不是有效的 HQPlayer Desktop 程序，请选择 HQPlayerDesktop.exe 或带版本号的 HQPlayer*Desktop.exe。", "HQPLAYER_UNAVAILABLE": "请先单独安装 HQPlayer Desktop，再刷新设置。",
       "HQPLAYER_CONTROL_UNAVAILABLE": "HQPlayer 控制接口不可用。请启用 Allow control from network，或在“HQPlayer 连接”中选择程序路径。",
       "HQPLAYER_COMMAND_REJECTED": "HQPlayer 拒绝了控制请求，请检查控制权限、许可证和当前状态。",
       "HQPLAYER_SOURCE_REJECTED": "HQPlayer 无法接受此音源。",
@@ -438,6 +453,10 @@ export default {
       }
     },
     "commands": {
+ "hqplayer-silent-launch-toggle": {"title":"后台静默开启 HQPlayer","description":"切换新实例的启动显示方式"},
+ "settings-hqplayer-component": {"title":"HQPlayer 组件管理","description":"管理独立的 HQPlayer 组件版本、安装、更新与回退"},
+ "hqplayer-dsp-panel": {"title":"HQPlayer 升频设置","description":"打开升频设置悬浮面板"},
+ "decode-compatibility-toggle": { "title": "兼容模式", "description": "切换音频容错恢复" },
       "settings-ponder-hints": { "title": "思索教程提示", "description": "设置长按 G 的提示什么时候出现" },
       "ponder-hints-always": { "title": "思索提示：始终显示", "description": "所有可教学的控件都提示长按 G" },
       "ponder-hints-unseen": { "title": "思索提示：仅未看过的区域", "description": "某个控件的教程看过之后就不再提示它" },

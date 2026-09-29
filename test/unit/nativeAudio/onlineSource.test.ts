@@ -13,7 +13,7 @@ it('passes the exact quality-selected URL to the host, without resolving it agai
     const url = 'https://example.com/track?quality=hires&signature=unchanged';
     await loadNativeOnlineSource(api, 'online', url, 'asio', 'device', new AbortController().signal, 'integer-direct');
     expect(api.request.mock.calls.map(([request]) => request)).toEqual([
-        { action: 'begin', session: 'online', url, backend: 'asio', deviceId: 'device', processingMode: 'integer-direct' },
+        { action: 'begin', silent: false, session: 'online', url, compatibilityMode: false, backend: 'asio', deviceId: 'device', processingMode: 'integer-direct' },
         { action: 'finish', session: 'online' },
     ]);
 });

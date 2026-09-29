@@ -28,7 +28,7 @@ describe('HQPlayer source preparation', () => {
     it('decodes PCM32 only after an explicit source rejection', async () => {
         const f = await fixture(); f.hqplayer.load.mockRejectedValueOnce({ code: 'HQPLAYER_SOURCE_REJECTED' });
         await loadHQPlayerSession(f);
-        expect(f.decode).toHaveBeenCalledWith('ffmpeg.exe', path.join(f.current.directory, 'input.flac'), f.current.directory, f.current.abort.signal, 'integer-direct');
+        expect(f.decode).toHaveBeenCalledWith('ffmpeg.exe', path.join(f.current.directory, 'input.flac'), f.current.directory, f.current.abort.signal, 'integer-direct', undefined);
         expect(f.hqplayer.load).toHaveBeenCalledTimes(2);
     });
     it.each(['HQPLAYER_COMMAND_REJECTED', 'HQPLAYER_CONTROL_UNAVAILABLE'])('does not disguise %s as a decoder error', async code => {

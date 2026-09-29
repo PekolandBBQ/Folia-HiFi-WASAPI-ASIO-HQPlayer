@@ -23,7 +23,7 @@ $env:FOLIA_FFMPEG_DIR='C:\build\ffmpeg\win-x64'
 node packaging/exclusive/build.cjs
 ```
 
-默认同时生成 Windows x64 NSIS 安装 EXE 和免安装 ZIP；应用名称与专版版本取自 `packaging/exclusive/release.json`。应用标识保持不变，配置目录为 `Folia HiFi`；卸载默认保留配置。软件版本始终与所基于的上游版本一致，本版为 0.7.9。专版 Git 标签使用 `hifi-v0.7.9`，避免覆盖上游 `v0.7.9`；GitHub Release 标记为正式版。
+默认同时生成 Windows x64 NSIS 安装 EXE 和免安装 ZIP；应用名称与专版版本取自 `packaging/exclusive/release.json`。应用标识保持不变，配置目录为 `Folia HiFi`；卸载默认保留配置。软件版本始终与所基于的上游版本一致，本版为 0.7.9。专版 Git 标签使用 `hifi-v0.7.9`，同一上游版本的后续专版修订用 `hifi-v0.7.9-r2`、`-r3` 等独立标签，应用版本保持 0.7.9，避免覆盖已发布标签或上游 `v0.7.9`；GitHub Release 标记为正式版。
 
 可用 `FOLIA_EXCLUSIVE_OUTPUT` 指定新输出目录。开发机器有共享依赖目录时，`FOLIA_BUILD_ROOT` 只指定依赖与公共构建资源所在项目；实际 renderer、Electron 和 shared 源码始终来自本脚本所在专版 checkout。不能将旧集成分支的构建产物当作最新专版。
 
@@ -39,7 +39,7 @@ node test/manual/exclusivePlaybackReview.cjs
 
 可用 `FOLIA_REVIEW_EXE` 指定已安装或解压后的程序，`FOLIA_REVIEW_OUTPUT` 指定独立证据目录。手工脚本中的真实设备匹配和两首故障样本路径为本轮复现配置；移到其他机器时应按实际环境调整，不能把找不到硬件或样本的情况算作通过。配置独立的测试用户目录，避免干扰日常播放。
 
-发布前检查 ASAR 确实包含 HQPlayer 的生产依赖 `@xmldom/xmldom`。保留失败与修复后证据，记录检查层级（模拟 IPC UI／实际 ASAR／真实设备），生成 SHA256SUMS 后上传资产并核对服务器回报的摘要。
+发布前检查 ASAR 为当前源码、HQPlayer ZIP 与固定归档及入口哈希相同；XML 依赖已打包到独立组件中，主程序不再直接依赖它。网易云与 QQ 的实际播放、输出切换和前台／静默模式均为每次必测项。保留失败与修复后证据，记录检查层级（模拟 IPC UI／实际 ASAR／真实设备），生成 SHA256SUMS 后上传资产并核对服务器回报的摘要。
 
 上游测试要求与已完成矩阵见 [最终验证报告](../native-audio-final-validation.md)。新的完整报告只把本轮真正执行过的项目计为最新通过，其余保留基线日期与版本。
 

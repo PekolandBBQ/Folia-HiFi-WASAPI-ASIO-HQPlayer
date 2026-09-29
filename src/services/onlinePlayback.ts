@@ -1,3 +1,4 @@
+import { beginPlaybackLoad, updatePlaybackLoad, endPlaybackLoad } from '../stores/usePlaybackLoadStore';
 import { LyricData, OnlineLyricsState, ReplayGainInfo, SongResult } from '../types';
 import { saveToCache } from './db';
 import { PrefetchedSongData, isUrlValid, updatePrefetchedAudioUrl } from './prefetchService';
@@ -23,6 +24,9 @@ export async function loadOnlineSongAudioSource(
     | { kind: 'ok'; audioSrc: string; blobUrl?: string; replayGain?: ReplayGainInfo }
     | { kind: 'unavailable' }
 > {
+    const progressOwner = crypto.randomUUID();
+    beginPlaybackLoad(progressOwner, 'cache');
+    try {
     const cachedAudioBlob = await getCachedSongAudioBlob(song);
     if (cachedAudioBlob) {
         const blobUrl = createSafeObjectUrl(cachedAudioBlob);
@@ -48,6 +52,7 @@ export async function loadOnlineSongAudioSource(
 
     let source = null;
     try {
+        updatePlaybackLoad(progressOwner, { stage: 'source' });
         source = await omni.getAudioSource(song, audioQuality);
     } catch (error) {
         console.warn('[OnlinePlayback] Provider audio source is temporarily unavailable', error);
@@ -61,6 +66,7 @@ export async function loadOnlineSongAudioSource(
     const replayGain = applyOnlineAudioSourceMetadata(song, source?.replayGain).replayGain;
     updatePrefetchedAudioUrl(song, url, audioQuality, replayGain);
     return { kind: 'ok', audioSrc: url, replayGain };
+    } finally { endPlaybackLoad(progressOwner); }
 }
 
 export const applyOnlineAudioSourceMetadata = (

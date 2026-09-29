@@ -34,6 +34,7 @@ export type TranscodeFallbackSource =
 
 export interface TranscodeFallbackRequest {
     requestId: string;
+    compatibilityMode?: boolean;
     priority: 'playback' | 'warm';
     source: TranscodeFallbackSource;
     /** Shared media-cache ceiling. Zero means no ceiling. */

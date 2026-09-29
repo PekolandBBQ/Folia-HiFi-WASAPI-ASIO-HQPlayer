@@ -1,3 +1,5 @@
+import HQPlayerLaunchSetting from '../../audio/HQPlayerLaunchSetting';
+import HQPlayerComponentSetting from '../../audio/HQPlayerComponentSetting';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Radio, RefreshCw } from 'lucide-react';
@@ -9,6 +11,8 @@ import { useAudioSettingsStore } from '../../../stores/useAudioSettingsStore';
 import { useHQPlayerSettingsStore } from '../../../stores/useHQPlayerSettingsStore';
 import { setPlayerState } from '../../../stores/usePlaybackStore';
 import { PlayerState } from '../../../types';
+import HQPlayerDspEditor from '../../audio/HQPlayerDspEditor';
+import SettingsSwitch from '../../shared/SettingsSwitch';
 
 // src/components/modal/settings/HQPlayerSettingsSection.tsx — external player setup, separate from the native helper.
 export default function HQPlayerSettingsSection({ className }: { className: string }) {
@@ -29,7 +33,7 @@ export default function HQPlayerSettingsSection({ className }: { className: stri
     if (!supported) return null;
     const change = async (run: () => void) => {
         setBusy(true);
-        try { setAvailable(await withHQPlayer(run)); } finally { setBusy(false); }
+        try { await withHQPlayer(run); } finally { setBusy(false); }
     };
     const choosePath = async (reset = false) => {
         setBusy(true);
@@ -44,7 +48,10 @@ export default function HQPlayerSettingsSection({ className }: { className: stri
                 <button type="button" disabled={busy} aria-label={t('hqPlayer.refresh')} onClick={() => void refresh()}><RefreshCw size={16} /></button>
             </div>
             <p className="my-3 text-xs opacity-70">{t('hqPlayer.description')}</p>
-            {!available && <p role="status" className="my-3 text-sm">{t('hqPlayer.installRequired')}</p>}
+            <HQPlayerComponentSetting status={configuration} active={backend === 'hqplayer'} onChange={status => { setConfiguration(status); setAvailable(status.available); }} />
+            <HQPlayerLaunchSetting />
+            {available && <div role="group" aria-label={t('hqpDsp.defaultsTitle')} className="my-4 border-t border-current/15 pt-4"><h3 className="text-sm font-semibold">{t('hqpDsp.defaultsTitle')}</h3><HQPlayerDspEditor defaults /></div>}
+            {!available && configuration.component?.available !== false && <p role="status" className="my-3 text-sm">{t('hqPlayer.installRequired')}</p>}
             <p className="my-3 text-xs opacity-70">{t('hqPlayer.controlHint')}</p>
             <p className="my-3 break-all text-xs" data-testid="hqplayer-program-path">{t(configuration.custom ? 'hqPlayer.customPath' : 'hqPlayer.autoPath')}: {configuration.executablePath || t('hqPlayer.notFound')}</p>
             <div className="my-3 flex flex-wrap gap-2">
@@ -65,13 +72,11 @@ export default function HQPlayerSettingsSection({ className }: { className: stri
             <p className="mt-2 text-xs opacity-70">{t('hqPlayer.gainDescription')}</p>
             <label className="mt-4 flex items-center justify-between gap-4 text-sm">
                 {t('hqPlayer.remember')}
-                <input type="checkbox" role="switch" aria-checked={remember} aria-label={t('hqPlayer.remember')}
-                    checked={remember} disabled={busy || !available} onChange={() => void change(() => setRemember(!remember))} />
+                <SettingsSwitch label={t('hqPlayer.remember')} checked={remember} disabled={busy || !available} onChange={value => void change(() => setRemember(value))} />
             </label>
             <label className="mt-4 flex items-center justify-between gap-4 text-sm">
                 {t('nativeAudio.showSignalPath')}
-                <input type="checkbox" role="switch" aria-checked={signalPath} aria-label={t('nativeAudio.showSignalPath')}
-                    checked={signalPath} disabled={busy || !available} onChange={() => void change(() => setSignalPath(!signalPath))} />
+                <SettingsSwitch label={t('nativeAudio.showSignalPath')} checked={signalPath} disabled={busy || !available} onChange={value => void change(() => setSignalPath(value))} />
             </label>
         </div>
     </SettingsAnchor>;

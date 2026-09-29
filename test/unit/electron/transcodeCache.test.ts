@@ -33,7 +33,7 @@ describe('transcode cache', () => {
     });
 
     it('invalidates the old forced-48k cache generation', () => {
-        expect(CACHE_VERSION).toBe('audio-v2-source-rate-stereo');
+        expect(CACHE_VERSION).toBe('audio-v3-explicit-compatibility');
     });
 
     it('lists published bytes, refreshes LRU time on reads, and clears entries', async () => {

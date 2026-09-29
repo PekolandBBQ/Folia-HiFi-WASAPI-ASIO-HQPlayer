@@ -1,4 +1,7 @@
 import React from 'react';
+import HQPlayerConnectionDialog from '../../audio/HQPlayerConnectionDialog';
+import PlaybackLoadProgress from '../../audio/PlaybackLoadProgress';
+import SignalPath from '../../audio/SignalPath';
 import FloatingPlayerControls from '../../FloatingPlayerControls';
 import SearchWorkspace from '../search/SearchWorkspace';
 import DevDebugOverlay from '../../DevDebugOverlay';
@@ -26,6 +29,8 @@ const AppOverlays: React.FC<AppOverlaysProps> = ({ model }) => {
 
     return (
         <>
+            <PlaybackLoadProgress />
+            <HQPlayerConnectionDialog />
             {searchOverlay && <SearchWorkspace {...searchOverlay} />}
 
             {debugOverlay && <DevDebugOverlay {...debugOverlay} />}
@@ -35,6 +40,9 @@ const AppOverlays: React.FC<AppOverlaysProps> = ({ model }) => {
             {floatingControls
                 && (floatingControls.currentView !== 'lattice' || !isCurrentSongPosterVisible)
                 && <FloatingPlayerControls {...floatingControls} />}
+
+            {(!floatingControls || floatingControls.hideControlBar
+                || (floatingControls.currentView === 'lattice' && isCurrentSongPosterVisible)) && <SignalPath />}
 
             {nowPlayingToast && <NowPlayingToast {...nowPlayingToast} />}
         </>

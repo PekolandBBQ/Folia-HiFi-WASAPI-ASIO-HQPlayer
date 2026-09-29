@@ -101,7 +101,7 @@ async function encodeInParallel({ executable, inputPath, outputPath, format, sig
     }
 }
 
-const transcodeAudioFile = async ({ executable, inputPath, outputPath, format, signal, spawnProcess, parallel = false }) => {
+const transcodeAudioFile = async ({ executable, inputPath, outputPath, format, signal, spawnProcess, parallel = false, allowTolerant = false, onProgress = () => {} }) => {
     let tolerant = false;
     if (parallel) {
         tolerant = await encodeInParallel({ executable, inputPath, outputPath, format, signal, spawnProcess });
@@ -112,6 +112,7 @@ const transcodeAudioFile = async ({ executable, inputPath, outputPath, format, s
         // Retry only decode corruption, using the same downloaded bytes. Cancellation, missing
         // encoders, disk failures and invalid output must never turn into a second encode loop.
         if (signal?.aborted || !isDecodeCorruption(error)) throw error;
+        if (!allowTolerant) throw Object.assign(new Error('Strict decoding rejected damaged audio'), { code: 'STRICT_DECODE_FAILED' });
         tolerant = true;
         console.info('[TranscodeFallback]', 'tolerant-decode-retry', { format });
         await runProcess({ executable, args: encodeArgs(inputPath, outputPath, format, true), signal, spawnProcess });
@@ -123,6 +124,7 @@ const transcodeAudioFile = async ({ executable, inputPath, outputPath, format, s
         error.code = 'INVALID_OUTPUT';
         throw error;
     }
+    onProgress({ stage: 'validate' });
     await runProcess({ executable, args: validateArgs(outputPath), signal, spawnProcess });
     return { size: stat.size, tolerant };
 };

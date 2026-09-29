@@ -24,6 +24,7 @@ test.beforeEach(async ({ page }) => {
                 onEvent: (listener: (value: unknown) => void) => { listeners.add(listener); return () => listeners.delete(listener); },
                 request: async (request: Record<string, unknown>) => {
                     requests.push(request);
+                    if (request.action === 'hqplayer-launch-options') return { ok: true };
                     if (request.action === 'component-rollback') return { ok: true };
                     if (request.action === 'hqplayer-status') return { available: localStorage.getItem('hqplayer_installed') === 'true' || Boolean(localStorage.getItem('hqplayer_mock_path')), custom: Boolean(localStorage.getItem('hqplayer_mock_path')), executablePath: localStorage.getItem('hqplayer_mock_path') || '' };
                     if (request.action === 'hqplayer-select-executable') {

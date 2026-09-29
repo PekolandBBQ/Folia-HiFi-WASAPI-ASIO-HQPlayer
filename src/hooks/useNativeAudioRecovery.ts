@@ -58,7 +58,7 @@ export function useNativeAudioRecovery(audioRef: MutableRefObject<HTMLAudioEleme
                     useAudioSettingsStore.getState().handleSetNativeAudioOutput('browser', '');
                     setStatusMessage({ type: 'error', text: `${t(nativeErrorKey(element.error))} ${t('nativeAudio.returnedToBrowser')}`, durationMs: 8000 });
                 } else {
-                    if (choice === 'rollback') await window.electron!.nativeAudio!.request({ action: 'component-rollback' });
+                    if (choice === 'rollback') await window.electron!.nativeAudio!.request({ action: settings.nativeAudioBackend === 'hqplayer' ? 'hqplayer-component-rollback' : 'component-rollback' });
                     if (ticket !== generation.current || currentSongKey() !== song) return;
                     await transport.retryFrom(position, playing);
                 }

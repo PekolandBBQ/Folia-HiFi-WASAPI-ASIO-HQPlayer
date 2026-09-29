@@ -15,7 +15,8 @@ it.skipIf(process.platform !== 'win32' || process.arch !== 'x64')('keeps HQPlaye
     let helperEvent: (event: unknown) => void = () => {};
     const helperFactory = vi.fn((_executable, callback) => { helperEvent = callback; return { request: vi.fn(async () => ({ protocolMajor: 1, capabilities: ['integer-pcm','replaygain','format-telemetry'] })), dispose: vi.fn() }; });
     const hqplayer = { device: async () => ({ id: 'hqplayer-local' }), load: vi.fn(async request => ({ session: request.session })),
-        command: vi.fn(async session => ({ session })), stop: vi.fn(), dispose: vi.fn() };
+        command: vi.fn(async session => ({ session })), stop: vi.fn(async () => {}), shutdown: vi.fn(async () => ({ ok: true })), dispose: vi.fn(),
+        dspSettings: vi.fn(async (_settings, when, session) => when === 'current' ? ({ session, position: 37, playing: true }) : ({ ok: true })) };
     const service = registerNativeAudio({ app, ipcMain: { handle: vi.fn() }, isTrustedSender: (value: unknown) => value === sender,
         componentManager, helperFactory, hqplayerFactory: () => hqplayer, decoderResolver: async () => 'ffmpeg.exe' });
     const request = (body: Record<string, unknown>) => service.handle({ sender, senderFrame: sender.mainFrame }, body);
@@ -28,11 +29,24 @@ it.skipIf(process.platform !== 'win32' || process.arch !== 'x64')('keeps HQPlaye
         await request({ action: 'begin', session: 'warm', backend: 'asio', deviceId: 'test', path: source });
         await request({ action: 'begin', session: 'hq', backend: 'hqplayer', deviceId: 'hqplayer-local', path: source });
         await request({ action: 'finish', session: 'hq' });
+        sender.send.mockClear();
+        await request({ action: 'hqplayer-dsp-apply', session: 'hq', when: 'next', settings: {} });
+        expect(sender.send).not.toHaveBeenCalled();
+        await request({ action: 'hqplayer-dsp-apply', session: 'hq', when: 'current', settings: {} });
+        expect(sender.send).toHaveBeenCalledWith('native-audio:event', expect.objectContaining({
+            event: 'resume', session: 'hq', state: expect.objectContaining({ position: 37, playing: true }),
+        }));
         await request({ action: 'replaygain', session: 'hq', gain: 0.5 });
         expect(hqplayer.command).toHaveBeenCalledWith('hq', 'replaygain', 0.5);
         await expect(request({ action: 'gain', session: 'hq', gainDb: 4 })).rejects.toMatchObject({ code: 'INVALID_REQUEST' });
         expect(helperFactory).toHaveBeenCalledTimes(1);
+        sender.send.mockClear();
         helperEvent({ event: 'error', errorCode: 'COMPONENT_CRASHED' });
         expect(sender.send).not.toHaveBeenCalled();
+        await request({ action: 'hqplayer-shutdown' });
+        expect(hqplayer.stop).toHaveBeenCalledWith('hq');
+        expect(hqplayer.shutdown).toHaveBeenCalledOnce();
+        expect(helperFactory.mock.results[0].value.dispose).toHaveBeenCalledOnce();
+        await expect(request({ action: 'play', session: 'hq' })).rejects.toMatchObject({ code: 'CANCELLED' });
     } finally { app.emit('before-quit'); await new Promise(resolve => setTimeout(resolve, 30)); await rm(root, { recursive: true, force: true }); }
 });

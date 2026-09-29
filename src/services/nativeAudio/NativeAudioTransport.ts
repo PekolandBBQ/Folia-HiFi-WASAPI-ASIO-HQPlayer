@@ -1,3 +1,7 @@
+import { prepareWithCompatibility } from './prepareWithCompatibility';
+import { usePlaybackStore } from '../../stores/usePlaybackStore';
+import { getPlaybackSongKey } from '../../utils/appPlaybackGuards';
+import { beginPlaybackLoad, updatePlaybackLoad, endPlaybackLoad } from '../../stores/usePlaybackLoadStore';
 import type { NativeAudioApi, NativeAudioBackend, NativeAudioEvent, NativeAudioProcessingMode, NativeAudioState } from '../../types/nativeAudio';
 import { publishSignalPath, clearSignalPath } from '../../stores/useSignalPathStore';
 import { getNativeErrorCode } from './errors';
@@ -105,14 +109,18 @@ export class NativeAudioTransport extends EventTarget {
         this.abort = new AbortController();
         const signal = this.abort.signal;
         const session = this.session;
+        beginPlaybackLoad(session, 'load');
         this.emit('loadstart');
         this.loading = (async () => {
             const file = await this.getFile();
             signal.throwIfAborted();
-            const state = file
-                ? await loadNativeLocalFile(this.api, session, file, this.backend, this.deviceId, signal, this.processingMode, this.hqplayerGainDb)
-                : await loadNativeOnlineSource(this.api, session, this.src, this.backend, this.deviceId, signal, this.processingMode, this.hqplayerGainDb);
+            const song = usePlaybackStore.getState().currentSong;
+            const trackKey = song ? getPlaybackSongKey(song) : this.src;
+            const state = await prepareWithCompatibility(session, signal, async compatibilityMode => file
+                ? await loadNativeLocalFile(this.api, session, file, this.backend, this.deviceId, signal, this.processingMode, this.hqplayerGainDb, trackKey, compatibilityMode)
+                : await loadNativeOnlineSource(this.api, session, this.src, this.backend, this.deviceId, signal, this.processingMode, this.hqplayerGainDb, trackKey, compatibilityMode));
             this.apply(state); this.readyState = 4;
+            endPlaybackLoad(session);
             this.emit('loadedmetadata'); this.emit('loadeddata'); this.emit('canplay');
         })();
         void this.loading.catch(error => { if (!signal.aborted) this.fail(error); });
@@ -131,11 +139,13 @@ export class NativeAudioTransport extends EventTarget {
         await this.command('volume', { volume: this.silent ? 0 : this.level });
         await this.command('replaygain', { gain: this.replayGain });
         if (intent !== this.intent) throw new DOMException('Playback cancelled', 'AbortError');
+        if (this.backend === 'hqplayer') beginPlaybackLoad(session, 'buffer');
         const state = await this.command('play');
         if (intent !== this.intent || session !== this.session) throw new DOMException('Playback cancelled', 'AbortError');
         this.apply(state); this.emit('play'); this.emit('playing');
     }
     pause() {
+        endPlaybackLoad(this.session);
         ++this.intent;
         const wasPaused = this.paused;
         this.position = this.currentTime; this.paused = true;
@@ -171,6 +181,7 @@ export class NativeAudioTransport extends EventTarget {
     private apply(state: NativeAudioState) {
         if (state.session !== this.session) return;
         publishSignalPath(state);
+        if (state.playing && state.position > 0) endPlaybackLoad(this.session);
         const wasPaused = this.paused;
         const now = performance.now();
         const hqplayerStartupDelay = this.backend === 'hqplayer' && state.playing && state.position === 0
@@ -197,7 +208,11 @@ export class NativeAudioTransport extends EventTarget {
     }
     private receive(event: NativeAudioEvent) {
         if (this.disposed || event.session !== this.session) return;
+        if (event.event === 'progress' && event.progress) { updatePlaybackLoad(this.session, event.progress); return; }
         if (event.event === 'error') { this.fail(Object.assign(new Error(event.errorCode || 'NATIVE_REQUEST_FAILED'), { code: event.errorCode })); return; }
+        if (event.event === 'resume' && this.backend === 'hqplayer' && event.state) {
+            this.apply(event.state); this.emit('timeupdate'); this.emit('play'); this.emit('playing'); return;
+        }
         if (!event.state || this.seeking || (this.paused && event.state.playing)) return;
         const wasEnded = this.ended; const wasPaused = this.paused;
         this.apply(event.state); this.emit('timeupdate');
@@ -208,7 +223,9 @@ export class NativeAudioTransport extends EventTarget {
     }
     private fail(error: unknown) {
         if (this.disposed || (error instanceof DOMException && error.name === 'AbortError')) return;
+        endPlaybackLoad(this.session);
         const message = getNativeErrorCode(error);
+        if (message === 'CANCELLED') return;
         if (this.error?.message === message) return;
         this.position = this.currentTime; this.paused = true; this.seeking = false;
         this.error = { code: message === 'DECODE_FAILED' ? 3 : ['SOURCE_EXPIRED', 'SOURCE_UNAVAILABLE'].includes(message) ? 2 : 4, message, nativeCode: message };
@@ -219,6 +236,7 @@ export class NativeAudioTransport extends EventTarget {
         ++this.intent; ++this.revision; this.seeking = false;
         this.abort.abort();
         clearSignalPath(this.session);
+        endPlaybackLoad(this.session);
         if (this.session) void this.api.request({ action: 'stop', session: this.session }).catch(() => {});
         this.session = '';
     }

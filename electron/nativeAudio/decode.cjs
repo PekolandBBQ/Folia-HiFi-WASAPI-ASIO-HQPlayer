@@ -3,13 +3,13 @@ const path = require('node:path');
 const { spawn } = require('node:child_process');
 
 // electron/nativeAudio/decode.cjs — decode one local file into a seekable temporary PCM WAV.
-async function decodeLocalAudio(executable, input, directory, signal, processingMode = 'compatibility') {
+async function decodeLocalAudio(executable, input, directory, signal, processingMode = 'compatibility', compatibilityMode = false) {
     const stat = await fs.stat(input);
     if (!stat.isFile()) throw new Error('Select a local audio file');
     const output = path.join(directory, 'decoded.wav');
     await new Promise((resolve, reject) => {
         const process = spawn(executable, ['-nostdin', '-hide_banner', '-loglevel', 'error',
-            '-protocol_whitelist', 'file,pipe', '-i', input, '-map', '0:a:0', '-vn', '-sn', '-dn',
+            ...(!compatibilityMode ? ['-xerror'] : []), '-protocol_whitelist', 'file,pipe', '-i', input, '-map', '0:a:0', '-vn', '-sn', '-dn',
             '-c:a', processingMode === 'integer-direct' ? 'pcm_s32le' : 'pcm_s24le',
             '-rf64', 'auto', '-y', output],
         { windowsHide: true, signal, stdio: ['ignore', 'ignore', 'pipe'] });
@@ -19,7 +19,8 @@ async function decodeLocalAudio(executable, input, directory, signal, processing
         process.once('error', error => { processError = error; });
         process.once('close', code => {
             if (processError) reject(processError);
-            else if (code !== 0) reject(new Error(diagnostics || `Audio decoding failed (${code})`));
+            else if (code !== 0) reject(Object.assign(new Error(diagnostics || `Audio decoding failed (${code})`),
+                { code: !compatibilityMode && /invalid sync code|invalid frame header|error (?:while )?decoding|corrupt(?:ed)? (?:frame|packet)|crc mismatch/i.test(diagnostics) ? 'STRICT_DECODE_FAILED' : 'DECODE_FAILED' }));
             else resolve();
         });
     });

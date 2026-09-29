@@ -1,0 +1,8 @@
+/* Native progress semantics with the same muted glass palette as the signal-path controls. */
+.playback-load-bar { appearance: none; border: 0; border-radius: 999px; overflow: hidden; background: color-mix(in srgb, currentColor 15%, transparent); color: var(--text-primary); }
+.playback-load-bar::-webkit-progress-bar { background: color-mix(in srgb, currentColor 15%, transparent); border-radius: 999px; }
+.playback-load-bar::-webkit-progress-value { background: currentColor; opacity: .7; border-radius: 999px; transition: width .15s linear; }
+.playback-load-bar::-moz-progress-bar { background: currentColor; opacity: .7; border-radius: 999px; }
+.playback-load-bar:indeterminate { background: linear-gradient(90deg, transparent, color-mix(in srgb, currentColor 60%, transparent), transparent) 0 0 / 200% 100%; animation: playback-load-wait 1.5s linear infinite; }
+@keyframes playback-load-wait { to { background-position: -200% 0; } }
+@media (prefers-reduced-motion: reduce) { .playback-load-bar:indeterminate { animation: none; } }

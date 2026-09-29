@@ -4,15 +4,17 @@ const { createHelper } = require('./helper.cjs');
 const { decodeLocalAudio } = require('./decode.cjs');
 const { downloadRemoteAudio } = require('./download.cjs');
 const { audioError, errorCode, diagnostic } = require('./errors.cjs');
-const { createHQPlayerHost } = require('./hqplayerHost.cjs');
+const { createHQPlayerComponentHost } = require('../hqplayer/client.cjs');
 const { loadHQPlayerSession } = require('./hqplayerSession.cjs');
 
 // electron/nativeAudio/service.cjs — a single, session-owned local playback resource.
-function registerNativeAudio({ app, ipcMain, isTrustedSender, helperFactory = createHelper, decode = decodeLocalAudio, download = downloadRemoteAudio, componentManager, hqplayerFactory = createHQPlayerHost, chooseHQPlayerExecutable, decoderResolver = require('./decoder.cjs').resolveNativeDecoder }) {
+function registerNativeAudio({ app, ipcMain, isTrustedSender, helperFactory = createHelper, decode = decodeLocalAudio, download = downloadRemoteAudio, componentManager, hqplayerFactory = createHQPlayerComponentHost, chooseHQPlayerExecutable, decoderResolver = require('./decoder.cjs').resolveNativeDecoder }) {
     const supported = process.platform === 'win32' && process.arch === 'x64';
     const components = componentManager || require('./componentManager.cjs').createComponentManager({ app });
     let active = null, helper = null, helperReady = null, decoder, managingComponent = false;
+    let nativeHandoffPending = false;
     const hqplayer = hqplayerFactory({
+        app,
         configPath: path.join(app.getPath('userData'), 'hqplayer.json'),
         onState: state => {
             const current = active;
@@ -50,6 +52,16 @@ function registerNativeAudio({ app, ipcMain, isTrustedSender, helperFactory = cr
         return helperReady;
     }
 
+    function progress(current, stage, values = {}) {
+        if (active !== current || current.abort.signal.aborted || current.sender.isDestroyed()) return;
+        const now = Date.now();
+        if (current.stage !== stage) {
+            console.info('[PlaybackPreparation]', { session: current.id, stage, previousStage: current.stage, elapsedMs: now - current.startedAt });
+            current.stage = stage;
+        }
+        current.sender.send('native-audio:event', { event: 'progress', session: current.id,
+            progress: { stage, elapsedMs: now - current.startedAt, ...values } });
+    }
     function assertCurrent(session) {
         if (active !== session || session.abort.signal.aborted) throw audioError('CANCELLED', 'Playback request was cancelled');
     }
@@ -83,15 +95,20 @@ function registerNativeAudio({ app, ipcMain, isTrustedSender, helperFactory = cr
         if (!Number.isFinite(hqplayerGainDb) || hqplayerGainDb < -120 || hqplayerGainDb > 0) throw audioError('INVALID_REQUEST', 'Invalid HQPlayer gain');
         if (request.sourceName != null && (typeof request.sourceName !== 'string' || request.sourceName.length > 512)) throw audioError('INVALID_REQUEST', 'Invalid source name');
         if (request.mimeType != null && (typeof request.mimeType !== 'string' || request.mimeType.length > 256)) throw audioError('INVALID_REQUEST', 'Invalid MIME type');
+        if (request.trackKey != null && (typeof request.trackKey !== 'string' || request.trackKey.length > 2048)) throw audioError('INVALID_REQUEST');
         const previous = active;
         const current = { id: request.session, sender, abort: new AbortController(), directory: null,
-            backend: request.backend, deviceId: request.deviceId, processingMode, hqplayerGainDb, sourceName: request.sourceName, sourceMimeType: request.mimeType, bytes: 0, ready: false };
+            backend: request.backend, deviceId: request.deviceId, processingMode, hqplayerGainDb, hqplayerDefaults: request.hqplayerDefaults, compatibilityMode: request.compatibilityMode === true, trackKey: request.trackKey, sourceName: request.sourceName, sourceMimeType: request.mimeType, startedAt: Date.now(), bytes: 0, ready: false };
         active = current;
         await release(previous);
         assertCurrent(current);
+        progress(current, current.backend === 'hqplayer' ? 'connect' : 'load');
         if (current.backend === 'hqplayer') {
-            if (!await hqplayer.device()) throw audioError('HQPLAYER_UNAVAILABLE', 'Install HQPlayer Desktop first');
-            decoder = await decoderResolver(app);
+            // Connect while staging the source; native HQPlayer formats do not need FFmpeg.
+            await hqplayer.checkExisting?.();
+            assertCurrent(current);
+            hqplayer.setSilent?.(request.silent === true);
+            current.connection = hqplayer.prepare?.().then(() => null, error => error);
         } else await ensureHelper();
         assertCurrent(current);
         current.creating = fs.mkdtemp(path.join(app.getPath('temp'), 'folia-native-audio-'));
@@ -120,6 +137,32 @@ function registerNativeAudio({ app, ipcMain, isTrustedSender, helperFactory = cr
         }
         if (request?.action === 'hqplayer-status') return { supported, ...(!supported ? { available: false } : hqplayer.configuration ? await hqplayer.configuration() : { available: Boolean(await hqplayer.device()) }) };
         if (!supported) throw new Error('Native playback requires Windows x64');
+        if (request?.action === 'hqplayer-shutdown') {
+            if (active?.backend === 'hqplayer') { const previous = active; active = null; await release(previous); }
+            await hqplayer.shutdown();
+            nativeHandoffPending = true;
+            // A DSD driver mode change can invalidate COM endpoints in a previously enumerating host.
+            // Recreate the idle driver process before the next native backend is opened.
+            if (!active) { await helperReady?.catch(() => {}); helper?.dispose(); helper = null; helperReady = null; }
+            return { ok: true };
+        }
+        if (['hqplayer-component-install', 'hqplayer-component-uninstall', 'hqplayer-component-rollback'].includes(request?.action)) {
+            if (active?.backend === 'hqplayer') throw audioError('INVALID_REQUEST', 'Switch away from HQPlayer before managing its component');
+            return hqplayer.manage(request.action.slice('hqplayer-component-'.length));
+        }
+        if (request?.action === 'hqplayer-authorize-existing') return hqplayer.authorizeExisting(request.instancePid);
+        if (request?.action === 'hqplayer-launch-options') { hqplayer.setSilent(request.silent === true); return { ok: true }; }
+        if (request?.action === 'hqplayer-dsp-read') return hqplayer.dspSettings();
+        if (request?.action === 'hqplayer-dsp-apply') {
+            if (active && active.sender !== event.sender) throw audioError('INVALID_REQUEST');
+            if (request.when === 'current' && (!active?.ready || active.backend !== 'hqplayer')) throw audioError('INVALID_REQUEST');
+            const result = await hqplayer.dspSettings(request.settings, request.when, request.session);
+            if (request.when === 'current' && active?.id === result.session && active.sender === event.sender) {
+                // Only this explicit user action may resume a paused renderer transport.
+                event.sender.send('native-audio:event', { event: 'resume', session: result.session, state: { ...result, ...active.sourceInfo } });
+            }
+            return result;
+        }
         if (['hqplayer-select-executable', 'hqplayer-reset-executable'].includes(request?.action)) {
             let selected = null;
             if (request.action === 'hqplayer-select-executable') {
@@ -132,7 +175,7 @@ function registerNativeAudio({ app, ipcMain, isTrustedSender, helperFactory = cr
                 });
                 selected = await choose();
                 if (!selected) return { canceled: true };
-                if (!await require('./hqplayerDiscovery.cjs').validExecutable(selected)) throw audioError('HQPLAYER_PATH_INVALID', 'Select HQPlayer Desktop executable');
+                if (!await hqplayer.validateExecutable(selected)) throw audioError('HQPLAYER_PATH_INVALID', 'Select HQPlayer Desktop executable');
             }
             if (active?.backend === 'hqplayer') { const previous = active; active = null; await release(previous); }
             return { canceled: false, ...await hqplayer.configure(selected) };
@@ -152,7 +195,7 @@ function registerNativeAudio({ app, ipcMain, isTrustedSender, helperFactory = cr
         // Disposal can race StrictMode remounts or a newer source. A stale stop is a no-op,
         // never permission to stop whichever track happens to own the driver now.
         if (request?.action === 'stop' && (!current || request.session !== current.id)) return { ok: true };
-        if (!current || request?.session !== current.id || event.sender !== current.sender) throw new Error('Stale playback session');
+        if (!current || request?.session !== current.id || event.sender !== current.sender) throw audioError('CANCELLED', 'Stale playback session');
         assertCurrent(current);
         if (request.action === 'chunk') {
             const data = request.data;
@@ -170,24 +213,38 @@ function registerNativeAudio({ app, ipcMain, isTrustedSender, helperFactory = cr
                 if (current.remoteUrl) {
                     const sessionFetch = current.sender.session?.fetch?.bind(current.sender.session);
                     if (!sessionFetch && download === downloadRemoteAudio) throw audioError('SOURCE_UNAVAILABLE', 'Electron session fetch is unavailable');
-                    const downloaded = await download(current.remoteUrl, current.input, current.abort.signal, sessionFetch);
+                    progress(current, 'download');
+                    const downloaded = await download(current.remoteUrl, current.input, current.abort.signal, sessionFetch, values => progress(current, 'download', values));
                     if (downloaded?.contentType) current.sourceMimeType = downloaded.contentType;
                 }
                 assertCurrent(current);
+                progress(current, 'inspect');
                 current.sourceInfo = await require('./sourceInfo.cjs').readSourceInfo(current.input);
                 assertCurrent(current);
                 if (current.backend === 'hqplayer') {
-                    const result = await loadHQPlayerSession({ current, hqplayer, decoder, decode, assertCurrent });
+                    progress(current, 'connect');
+                    const connectionError = await current.connection;
+                    if (connectionError) throw connectionError;
+                    assertCurrent(current);
+                    progress(current, 'load');
+                    const result = await loadHQPlayerSession({ current, hqplayer, decoder, resolveDecoder: () => decoderResolver(app), decode, assertCurrent, onProgress: stage => progress(current, stage) });
                     assertCurrent(current); current.ready = true;
                     return { ...result, ...current.sourceInfo };
                 }
-                const wav = await decode(decoder, current.input, current.directory, current.abort.signal, current.processingMode)
-                    .catch(error => { throw audioError(current.abort.signal.aborted ? 'CANCELLED' : 'DECODE_FAILED', error.message); });
+                progress(current, 'decode');
+                const wav = await decode(decoder, current.input, current.directory, current.abort.signal, current.processingMode, current.compatibilityMode)
+                    .catch(error => { throw audioError(current.abort.signal.aborted ? 'CANCELLED' : error.code === 'STRICT_DECODE_FAILED' ? error.code : 'DECODE_FAILED', error.message); });
                 assertCurrent(current);
+                progress(current, 'load');
                 current.loadRequested = true;
-                const result = await helper.request({ action: 'load', session: current.id, path: wav,
-                    backend: current.backend, deviceId: current.deviceId, processingMode: current.processingMode });
+                const result = await require('./reopenAfterHQPlayer.cjs').reopenAfterHQPlayer(() => {
+                    assertCurrent(current);
+                    return helper.request({ action: 'load', session: current.id, path: wav,
+                        backend: current.backend, deviceId: current.deviceId, processingMode: current.processingMode });
+                }, { signal: current.abort.signal, recovering: nativeHandoffPending,
+                    onRetry: () => progress(current, 'connect') });
                 assertCurrent(current);
+                nativeHandoffPending = false;
                 current.ready = true;
                 return { ...result, ...current.sourceInfo };
             })();

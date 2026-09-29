@@ -1,6 +1,17 @@
 
 
 export default {
+ hqpComponent: { title: 'Komponen kontrol HQPlayer', description: 'Versi dan instalasi terpisah. Tidak bergantung pada komponen WASAPI/ASIO. Pasang HQPlayer Desktop secara terpisah.', missing: 'Belum terpasang', ready: 'Komponen siap', disabled: 'Komponen dinonaktifkan atau tidak tersedia', updateAvailable: 'Pembaruan yang disetujui tersedia', install: 'Pasang / perbarui komponen HQPlayer', uninstall: 'Nonaktifkan komponen HQPlayer', rollback: 'Kembalikan versi komponen HQPlayer', switchFirst: 'Beralih ke output lain sebelum mengelola komponen.', noRelease: 'Belum ada unduhan komponen yang disetujui upstream.' },
+ hqpLaunch: {
+  "existingTitle": "HQPlayer is already open",
+  "existingDescription": "Connect to the existing HQPlayer instance? Yes connects without starting another instance. No returns to the previous output settings.",
+  "yes": "Yes, connect",
+  "no": "No, return",
+  "silent": "Launch HQPlayer silently in background",
+  "silentDescription": "Off by default. Show the full HQPlayer window when off. Applies only to instances started by Folia."
+},
+ hqpDsp: {"button":"Pengaturan HQPlayer","defaultsTitle":"Pengaturan upsampling default","defaultsDescription":"Terapkan sebelum setiap lagu. Pengaturan lagu saat ini/berikutnya diutamakan. Membaca opsi menghubungkan atau membuka HQPlayer.","saveDefaults":"Simpan default","clearDefaults":"Gunakan pengaturan HQPlayer saat ini","defaultsSaved":"Default disimpan untuk lagu berikutnya.","defaultsCleared":"Default dihapus; pertahankan pengaturan HQPlayer.","title":"HQPlayer upsampling","input":"Input: current Folia song (file / stream)","devices":"Select input/output devices in HQPlayer Desktop. The Control API does not expose device switching.","mode":"Output mode","filter":"Filter","shaper":"Shaper / modulator","rate":"Target sample rate","auto":"Auto","current":"Apply to current song","next":"Apply at next song","applied":"Applied; playback position preserved.","queued":"Saved for the next song.","loading":"Reading / applying HQPlayer settings…","refresh":"Refresh options","stopToRead":"Options for this mode are not loaded. Stop playback in HQPlayer, then refresh; reading options will not interrupt the current song."},
+  loadProgress: {inspect: 'Reading audio metadata',"compatibility":"Compatibility mode","compatibilityDesc":"Off by default. Prepare strict and tolerant recovery in parallel. Damaged audio frames may be skipped.","strictError":"Strict decoding failed. Retry with compatibility mode? Damaged frames may be skipped.","once":"This song only","always":"Keep enabled","cancel":"Cancel","cache":"Reading audio cache","source":"Resolving streaming source","download":"Downloading complete audio","upload":"Preparing local audio","decode":"Decoding audio","validate":"Validating decoded audio","connect":"Connecting to HQPlayer","load":"Loading audio","buffer":"Waiting for playback buffer"},
   "hqPlayer": {
   "selectPath": "Pilih jalur program…",
   "resetPath": "Pulihkan deteksi otomatis",
@@ -10,9 +21,9 @@ export default {
   "nativeSelectorPlaceholder": "Pilih perangkat WASAPI / ASIO",
   "activeOutput": "Output saat ini: HQPlayer. Kelola koneksi di pengaturan HQPlayer. Memilih perangkat di bawah akan mengganti output.",
   "title": "Koneksi HQPlayer",
-  "description": "Kirim audio lokal atau online yang telah disiapkan ke HQPlayer Desktop untuk dekode dan DSP. Folia menyinkronkan kontrol dan lirik, memulai HQPlayer di latar belakang bila perlu, dan hanya menutup instans yang dimulainya.",
+  "description": "Kirim audio lokal atau online yang telah disiapkan ke HQPlayer Desktop untuk dekode dan DSP. Folia menyinkronkan kontrol dan lirik, menampilkan jendela HQPlayer secara default, dan hanya menutup instans yang dimulainya.",
   "installRequired": "Pasang HQPlayer Desktop secara terpisah lalu segarkan. Fitur ini tidak memerlukan komponen WASAPI/ASIO.",
-  "controlHint": "Mendeteksi versi Desktop termasuk 6. Jika koneksi gagal, aktifkan Allow control from network atau pilih program secara manual. Atur perangkat dan DSP di HQPlayer; koneksi memakai port lokal 4321.",
+  "controlHint": "Mendeteksi versi Desktop termasuk 6. Jika koneksi gagal, aktifkan Allow control from network atau pilih program secara manual. Pilih perangkat di HQPlayer; atur upsampling melalui tombol pengaturan di samping jalur sinyal.",
   "refresh": "Segarkan ketersediaan HQPlayer",
   "enable": "Gunakan output HQPlayer",
   "disable": "Kembali ke pemutaran browser",
@@ -48,7 +59,11 @@ export default {
         "rollback": "Coba versi komponen sebelumnya"
     },
     "errors": {
-        "HQPLAYER_PATH_INVALID": "Pilih program HQPlayerDesktop.exe atau HQPlayer*Desktop.exe dengan nomor versi yang valid.", "HQPLAYER_UNAVAILABLE": "Pasang HQPlayer Desktop lalu segarkan pengaturan.",
+        "STRICT_DECODE_FAILED": "Strict decoding failed. Enable compatibility mode to retry.",
+ "HQPLAYER_CONFIRM_EXISTING": "Confirm connection to the existing HQPlayer instance.",
+ "HQPLAYER_MULTIPLE_INSTANCES": "Multiple HQPlayer instances are running. Keep only one and retry; Folia will not launch another.",
+ "HQPLAYER_SETTINGS_FAILED": "Settings failed and restoration was not confirmed. Check HQPlayer before retrying.",
+ "HQPLAYER_PATH_INVALID": "Pilih program HQPlayerDesktop.exe atau HQPlayer*Desktop.exe dengan nomor versi yang valid.", "HQPLAYER_UNAVAILABLE": "Pasang HQPlayer Desktop lalu segarkan pengaturan.",
       "HQPLAYER_CONTROL_UNAVAILABLE": "Kontrol HQPlayer tidak tersedia. Aktifkan Allow control from network atau pilih jalur program di pengaturan koneksi HQPlayer.",
       "HQPLAYER_COMMAND_REJECTED": "HQPlayer menolak perintah. Periksa izin kontrol, lisensi, dan statusnya.",
       "HQPLAYER_SOURCE_REJECTED": "HQPlayer menolak sumber audio ini.",
@@ -444,6 +459,10 @@ export default {
       }
     },
     "commands": {
+ "hqplayer-silent-launch-toggle": {"title":"Launch HQPlayer in background","description":"Toggle startup window visibility"},
+ "settings-hqplayer-component": {"title":"Komponen HQPlayer","description":"Kelola instalasi, pembaruan, dan pengembalian versi komponen"},
+ "hqplayer-dsp-panel": {"title":"HQPlayer upsampling","description":"Open the upsampling controls"},
+ "decode-compatibility-toggle": { "title": "Compatibility mode", "description": "Toggle tolerant audio recovery" },
       "settings-ponder-hints": { "title": "Petunjuk tutorial Ponder", "description": "Atur kapan petunjuk tahan G muncul" },
       "ponder-hints-always": { "title": "Petunjuk Ponder: selalu tampilkan", "description": "Tampilkan petunjuk tahan G pada setiap kontrol yang bisa dipelajari" },
       "ponder-hints-unseen": { "title": "Petunjuk Ponder: hanya yang belum dilihat", "description": "Berhenti memberi petunjuk setelah tutorialnya ditonton" },

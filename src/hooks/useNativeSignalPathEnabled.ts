@@ -5,7 +5,8 @@ import { isNativeAudioSupported } from '../services/nativeAudio/capabilities';
 
 // src/hooks/useNativeSignalPathEnabled.ts — the disclosure never changes ordinary browser controls.
 export function useNativeSignalPathEnabled() {
-    const enabled = useAudioSettingsStore(state => state.showAudioSignalPath && state.nativeAudioBackend !== 'browser');
-    const supportedSource = usePlaybackStore(state => Boolean(state.currentSong && !isStagePlaybackSong(state.currentSong)));
+    const enabled = useAudioSettingsStore(state => state.nativeAudioBackend === 'hqplayer' || (state.showAudioSignalPath && state.nativeAudioBackend !== 'browser'));
+    const hqplayer = useAudioSettingsStore(state => state.nativeAudioBackend === 'hqplayer');
+    const supportedSource = usePlaybackStore(state => state.currentSong ? !isStagePlaybackSong(state.currentSong) : hqplayer);
     return enabled && supportedSource && isNativeAudioSupported();
 }

@@ -3,7 +3,7 @@ const { audioError } = require('./errors.cjs');
 
 // electron/nativeAudio/download.cjs — stage the resolved source completely before decoding.
 const MAX_REMOTE_AUDIO_BYTES = 2 * 1024 ** 3;
-async function downloadRemoteAudio(url, destination, signal, fetchImpl = globalThis.fetch) {
+async function downloadRemoteAudio(url, destination, signal, fetchImpl = globalThis.fetch, onProgress = () => {}) {
     let response, reader, file;
     try {
         response = await fetchImpl(url, { signal, redirect: 'follow', credentials: 'include' });
@@ -13,13 +13,16 @@ async function downloadRemoteAudio(url, destination, signal, fetchImpl = globalT
             throw audioError('SOURCE_TOO_LARGE', 'Audio source exceeds the 2 GiB staging limit');
         reader = response.body.getReader();
         file = await fs.open(destination, 'w');
-        let bytes = 0;
+        let bytes = 0, lastReport = 0;
+        const total = Number(response.headers.get('content-length')) || undefined;
+        onProgress({ loaded: 0, total });
         while (true) {
             signal.throwIfAborted();
             const { done, value } = await reader.read();
             if (done) break;
             bytes += value.byteLength;
             if (bytes > MAX_REMOTE_AUDIO_BYTES) throw audioError('SOURCE_TOO_LARGE', 'Audio source exceeds the 2 GiB staging limit');
+            if (Date.now() - lastReport >= 100) { onProgress({ loaded: bytes, total }); lastReport = Date.now(); }
             // File writes may be partial, even when the network chunk arrived intact.
             for (let offset = 0; offset < value.byteLength;) {
                 signal.throwIfAborted();
@@ -30,7 +33,8 @@ async function downloadRemoteAudio(url, destination, signal, fetchImpl = globalT
         }
         signal.throwIfAborted();
         if (!bytes) throw new Error('Audio download returned an empty file');
-        return { bytes };
+        onProgress({ loaded: bytes, total: bytes });
+        return { bytes, contentType: response.headers.get('content-type') || undefined };
     } catch (error) {
         if (signal.aborted) throw audioError('CANCELLED', 'Audio preparation cancelled');
         if (error.code?.startsWith('SOURCE_')) throw error;

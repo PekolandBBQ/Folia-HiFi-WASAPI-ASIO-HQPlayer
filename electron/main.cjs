@@ -5894,8 +5894,10 @@ ipcMain.handle('clear-audio-cache', async () => {
   return true;
 });
 
-ipcMain.handle('transcode-fallback-request', async (_event, request) => {
-  return transcodeService.request(request);
+ipcMain.handle('transcode-fallback-request', async (event, request) => {
+  return transcodeService.request(request, progress => {
+    if (!event.sender.isDestroyed()) event.sender.send('transcode-fallback-progress', { requestId: request.requestId, progress });
+  });
 });
 
 ipcMain.handle('transcode-fallback-cancel', (_event, requestId) => {

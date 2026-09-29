@@ -211,8 +211,7 @@
     "kugoumusicapi": "https://github.com/MakcRe/KuGouMusicApi/archive/refs/tags/v1.6.0.tar.gz",
     "music-metadata": "^11.16.1",
     "onnxruntime-node": "^1.30.0",
-    "ws": "^8.21.3",
-    "@xmldom/xmldom": "^0.9.12"
+    "ws": "^8.21.3"
   },
   "devDependencies": {
     "@applemusic-like-lyrics/ttml": "^1.0.1",

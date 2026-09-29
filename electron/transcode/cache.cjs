@@ -6,7 +6,7 @@ const path = require('path');
 
 // Owns deterministic cache paths and atomic publication for complete transcode representations.
 
-const CACHE_VERSION = 'audio-v2-source-rate-stereo';
+const CACHE_VERSION = 'audio-v3-explicit-compatibility';
 const CACHE_KEY_PATTERN = /^[a-f0-9]{64}$/;
 const CACHE_FORMATS = ['flac', 'wav'];
 
@@ -17,6 +17,7 @@ const buildTranscodeCacheKey = source => crypto
     .update(JSON.stringify({
         version: CACHE_VERSION,
         kind: source.kind,
+        compatibilityMode: source.compatibilityMode === true,
         songKey: source.songKey,
         sourceRevision: source.sourceRevision,
     }))

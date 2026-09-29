@@ -1,12 +1,13 @@
+import { useHQPlayerSettingsStore } from '../../stores/useHQPlayerSettingsStore';
 import type { NativeAudioApi, NativeAudioBackend, NativeAudioProcessingMode, NativeAudioState } from '../../types/nativeAudio';
 import { loadNativeLocalFile } from './loadLocalFile';
 
 // src/services/nativeAudio/loadOnlineSource.ts — consume only the source already resolved by Folia.
 export async function loadNativeOnlineSource(api: NativeAudioApi, session: string, src: string,
-    backend: NativeAudioBackend, deviceId: string, signal: AbortSignal, processingMode: NativeAudioProcessingMode, hqplayerGainDb = -2): Promise<NativeAudioState> {
+    backend: NativeAudioBackend, deviceId: string, signal: AbortSignal, processingMode: NativeAudioProcessingMode, hqplayerGainDb = -2, trackKey?: string, compatibilityMode = false): Promise<NativeAudioState> {
     signal.throwIfAborted();
     if (/^https?:\/\//i.test(src) || /^folia-transcode:\/\/media\/[a-f0-9]{64}\/audio\.(flac|wav)$/.test(src)) {
-        await api.request({ action: 'begin', session, backend, deviceId, processingMode, ...(backend === 'hqplayer' ? { hqplayerGainDb } : {}), url: src });
+        await api.request({ action: 'begin', ...(backend === 'hqplayer' ? { hqplayerDefaults: useHQPlayerSettingsStore.getState().dspDefaults } : {}), silent: useHQPlayerSettingsStore.getState().silentLaunch, session, trackKey, compatibilityMode, backend, deviceId, processingMode, ...(backend === 'hqplayer' ? { hqplayerGainDb } : {}), url: src });
         signal.throwIfAborted();
         const state = await api.request({ action: 'finish', session }) as NativeAudioState;
         signal.throwIfAborted();
@@ -18,7 +19,7 @@ export async function loadNativeOnlineSource(api: NativeAudioApi, session: strin
         const blob = await response.blob();
         signal.throwIfAborted();
         return loadNativeLocalFile(api, session, new File([blob], 'cached.audio', { type: blob.type }),
-            backend, deviceId, signal, processingMode, hqplayerGainDb);
+            backend, deviceId, signal, processingMode, hqplayerGainDb, trackKey, compatibilityMode);
     }
     throw new Error('The audio source is unavailable or unsupported');
 }

@@ -9,6 +9,7 @@ import { LYRIC_MATCH_SOURCES } from '../../../utils/lyrics/lyricMatchSources';
 import { getLyricProviderPreferenceLabel } from '../../../utils/lyrics/lyricSourceLabels';
 import TransitionSettingsSection from './TransitionSettingsSection';
 import LocalLyricFormatOrderSetting from './LocalLyricFormatOrderSetting';
+import DecodeCompatibilitySetting from '../../audio/DecodeCompatibilitySetting';
 import HQPlayerSettingsSection from './HQPlayerSettingsSection';
 import NativeAudioSettingsSection from './NativeAudioSettingsSection';
 import { SettingsAnchor } from './navigation/SettingsAnchorContext';
@@ -411,6 +412,7 @@ const PlaybackSettingsSubview: React.FC<PlaybackSettingsSubviewProps> = ({
             <SettingsAnchor anchorId="audioOutputSettings" label={t('options.audioOutputSettings')}>
                 <SettingsSectionHeading icon={Monitor} label={t('options.audioOutputSettings')} />
                 <div className={`p-4 rounded-xl border space-y-4 ${settingsCardClass}`}>
+                    {window.electron?.requestTranscodeFallback && <DecodeCompatibilitySetting />}
                     {window.electron?.requestTranscodeFallback && (
                         <div className="flex items-start justify-between gap-3 border-b border-current/10 pb-4">
                             <div className="space-y-1">

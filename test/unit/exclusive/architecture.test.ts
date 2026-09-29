@@ -20,8 +20,9 @@ describe('exclusive distribution boundaries', () => {
         for (const file of files) expect(read(file), file).not.toMatch(/(?:packaging\/exclusive|exclusive-entry|Folia HiFi|FoliaExclusive)/);
     });
     it('keeps HQPlayer control modules independent of WASAPI component installation', () => {
-        for (const name of ['hqplayerHost', 'hqplayerDiscovery', 'hqplayerProtocol']) {
-            expect(read(`electron/nativeAudio/${name}.cjs`)).not.toMatch(/require\(['"].*(?:componentManager|exclusive-entry|packaging\/exclusive)/);
-        }
+        expect(read('electron/hqplayer/client.cjs')).not.toContain("require('../nativeAudio/componentManager");
+        expect(read('electron/hqplayer/componentManager.cjs')).toContain("id: 'hqplayer'");
+        for (const name of ['hqplayerHost', 'hqplayerDiscovery', 'hqplayerProtocol'])
+            expect(fs.existsSync(`electron/nativeAudio/${name}.cjs`)).toBe(false);
     });
 });

@@ -35,6 +35,19 @@ function fixture(backend: 'asio' | 'hqplayer' = 'asio', rememberGain = false, on
 }
 
 describe('native transport', () => {
+    it('resumes an explicitly applied HQPlayer checkpoint but ignores stale sessions and ordinary late polls', async () => {
+        const { transport, event, state, send } = fixture('hqplayer');
+        transport.setSource('blob:resume'); await flush();
+        send({ position: 4, playing: true });
+        expect(transport.paused).toBe(true);
+        const play = vi.fn(), playing = vi.fn();
+        transport.addEventListener('play', play); transport.addEventListener('playing', playing);
+        event({ event: 'resume', session: 'old', state: { ...state(), position: 7, playing: true } });
+        expect(play).not.toHaveBeenCalled();
+        event({ event: 'resume', session: state().session, state: { ...state(), position: 7, playing: true } });
+        expect(transport.paused).toBe(false); expect(transport.currentTime).toBeCloseTo(7, 1);
+        expect(play).toHaveBeenCalledOnce(); expect(playing).toHaveBeenCalledOnce();
+    });
     it('keeps the HQPlayer clock linear between its one-second position steps', async () => {
         let now = 0;
         const clock = vi.spyOn(performance, 'now').mockImplementation(() => now);

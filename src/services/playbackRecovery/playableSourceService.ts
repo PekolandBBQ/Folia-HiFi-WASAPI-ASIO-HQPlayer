@@ -1,3 +1,5 @@
+import { useDecodeCompatibilityStore, requestDecodeCompatibility } from '../../stores/useDecodeCompatibilityStore';
+import { beginPlaybackLoad, updatePlaybackLoad, endPlaybackLoad } from '../../stores/usePlaybackLoadStore';
 import type { LocalSong, SongResult } from '../../types';
 import type { TranscodeFallbackRequest, TranscodeFallbackResult, TranscodeFallbackSource } from '../../types/playbackRecovery';
 import { getFileFromLocalSong } from '../localMusicService';
@@ -83,6 +85,9 @@ export const startPlayableTranscode = (
     if (!bridge) return { requestId, result: Promise.resolve({ ok: false, errorCode: 'NOT_ELECTRON' }) };
     const controller = new AbortController();
     rendererRequests.set(requestId, controller);
+    const unsubscribe = window.electron?.onTranscodeProgress?.(event => {
+        if (event.requestId === requestId && !controller.signal.aborted) updatePlaybackLoad(requestId, event.progress);
+    });
     const result = (async () => {
         try {
             const source = await buildTranscodeFallbackSource(song, failedSource, localSongs, controller.signal);
@@ -90,11 +95,20 @@ export const startPlayableTranscode = (
             if (!source) return { ok: false, errorCode: 'SOURCE_UNAVAILABLE' };
             const request: TranscodeFallbackRequest = {
                 requestId,
+                compatibilityMode: useDecodeCompatibilityStore.getState().enabled,
                 priority,
                 source,
                 limitBytes: useAudioSettingsStore.getState().mediaCacheLimitGb * 1024 * 1024 * 1024,
             };
-            return await bridge(request);
+            if (priority === 'playback') beginPlaybackLoad(requestId, 'decode');
+            let result = await bridge(request);
+            if (!result.ok && result.errorCode === 'STRICT_DECODE_FAILED' && priority === 'playback'
+                && await requestDecodeCompatibility(requestId, controller.signal)) {
+                throwIfAborted(controller.signal);
+                result = await bridge({ ...request, compatibilityMode: true });
+            }
+            throwIfAborted(controller.signal);
+            return result;
         } catch (error) {
             const cancelled = controller.signal.aborted || (error as Error)?.name === 'AbortError';
             return {
@@ -103,6 +117,8 @@ export const startPlayableTranscode = (
                 message: String((error as Error)?.message || error),
             };
         } finally {
+            endPlaybackLoad(requestId);
+            unsubscribe?.();
             if (rendererRequests.get(requestId) === controller) rendererRequests.delete(requestId);
         }
     })();

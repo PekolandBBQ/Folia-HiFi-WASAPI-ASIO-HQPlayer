@@ -4,7 +4,7 @@ const { prepareHQPlayerSource, UNKNOWN_SOURCE_CODE } = require('./hqplayerSource
 const { audioError } = require('./errors.cjs');
 
 // electron/nativeAudio/hqplayerSession.cjs — preserve source audio, decode only explicitly rejected containers.
-async function loadHQPlayerSession({ current, hqplayer, decoder, decode, assertCurrent }) {
+async function loadHQPlayerSession({ current, hqplayer, decoder, resolveDecoder, decode, assertCurrent, onProgress = () => {} }) {
     let prepared = current.input, fallback = false, result;
     try {
         // Only rename session-owned copies, never a user's original .audio file.
@@ -21,15 +21,18 @@ async function loadHQPlayerSession({ current, hqplayer, decoder, decode, assertC
     }
     assertCurrent(current);
     if (!fallback) {
-        try { result = await hqplayer.load({ session: current.id, filePath: prepared, gainDb: current.hqplayerGainDb }); }
+        try { result = await hqplayer.load({ session: current.id, filePath: prepared, gainDb: current.hqplayerGainDb, trackKey: current.trackKey, defaults: current.hqplayerDefaults }); }
         catch (error) { if (error?.code !== 'HQPLAYER_SOURCE_REJECTED') throw error; fallback = true; }
     }
     assertCurrent(current);
     if (fallback) {
-        const wav = await decode(decoder, prepared, current.directory, current.abort.signal, 'integer-direct')
-            .catch(error => { throw audioError(current.abort.signal.aborted ? 'CANCELLED' : 'DECODE_FAILED', error.message); });
+        onProgress('decode');
+        const executable = decoder || await resolveDecoder();
+        const wav = await decode(executable, prepared, current.directory, current.abort.signal, 'integer-direct', current.compatibilityMode)
+            .catch(error => { throw audioError(current.abort.signal.aborted ? 'CANCELLED' : error.code === 'STRICT_DECODE_FAILED' ? error.code : 'DECODE_FAILED', error.message); });
         assertCurrent(current);
-        result = await hqplayer.load({ session: current.id, filePath: wav, gainDb: current.hqplayerGainDb });
+        onProgress('load');
+        result = await hqplayer.load({ session: current.id, filePath: wav, gainDb: current.hqplayerGainDb, trackKey: current.trackKey, defaults: current.hqplayerDefaults });
     }
     assertCurrent(current);
     return result;

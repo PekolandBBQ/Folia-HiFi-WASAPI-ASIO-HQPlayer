@@ -20,7 +20,7 @@ async function setup(outcomes: Array<{ code: number; error?: string }>) {
         queueMicrotask(() => { child.stderr.write(outcome?.error || ''); child.emit('close',outcome?.code ?? 99); });
         return child;
     };
-    return { calls, outputPath, run: () => transcodeAudioFile({ executable:'ffmpeg',inputPath:'same-input.flac',outputPath,format:'flac',spawnProcess }) };
+    return { calls, outputPath, run: (allowTolerant = true) => transcodeAudioFile({ executable:'ffmpeg',inputPath:'same-input.flac',outputPath,format:'flac',spawnProcess,allowTolerant }) };
 }
 describe('transparent tolerant transcode recovery', () => {
     it('retries corruption once and strictly validates the recovered output', async () => {
@@ -48,4 +48,10 @@ describe('transparent tolerant transcode recovery', () => {
         const f = await setup([{code:1,error:'invalid frame header'},{code:0}]); await fs.writeFile(f.outputPath,Buffer.alloc(0));
         await expect(f.run()).rejects.toMatchObject({code:'INVALID_OUTPUT'}); expect(f.calls).toHaveLength(2);
     });
+});
+
+it('requires permission before any tolerant retry when compatibility is disabled', async () => {
+ const f = await setup([{code:1,error:'invalid frame header'},{code:0}]);
+ await expect(f.run(false)).rejects.toMatchObject({code:'STRICT_DECODE_FAILED'});
+ expect(f.calls).toHaveLength(1);
 });

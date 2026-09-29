@@ -1,0 +1,10 @@
+{
+  "version": "0.1.2",
+  "sha256": "17af6c02fbee69f4958835329da57b86240de83d7180ac33eda9d47eed22ea46",
+  "entrySha256": "16a47c77fa32f98485714a921ab625937b9c0415ec301bfa20000a7672eb57c0",
+  "previous": {
+    "version": "0.1.1",
+    "sha256": "a15668e003488213bc1cd54c82e084cdcea0c7cf18888f11960f11fec8df6720",
+    "entrySha256": "b1c236ea9d21506644f4fcb3e58cacf617b3201fadd2164150a0520e3de741a1"
+  }
+}

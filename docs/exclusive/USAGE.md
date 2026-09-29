@@ -5,14 +5,14 @@
 
 ## 安装与更新
 
-从 [v0.7.9 正式版](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/releases/tag/hifi-v0.7.9) 选择一种安装方式：
+从 [v0.7.9 正式版](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/releases/tag/hifi-v0.7.9-r2) 选择一种安装方式：
 
 | 方式 | 下载与使用 |
 | --- | --- |
-| **EXE 安装版（推荐）** | 下载 [Folia-HiFi-WASAPI-ASIO-HQPlayer-0.7.9-win-x64-Setup.exe](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/releases/download/hifi-v0.7.9/Folia-HiFi-WASAPI-ASIO-HQPlayer-0.7.9-win-x64-Setup.exe)，运行安装向导并选择目录；安装后从开始菜单启动。仅为当前用户安装，提供 Windows“已安装的应用”卸载入口。 |
-| **ZIP 免安装版** | 下载 [Folia-HiFi-WASAPI-ASIO-HQPlayer-0.7.9-win-x64.zip](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/releases/download/hifi-v0.7.9/Folia-HiFi-WASAPI-ASIO-HQPlayer-0.7.9-win-x64.zip)，完整解压到可写目录，运行 `Folia-HiFi-WASAPI-ASIO-HQPlayer.exe`。不要在压缩包内直接运行，也不要单独移动 EXE。 |
+| **EXE 安装版（推荐）** | 下载 [Folia-HiFi-WASAPI-ASIO-HQPlayer-0.7.9-win-x64-Setup.exe](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/releases/download/hifi-v0.7.9-r2/Folia-HiFi-WASAPI-ASIO-HQPlayer-0.7.9-win-x64-Setup.exe)，运行安装向导并选择目录；安装后从开始菜单启动。仅为当前用户安装，提供 Windows“已安装的应用”卸载入口。 |
+| **ZIP 免安装版** | 下载 [Folia-HiFi-WASAPI-ASIO-HQPlayer-0.7.9-win-x64.zip](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/releases/download/hifi-v0.7.9-r2/Folia-HiFi-WASAPI-ASIO-HQPlayer-0.7.9-win-x64.zip)，完整解压到可写目录，运行 `Folia-HiFi-WASAPI-ASIO-HQPlayer.exe`。不要在压缩包内直接运行，也不要单独移动 EXE。 |
 
-两种方式包含相同程序、原生组件 0.1.2 和支持 PCM24/PCM32 的 FFmpeg，无需安装 Node 或 .NET SDK。ASIO 需要另行安装厂商的 x64 驱动，HQPlayer 需另行安装并授权。
+两种方式包含相同程序、WASAPI/ASIO 组件 0.1.2、独立 HQPlayer 组件 0.1.2 和支持 PCM24/PCM32 的 FFmpeg，无需安装 Node 或 .NET SDK。ASIO 需要另行安装厂商的 x64 驱动，HQPlayer 需另行安装并授权。
 
 两种方式共用 `%APPDATA%\Folia HiFi`，首次运行在新目录不存在时，将旧 `%APPDATA%\FoliaExclusive` 完整复制迁移，保留旧目录作为备份；新目录已存在则不合并、不覆盖。迁移前请退出旧版。不会自动导入官方版或旧人工验证版的账号、曲库。ZIP 免安装不等于配置随身携带，不要同时运行安装版和 ZIP 版。
 
@@ -30,7 +30,15 @@
 
 自动发现常见安装目录和开始菜单中的 Desktop 版本（包括 6），优先使用已运行的控制接口；未运行时自动选择发现的最高版本号。找不到程序、安装在其他位置或连接失败时，点击“选择程序路径…”指定 `HQPlayerDesktop.exe` 或带版本号的 `HQPlayer*Desktop.exe`。选择会保存在专版配置目录，取消选择不会改变配置；“恢复自动检测”清除自定义关联。若当前使用 HQPlayer，成功改路径后返回浏览器暂停状态，再明确启用新的连接。
 
-已有 HQPlayer 进程时复用；未运行时尝试后台启动。退出 Folia 时只关闭由 Folia 启动的 HQPlayer。HQPlayer 软件及许可证不随本包分发。连接失败请确认上述网络控制设置，然后重试播放；可随时从独立设置项返回浏览器播放。
+已有 HQPlayer 实例时先询问是否直接连接，拒绝则回到先前输出；未运行时默认完整前台启动，可开启“后台静默开启 HQPlayer”。从 HQPlayer 切换到浏览器、WASAPI 或 ASIO 时关闭全部 HQPlayer Desktop 实例并等待设备释放，包括手动打开的实例。退出 Folia 时只关闭由 Folia 启动的实例。HQPlayer 软件及许可证不随本包分发。连接失败请确认上述网络控制设置，然后重试播放；可随时从独立设置项返回浏览器播放。
+
+## DSP 与加载提示
+
+音频链路旁的“HQPlayer设置”提供 PCM/SDM、滤波器、整形器和目标采样率，SDM 采用 HQPlayer 的 `48k x1024` 等单位。点击“应用到当前歌曲”会重建 DSP、恢复当前检查点并自动播放，先前暂停也会续播；定位精度受官方控制接口限制为整秒。“下一首歌曲生效”保留当前歌曲设置。
+
+“设置 → HQPlayer 连接”提供相同选项作为默认值，在每首加载前应用；浮窗当前曲或下一首设置优先。输入输出硬件设备仍在 HQPlayer Desktop 中选择，官方控制接口没有相应切换能力。
+
+左下角紧凑进度条高 20 像素、距底部 8 像素，显示完整下载、缓存、解码及输出准备过程，避开歌曲信息浮窗。未知总量不伪造百分比。兼容模式默认关闭，严格解码失败时可选“仅当前歌曲”或“后续保持开启”。
 
 ## 增益与链路
 
@@ -47,7 +55,8 @@ HQPlayer 默认预留 −2 dB 余量，可在独立设置中调整。Folia 音�
 3. 返回浏览器并停用组件；点选 WASAPI/ASIO 设备和依赖开关，确认出现安装提示。此时 HQPlayer 已安装的话仍应可单独启用。
 4. 使用 HQPlayer 播放、暂停、定位、切歌；调整 Folia 音量与增益余量，检查链路显示和实际 HQPlayer 状态。确认设备下拉列表没有 HQPlayer 项。
 5. 播放 HUMMING LIFE — Spica、ピコ — 桜音，分别测试冷启动、缓存命中和暂停后重试。记录是否出现 toast、停顿或意图丢失。
-6. 退出、重新打开，检查配置保存和后端选择；再从 HQPlayer 返回浏览器，确认原有功能可继续使用。
+6. 每次必测网易云音乐与 QQ 音乐：首次、重复、下一首、暂停／播放时应用 DSP、HQPlayer 到浏览器／WASAPI／ASIO 切换；分别检查前台与静默启动。
+7. 退出、重新打开，检查配置保存和后端选择；应用版本随上游，独立组件版本单独核对。
 
 发现问题时请提供输出方式、文件格式、组件版本、错误码、复现步骤和截图。不要附带账号密码、Cookie、访问令牌或完整私人曲库。
 

@@ -1,0 +1,64 @@
+name: Optional HQPlayer component
+on:
+  workflow_dispatch:
+    inputs:
+      catalog_base:
+        description: Previous approved catalog commit SHA
+        type: string
+        required: true
+  pull_request:
+    paths:
+      - 'electron/hqplayer/**'
+      - 'packaging/hqplayer/**'
+      - '.github/workflows/hqplayer-component.yml'
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm ci
+      - shell: pwsh
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || inputs.catalog_base }}
+        run: node packaging/hqplayer/check-catalog.cjs $env:BASE_SHA
+      - run: node packaging/hqplayer/verify-component.cjs
+  prepare-mirror:
+    needs: verify
+    if: github.event_name == 'workflow_dispatch' && github.repository == 'chthollyphile/folia-major' && github.ref == 'refs/heads/main'
+    runs-on: windows-latest
+    outputs:
+      tag: ${{ steps.verify.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm ci
+      - id: verify
+        run: node packaging/hqplayer/prepare-mirror.cjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: verified-hqplayer-component
+          path: artifacts/hqplayer-mirror/*
+  publish-mirror:
+    needs: prepare-mirror
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: verified-hqplayer-component
+          path: verified
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ needs.prepare-mirror.outputs.tag }}
+        run: gh release create "$TAG" verified/* --title "$TAG" --notes "Verified optional HQPlayer control component" --latest=false

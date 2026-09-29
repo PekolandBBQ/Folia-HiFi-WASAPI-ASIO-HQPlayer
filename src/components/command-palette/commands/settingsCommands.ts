@@ -1,3 +1,6 @@
+import { useHQPlayerSettingsStore } from '../../../stores/useHQPlayerSettingsStore';
+import { useAudioSettingsStore } from '../../../stores/useAudioSettingsStore';
+import { useDecodeCompatibilityStore } from '../../../stores/useDecodeCompatibilityStore';
 import { syncNow } from '../../../services/sync/syncCoordinator';
 import { isSyncConfigured } from '../../../services/sync/syncConfig';
 import { buildObsCustomCss } from '../../../services/obs/obsCustomCss';
@@ -18,6 +21,16 @@ import { isNativeAudioSupported } from '../../../services/nativeAudio/capabiliti
 // Commands in the `settings` group: settings subviews, app toggles, theme, sync, and desktop-only switches.
 
 export const settingsCommands: CommandPaletteCommand[] = [
+    createSettingsAnchorCommand('settings-hqplayer-component', 'HQPlayer component', 'Manage the independent HQPlayer component version', ['hqplayer', 'component', 'HQPlayer组件'], 'hqPlayerOutput', { platform: ['win'], isAvailable: isNativeAudioSupported }),
+    createToggleCommand('hqplayer-silent-launch-toggle', 'settings', 'Launch HQPlayer in background', 'Toggle silent background startup',
+        ['hqplayer', 'background', '静默启动'], () => { const s = useHQPlayerSettingsStore.getState(); s.setSilentLaunch(!s.silentLaunch); },
+        { platform: ['win'], isAvailable: isNativeAudioSupported }),
+    createToggleCommand('hqplayer-dsp-panel', 'settings', 'HQPlayer upsampling', 'Open HQPlayer DSP controls',
+        ['hqplayer', 'upsampling', '升频设置'], () => useHQPlayerSettingsStore.getState().setDspOpen(true),
+        { platform: ['win'], isAvailable: () => isNativeAudioSupported() && useAudioSettingsStore.getState().nativeAudioBackend === 'hqplayer' }),
+    createToggleCommand('decode-compatibility-toggle', 'settings', 'Compatibility mode', 'Allow recovery of damaged audio',
+        ['compatibility', '兼容模式'], () => { const s = useDecodeCompatibilityStore.getState(); s.setEnabled(!s.enabled); },
+        { platform: ['electron'], isAvailable: () => typeof window !== 'undefined' && Boolean(window.electron?.requestTranscodeFallback) }),
     createToggleCommand('hqplayer-select-path', 'settings', 'Select HQPlayer program', 'Choose a Desktop executable when automatic connection fails',
         ['hqplayer', 'path', '连接', '程序路径'], () => { void chooseHQPlayerPath(); }, { platform: ['win'], isAvailable: isNativeAudioSupported }),
     createToggleCommand('hqplayer-reset-path', 'settings', 'Auto-detect HQPlayer', 'Restore automatic discovery of installed Desktop versions',

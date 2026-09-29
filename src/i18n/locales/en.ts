@@ -1,6 +1,17 @@
 
 
 export default {
+ hqpComponent: { title: 'HQPlayer control component', description: 'Separate version and installation. Does not depend on the WASAPI/ASIO component. Install HQPlayer Desktop separately.', missing: 'Not installed', ready: 'Component ready', disabled: 'Component disabled or unavailable', updateAvailable: 'An approved update is available', install: 'Install / update HQPlayer component', uninstall: 'Disable HQPlayer component', rollback: 'Roll back HQPlayer component', switchFirst: 'Switch to another output before managing this component.', noRelease: 'No upstream-approved component download is available yet.' },
+ hqpLaunch: {
+  "existingTitle": "HQPlayer is already open",
+  "existingDescription": "Connect to the existing HQPlayer instance? Yes connects without starting another instance. No returns to the previous output settings.",
+  "yes": "Yes, connect",
+  "no": "No, return",
+  "silent": "Launch HQPlayer silently in background",
+  "silentDescription": "Off by default. Show the full HQPlayer window when off. Applies only to instances started by Folia."
+},
+ hqpDsp: {"button":"HQPlayer settings","defaultsTitle":"Default upsampling settings","defaultsDescription":"Apply before each track. Current/next-track overrides take priority. Reading options connects to or starts HQPlayer.","saveDefaults":"Save defaults","clearDefaults":"Use current HQPlayer settings","defaultsSaved":"Defaults saved for subsequent tracks.","defaultsCleared":"Defaults cleared; keep current HQPlayer settings.","title":"HQPlayer upsampling","input":"Input: current Folia song (file / stream)","devices":"Select input/output devices in HQPlayer Desktop. The Control API does not expose device switching.","mode":"Output mode","filter":"Filter","shaper":"Shaper / modulator","rate":"Target sample rate","auto":"Auto","current":"Apply to current song","next":"Apply at next song","applied":"Applied; playback position preserved.","queued":"Saved for the next song.","loading":"Reading / applying HQPlayer settings…","refresh":"Refresh options","stopToRead":"Options for this mode are not loaded. Stop playback in HQPlayer, then refresh; reading options will not interrupt the current song."},
+  loadProgress: {inspect: 'Reading audio metadata',"compatibility":"Compatibility mode","compatibilityDesc":"Off by default. Prepare strict and tolerant recovery in parallel. Damaged audio frames may be skipped.","strictError":"Strict decoding failed. Retry with compatibility mode? Damaged frames may be skipped.","once":"This song only","always":"Keep enabled","cancel":"Cancel","cache":"Reading audio cache","source":"Resolving streaming source","download":"Downloading complete audio","upload":"Preparing local audio","decode":"Decoding audio","validate":"Validating decoded audio","connect":"Connecting to HQPlayer","load":"Loading audio","buffer":"Waiting for playback buffer"},
   "hqPlayer": {
   "selectPath": "Choose program path…",
   "resetPath": "Restore automatic detection",
@@ -10,9 +21,9 @@ export default {
   "nativeSelectorPlaceholder": "Select a WASAPI / ASIO device",
   "activeOutput": "Current output: HQPlayer. Manage the connection in the separate HQPlayer settings. Selecting a device below switches output.",
   "title": "HQPlayer connection",
-  "description": "Hand prepared local and online audio to HQPlayer Desktop for decoding and DSP. Folia synchronizes playback and lyrics, starts HQPlayer in the background if needed, and closes only the instance it launched.",
+  "description": "Hand prepared local and online audio to HQPlayer Desktop for decoding and DSP. Folia synchronizes playback and lyrics, shows the full HQPlayer window by default, and closes only the instance it launched.",
   "installRequired": "Install HQPlayer Desktop separately, then refresh. This feature does not require the WASAPI/ASIO component.",
-  "controlHint": "Detects installed Desktop versions, including 6. If connection fails, enable Allow control from network or choose the executable manually. Configure the device and DSP in HQPlayer; the connection uses localhost port 4321.",
+  "controlHint": "Detects installed Desktop versions, including 6. If connection fails, enable Allow control from network or choose the executable manually. Select hardware devices in HQPlayer; adjust upsampling using the settings button beside the signal path.",
   "refresh": "Refresh HQPlayer availability",
   "enable": "Use HQPlayer output",
   "disable": "Return to browser playback",
@@ -41,7 +52,11 @@ export default {
         "rollback": "Try previous component version"
     },
     "errors": {
-        "HQPLAYER_PATH_INVALID": "Choose a valid HQPlayerDesktop.exe or versioned HQPlayer*Desktop.exe executable.", "HQPLAYER_UNAVAILABLE": "Install HQPlayer Desktop and refresh its settings.",
+        "STRICT_DECODE_FAILED": "Strict decoding failed. Enable compatibility mode to retry.",
+ "HQPLAYER_CONFIRM_EXISTING": "Confirm connection to the existing HQPlayer instance.",
+ "HQPLAYER_MULTIPLE_INSTANCES": "Multiple HQPlayer instances are running. Keep only one and retry; Folia will not launch another.",
+ "HQPLAYER_SETTINGS_FAILED": "Settings failed and restoration was not confirmed. Check HQPlayer before retrying.",
+ "HQPLAYER_PATH_INVALID": "Choose a valid HQPlayerDesktop.exe or versioned HQPlayer*Desktop.exe executable.", "HQPLAYER_UNAVAILABLE": "Install HQPlayer Desktop and refresh its settings.",
       "HQPLAYER_CONTROL_UNAVAILABLE": "HQPlayer control is unavailable. Enable Allow control from network, or choose the program path in HQPlayer connection settings.",
       "HQPLAYER_COMMAND_REJECTED": "HQPlayer rejected the command. Check its control access, license and current state.",
       "HQPLAYER_SOURCE_REJECTED": "HQPlayer rejected this audio source.",
@@ -438,6 +453,10 @@ export default {
       }
     },
     "commands": {
+ "hqplayer-silent-launch-toggle": {"title":"Launch HQPlayer in background","description":"Toggle startup window visibility"},
+ "settings-hqplayer-component": {"title":"HQPlayer component","description":"Manage independent component installation, updates and rollback"},
+ "hqplayer-dsp-panel": {"title":"HQPlayer upsampling","description":"Open the upsampling controls"},
+ "decode-compatibility-toggle": { "title": "Compatibility mode", "description": "Toggle tolerant audio recovery" },
       "settings-ponder-hints": { "title": "Ponder tutorial hints", "description": "Choose when the hold-G tutorial hint appears" },
       "ponder-hints-always": { "title": "Ponder hints: always show", "description": "Show the hold-G hint on every teachable control" },
       "ponder-hints-unseen": { "title": "Ponder hints: only where I have not looked", "description": "Stop hinting a control once its tutorial has been watched" },

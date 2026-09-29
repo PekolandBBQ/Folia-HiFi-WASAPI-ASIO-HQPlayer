@@ -16,6 +16,8 @@ import { getStoredBoolean, setStoredBoolean } from './storagePrimitives';
 import { setStatusMessage } from './useStatusMessageStore';
 import i18n from '../i18n/config';
 
+let outputChange = 0;
+
 export const CACHE_SIZE_KEY = 'folia_cache_size';
 
 export const ENABLE_MEDIA_CACHE_KEY = 'folia_enable_media_cache';
@@ -138,7 +140,7 @@ export type AudioSettingsState = {
     showAudioSignalPath: boolean;
     handleSetShowAudioSignalPath: (enabled: boolean) => void;
     nativeAudioProcessingMode: NativeAudioProcessingMode;
-    handleSetNativeAudioOutput: (backend: NativeAudioBackend, deviceId: string) => void;
+    handleSetNativeAudioOutput: (backend: NativeAudioBackend, deviceId: string, closeHQPlayer?: boolean) => void;
     handleSetNativeAudioProcessingMode: (mode: NativeAudioProcessingMode) => void;
     audioQuality: AudioQuality;
     enableMediaCache: boolean;
@@ -195,7 +197,16 @@ export const useAudioSettingsStore = create<AudioSettingsState>((set, get) => ({
     handleSetShowAudioSignalPath: (enabled) => { setStoredBoolean('folia_show_audio_signal_path', enabled); set({ showAudioSignalPath: enabled }); },
     nativeAudioProcessingMode: typeof localStorage !== 'undefined' && localStorage.getItem(NATIVE_AUDIO_PROCESSING_MODE_KEY) === 'integer-direct'
         ? 'integer-direct' : 'compatibility',
-    handleSetNativeAudioOutput: (backend, deviceId) => {
+    handleSetNativeAudioOutput: async (backend, deviceId, closeHQPlayer = true) => {
+        const ticket = ++outputChange;
+        const previous = get();
+        if (closeHQPlayer && previous.nativeAudioBackend === 'hqplayer' && backend !== 'hqplayer') {
+            const { releaseHQPlayerOutput } = await import('../services/nativeAudio/switchFromHQPlayer');
+            if (!await releaseHQPlayerOutput() || ticket !== outputChange) return;
+        }
+        if (backend === 'hqplayer' && previous.nativeAudioBackend !== 'hqplayer') {
+            localStorage.setItem('folia_hqplayer_previous_output', JSON.stringify({ backend: previous.nativeAudioBackend, deviceId: previous.nativeAudioDeviceId }));
+        }
         localStorage.setItem('folia_native_audio_backend', backend);
         localStorage.setItem('folia_native_audio_device', deviceId);
         set({ nativeAudioBackend: backend, nativeAudioDeviceId: deviceId });

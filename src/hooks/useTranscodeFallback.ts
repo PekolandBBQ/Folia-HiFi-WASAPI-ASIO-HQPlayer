@@ -91,7 +91,7 @@ export function useTranscodeFallback({
 
         // A remembered failure still owns the error - it clears the warm slot or skips the track,
         // the same way the first attempt did - it just does not start another transcode or toast.
-        const failureKey = `${getPlaybackSongKey(song)}:${song.playbackSourceRevision ?? ''}:${failedSource}`;
+        const failureKey = `${target.role}:${getPlaybackSongKey(song)}:${song.playbackSourceRevision ?? ''}:${failedSource}`;
         if (failedRepresentationsRef.current.has(failureKey)) {
             if (target.role === 'warm') {
                 clearFailedWarmSource(element, failedSource);

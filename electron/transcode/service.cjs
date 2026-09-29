@@ -138,7 +138,7 @@ const createTranscodeService = ({ app, protocol, net, spawnProcess, onCacheWrite
         return status.path;
     };
 
-    const writeSource = async (source, inputPath, signal) => {
+    const writeSource = async (source, inputPath, signal, onProgress) => {
         if (source.kind === 'local' || source.data) {
             const buffer = Buffer.from(source.data.buffer || source.data, source.data.byteOffset || 0, source.data.byteLength || source.data.byteLength);
             if (buffer.byteLength === 0 || buffer.byteLength > MAX_SOURCE_BYTES) {
@@ -168,10 +168,12 @@ const createTranscodeService = ({ app, protocol, net, spawnProcess, onCacheWrite
             error.code = 'SOURCE_SIZE_INVALID';
             throw error;
         }
-        let received = 0;
+        let received = 0, reportedAt = 0;
+        onProgress({ stage: 'download', loaded: 0, total: declaredSize > 0 ? declaredSize : undefined });
         const limiter = new TransformStream({
             transform(chunk, controller) {
                 received += chunk.byteLength;
+                if (Date.now() - reportedAt > 100) { reportedAt = Date.now(); onProgress({ stage: 'download', loaded: received, total: declaredSize > 0 ? declaredSize : undefined }); }
                 if (received > MAX_SOURCE_BYTES) throw Object.assign(new Error('Navidrome audio is too large'), { code: 'SOURCE_SIZE_INVALID' });
                 controller.enqueue(chunk);
             },
@@ -180,9 +182,10 @@ const createTranscodeService = ({ app, protocol, net, spawnProcess, onCacheWrite
         return received;
     };
 
-    const runJob = async (source, cacheKey, controller, limitBytes) => {
+    const runJob = async (source, cacheKey, controller, limitBytes, compatibilityMode, onProgress) => {
         const logId = cacheKey.slice(0, 12);
         const startedAt = Date.now();
+        onProgress({ stage: 'cache' });
         const cached = await readValidCacheEntry(cacheDirectory, cacheKey);
         if (cached) {
             log('info', 'cache-hit', { cacheKey: logId, format: cached.format });
@@ -195,20 +198,22 @@ const createTranscodeService = ({ app, protocol, net, spawnProcess, onCacheWrite
         const jobDirectory = await fs.promises.mkdtemp(path.join(temporaryRoot, `${cacheKey.slice(0, 12)}-`));
         const inputPath = path.join(jobDirectory, `input${safeExtension(source.fileName)}`);
         try {
-            const inputBytes = await writeSource(source, inputPath, controller.signal);
+            onProgress({ stage: source.data ? 'upload' : 'download' });
+            const inputBytes = await writeSource(source, inputPath, controller.signal, onProgress);
+            onProgress({ stage: 'decode' });
             log('info', 'encode-start', { cacheKey: logId, inputBytes, sourceKind: source.kind });
             let format = 'flac';
             let outputPath = path.join(jobDirectory, 'output.flac');
             let outputBytes = 0;
             let tolerant = false;
             try {
-                ({ size: outputBytes, tolerant } = await transcodeAudioFile({ executable, inputPath, outputPath, format, signal: controller.signal, spawnProcess, parallel: true }));
+                ({ size: outputBytes, tolerant } = await transcodeAudioFile({ executable, inputPath, outputPath, format, signal: controller.signal, spawnProcess, parallel: compatibilityMode, allowTolerant: compatibilityMode, onProgress }));
             } catch (error) {
                 if (!shouldUseWavFallback(error)) throw error;
                 log('warn', 'wav-fallback', { cacheKey: logId });
                 format = 'wav';
                 outputPath = path.join(jobDirectory, 'output.wav');
-                ({ size: outputBytes, tolerant } = await transcodeAudioFile({ executable, inputPath, outputPath, format, signal: controller.signal, spawnProcess, parallel: true }));
+                ({ size: outputBytes, tolerant } = await transcodeAudioFile({ executable, inputPath, outputPath, format, signal: controller.signal, spawnProcess, parallel: compatibilityMode, allowTolerant: compatibilityMode, onProgress }));
             }
             const entry = await publishCacheEntry({
                 cacheDirectory,
@@ -244,7 +249,7 @@ const createTranscodeService = ({ app, protocol, net, spawnProcess, onCacheWrite
         }
     };
 
-    const request = async payload => {
+    const request = async (payload, onProgress = () => {}) => {
         const requestId = payload?.requestId;
         const source = payload?.source;
         if (
@@ -257,23 +262,26 @@ const createTranscodeService = ({ app, protocol, net, spawnProcess, onCacheWrite
             });
             return { ok: false, errorCode: 'INVALID_REQUEST', message: 'Invalid transcode request' };
         }
-        const cacheKey = buildTranscodeCacheKey(source);
+        const cacheKey = buildTranscodeCacheKey({ ...source, compatibilityMode: payload.compatibilityMode === true });
         const logId = cacheKey.slice(0, 12);
         log('info', 'request', { requestId, cacheKey: logId, priority: payload.priority, sourceKind: source.kind });
         let job = jobs.get(cacheKey);
         if (!job) {
             const controller = new AbortController();
-            job = { controller, consumers: new Set(), promise: null };
+            job = { controller, consumers: new Set(), listeners: new Map(), promise: null };
             const queuedRun = enqueue(() => {
                 if (controller.signal.aborted) {
                     throw Object.assign(new Error('Transcode cancelled'), { code: 'CANCELLED' });
                 }
-                return runJob(source, cacheKey, controller, payload.limitBytes);
+                return runJob(source, cacheKey, controller, payload.limitBytes, payload.compatibilityMode === true, progress => {
+                    for (const listener of job.listeners.values()) listener(progress);
+                });
             }, payload.priority === 'playback' ? 0 : 1);
             job.promise = queuedRun.finally(() => jobs.delete(cacheKey));
             jobs.set(cacheKey, job);
         }
         job.consumers.add(requestId);
+        job.listeners.set(requestId, onProgress);
         requestJobs.set(requestId, job);
         try {
             const entry = await job.promise;
@@ -304,6 +312,7 @@ const createTranscodeService = ({ app, protocol, net, spawnProcess, onCacheWrite
             return { ok: false, errorCode: error?.code || 'TRANSCODE_FAILED', message: String(error?.message || error) };
         } finally {
             job.consumers.delete(requestId);
+        job.listeners.delete(requestId);
             requestJobs.delete(requestId);
         }
     };
@@ -312,6 +321,7 @@ const createTranscodeService = ({ app, protocol, net, spawnProcess, onCacheWrite
         const job = requestJobs.get(requestId);
         if (!job) return false;
         job.consumers.delete(requestId);
+        job.listeners.delete(requestId);
         requestJobs.delete(requestId);
         if (job.consumers.size === 0) job.controller.abort();
         log('info', 'cancel-request', { requestId, abortedJob: job.consumers.size === 0 });

@@ -1,3 +1,4 @@
+import BrowserPlaybackDeck from './BrowserPlaybackDeck';
 import React, { useLayoutEffect, useRef } from 'react';
 import { useHQPlayerSettingsStore } from '../../../stores/useHQPlayerSettingsStore';
 import { NativeAudioTransport } from '../../../services/nativeAudio/NativeAudioTransport';
@@ -73,5 +74,5 @@ export default function PlaybackDeck(props: Props) {
     const { nativeBackend, nativeDeviceId, nativeProcessingMode, getLocalFile, register, ...audioProps } = props;
     return nativeBackend !== 'browser'
         ? <NativeDeck {...props} />
-        : <audio {...audioProps} ref={register} />;
+        : <BrowserPlaybackDeck {...audioProps} register={register} />;
 }

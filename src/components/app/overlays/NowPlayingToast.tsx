@@ -130,6 +130,7 @@ const NowPlayingToast: React.FC<NowPlayingToastProps> = ({
         <AnimatePresence>
             {visible && (
                 <motion.div
+                    data-now-playing-toast
                     ref={frameRef}
                     initial={{ opacity: 0, x: -32 }}
                     animate={{ opacity: 1, x: 0 }}
