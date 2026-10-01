@@ -314,8 +314,10 @@ const readPersonalFmSelection = (page: import('@playwright/test').Page) => page.
 
 const openFmModeSurface = async (page: import('@playwright/test').Page) => {
     await pressUntilPaletteOpens(page, 's');
-    await typeUntilRow(page, '私人 FM 模式', '私人 FM 模式');
-    await page.keyboard.press('Enter');
+    const command = await typeUntilRow(page, '私人 FM 模式', '私人 FM 模式');
+    // The row also exists before the debounced filter settles; Enter can still target the queue.
+    // Select the intended command directly, then test keyboard navigation inside its surface.
+    await command.click();
     // Surface 是 React.lazy，dev 下要现拉 chunk。等它的第一行真的画出来，别赌一个时长。
     await expect(palette(page).locator('[data-fm-option]').first()).toBeVisible();
 };
