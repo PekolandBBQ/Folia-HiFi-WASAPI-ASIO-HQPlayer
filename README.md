@@ -26,6 +26,8 @@
 
 ![HQPlayer 独立连接与增益设置](docs/exclusive/images/hqplayer.png)
 
+![0.7.12 HQPlayer 毛玻璃浮窗、DSP 与窗口显示开关](docs/exclusive/images/hqplayer-floating.png)
+
 ![真实 Windows 音频设备选择](docs/exclusive/images/devices.png)
 
 ![组件缺失时的安装提示](docs/exclusive/images/component-required.png)
