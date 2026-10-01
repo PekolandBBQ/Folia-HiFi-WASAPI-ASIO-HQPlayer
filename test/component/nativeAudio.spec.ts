@@ -230,11 +230,28 @@ test('selects ASIO and preserves basic control and clock behavior through native
     await page.screenshot({ path: 'test-results/native-audio-settings.png' });
     await page.getByRole('button', { name: 'WASAPI / ASIO exclusive playback' }).click();
     await page.getByText('Browser audio (default)', { exact: true }).click();
-    await expect(page.getByTestId('status')).toHaveText('ready');
-    await page.getByRole('button', { name: 'Play', exact: true }).click();
     await expect(page.getByTestId('status')).toHaveText('playing');
     await page.getByRole('button', { name: 'Pause', exact: true }).click();
     await expect(page.getByTestId('status')).toHaveText('paused');
+});
+
+test('switches a playing track between native outputs without another Play and retains a paused checkpoint', async ({ mount, page }) => {
+    await mount('nativeAudio');
+    await expect(page.getByTestId('status')).toHaveText('ready');
+    await page.getByRole('button', { name: 'Play', exact: true }).click();
+    await page.getByRole('button', { name: 'Seek 5s' }).click();
+    await page.getByRole('button', { name: 'WASAPI / ASIO exclusive playback' }).click();
+    await page.getByText('ASIO — Test ASIO Driver', { exact: true }).click();
+    await expect(page.getByTestId('status')).toHaveText('playing');
+    await expect.poll(async () => Number(await page.getByTestId('clock').textContent())).toBeGreaterThanOrEqual(5);
+    await page.getByRole('button', { name: 'Pause', exact: true }).click();
+    await page.getByRole('button', { name: 'WASAPI / ASIO exclusive playback' }).click();
+    await page.getByText('WASAPI exclusive — Test DAC', { exact: true }).click();
+    await expect(page.getByTestId('status')).toHaveText('ready');
+    await expect.poll(async () => Number(await page.getByTestId('clock').textContent())).toBeGreaterThanOrEqual(5);
+    const count = await page.evaluate(() => (window as any).__nativeRequests.filter((r: any) => r.action === 'play').length);
+    await page.waitForTimeout(250);
+    expect(await page.evaluate(() => (window as any).__nativeRequests.filter((r: any) => r.action === 'play').length)).toBe(count);
 });
 
 

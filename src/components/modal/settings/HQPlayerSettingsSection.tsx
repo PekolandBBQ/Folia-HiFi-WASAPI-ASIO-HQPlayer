@@ -9,8 +9,6 @@ import { isNativeAudioSupported } from '../../../services/nativeAudio/capabiliti
 import { readHQPlayerStatus, withHQPlayer, chooseHQPlayerPath, type HQPlayerStatus } from '../../../services/nativeAudio/hqplayerSettings';
 import { useAudioSettingsStore } from '../../../stores/useAudioSettingsStore';
 import { useHQPlayerSettingsStore } from '../../../stores/useHQPlayerSettingsStore';
-import { setPlayerState } from '../../../stores/usePlaybackStore';
-import { PlayerState } from '../../../types';
 import HQPlayerDspEditor from '../../audio/HQPlayerDspEditor';
 import SettingsSwitch from '../../shared/SettingsSwitch';
 
@@ -60,7 +58,7 @@ export default function HQPlayerSettingsSection({ className }: { className: stri
             </div>
             <button type="button" disabled={busy} className="rounded-lg border px-3 py-2 text-sm disabled:opacity-40"
                 onClick={() => {
-                    const run = () => { setPlayerState(PlayerState.PAUSED); apply(backend === 'hqplayer' ? 'browser' : 'hqplayer', backend === 'hqplayer' ? '' : 'hqplayer-local'); };
+                    const run = () => { apply(backend === 'hqplayer' ? 'browser' : 'hqplayer', backend === 'hqplayer' ? '' : 'hqplayer-local'); };
                     if (backend === 'hqplayer') run(); else void change(run);
                 }}>{t(backend === 'hqplayer' ? 'hqPlayer.disable' : 'hqPlayer.enable')}</button>
             <label className="mt-4 flex items-center justify-between gap-4 text-sm">

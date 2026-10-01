@@ -4,10 +4,11 @@ import { test, expect } from './fixtures';
 test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => {
         localStorage.setItem('i18nextLng', 'zh-CN');
-        const requests: unknown[] = [];
+        const requests: unknown[] = []; let windowVisible = true;
         Object.assign(window, { __dspRequests: requests, electron: { platform: 'win32', nativeAudio: {
             supported: true, onEvent: () => () => {}, request: async (request: { action: string }) => {
                 requests.push(request);
+                if (request.action === 'hqplayer-window') { windowVisible = (request as any).visible ?? windowVisible; return { running: true, visible: windowVisible, controllable: true }; }
                 if (request.action === 'hqplayer-status') return { available: true, needsConfirmation: localStorage.getItem('mock_hqp_existing') === 'true', instancePid: 77 };
                 if (request.action === 'hqplayer-dsp-read') return {
                     state: { mode: 1, filter: 3, shaper: 4, rate: 2, state: 0 }, pending: null,
@@ -32,6 +33,47 @@ test('shows measured download progress and an indeterminate decoding state', asy
     await expect(page.getByRole('progressbar')).not.toHaveAttribute('value');
     await page.getByRole('button', { name: 'Finish', exact: true }).click();
     await expect(page.getByRole('progressbar')).toHaveCount(0);
+});
+
+for (const daylight of [false, true]) test(`audio drawer, animated disclosures and frosted surfaces (${daylight ? 'light' : 'dark'})`, async ({ mount, page }) => {
+    await mount('playerBottomBar', { audioDetails: true, daylight });
+    const drawer = page.locator('[data-signal-path]'), bar = page.locator('[data-ponder="player-bar"]');
+    await expect(drawer).toHaveAttribute('data-retracted', 'false');
+    expect((await drawer.boundingBox())!.height).toBeLessThanOrEqual(28);
+    await expect.poll(() => page.evaluate(() => (window as any).__dspRequests.filter((r: any) => r.action === 'hqplayer-dsp-read').length)).toBeGreaterThan(0);
+    const box = (await bar.boundingBox())!;
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await expect(drawer).toHaveAttribute('inert', '');
+    await expect(drawer).toHaveCSS('opacity', '0');
+    await page.mouse.move(10, 10);
+    await expect(drawer).toHaveCSS('opacity', '1');
+    await page.getByRole('button', { name: 'HQPlayer设置', exact: true }).click();
+    const panel = page.getByRole('region', { name: 'HQPlayer 升频设置' });
+    await expect(panel.getByRole('button', { name: '目标采样率', exact: true })).toHaveText('192 kHz');
+    await expect(panel).toHaveCSS('opacity', '1');
+    const windowSwitch = panel.getByRole('switch', { name: '显示 HQPlayer 窗口', exact: true });
+    await expect(windowSwitch).toBeChecked();
+    await windowSwitch.click();
+    await expect(windowSwitch).not.toBeChecked();
+    await windowSwitch.click();
+    await expect(windowSwitch).toBeChecked();
+    const surface = await panel.evaluate(el => ({ background: getComputedStyle(el).backgroundColor, blur: getComputedStyle(el).backdropFilter }));
+    expect(surface.background).toMatch(/0\.[16]\)/);
+    expect(surface.blur).toContain('blur');
+    await page.screenshot({ path: `test-results/audio-glass-${daylight ? 'light' : 'dark'}.png` });
+    await panel.getByRole('button', { name: '关闭音频链路', exact: true }).evaluate(el => (el as HTMLButtonElement).click());
+    // Exit presence retains the panel while fading, then releases its controls.
+    expect(await panel.count()).toBe(1);
+    await expect(panel).toHaveCount(0);
+    await page.getByRole('button', { name: 'HQPlayer设置', exact: true }).click();
+    expect(await panel.getByRole('button', { name: '目标采样率', exact: true }).count()).toBe(1);
+    await page.keyboard.press('Escape');
+    await expect(panel).toHaveCount(0);
+    await drawer.locator(':scope > button').click();
+    const signal = page.getByRole('region', { name: '音频链路', exact: true });
+    await expect(signal).toHaveCSS('opacity', '1');
+    await page.keyboard.press('Escape');
+    await expect(signal).toHaveCount(0);
 });
 for (const width of [1280, 390]) {
     test(`keeps compact preparation below the song toast at ${width}px`, async ({ mount, page }) => {
@@ -87,9 +129,9 @@ test('stages mode-specific choices and sends explicit current or next applicatio
     await page.screenshot({ path: 'test-results/playback-hqp-dsp.png' });
     await page.getByRole('button', { name: '下一首歌曲生效', exact: true }).click();
     await expect(page.getByText('已保存，下一首歌曲开始前生效。')).toBeVisible();
-    expect(await page.evaluate(() => (window as unknown as { __dspRequests: unknown[] }).__dspRequests.at(-1))).toMatchObject({ action: 'hqplayer-dsp-apply', when: 'next', settings: { mode: 2, rate: 22579200 } });
+    expect(await page.evaluate(() => (window as unknown as { __dspRequests: unknown[] }).__dspRequests.filter((r: any) => r.action === 'hqplayer-dsp-apply').at(-1))).toMatchObject({ action: 'hqplayer-dsp-apply', when: 'next', settings: { mode: 2, rate: 22579200 } });
     await page.getByRole('button', { name: '应用到当前歌曲', exact: true }).click();
-    expect(await page.evaluate(() => (window as unknown as { __dspRequests: unknown[] }).__dspRequests.at(-1))).toMatchObject({ when: 'current', session: 'probe-session' });
+    expect(await page.evaluate(() => (window as unknown as { __dspRequests: unknown[] }).__dspRequests.filter((r: any) => r.action === 'hqplayer-dsp-apply').at(-1))).toMatchObject({ when: 'current', session: 'probe-session' });
     await page.keyboard.press('Escape');
     await expect(page.getByRole('region', { name: 'HQPlayer 升频设置' })).toHaveCount(0);
     await page.getByRole('button', { name: 'Clear song', exact: true }).click();

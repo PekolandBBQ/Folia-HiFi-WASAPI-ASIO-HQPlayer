@@ -37,6 +37,8 @@ description: Use when the task involves choosing how to validate a change in thi
 - 正式基线在 `test/ui/*.spec.ts-snapshots/`
 - `test-results/` 是临时产物，不应提交
 
+新增或调整浮动控件时，必须检查明暗主题下的毛玻璃、淡灰表面、字体、下拉菜单与播放器整体一致；验证紧凑布局不遮挡歌词及歌曲提示，进度条放大时抽屉收缩，详情进入/退出过渡与减少动态效果设置。HQPlayer 设置预读需验证首次打开、重复打开、刷新、切换会话和失败重试；输出切换需验证歌曲、位置、播放/暂停意图及快速连续切换，禁止用手动再次播放掩盖续播失败。
+
 ### 2. 纯逻辑、解析、状态管理、工具函数
 
 优先使用 Vitest 单元测试：

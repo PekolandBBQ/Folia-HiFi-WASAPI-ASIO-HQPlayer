@@ -247,10 +247,16 @@ export class NativeAudioTransport extends EventTarget {
     async retryFrom(position: number, playing: boolean) {
         const source = this.src;
         this.setSource(''); this.setSource(source);
+        await this.resumeFrom(position, playing);
+    }
+    async resumeFrom(position: number, playing: boolean) {
         await this.loading;
+        // Desktop initializes its playlist/DSP on Play, which can reset an earlier seek.
+        if (playing && this.backend === 'hqplayer') await this.play();
         const state = await this.command('seek', { position });
         this.presentedTime = state.position; this.apply(state);
-        if (playing) await this.play();
+        this.emit('seeked'); this.emit('timeupdate');
+        if (playing && this.backend !== 'hqplayer') await this.play();
     }
     dispose() { this.disposed = true; this.cancel(); this.unsubscribe(); }
 }

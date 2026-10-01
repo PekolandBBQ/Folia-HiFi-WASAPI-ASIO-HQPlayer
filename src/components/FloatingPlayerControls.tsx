@@ -286,7 +286,7 @@ const FloatingPlayerControls: React.FC<FloatingPlayerControlsProps> = ({
     }, []);
 
     const handleMouseEnter = (event: React.MouseEvent) => {
-        if (signalPathOpenRef.current || (event.target as Element).closest('[data-signal-path]')) return;
+        if (isHovered || signalPathOpenRef.current || (event.target as Element).closest('[data-signal-path]')) return;
         if (collapseTimeoutRef.current !== null) {
             window.clearTimeout(collapseTimeoutRef.current);
             collapseTimeoutRef.current = null;
@@ -364,6 +364,7 @@ const FloatingPlayerControls: React.FC<FloatingPlayerControlsProps> = ({
                 <div
                     className="pointer-events-auto w-full flex justify-center"
                     onMouseEnter={handleMouseEnter}
+                    onMouseMove={handleMouseEnter}
                     onMouseLeave={handleMouseLeave}
                     style={{
                         // 这块向下的命中区补丁只在胶囊贴底时才有意义；抬高之后按当前偏移量收敛，
@@ -392,7 +393,7 @@ const FloatingPlayerControls: React.FC<FloatingPlayerControlsProps> = ({
                         {/* A sibling glass layer avoids trapping the disclosure inside a backdrop-filter root. */}
                         {showSignalPath && <div aria-hidden="true" className={`absolute inset-0 rounded-full pointer-events-none backdrop-blur-xl shadow-2xl transition-colors duration-300 ${showExpanded ? glassBgExpanded : glassBgCollapsed}`} />}
                         {/* Keep the signal capsule attached to the animated control frame. */}
-                        {showSignalPath && !isHidden && !isPositioning && <SignalPath anchored onOpenChange={handleSignalPathOpen} />}
+                        {showSignalPath && !isHidden && !isPositioning && <SignalPath anchored retracted={isHovered} onOpenChange={handleSignalPathOpen} />}
                         <motion.div
                             layout
                             transition={{ layout: CONTROL_LAYOUT_SPRING }}

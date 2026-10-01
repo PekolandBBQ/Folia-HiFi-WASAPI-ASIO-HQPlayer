@@ -24,6 +24,7 @@ interface CustomSelectProps {
     disabled?: boolean;
     isDaylight?: boolean;
     theme?: Theme;
+    frosted?: boolean;
 }
 
 const DROPDOWN_GAP = 4;
@@ -41,6 +42,7 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
     disabled = false,
     isDaylight = false,
     theme,
+    frosted = false,
 }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [dropdownPosition, setDropdownPosition] = useState<CustomSelectMenuPosition | null>(null);
@@ -153,8 +155,8 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
                 aria-expanded={isOpen}
                 className="w-full flex items-center justify-between rounded-xl border px-4 py-3 text-sm transition-all focus:outline-none disabled:cursor-not-allowed disabled:opacity-45 cursor-pointer"
                 style={{
-                    backgroundColor: 'var(--overlay-medium)',
-                    borderColor: isOpen ? accentColor : 'var(--border-color)',
+                    backgroundColor: frosted ? (isDaylight ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.06)') : 'var(--overlay-medium)',
+                    borderColor: isOpen ? accentColor : frosted ? borderColor : 'var(--border-color)',
                     color: 'var(--text-primary)',
                     boxShadow: isOpen ? `0 0 0 1px ${accentColor}` : undefined,
                 }}
@@ -173,6 +175,7 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
                 <AnimatePresence>
                     {isOpen && dropdownPosition && (
                         <CustomSelectMenu
+                            frosted={frosted}
                             menuRef={menuRef}
                             position={dropdownPosition}
                             options={options}

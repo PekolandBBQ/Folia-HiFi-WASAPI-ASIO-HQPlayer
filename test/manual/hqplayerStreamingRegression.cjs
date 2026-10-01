@@ -100,6 +100,17 @@ async function main() {
             result.phases.push({ label, elapsedMs: Date.now() - started, ...phase });
             console.log('PASS', label, Date.now() - started);
         }
+        // Use a full-length source for repeated window/seek checks; the trial source was tested above.
+        await page.evaluate(async () => {
+            const q = window.__hqpRegression;
+            q.player.setState({ audioSrc: null, playerState: 'PAUSED' });
+            await new Promise(resolve => setTimeout(resolve, 200)); q.events.length = 0;
+            const { song, url } = q.tracks[0];
+            q.player.setState({ currentSong: song, audioSrc: url, playerState: 'PAUSED' });
+        });
+        await page.waitForFunction(() => window.__hqpRegression.events.some(e => e.state?.duration > 0), null, { timeout: 60000 });
+        await page.keyboard.press('Space');
+        await page.waitForFunction(() => window.__hqpRegression.events.some(e => e.state?.playing && e.state.position > 2), null, { timeout: 60000 });
         // Use the real floating panel while paused and playing; a settings restart must preserve the checkpoint.
         if (await confirmView.isVisible()) await confirmView.click();
         for (const paused of [true, false]) {
@@ -132,15 +143,28 @@ async function main() {
         }
         await page.getByRole('button', { name: 'HQPlayer设置', exact: true }).click();
         await page.getByRole('button', { name: '目标采样率', exact: true }).waitFor();
+        const windowSwitch = page.getByRole('switch', { name: '显示 HQPlayer 窗口', exact: true });
+        await windowSwitch.waitFor();
+        const beforeWindow = require('./hqplayerWindowState.cjs').hqplayerWindowState();
+        for (const visible of [!beforeWindow.windows.some(w => w.visible && !w.minimized), beforeWindow.windows.some(w => w.visible && !w.minimized)]) {
+            await windowSwitch.click();
+            await page.waitForFunction(visible => document.querySelector('[role="switch"][aria-label="显示 HQPlayer 窗口"]')?.getAttribute('aria-checked') === String(visible), visible);
+            const actual = require('./hqplayerWindowState.cjs').hqplayerWindowState();
+            assert.deepEqual(actual.pids, beforeWindow.pids);
+            assert.equal(actual.windows.some(w => w.visible && !w.minimized), visible);
+            assert.equal(await page.evaluate(() => window.__hqpRegression.player.getState().playerState), 'PLAYING');
+            result.phases.push({ label: visible ? 'show-window' : 'hide-window', pids: actual.pids, visible, playing: true });
+        }
         await page.screenshot({ path: path.join(output, 'packaged-hqplayer-settings.png') });
         await page.keyboard.press('Escape');
+        const browserCheckpoint = await page.evaluate(() => window.__hqpRegression.events.filter(e => e.state).at(-1).state.position);
         await page.evaluate(async () => {
             const q = window.__hqpRegression; await q.settings.getState().handleSetNativeAudioOutput('browser', '');
-            q.player.setState({ playerState: 'PAUSED' });
         });
         await page.waitForFunction(() => [...document.querySelectorAll('audio')].some(audio => audio.readyState >= 3), null, { timeout: 30000 });
-        await page.keyboard.press('Space');
         await page.waitForFunction(() => [...document.querySelectorAll('audio')].some(audio => !audio.paused && audio.currentTime > 1), null, { timeout: 30000 });
+        const browserPosition = await page.evaluate(() => [...document.querySelectorAll('audio')].find(a => !a.paused).currentTime);
+        assert.ok(browserPosition >= browserCheckpoint - 1 && browserPosition < browserCheckpoint + 8, 'Browser lost output-switch checkpoint');
         const remaining = await require('../../../folia-hqplayer-component/src/hqplayerInstance.cjs').findRunningHQPlayers();
         assert.equal(remaining.length, 0);
         result.phases.push({ label: 'browser-after-hqplayer', playing: true, remainingHQPlayers: 0 });
@@ -159,6 +183,7 @@ async function main() {
             await page.waitForFunction(() => window.__hqpRegression.events.some(event => event.state?.backend === 'hqplayer' && event.state.duration > 0), null, { timeout: 60000 });
             await page.keyboard.press('Space');
             await page.waitForFunction(() => window.__hqpRegression.events.some(event => event.state?.backend === 'hqplayer' && event.state.playing && event.state.position > 2), null, { timeout: 60000 });
+            const checkpoint = await page.evaluate(() => window.__hqpRegression.events.filter(e => e.state).at(-1).state.position);
             const started = Date.now();
             await page.evaluate(async device => {
                 const q = window.__hqpRegression; q.events.length = 0;
@@ -167,15 +192,22 @@ async function main() {
             assert.equal((await require('../../../folia-hqplayer-component/src/hqplayerInstance.cjs').findRunningHQPlayers()).length, 0);
             // Native helpers emit clock events only while playing; load replies update the signal path.
             await page.waitForFunction(() => /kHz/.test(document.querySelector('[data-signal-path]')?.textContent || ''), null, { timeout: 30000 });
-            await page.keyboard.press('Space');
             await page.waitForFunction(backend => window.__hqpRegression.events.some(event => event.state?.backend === backend && event.state.playing && event.state.position > 2), backend, { timeout: 60000 });
             const phase = await page.evaluate(backend => ({
                 state: window.__hqpRegression.events.filter(event => event.state?.backend === backend).at(-1)?.state,
                 errors: window.__hqpRegression.events.filter(event => event.event === 'error'),
             }), backend);
             assert.equal(phase.errors.length, 0);
+            assert.ok(phase.state.position >= checkpoint - 1 && phase.state.position < checkpoint + 8, 'Native output lost checkpoint');
             result.phases.push({ label: `${backend}-after-hqplayer`, elapsedMs: Date.now() - started, remainingHQPlayers: 0, ...phase });
             console.log('PASS', backend, Date.now() - started);
+            const resumePoint = phase.state.position;
+            await page.evaluate(async () => { const q = window.__hqpRegression; q.events.length = 0; await q.settings.getState().handleSetNativeAudioOutput('hqplayer', 'hqplayer-local'); });
+            await page.waitForFunction(position => window.__hqpRegression.events.some(e => e.state?.backend === 'hqplayer' && e.state.playing && e.state.position > position + 1), resumePoint, { timeout: 60000 });
+            const restored = await page.evaluate(() => window.__hqpRegression.events.filter(e => e.state).at(-1).state);
+            assert.ok(restored.position < resumePoint + 8, 'Returning to HQPlayer lost checkpoint');
+            result.phases.push({ label: 'hqplayer-after-' + backend, checkpoint: resumePoint, state: restored });
+            console.log('PASS', 'hqplayer-after-' + backend, resumePoint, restored.position);
         }
         result.status = 'PASS';
     } catch (error) {

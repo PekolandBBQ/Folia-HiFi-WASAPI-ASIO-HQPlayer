@@ -1,3 +1,7 @@
+import { useAudioSettingsStore } from '../../src/stores/useAudioSettingsStore';
+import { usePlaybackStore } from '../../src/stores/usePlaybackStore';
+import { publishSignalPath } from '../../src/stores/useSignalPathStore';
+import { useThemeSettingsStore } from '../../src/stores/useThemeSettingsStore';
 import React, { useState } from 'react';
 import { motionValue } from 'framer-motion';
 import FloatingPlayerControls from '../../src/components/FloatingPlayerControls';
@@ -22,7 +26,14 @@ const currentTime = motionValue(42);
  * 2. 拖动写 MotionValue 后，胶囊是否由 bottom 真正位移且不触发 React 重渲染
  * 探针把 liveOffset 的当前值镜像到 data 属性上，好让用例断言它。
  */
-const PlayerBottomBarProbe: React.FC = () => {
+const PlayerBottomBarProbe = ({ audioDetails = false, daylight = false }: { audioDetails?: boolean; daylight?: boolean } = {}) => {
+    React.useEffect(() => {
+        if (!audioDetails) return;
+        useThemeSettingsStore.setState({ isDaylight: daylight });
+        useAudioSettingsStore.setState({ nativeAudioBackend: 'hqplayer', showAudioSignalPath: true });
+        usePlaybackStore.setState({ audioSrc: 'probe://audio', currentSong: { id: 'probe', name: 'Probe Song', artists: [], album: { id: 'probe', name: '' }, durationMs: 200000 } });
+        publishSignalPath({ session: 'drawer-probe', backend: 'hqplayer', deviceId: 'hqplayer-local', position: 42, duration: 200, playing: true, ended: false, sampleRate: 96000, channels: 2, latency: 0 });
+    }, [audioDetails, daylight]);
     const isPositioning = usePlayerBottomBarLayoutStore(state => state.isPositioning);
     const startPositioning = usePlayerBottomBarLayoutStore(state => state.startPositioning);
     const [committedOffset, setCommittedOffset] = useState(PLAYER_BOTTOM_BAR_BASE_OFFSET_PX);
@@ -104,7 +115,7 @@ const PlayerBottomBarProbe: React.FC = () => {
                 onTogglePlay={() => { }}
                 onToggleLoop={() => setSlotHits(hits => [...hits, 'loop'])}
                 onNavigateToPlayer={() => setPlayerNavigations(count => count + 1)}
-                isDaylight={false}
+                isDaylight={daylight}
                 slotPrimary={slotPrimary}
                 slotSecondary={slotSecondary}
                 slotContext={{

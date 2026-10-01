@@ -13,7 +13,7 @@ export default function HQPlayerDspFields({ data, draft, setDraft, disabled }: {
     const list = data.catalogs[draft.mode];
     const sdm = data.modes.find(mode => mode.index === draft.mode)?.value === 1;
     const select = (label: string, value: string, options: { value: string; label: string }[], onChange: (value: string) => void) =>
-        <div className="space-y-1 text-xs"><span>{label}</span><CustomSelect ariaLabel={label} value={value} options={options} onChange={onChange} disabled={disabled} isDaylight={isDaylight} /></div>;
+        <div className="space-y-1 text-xs"><span>{label}</span><CustomSelect frosted ariaLabel={label} value={value} options={options} onChange={onChange} disabled={disabled} isDaylight={isDaylight} /></div>;
     return <div className="space-y-3">
         {select(t('hqpDsp.mode'), String(draft.mode), data.modes.map(item => ({ value: String(item.index), label: item.name })), value => {
             const mode = Number(value), catalog = data.catalogs[mode];

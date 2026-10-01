@@ -28,6 +28,7 @@ export interface CustomSelectMenuPosition {
 }
 
 interface CustomSelectMenuProps {
+    frosted?: boolean;
     menuRef: React.RefObject<HTMLDivElement | null>;
     position: CustomSelectMenuPosition;
     options: CustomSelectOption[];
@@ -136,6 +137,7 @@ const CustomSelectMenuRow = ({
 };
 
 export const CustomSelectMenu: React.FC<CustomSelectMenuProps> = ({
+    frosted = false,
     menuRef,
     position,
     options,
@@ -191,7 +193,7 @@ export const CustomSelectMenu: React.FC<CustomSelectMenuProps> = ({
                 bottom: position.bottom,
                 width: position.width,
                 maxHeight: position.maxHeight,
-                backgroundColor: isDaylight ? 'rgba(255, 255, 255, 0.96)' : 'rgba(24, 24, 27, 0.96)',
+                backgroundColor: frosted ? (isDaylight ? 'rgba(245,245,245,0.7)' : 'rgba(70,70,75,0.65)') : isDaylight ? 'rgba(255,255,255,0.96)' : 'rgba(24,24,27,0.96)',
                 borderColor,
                 color: textColor,
             }}

@@ -1,3 +1,4 @@
+import { prepareOutputHandoff } from '../services/nativeAudio/outputHandoff';
 // src/stores/useAudioSettingsStore.ts
 // Audio output and the media cache: stream quality, output device, the equalizer, how queued
 // songs are added, and the cache ceiling.
@@ -200,9 +201,11 @@ export const useAudioSettingsStore = create<AudioSettingsState>((set, get) => ({
     handleSetNativeAudioOutput: async (backend, deviceId, closeHQPlayer = true) => {
         const ticket = ++outputChange;
         const previous = get();
+        if (previous.nativeAudioBackend === backend && previous.nativeAudioDeviceId === deviceId) return;
+        const cancelHandoff = prepareOutputHandoff(backend, deviceId);
         if (closeHQPlayer && previous.nativeAudioBackend === 'hqplayer' && backend !== 'hqplayer') {
             const { releaseHQPlayerOutput } = await import('../services/nativeAudio/switchFromHQPlayer');
-            if (!await releaseHQPlayerOutput() || ticket !== outputChange) return;
+            if (!await releaseHQPlayerOutput() || ticket !== outputChange) { cancelHandoff(); return; }
         }
         if (backend === 'hqplayer' && previous.nativeAudioBackend !== 'hqplayer') {
             localStorage.setItem('folia_hqplayer_previous_output', JSON.stringify({ backend: previous.nativeAudioBackend, deviceId: previous.nativeAudioDeviceId }));

@@ -1,3 +1,4 @@
+import { useOutputPlaybackHandoff } from './hooks/useOutputPlaybackHandoff';
 import NativeAudioRecoveryDialog from './components/audio/NativeAudioRecoveryDialog';
 import { useNativeAudioRecovery } from './hooks/useNativeAudioRecovery';
 import { useState, useRef, useEffect, useCallback, useMemo, lazy, Suspense } from 'react';
@@ -350,6 +351,7 @@ export default function App() {
     const nativePlayback = Boolean(window.electron?.nativeAudio?.supported && nativeAudioBackend !== 'browser'
         && currentSong && !isStagePlaybackSong(currentSong));
     const handleNativeFailure = useNativeAudioRecovery(audioRef, nativePlayback);
+    useOutputPlaybackHandoff(audioRef, nativeAudioBackend, nativeAudioDeviceId, audioSrc, pendingResumeTimeRef, shouldAutoPlay);
     // The automix decks are set up much further down, but a few reset paths declared above here
     // need to be able to stop a transition, and queue navigation needs the track being SHOWN. A ref
     // keeps both reachable without reordering them; it is reassigned on every render, so the

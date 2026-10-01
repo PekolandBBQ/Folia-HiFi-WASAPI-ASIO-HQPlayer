@@ -102,7 +102,7 @@ export default function NativeAudioSettingsSection({ isDaylight, theme, classNam
             ariaLabel={t('nativeAudio.title')} placeholder={t('hqPlayer.nativeSelectorPlaceholder')} disabled={busy}
             onChange={next => {
                 const [mode, id] = next === 'browser' ? ['browser', ''] : JSON.parse(next) as [NativeAudioBackend, string];
-                const change = () => { setError(''); setPlayerState(PlayerState.PAUSED); apply(mode as NativeAudioBackend, id); };
+                const change = () => { setError(''); apply(mode as NativeAudioBackend, id); };
                 if (mode === 'browser') change(); else void requireComponent(change);
             }} />
         {error && !componentNotice && <p role="alert" className="mt-2 text-xs">{error}</p>}

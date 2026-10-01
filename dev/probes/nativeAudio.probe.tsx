@@ -1,3 +1,4 @@
+import { useOutputPlaybackHandoff } from '../../src/hooks/useOutputPlaybackHandoff';
 import SignalPath from '../../src/components/audio/SignalPath';
 import { usePlaybackStore } from '../../src/stores/usePlaybackStore';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -40,6 +41,8 @@ function NativeAudioProbe({ hqplayer = false }: { hqplayer?: boolean } = {}) {
         void audio.current?.play().catch(error => setStatus(error.name));
     }, []);
     const [source, setSource] = useState(() => sourceKind === 'remote' && remoteUrl ? remoteUrl : URL.createObjectURL(silentLocalFile()));
+    const pendingResume = useRef<number | null>(null), autoPlay = useRef(false);
+    useOutputPlaybackHandoff(audio, backend, device, source, pendingResume, autoPlay);
     const revocations = useRef(new Map<string, ReturnType<typeof setTimeout>>());
     useEffect(() => {
         // StrictMode's simulated unmount must not revoke the still-active source.
@@ -63,7 +66,7 @@ function NativeAudioProbe({ hqplayer = false }: { hqplayer?: boolean } = {}) {
             nativeProcessingMode={processingMode}
             getLocalFile={async () => sourceKind ? null : silentLocalFile()}
             onLoadedMetadata={() => setStatus('ready')}
-            onPlay={() => { setStatus('playing'); usePlaybackStore.setState({ playerState: PlayerState.PLAYING }); }} onPause={() => setStatus('paused')}
+            onPlay={() => { setStatus('playing'); usePlaybackStore.setState({ playerState: PlayerState.PLAYING }); }} onPause={() => { setStatus('paused'); usePlaybackStore.setState({ playerState: PlayerState.PAUSED }); }}
             onTimeUpdate={event => clock.set(event.currentTarget.currentTime)}
             onSeeked={event => clock.set(event.currentTarget.currentTime)}
             onError={event => { setStatus(event.currentTarget.error?.message || 'error'); recover(event.currentTarget); }} />

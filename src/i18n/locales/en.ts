@@ -3,6 +3,7 @@
 export default {
  hqpComponent: { title: 'HQPlayer control component', description: 'Separate version and installation. Does not depend on the WASAPI/ASIO component. Install HQPlayer Desktop separately.', missing: 'Not installed', ready: 'Component ready', disabled: 'Component disabled or unavailable', updateAvailable: 'An approved update is available', install: 'Install / update HQPlayer component', uninstall: 'Disable HQPlayer component', rollback: 'Roll back HQPlayer component', switchFirst: 'Switch to another output before managing this component.', noRelease: 'No upstream-approved component download is available yet.' },
  hqpLaunch: {
+    "showWindow": "Show HQPlayer window", "showWindowDescription": "Hiding the window keeps music playing.", "windowNotRunning": "Available once HQPlayer is running.",
   "existingTitle": "HQPlayer is already open",
   "existingDescription": "Connect to the existing HQPlayer instance? Yes connects without starting another instance. No returns to the previous output settings.",
   "yes": "Yes, connect",

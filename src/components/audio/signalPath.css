@@ -12,3 +12,8 @@
   .signal-path-panel[data-columns="true"] .signal-path-rows { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 20px; }
   .signal-path-panel[data-columns="true"] .signal-path-rows > li { padding-bottom: 0; }
   .signal-path-panel[data-columns="true"] .signal-path-rows > li > span:first-child:not(:last-child) { bottom: 0; }
+
+/* The drawer moves below the capsule lip without changing lyric layout. */
+.audio-signal-drawer { transition: translate 260ms cubic-bezier(.22,1,.36,1), opacity 180ms ease; }
+.audio-signal-drawer[data-retracted="true"] { translate: 0 32px; opacity: 0; pointer-events: none; }
+html[data-reduce-motion~="uiMicroMotion"] .audio-signal-drawer { transition-duration: 0ms; }

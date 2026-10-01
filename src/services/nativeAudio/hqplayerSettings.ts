@@ -62,7 +62,6 @@ export async function toggleHQPlayerOutput() {
     const switchOutput = () => {
         const settings = useAudioSettingsStore.getState();
         const enabled = settings.nativeAudioBackend === 'hqplayer';
-        setPlayerState(PlayerState.PAUSED);
         settings.handleSetNativeAudioOutput(enabled ? 'browser' : 'hqplayer', enabled ? '' : 'hqplayer-local');
     };
     if (useAudioSettingsStore.getState().nativeAudioBackend === 'hqplayer') switchOutput();

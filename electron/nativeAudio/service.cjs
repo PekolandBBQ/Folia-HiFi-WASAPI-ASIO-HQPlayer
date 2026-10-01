@@ -137,6 +137,7 @@ function registerNativeAudio({ app, ipcMain, isTrustedSender, helperFactory = cr
         }
         if (request?.action === 'hqplayer-status') return { supported, ...(!supported ? { available: false } : hqplayer.configuration ? await hqplayer.configuration() : { available: Boolean(await hqplayer.device()) }) };
         if (!supported) throw new Error('Native playback requires Windows x64');
+        if (request?.action === 'hqplayer-window') return require('./hqplayerWindow.cjs').hqplayerWindow(request.visible);
         if (request?.action === 'hqplayer-shutdown') {
             if (active?.backend === 'hqplayer') { const previous = active; active = null; await release(previous); }
             await hqplayer.shutdown();

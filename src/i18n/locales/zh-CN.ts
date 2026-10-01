@@ -3,6 +3,7 @@
 export default {
  hqpComponent: { title: 'HQPlayer 控制组件', description: '独立版本与安装目录，不依赖 WASAPI/ASIO 组件。HQPlayer Desktop 需另行安装。', missing: '未安装', ready: '组件可用', disabled: '组件未启用或不可用', updateAvailable: '有已批准的新版本可更新', install: '安装 / 更新 HQPlayer 组件', uninstall: '停用 HQPlayer 组件', rollback: '回退 HQPlayer 组件', switchFirst: '请先切换到其他输出后再管理此组件。', noRelease: '尚无上游批准的组件下载版本。' },
  hqpLaunch: {
+    "showWindow": "显示 HQPlayer 窗口", "showWindowDescription": "关闭开关仅隐藏窗口，音乐继续播放。", "windowNotRunning": "HQPlayer 启动后可显示或隐藏窗口。",
   "existingTitle": "检测到已打开的 HQPlayer",
   "existingDescription": "是否直接连接已有的 HQPlayer 实例？选择“是”不会启动新实例；选择“否”将返回先前的输出设置。",
   "yes": "是，连接已有实例",
