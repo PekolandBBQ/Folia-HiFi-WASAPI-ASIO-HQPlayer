@@ -358,7 +358,7 @@ test('a nested back flies onto the card while the card is still flying in', asyn
         if (!box) return false;
         const centerDistance = Math.hypot(box.x + box.width / 2 - 720, box.y + box.height / 2 - 550);
         return centerDistance < 8 && Math.abs(box.width / box.height - 200 / 260) < 0.03;
-    }, { timeout: 1200 }).toBe(true);
+    }, { timeout: 1200, intervals: [16] }).toBe(true);
 });
 
 test('only the incoming grid carries the active mark while two grids overlap', async ({ mount, page }) => {

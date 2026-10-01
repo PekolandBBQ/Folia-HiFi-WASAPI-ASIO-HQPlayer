@@ -65,7 +65,7 @@ test('单来源模式保持单行', async ({ mount, page }) => {
     await page.locator('[data-probe-mode="translation"]').click();
     await expect(rows).toHaveCount(1);
     await expect(rows.first()).toHaveText('早上好');
-    expect(await rows.first().evaluate(el => parseFloat(getComputedStyle(el).opacity))).toBe(1);
+    await expect(rows.first()).toHaveCSS('opacity', '1');
 
     await page.locator('[data-probe-mode="romanization"]').click();
     await expect(rows).toHaveCount(1);
