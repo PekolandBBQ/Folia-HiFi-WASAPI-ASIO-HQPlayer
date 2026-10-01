@@ -12,7 +12,7 @@
 | **EXE 安装版（推荐）** | 下载 [Folia-HiFi-WASAPI-ASIO-HQPlayer-0.7.12-win-x64-Setup.exe](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/releases/download/hifi-v0.7.12/Folia-HiFi-WASAPI-ASIO-HQPlayer-0.7.12-win-x64-Setup.exe)，运行安装向导并选择目录；安装后从开始菜单启动。仅为当前用户安装，提供 Windows“已安装的应用”卸载入口。 |
 | **ZIP 免安装版** | 下载 [Folia-HiFi-WASAPI-ASIO-HQPlayer-0.7.12-win-x64.zip](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/releases/download/hifi-v0.7.12/Folia-HiFi-WASAPI-ASIO-HQPlayer-0.7.12-win-x64.zip)，完整解压到可写目录，运行 `Folia-HiFi-WASAPI-ASIO-HQPlayer.exe`。不要在压缩包内直接运行，也不要单独移动 EXE。 |
 
-两种方式包含相同程序、WASAPI/ASIO 组件 0.1.2、独立 HQPlayer 组件 0.1.2 和支持 PCM24/PCM32 的 FFmpeg，无需安装 Node 或 .NET SDK。ASIO 需要另行安装厂商的 x64 驱动，HQPlayer 需另行安装并授权。
+两种方式包含相同程序、WASAPI/ASIO 组件 0.1.2、独立 HQPlayer 组件 0.1.3 和支持 PCM24/PCM32 的 FFmpeg，无需安装 Node 或 .NET SDK。ASIO 需要另行安装厂商的 x64 驱动，HQPlayer 需另行安装并授权。
 
 两种方式共用 `%APPDATA%\Folia HiFi`，首次运行在新目录不存在时，将旧 `%APPDATA%\FoliaExclusive` 完整复制迁移，保留旧目录作为备份；新目录已存在则不合并、不覆盖。迁移前请退出旧版。不会自动导入官方版或旧人工验证版的账号、曲库。ZIP 免安装不等于配置随身携带，不要同时运行安装版和 ZIP 版。
 

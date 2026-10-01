@@ -1,11 +1,22 @@
 import { describe, expect, it } from 'vitest';
-import { publishSignalPath, clearSignalPath, useSignalPathStore } from '../../../src/stores/useSignalPathStore';
+import { publishSignalPath, clearSignalPath, beginSignalPath, failSignalPath, useSignalPathStore } from '../../../src/stores/useSignalPathStore';
 import type { NativeAudioState } from '../../../src/types/nativeAudio';
 import { buildSignalPath } from '../../../src/components/audio/buildSignalPath';
 import type { TFunction } from 'i18next';
 
 // test/unit/nativeAudio/signalPath.test.ts — clock packets must not repeatedly render the disclosure.
 describe('signal telemetry', () => {
+    it('keeps a failed load explicit until retry and ignores failures from an older session', () => {
+        beginSignalPath('failed');
+        failSignalPath('failed', 'HQPLAYER_COMMAND_REJECTED');
+        expect(useSignalPathStore.getState().failureCode).toBe('HQPLAYER_COMMAND_REJECTED');
+        beginSignalPath('retry');
+        failSignalPath('failed', 'DEVICE_UNAVAILABLE');
+        expect(useSignalPathStore.getState().failureCode).toBeNull();
+        clearSignalPath('failed');
+        expect(useSignalPathStore.getState().owner).toBe('retry');
+        clearSignalPath('retry');
+    });
     it('labels PCM conversion and both DSD clock families from observed output', () => {
         const t = ((key: string) => key) as TFunction;
         const state = { session: 'format', backend: 'hqplayer', deviceId: 'hqplayer-local', channels: 2,

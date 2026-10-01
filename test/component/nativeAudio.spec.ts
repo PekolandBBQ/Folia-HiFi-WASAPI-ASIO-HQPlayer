@@ -271,6 +271,20 @@ test('browser to native handoff uses listener volume rather than the media eleme
     await expect.poll(() => page.evaluate(() => (window as any).__nativeRequests.filter((r: any) => r.action === 'volume').at(-1)?.volume)).toBe(0.18);
 });
 
+test('a rejected load shows a persistent failed signal path instead of preparing forever', async ({ mount, page }) => {
+    await mount('nativeAudio');
+    await expect(page.getByTestId('status')).toHaveText('ready');
+    await page.getByRole('switch', { name: 'Show audio signal path' }).click();
+    await page.evaluate(() => (window as any).__nativeFailure('HQPLAYER_COMMAND_REJECTED'));
+    await expect(page.getByRole('button', { name: 'Output preparation failed', exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'Output preparation failed', exact: true }).click();
+    await expect(page.getByRole('region', { name: 'Signal path' })).toContainText('HQPlayer rejected');
+    await page.keyboard.press('Escape');
+    await page.getByRole('button', { name: 'Play', exact: true }).click();
+    await expect(page.getByTestId('status')).toHaveText('playing');
+    await expect(page.getByRole('button', { name: 'Output preparation failed', exact: true })).toHaveCount(0);
+});
+
 test('signal path is optional, reports source resolution, and responds to narrow and short windows', async ({ mount, page }) => {
     await mount('nativeAudio');
     await expect(page.getByTestId('status')).toHaveText('ready');

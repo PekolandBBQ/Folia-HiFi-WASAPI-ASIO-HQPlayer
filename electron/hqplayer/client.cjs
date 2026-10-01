@@ -16,6 +16,11 @@ function createHQPlayerComponentHost({ app, configPath, onState = () => {}, onEr
             if (!installed.available) throw audioError(installed.errorCode || 'COMPONENT_UNAVAILABLE');
             const next = rpcFactory(installed.executable, { onEvent: event => {
                 if (ticket !== generation) return;
+                if (event.event === 'diagnostic' && event.detail?.event === 'playlist-load') {
+                    const { attempt, attempts, coldConnection, result, code } = event.detail;
+                    console.info('[HQPlayer preparation]', JSON.stringify({ attempt, attempts, coldConnection, result, code }));
+                    return;
+                }
                 if (event.event === 'state') onState(event.state);
                 if (event.event === 'error') { if (['COMPONENT_CRASHED', 'COMPONENT_TIMEOUT'].includes(event.errorCode)) rpc = null; onError(audioError(event.errorCode)); }
             } });

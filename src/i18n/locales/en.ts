@@ -33,6 +33,7 @@ export default {
   "remember": "Remember gain changes made in HQPlayer"
 },
   "signalPath": {
+    "failed": "Output preparation failed",
     "hqProcessing": "Decoding and DSP in HQPlayer",
     "preparing": "Preparing native output", "conversion": "Sample-rate conversion", "gain": "ReplayGain / software volume",
     "conversionUnknown": "Not reported", "upsampling": "Upsampling / modulation", "downsampling": "Downsampling", "sameRate": "Unchanged sample rate",

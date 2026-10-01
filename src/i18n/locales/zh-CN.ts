@@ -33,6 +33,7 @@ export default {
   "remember": "记忆在 HQPlayer 中调整的增益"
 },
   "signalPath": {
+    "failed": "输出准备失败",
     "hqProcessing": "由 HQPlayer 执行解码与 DSP",
     "preparing": "原生输出准备中", "conversion": "采样率转换", "gain": "ReplayGain／软件音量",
     "conversionUnknown": "未回报", "upsampling": "升频／调制", "downsampling": "降采样", "sameRate": "采样率未改变",

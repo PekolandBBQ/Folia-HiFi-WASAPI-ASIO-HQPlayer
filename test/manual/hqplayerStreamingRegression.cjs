@@ -5,6 +5,7 @@ const assert = require('node:assert/strict');
 
 // Real packaged renderer + Omni providers + native hardware. Never logs signed URLs or account data.
 async function main() {
+    const testStartedAt = Date.now();
     const executablePath = path.resolve(process.argv[2]);
     const output = path.resolve(process.argv[3]); fs.mkdirSync(output, { recursive: true });
     const provider = process.env.FOLIA_STREAM_PROVIDER || 'netease';
@@ -15,6 +16,7 @@ async function main() {
     const app = await _electron.launch({ executablePath, timeout: 60000 });
     const result = { provider, silent, phases: [] }, diagnostics = [];
     app.process().stderr.on('data', data => { if (/Native audio error|could not be cloned/.test(String(data))) diagnostics.push(String(data)); });
+    app.process().stdout.on('data', data => { if (/\[HQPlayer preparation\]/.test(String(data))) diagnostics.push(String(data)); });
     let page, originalSilent;
     try {
         page = await app.firstWindow(); page.setDefaultTimeout(25000);
@@ -31,11 +33,11 @@ async function main() {
         await page.keyboard.press('Escape');
         result.identity = await app.evaluate(({ app }) => ({ version: app.getVersion(), profile: app.getPath('userData') }));
         result.component = await page.evaluate(() => window.electron.nativeAudio.request({ action: 'hqplayer-status' }));
-        if (!result.component.available) {
+        if (!result.component.available || result.component.component.version !== '0.1.3') {
             await page.evaluate(() => window.electron.nativeAudio.request({ action: 'hqplayer-component-install' }));
             result.component = await page.evaluate(() => window.electron.nativeAudio.request({ action: 'hqplayer-status' }));
         }
-        assert.equal(result.component.component.version, '0.1.2');
+        assert.equal(result.component.component.version, '0.1.3');
         // Start from a closed Desktop for a genuine cold launch, after verifying the installed component.
         await page.evaluate(() => window.electron.nativeAudio.request({ action: 'hqplayer-shutdown' }));
         result.songs = await page.evaluate(async ({ chunks, provider }) => {
@@ -100,6 +102,7 @@ async function main() {
             }
             result.phases.push({ label, elapsedMs: Date.now() - started, ...phase });
             console.log('PASS', label, Date.now() - started);
+            if (process.env.FOLIA_COLD_ONLY === 'true') { result.status = 'PASS'; return; }
         }
         // Use a full-length source for repeated window/seek checks; the trial source was tested above.
         await page.evaluate(async () => {
@@ -220,6 +223,30 @@ async function main() {
         result.status = 'PASS';
     } catch (error) {
         result.status = 'FAIL'; result.error = error.message;
+        if (page && process.env.FOLIA_CAPTURE_FAILED_SOURCE === 'true') {
+            // Keep only this run's session-owned staged input for local diagnosis, never release it.
+            const captured = await app.evaluate(async ({ app }, startedAt) => {
+                const fs = require('node:fs/promises'), path = require('node:path'), crypto = require('node:crypto');
+                const root = app.getPath('temp'), candidates = [];
+                for (const entry of await fs.readdir(root, { withFileTypes: true })) {
+                    if (!entry.isDirectory() || !entry.name.startsWith('folia-native-audio-')) continue;
+                    const folder = path.join(root, entry.name);
+                    if ((await fs.stat(folder)).birthtimeMs < startedAt) continue;
+                    for (const name of await fs.readdir(folder)) {
+                        if (!/^input\.[a-z0-9]+$/.test(name)) continue;
+                        const source = path.join(folder, name), bytes = await fs.readFile(source);
+                        candidates.push({ source, bytes: bytes.length, sha256: crypto.createHash('sha256').update(bytes).digest('hex') });
+                    }
+                }
+                return candidates;
+            }, testStartedAt).catch(() => []);
+            const privateFolder = path.resolve(output, '..', '..', 'private-failed-audio');
+            fs.mkdirSync(privateFolder, { recursive: true });
+            result.failedSources = captured.map(item => {
+                fs.copyFileSync(item.source, path.join(privateFolder, item.sha256 + path.extname(item.source)));
+                return { bytes: item.bytes, sha256: item.sha256, extension: path.extname(item.source) };
+            });
+        }
         if (page) result.last = await page.evaluate(() => {
             const q = window.__hqpRegression;
             return { searches: q?.searches, events: q?.events.slice(-12), progress: q?.loading?.getState(), playerState: q?.player.getState().playerState,

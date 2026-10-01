@@ -3,7 +3,7 @@ import { usePlaybackStore } from '../../stores/usePlaybackStore';
 import { getPlaybackSongKey } from '../../utils/appPlaybackGuards';
 import { beginPlaybackLoad, updatePlaybackLoad, endPlaybackLoad } from '../../stores/usePlaybackLoadStore';
 import type { NativeAudioApi, NativeAudioBackend, NativeAudioEvent, NativeAudioProcessingMode, NativeAudioState } from '../../types/nativeAudio';
-import { publishSignalPath, clearSignalPath } from '../../stores/useSignalPathStore';
+import { publishSignalPath, clearSignalPath, beginSignalPath, failSignalPath } from '../../stores/useSignalPathStore';
 import { getNativeErrorCode } from './errors';
 import { loadNativeOnlineSource } from './loadOnlineSource';
 import { loadNativeLocalFile } from './loadLocalFile';
@@ -109,6 +109,7 @@ export class NativeAudioTransport extends EventTarget {
         this.abort = new AbortController();
         const signal = this.abort.signal;
         const session = this.session;
+        beginSignalPath(session);
         beginPlaybackLoad(session, 'load');
         this.emit('loadstart');
         this.loading = (async () => {
@@ -226,6 +227,7 @@ export class NativeAudioTransport extends EventTarget {
         endPlaybackLoad(this.session);
         const message = getNativeErrorCode(error);
         if (message === 'CANCELLED') return;
+        failSignalPath(this.session, message);
         if (this.error?.message === message) return;
         this.position = this.currentTime; this.paused = true; this.seeking = false;
         this.error = { code: message === 'DECODE_FAILED' ? 3 : ['SOURCE_EXPIRED', 'SOURCE_UNAVAILABLE'].includes(message) ? 2 : 4, message, nativeCode: message };

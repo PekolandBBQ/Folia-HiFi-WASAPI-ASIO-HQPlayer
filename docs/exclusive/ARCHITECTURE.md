@@ -11,7 +11,7 @@
 | A：宿主基础接入 | 组件管理、协议与进程、音源准备、ReplayGain、恢复、环境检查 | 未安装组件仍可正常使用浏览器；不含专版品牌、配置迁移、HQPlayer 或整数/链路独有 UI |
 | B：整数处理 | 在 A 上增加整数 PCM 处理与对应设置 | 使用独立增量提交，保留音量、静音和 ReplayGain，不强制最大音量 |
 | C：音频链路 | 显示后端实际报告的格式、增益 | 显示层不控制播放或安装组件；未报告数据不伪造。历史 C 基于 B，移交 PR 时明确这个依赖；若改为只依赖 A，必须重新生成 diff 并复测，不能直接宣称互相独立 |
-| D：HQPlayer | 独立 `folia-hqplayer-component` 仓库控制源码、构建、版本与发布；主仓库 `electron/hqplayer` 只保留安装和隔离进程适配，音源准备留在宿主 | 独立版本 0.1.2、协议 1、激活目录与回退槽，不依赖 WASAPI/ASIO 0.1.2。公共归档机制放在 `electron/components`；基础接入与 DSP/链路 UI 分开审查，详见 HQPlayer 组件 RFC |
+| D：HQPlayer | 独立 `folia-hqplayer-component` 仓库控制源码、构建、版本与发布；主仓库 `electron/hqplayer` 只保留安装和隔离进程适配，音源准备留在宿主 | 独立版本 0.1.3、协议 1、激活目录与回退槽，不依赖 WASAPI/ASIO 0.1.2。公共归档机制放在 `electron/components`；基础接入与 DSP/链路 UI 分开审查，详见 HQPlayer 组件 RFC |
 | E：专版分发 | `packaging/exclusive`、安装程序、离线目录、品牌、配置迁移 | 只由专版启动入口加载；上游 `electron/main.cjs`、默认 appId 与配置不依赖它，不进入 A/B/C |
 
 现有 A/B/C 是前轮快照，尚未包含全部最新设置修正。提交上游前，通用环境检查放入 A，整数开关检查放入 B，链路检查放入 C；对每个实际提交单独测试并给出比较基线。HQPlayer 和专版分发未经同意不混入这些 PR。源码分层和可拆分设计不等同于最新 PR 已准备完毕。

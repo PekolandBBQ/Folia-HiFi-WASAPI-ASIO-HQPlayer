@@ -26,6 +26,7 @@ export default function SignalPath({ anchored = false, retracted = false, onOpen
     const song = usePlaybackStore(state => state.currentSong);
     const audioSrc = usePlaybackStore(state => state.audioSrc);
     const snapshot = useSignalPathStore(state => state.snapshot);
+    const failureCode = useSignalPathStore(state => state.failureCode);
     const selected = useAudioSettingsStore(state => state.nativeAudioBackend);
     const enabled = useAudioSettingsStore(state => state.showAudioSignalPath);
     const dspOpen = useHQPlayerSettingsStore(state => state.dspOpen);
@@ -50,6 +51,7 @@ export default function SignalPath({ anchored = false, retracted = false, onOpen
     if ((!enabled && selected !== 'hqplayer') || selected === 'browser'
         || (song && isStagePlaybackSong(song)) || (!hasSource && selected !== 'hqplayer')) return null;
     const { rows, brief } = buildSignalPath(snapshot, selected, t);
+    if (failureCode) rows.unshift({ title: t('signalPath.failed'), value: t(`nativeAudio.errors.${failureCode}`) });
     return <div ref={container} data-signal-path data-retracted={retracted} inert={retracted} onClick={event => event.stopPropagation()} onPointerDown={event => event.stopPropagation()} className={`${anchored ? 'absolute bottom-full mb-1' : 'fixed bottom-1'} left-1/2 -translate-x-1/2 z-[90] w-max max-w-[calc(100vw-24px)] pointer-events-auto audio-signal-drawer flex items-center gap-1.5`} style={{ WebkitAppRegion: 'no-drag', color: 'var(--text-primary)' } as React.CSSProperties}>
         <AnimatePresence>{open && !dspOpen && <motion.section initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} transition={{ duration: reduced ? 0 : 0.2, ease: 'easeOut' }} ref={panelRef} data-compact={compact} data-columns={columns} id="folia-signal-path" role="region" aria-label={t('signalPath.title')} className={`signal-path-panel absolute bottom-full left-1/2 -translate-x-1/2 mb-3 w-80 max-w-[calc(100vw-24px)]  overflow-auto rounded-2xl border ${glassPanel} p-5 shadow-2xl backdrop-blur-2xl`}>
             <div className="flex items-center justify-between mb-4"><h2 className="text-sm font-semibold">{t('signalPath.title')}</h2><button type="button" onClick={() => { setOpen(false); trigger.current?.focus(); }} aria-label={t('signalPath.close')} className="p-2 rounded-full hover:bg-white/10"><X size={16} /></button></div>
@@ -62,7 +64,7 @@ export default function SignalPath({ anchored = false, retracted = false, onOpen
         </motion.section>}</AnimatePresence>
         {enabled && <button ref={trigger} type="button" aria-expanded={open} aria-controls="folia-signal-path" onClick={() => { useHQPlayerSettingsStore.getState().setDspOpen(false); setOpen(value => !value); }} className={`flex max-w-full items-center justify-center gap-2 rounded-full border ${glassButton} px-3 py-1 text-[11px] font-medium shadow-lg backdrop-blur-xl transition-colors duration-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-current`}>
             <AudioLines size={12} className="shrink-0 opacity-60" />
-            <span className="opacity-80">{brief}</span>
+            <span className="opacity-80">{failureCode ? t('signalPath.failed') : brief}</span>
         </button>}
         {selected === 'hqplayer' && <HQPlayerDspPanel panelClass={glassPanel} buttonClass={glassButton} />}
     </div>;

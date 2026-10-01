@@ -1,10 +1,10 @@
 {
-  "version": "0.1.2",
-  "sha256": "97e5bd8d97b9395abdccea9816a1fc0e8fffe591f1a16ffe9ff813be8c48b73d",
-  "entrySha256": "16a47c77fa32f98485714a921ab625937b9c0415ec301bfa20000a7672eb57c0",
+  "version": "0.1.3",
+  "sha256": "e7f0a545d8a9e12b0d874bf0d39e806c36555e295b833fc674b893a4fe36851c",
+  "entrySha256": "94dabb01dc25c83b1e44009a685b06e61aaf2d954256e252805773120061cbc0",
   "previous": {
-    "version": "0.1.1",
-    "sha256": "a15668e003488213bc1cd54c82e084cdcea0c7cf18888f11960f11fec8df6720",
-    "entrySha256": "b1c236ea9d21506644f4fcb3e58cacf617b3201fadd2164150a0520e3de741a1"
+    "version": "0.1.2",
+    "sha256": "97e5bd8d97b9395abdccea9816a1fc0e8fffe591f1a16ffe9ff813be8c48b73d",
+    "entrySha256": "16a47c77fa32f98485714a921ab625937b9c0415ec301bfa20000a7672eb57c0"
   }
 }

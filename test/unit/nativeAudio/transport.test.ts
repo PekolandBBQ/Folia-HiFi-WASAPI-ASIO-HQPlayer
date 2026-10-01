@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { NativeAudioTransport, reloadRecoveredNativeSource } from '../../../src/services/nativeAudio/NativeAudioTransport';
 import type { NativeAudioApi, NativeAudioEvent, NativeAudioState } from '../../../src/types/nativeAudio';
+import { useSignalPathStore } from '../../../src/stores/useSignalPathStore';
 
 // test/unit/nativeAudio/transport.test.ts — race and clock contracts at the media adapter boundary.
 const mocks = vi.hoisted(() => ({ load: vi.fn() }));
@@ -35,6 +36,16 @@ function fixture(backend: 'asio' | 'hqplayer' = 'asio', rememberGain = false, on
 }
 
 describe('native transport', () => {
+    it('publishes preparation failure instead of leaving an empty signal path preparing', async () => {
+        const { transport } = fixture('hqplayer');
+        mocks.load.mockRejectedValueOnce(Object.assign(new Error('HQPlayer rejected the request'), { code: 'HQPLAYER_COMMAND_REJECTED' }));
+        transport.setSource('blob:rejected'); await flush();
+        expect(transport.error?.nativeCode).toBe('HQPLAYER_COMMAND_REJECTED');
+        expect(useSignalPathStore.getState().failureCode).toBe('HQPLAYER_COMMAND_REJECTED');
+        await transport.play();
+        expect(useSignalPathStore.getState().failureCode).toBeNull();
+        expect(transport.paused).toBe(false);
+    });
     it('resumes an explicitly applied HQPlayer checkpoint but ignores stale sessions and ordinary late polls', async () => {
         const { transport, event, state, send } = fixture('hqplayer');
         transport.setSource('blob:resume'); await flush();
