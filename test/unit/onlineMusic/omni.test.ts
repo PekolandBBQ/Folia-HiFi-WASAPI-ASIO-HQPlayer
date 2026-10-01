@@ -55,6 +55,26 @@ afterEach(() => {
 });
 
 describe('omni routing', () => {
+    it('falls back from a persisted provider missing in the current build', () => {
+        useOnlineProviderAccountStore.getState().setActiveProviderId('bodian');
+
+        expect(omni.getActiveProviderSummary()?.providerId).toBe('netease');
+        expect(omni.getActiveCapabilities()).toEqual(omni.getProviderCapabilities('netease'));
+        expect(useOnlineProviderAccountStore.getState().activeProviderId).toBe('bodian');
+    });
+
+    it('marks a provider without auth as one that needs no account', () => {
+        registerOnlineMusicProvider(provider(providerId, { searchSongs: async () => ({ items: [], hasMore: false, nextOffset: 0 }) }));
+        const summaries = omni.getProviderSummaries();
+
+        expect(summaries.find(summary => summary.providerId === providerId)?.requiresAccount).toBe(false);
+        expect(summaries.find(summary => summary.providerId === 'netease')?.requiresAccount).toBe(true);
+    });
+
+    it('reports songs from unavailable providers as unplayable without routing them elsewhere', () => {
+        expect(omni.canPlaySong(song('bodian'))).toBe(false);
+    });
+
     it('routes ordinary search through the active provider and resources through their owner', async () => {
         const activeSearch = vi.fn(async () => ({ items: [song(providerId)], hasMore: false, nextOffset: 1 }));
         registerOnlineMusicProvider(provider(providerId, { searchSongs: activeSearch }));

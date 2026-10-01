@@ -22,7 +22,7 @@ async function main() {
         originalSilent = await page.evaluate(() => localStorage.getItem('folia_hqplayer_silent_launch'));
         await page.evaluate(() => {
             // This regression tests playback, not the upstream first-run introduction.
-            localStorage.setItem('folia_last_seen_ponder_onboarding_version', '0.7.9');
+            localStorage.setItem('folia_last_seen_ponder_onboarding_version', '0.7.12');
             localStorage.setItem('folia_last_seen_guide_version', '0.7.9');
         });
         await page.evaluate(silent => localStorage.setItem('folia_hqplayer_silent_launch', String(silent)), silent);
@@ -39,7 +39,8 @@ async function main() {
         // Start from a closed Desktop for a genuine cold launch, after verifying the installed component.
         await page.evaluate(() => window.electron.nativeAudio.request({ action: 'hqplayer-shutdown' }));
         result.songs = await page.evaluate(async ({ chunks, provider }) => {
-            const modules = await Promise.all(Object.values(chunks).map(file => import(new URL('./assets/' + file, location.href).href)));
+            // Rollup may fold a formerly separate resourceCache chunk into another module.
+            const modules = await Promise.all(Object.values(chunks).filter(Boolean).map(file => import(new URL('./assets/' + file, location.href).href)));
             const values = modules.flatMap(module => Object.values(module));
             const stores = values.filter(value => typeof value?.getState === 'function');
             const find = key => stores.find(store => key in store.getState());
@@ -168,7 +169,14 @@ async function main() {
         const remaining = await require('../../../folia-hqplayer-component/src/hqplayerInstance.cjs').findRunningHQPlayers();
         assert.equal(remaining.length, 0);
         result.phases.push({ label: 'browser-after-hqplayer', playing: true, remainingHQPlayers: 0 });
-        result.devices = await page.evaluate(() => window.electron.nativeAudio.request({ action: 'devices' }));
+        result.deviceDiscovery = [];
+        for (let attempt = 0; attempt < 9; attempt++) {
+            result.devices = await page.evaluate(() => window.electron.nativeAudio.request({ action: 'devices' }));
+            result.deviceDiscovery.push({ attempt, devices: result.devices });
+            if (['wasapi-exclusive', 'asio'].every(backend => result.devices.some(item => item.backend === backend && /XingCore/.test(item.name)))) break;
+            console.log('Device endpoints still returning after HQPlayer exit, attempt', attempt);
+            await page.waitForTimeout(1000);
+        }
         for (const backend of ['wasapi-exclusive', 'asio']) {
             const device = result.devices.find(item => item.backend === backend && /XingCore/.test(item.name));
             assert.ok(device, `Missing hardware for ${backend}`);

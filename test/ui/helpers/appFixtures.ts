@@ -261,6 +261,8 @@ export async function installBaseState(
         clearAudioCache: async () => {},
         getAudioCacheStats: async () => ({ size: 0, count: 0 }),
         isWindowMaximized: async () => false,
+        isWindowFullscreen: async () => false,
+        onWindowFullscreenChanged: () => () => {},
       },
     });
 

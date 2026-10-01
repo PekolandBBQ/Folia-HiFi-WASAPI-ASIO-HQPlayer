@@ -11,6 +11,7 @@ import { applyAudioEqualizerSettings } from '../services/audioEqualizerGraph';
 import { type AudioEffectChain } from '../services/audioEffects/effectChain';
 import { buildPlaybackGraph } from '../services/playbackGraph';
 import { cachePlayedTrackAssets } from '../services/playedTrackCache';
+import { registerPlaybackFadeGraph } from '../services/playbackFade';
 import { rampGain, type AutomixDeckChain } from '../services/automix/crossfadeGraph';
 import { setStatusMessage as setStatusMsg } from '../stores/useStatusMessageStore';
 import { useAudioSettingsStore } from '../stores/useAudioSettingsStore';
@@ -84,6 +85,7 @@ export function usePlaybackAudioBridge({
         const changed = previousNativePlayback.current !== nativePlayback;
         previousNativePlayback.current = nativePlayback;
         if (!changed) return;
+        registerPlaybackFadeGraph(null);
         effectChainRef.current?.dispose();
         effectChainRef.current = null;
         equalizerNodesRef.current = [];
@@ -172,7 +174,7 @@ export function usePlaybackAudioBridge({
             analyser.smoothingTimeConstant = 0.6;
             analyserRef.current = analyser;
 
-            const { gainNode, effectChain, decksConnected } = buildPlaybackGraph({
+            const { gainNode, fadeNode, effectChain, decksConnected } = buildPlaybackGraph({
                 context: ctx,
                 analyser,
                 connectDecks,
@@ -180,6 +182,9 @@ export function usePlaybackAudioBridge({
                 settings: audioEqualizerSettings,
             });
             gainNodeRef.current = gainNode;
+            // Hands the transport its own fade node; until this runs (or if setup fails) pause and
+            // resume see no graph and fall back to plain element pause/play.
+            registerPlaybackFadeGraph({ context: ctx, gain: fadeNode });
             effectChainRef.current = effectChain;
             if (!decksConnected) {
                 console.warn('[AudioContext] Deck setup incomplete, automix will stay idle');

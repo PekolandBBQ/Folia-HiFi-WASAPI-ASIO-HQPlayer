@@ -1,7 +1,7 @@
 {
-  "version": "0.7.9",
+  "version": "0.7.12",
   "productName": "Folia-HiFi-WASAPI-ASIO-HQPlayer",
-  "upstreamVersion": "0.7.9",
+  "upstreamVersion": "0.7.12",
   "profile": "Folia HiFi",
   "legacyProfile": "FoliaExclusive",
   "ffmpegSha256": "d28a1c5730520de13dfe947f39366032a77eee5c4ba7e78b63fd82e409294cfb",

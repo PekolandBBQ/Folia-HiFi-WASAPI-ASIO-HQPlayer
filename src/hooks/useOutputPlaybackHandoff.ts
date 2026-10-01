@@ -1,3 +1,5 @@
+import { useAudioSettingsStore } from '../stores/useAudioSettingsStore';
+import { playbackFade } from '../services/playbackFade';
 import { useLayoutEffect, useRef, type MutableRefObject } from 'react';
 import { registerOutputHandoff } from '../services/nativeAudio/outputHandoff';
 import { usePlaybackStore, setPlayerState } from '../stores/usePlaybackStore';
@@ -15,10 +17,13 @@ export function useOutputPlaybackHandoff(audioRef: MutableRefObject<HTMLAudioEle
         const audio = audioRef.current;
         const currentSource = usePlaybackStore.getState().audioSrc;
         if (!audio || !currentSource || audio.getAttribute('src') !== currentSource || audio.error) return () => {};
+        const fadingOut = playbackFade.isFadingOut();
+        playbackFade.cancel();
         const previous = pending.current?.source === currentSource ? pending.current : null;
-        const checkpoint = { backend: nextBackend, deviceId: nextDevice, source: currentSource, volume: audio.volume, muted: audio.muted,
+        const settings = useAudioSettingsStore.getState();
+        const checkpoint = { backend: nextBackend, deviceId: nextDevice, source: currentSource, volume: settings.volume, muted: settings.isMuted,
             position: previous?.position ?? audio.currentTime,
-            playing: previous?.playing ?? (!audio.paused || usePlaybackStore.getState().playerState === PlayerState.PLAYING) };
+            playing: previous?.playing ?? (!fadingOut && (!audio.paused || usePlaybackStore.getState().playerState === PlayerState.PLAYING)) };
         pending.current = checkpoint;
         autoPlay.current = false;
         pendingResumeTime.current = checkpoint.position;

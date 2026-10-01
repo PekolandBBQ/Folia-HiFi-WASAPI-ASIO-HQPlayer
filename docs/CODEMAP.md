@@ -43,6 +43,7 @@
 | 32+ | `src/components/visualizer/definition.ts` |
 | 32+ | `src/mods/folium/contract.ts` |
 | 32+ | `src/services/db.ts` |
+| 32+ | `src/services/onlineMusic/omni.ts` |
 | 32+ | `src/services/onlineMusic/songMetadata.ts` |
 | 32+ | `src/stores/useAppViewStore.ts` |
 | 32+ | `src/stores/usePlaybackStore.ts` |
@@ -79,7 +80,10 @@
 - `dev/probes/lyricSegmentationSurface.probe.tsx`
 - `dev/probes/lyricStaffSection.probe.tsx`
 - `dev/probes/monetPortraitImage.probe.tsx`
+- `dev/probes/monetSubtitleDualRow.probe.tsx`
+- `dev/probes/nativeDragGuard.probe.tsx`
 - `dev/probes/nowPlayingToastTransitionBorder.probe.tsx`
+- `dev/probes/pendoloSubtitleDualRow.probe.tsx`
 - `dev/probes/playbackLyricsSettings.probe.tsx`
 - `dev/probes/playerBarModButtons.probe.tsx`
 - `dev/probes/playerBottomBar.probe.tsx`
@@ -87,9 +91,11 @@
 - `dev/probes/ponderPageSurfaces.probe.tsx`
 - `dev/probes/settingsHelpActions.probe.tsx`
 - `dev/probes/settingsNavigation.probe.tsx`
+- `dev/probes/subtitleDualRow.probe.tsx`
 - `dev/probes/themePark.probe.tsx`
 - `dev/probes/trackTitleNavigator.probe.tsx`
 - `dev/probes/visualizerMemory.probe.tsx`
+- `dev/probes/wallpaperEntryConfirm.probe.tsx`
 
 ### `src/components/ponder/ponderRegistry.ts`
 
@@ -162,6 +168,7 @@
 - `src/components/visualizer/classic/entry.tsx`
 - `src/components/visualizer/diorama/entry.tsx`
 - `src/components/visualizer/fume/entry.tsx`
+- `src/components/visualizer/lumiere/entry.tsx`
 - `src/components/visualizer/monet/entry.tsx`
 - `src/components/visualizer/partita/entry.tsx`
 - `src/components/visualizer/pendolo/entry.tsx`
@@ -178,6 +185,7 @@
 - `src/components/visualizer/classic/tuning.ts`
 - `src/components/visualizer/diorama/tuning.ts`
 - `src/components/visualizer/fume/tuning.ts`
+- `src/components/visualizer/lumiere/tuning.ts`
 - `src/components/visualizer/monet/tuning.ts`
 - `src/components/visualizer/partita/tuning.ts`
 - `src/components/visualizer/pendolo/tuning.ts`

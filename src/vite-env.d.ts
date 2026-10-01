@@ -16,6 +16,28 @@ declare global {
     };
   }
 
+  /** Unsaved AI settings sent by the "test connection" button. */
+  interface AiConnectionTestPayload {
+    provider: 'gemini' | 'openai';
+    apiKey: string;
+    apiUrl?: string;
+    model?: string;
+    stream?: boolean;
+    useSystemProxy?: boolean;
+  }
+
+  interface AiConnectionTestResult {
+    ok: boolean;
+    status?: number;
+    durationMs: number;
+    model?: string;
+    text?: string;
+    /** Set when the connection worked but no text came back. */
+    emptyReason?: 'reasoning' | 'empty';
+    error?: string;
+    errorKind?: 'invalid' | 'config' | 'timeout' | 'network' | 'http';
+  }
+
   interface ElectronCacheDirectoryResult {
     path: string;
     isDefault: boolean;
@@ -710,6 +732,8 @@ declare global {
       saveSettings: (key: string, value: any) => Promise<any>;
       onWallpaperModeChanged?: (callback: (settings: Record<string, unknown>) => void) => () => void;
       onWallpaperTransparentRefused?: (callback: (settings: Record<string, unknown>) => void) => () => void;
+      /** The tray asked to enter wallpaper mode; the renderer shows the confirmation before entering. */
+      onWallpaperEntryRequested?: (callback: () => void) => () => void;
       onWallpaperInputMonitorRequested?: (callback: () => void) => () => void;
       setPlaybackDisplaySleepBlockingActive: (active: boolean) => Promise<boolean>;
       setAppLocale: (localeKey: 'en' | 'zh-CN' | 'in') => Promise<string>;
@@ -746,6 +770,8 @@ declare global {
       generateTheme: (lyricsText: string, options?: { isPureMusic?: boolean; songTitle?: string }) => Promise<any>;
       /** Word-segments lyric lines with the user's configured model. Resolves to one boundary array per line. */
       segmentLyrics: (lines: string[]) => Promise<string[][]>;
+      /** Sends "hello" with the unsaved AI settings from the form and reports the reply. Never rejects on connection failures. */
+      testAiConnection: (settings: AiConnectionTestPayload) => Promise<AiConnectionTestResult>;
       fetchLyricProxy: (
         url: string,
         init?: {
@@ -820,6 +846,8 @@ declare global {
       closeRemoteControl: () => Promise<boolean>;
       getRemoteControlAlwaysOnTop: () => Promise<boolean>;
       setRemoteControlAlwaysOnTop: (alwaysOnTop: boolean) => Promise<boolean>;
+      getRemoteControlWindowSettings: () => Promise<{ hideTitlebar: boolean; clickThrough: boolean }>;
+      onRemoteControlWindowSettingsChanged: (callback: (settings: { hideTitlebar: boolean; clickThrough: boolean }) => void) => () => void;
       publishRemoteControlSnapshot: (snapshot: ElectronRemoteControlSnapshot) => Promise<boolean>;
       getRemoteControlSnapshot: () => Promise<ElectronRemoteControlSnapshot | null>;
       sendRemoteControlCommand: (command: ElectronRemoteControlCommand) => Promise<boolean>;

@@ -1,5 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
+import { useShallow } from 'zustand/react/shallow';
 import {
     AlertCircle,
     AppWindow,
@@ -17,11 +18,13 @@ import type { Theme } from '../../../types';
 import { CustomSelect } from '../../shared/CustomSelect';
 import { SettingsAnchor } from './navigation/SettingsAnchorContext';
 import SettingsSectionHeading from './navigation/SettingsSectionHeading';
+import AiConnectionTest from './AiConnectionTest';
 import SettingsRow, { SettingsToggle } from './SettingsRow';
 import { settingsDividerClassFor } from './settingsCardClasses';
+import { usePlayerChromeSettingsStore } from '../../../stores/usePlayerChromeSettingsStore';
 
 // src/components/modal/settings/DesktopSettingsSubview.tsx
-// Desktop-only tray, update, and AI settings separated from the global settings modal.
+// Desktop-only window, tray, update, and AI settings separated from the global settings modal.
 
 const AUR_PACKAGE_URL = 'https://aur.archlinux.org/packages/folia-major-bin';
 
@@ -31,6 +34,7 @@ type ElectronSettingsState = {
     OPENAI_API_URL: string;
     OPENAI_API_MODEL: string;
     OPENAI_API_TEMPERATURE: string;
+    OPENAI_API_STREAM: boolean;
     AI_PROVIDER: string;
     USE_SYSTEM_PROXY_FOR_AI: boolean;
     ENABLE_UPDATE_CHECK: boolean;
@@ -52,10 +56,16 @@ export type DesktopSettingsChrome = {
 export type DesktopSettingsPreferences = {
     hideTaskbarIcon: boolean;
     hideRemoteControlTaskbarIcon: boolean;
+    hideRemoteControlTitlebar: boolean;
+    remoteControlClickThrough: boolean;
     minimizeToTray: boolean;
+    closeToTray: boolean;
     onToggleHideTaskbarIcon: (enabled: boolean) => void;
     onToggleHideRemoteControlTaskbarIcon: (enabled: boolean) => void;
+    onToggleHideRemoteControlTitlebar: (enabled: boolean) => void;
+    onToggleRemoteControlClickThrough: (enabled: boolean) => void;
     onToggleMinimizeToTray: (enabled: boolean) => void;
+    onToggleCloseToTray: (enabled: boolean) => void;
     onToggleOpenPlayerOnLaunch: (enabled: boolean) => void;
     openPlayerOnLaunch: boolean;
     wallpaperMode: boolean;
@@ -106,10 +116,16 @@ const DesktopSettingsSubview: React.FC<DesktopSettingsSubviewProps> = ({
     const {
         hideTaskbarIcon,
         hideRemoteControlTaskbarIcon,
+        hideRemoteControlTitlebar,
+        remoteControlClickThrough,
         minimizeToTray,
+        closeToTray,
         onToggleHideTaskbarIcon,
         onToggleHideRemoteControlTaskbarIcon,
+        onToggleHideRemoteControlTitlebar,
+        onToggleRemoteControlClickThrough,
         onToggleMinimizeToTray,
+        onToggleCloseToTray,
         onToggleOpenPlayerOnLaunch,
         openPlayerOnLaunch,
         wallpaperMode,
@@ -140,6 +156,13 @@ const DesktopSettingsSubview: React.FC<DesktopSettingsSubviewProps> = ({
         updateStatus,
     } = model;
     const { t } = useTranslation();
+    const {
+        hideFullscreenButton,
+        handleToggleHideFullscreenButton,
+    } = usePlayerChromeSettingsStore(useShallow(state => ({
+        hideFullscreenButton: state.hideFullscreenButton,
+        handleToggleHideFullscreenButton: state.handleToggleHideFullscreenButton,
+    })));
 
     if (!isElectron) {
         return null;
@@ -217,8 +240,13 @@ const DesktopSettingsSubview: React.FC<DesktopSettingsSubviewProps> = ({
                         renderToggle(minimizeToTray, () => onToggleMinimizeToTray(!minimizeToTray)),
                     )}
                     {renderRow(
+                        t('options.closeToTray'),
+                        t('options.closeToTrayDesc'),
+                        renderToggle(closeToTray, () => onToggleCloseToTray(!closeToTray)),
+                    )}
+                    {renderRow(
                         t('options.openPlayerOnLaunch'),
-                        '应用启动时自动开启全屏/大屏歌词播放界面，无需手动点击。',
+                        t('options.openPlayerOnLaunchDesc'),
                         renderToggle(openPlayerOnLaunch, () => onToggleOpenPlayerOnLaunch(!openPlayerOnLaunch)),
                     )}
                     {renderRow(
@@ -230,6 +258,27 @@ const DesktopSettingsSubview: React.FC<DesktopSettingsSubviewProps> = ({
                         t('options.hideRemoteControlTaskbarIcon'),
                         t('options.hideRemoteControlTaskbarIconDesc'),
                         renderToggle(hideRemoteControlTaskbarIcon, () => onToggleHideRemoteControlTaskbarIcon(!hideRemoteControlTaskbarIcon)),
+                    )}
+                    {renderRow(
+                        t('options.hideRemoteControlTitlebar'),
+                        t('options.hideRemoteControlTitlebarDesc'),
+                        renderToggle(hideRemoteControlTitlebar, () => onToggleHideRemoteControlTitlebar(!hideRemoteControlTitlebar)),
+                    )}
+                    {renderRow(
+                        t('options.remoteControlClickThrough'),
+                        t('options.remoteControlClickThroughDesc'),
+                        renderToggle(remoteControlClickThrough, () => onToggleRemoteControlClickThrough(!remoteControlClickThrough)),
+                    )}
+                    {renderRow(
+                        t('options.hideFullscreenButton'),
+                        t('options.hideFullscreenButtonDesc'),
+                        <SettingsToggle
+                            checked={hideFullscreenButton}
+                            onChange={() => handleToggleHideFullscreenButton(!hideFullscreenButton)}
+                            offClass={toggleOffBackgroundClass}
+                            onColor={theme?.secondaryColor}
+                            ariaLabel={t('options.hideFullscreenButton')}
+                        />,
                         true,
                     )}
                 </div>
@@ -526,7 +575,8 @@ const DesktopSettingsSubview: React.FC<DesktopSettingsSubviewProps> = ({
 
                     <div className={`p-4 space-y-3 border-b ${rowDividerClass}`}>
                         {electronSettings.AI_PROVIDER !== 'openai' ? (
-                            renderField(
+                            <>
+                            {renderField(
                                 t('options.geminiApiKey') || 'Gemini API Key',
                                 <input
                                     type="password"
@@ -536,7 +586,18 @@ const DesktopSettingsSubview: React.FC<DesktopSettingsSubviewProps> = ({
                                     className={fieldClass}
                                     style={{ color: 'var(--text-primary)' }}
                                 />,
-                            )
+                            )}
+                            <AiConnectionTest
+                                key="gemini"
+                                payload={{
+                                    provider: 'gemini',
+                                    apiKey: electronSettings.GEMINI_API_KEY || '',
+                                    useSystemProxy: electronSettings.USE_SYSTEM_PROXY_FOR_AI === true,
+                                }}
+                                buttonClassName={ghostButtonClass}
+                                isDaylight={isDaylight}
+                            />
+                            </>
                         ) : (
                             <>
                                 {renderField(
@@ -577,6 +638,20 @@ const DesktopSettingsSubview: React.FC<DesktopSettingsSubviewProps> = ({
                                     />,
                                     t('options.openaiApiTemperatureDesc') || 'Range: 0–2. Defaults to 0.7 when left blank.',
                                 )}
+                                <div className="flex items-center justify-between gap-4 text-left">
+                                    <div className="space-y-1 min-w-0">
+                                        <div className="text-xs opacity-60" style={{ color: 'var(--text-secondary)' }}>
+                                            {t('options.openaiApiStream') || 'Streaming'}
+                                        </div>
+                                        <div className="text-[10px] opacity-45 leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+                                            {t('options.openaiApiStreamDesc')}
+                                        </div>
+                                    </div>
+                                    {renderToggle(
+                                        electronSettings.OPENAI_API_STREAM === true,
+                                        () => setElectronSettings({ ...electronSettings, OPENAI_API_STREAM: !electronSettings.OPENAI_API_STREAM }),
+                                    )}
+                                </div>
                                 {renderField(
                                     t('options.openaiApiKey') || 'OpenAI API Key',
                                     <input
@@ -588,6 +663,19 @@ const DesktopSettingsSubview: React.FC<DesktopSettingsSubviewProps> = ({
                                         style={{ color: 'var(--text-primary)' }}
                                     />,
                                 )}
+                                <AiConnectionTest
+                                    key="openai"
+                                    payload={{
+                                        provider: 'openai',
+                                        apiKey: electronSettings.OPENAI_API_KEY || '',
+                                        apiUrl: electronSettings.OPENAI_API_URL || '',
+                                        model: electronSettings.OPENAI_API_MODEL || '',
+                                        stream: electronSettings.OPENAI_API_STREAM === true,
+                                        useSystemProxy: electronSettings.USE_SYSTEM_PROXY_FOR_AI === true,
+                                    }}
+                                    buttonClassName={ghostButtonClass}
+                                    isDaylight={isDaylight}
+                                />
                             </>
                         )}
                     </div>

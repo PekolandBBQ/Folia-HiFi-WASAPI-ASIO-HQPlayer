@@ -122,6 +122,7 @@ export default {
     "subtitleMode": {
       "translation": "Track subtitle beralih ke terjemahan",
       "romanization": "Track subtitle beralih ke romanisasi",
+      "both": "Subtitle menampilkan romanisasi dan terjemahan",
       "none": "Teks subtitle disembunyikan"
     },
     "rightBtnHidden": "Tombol sisi kanan pemutar disembunyikan",
@@ -135,6 +136,8 @@ export default {
     "geometricBgShown": "Latar geometris umum ditampilkan",
     "minimizeToTray": "Saat diminimalkan, aplikasi akan bersembunyi di tray",
     "minimizeToTaskbar": "Saat diminimalkan, aplikasi tetap muncul di taskbar",
+    "closeToTray": "Menutup jendela akan menyembunyikannya ke tray",
+    "closeToQuit": "Menutup jendela akan keluar dari aplikasi",
     "wallpaperModeOn": "Mode wallpaper diaktifkan",
     "wallpaperModeOff": "Mode wallpaper dimatikan",
     "macWallpaperInputMonitoringNeeded": "Mode wallpaper memerlukan izin Input Monitoring: izinkan Folia di Pengaturan Sistem → Privasi & Keamanan → Input Monitoring, lalu aktifkan ulang mode wallpaper",
@@ -149,7 +152,7 @@ export default {
     "sleepTimerPlaybackPaused": "Timer tidur selesai; pemutaran dijeda",
     "taskbarHidden": "Ikon jendela utama di taskbar disembunyikan",
     "taskbarRestored": "Ikon jendela utama di taskbar dipulihkan",
-    "openPlayerOnLaunch": "Langsung buka halaman pemutar saat dibuka",
+    "openPlayerOnLaunch": "Langsung buka tampilan pemutaran saat dibuka",
     "autoPlayOnLaunchOn": "Pemutaran akan dilanjutkan sendiri saat aplikasi dibuka",
     "autoPlayOnLaunchOff": "Sesi terakhir akan dipulihkan dalam keadaan dijeda",
     "openHomeOnLaunch": "Buka halaman beranda secara default saat dibuka",
@@ -360,7 +363,8 @@ export default {
         "diorama": "Teks titik-titik melintasi ruang 3D dengan kamera mengikuti lirik",
         "pendolo": "Sampul duduk di muka jam; lirik berdetak sepanjang busur, satu gigi demi satu",
         "sonnet": "Garis halus, bingkai, dan huruf raksasa berongga bergantian terbuka; tiap baris tertata bagai halaman sajak",
-        "tempera": "Bidang warna luas dan raster halus menyusun ulang perlahan; kata-kata membalik warna saat melintasi cat"
+        "tempera": "Bidang warna luas dan raster halus menyusun ulang perlahan; kata-kata membalik warna saat melintasi cat",
+        "lumiere": "Cahaya volumetrik menembus kabut dan debu melayang; setiap kata terukir saat berkas cahaya menyentuhnya"
       },
       "background": {
         "common": "Cahaya fluida dari warna sampul, dengan bentuk geometris melayang di belakang",
@@ -513,6 +517,7 @@ export default {
       "lyric-staff-policy-cycle": { "title": "Penanganan kredit pembuka", "description": "Ganti cara blok kredit di awal lirik ditangani" },
       "lyric-staff-absorb-cycle": { "title": "Mode serap kredit pembuka", "description": "Ganti apakah baris di sekitarnya ikut digabung ke blok kredit" },
       "settings-obs-browser-source": { "title": "Sumber browser OBS", "description": "Buka pengaturan sumber browser OBS" },
+      "obs-toggle-keep-main-window-animation": { "title": "OBS: pertahankan animasi jendela utama", "description": "Aktifkan atau nonaktifkan animasi jendela utama saat OBS terhubung" },
       "desktop-toggle-lyric-api": { "title": "API Lirik", "description": "Alihkan endpoint lirik lokal tanpa autentikasi" },
       "settings-obs-copy-css": { "title": "Salin CSS OBS", "description": "Salin Custom CSS OBS Browser Source yang membawa aset unggahan" },
       "settings-storage": { "title": "Pengaturan penyimpanan", "description": "Buka pengaturan cache dan penyimpanan" },
@@ -543,6 +548,9 @@ export default {
       "settings-wallpaper-mode": { "title": "Pengaturan mode wallpaper", "description": "Buka pengaturan mode wallpaper" },
       "desktop-toggle-wallpaper-mode": { "title": "Alihkan mode wallpaper", "description": "Ubah aplikasi menjadi wallpaper lirik desktop" },
       "desktop-toggle-wallpaper-dock-autohide": { "title": "Sembunyikan Dock otomatis selama mode wallpaper", "description": "Sembunyikan Dock secara otomatis selama mode wallpaper aktif (khusus Dock bawah)" },
+      "desktop-toggle-close-to-tray": { "title": "Tutup jendela ke tray", "description": "Biarkan aplikasi tetap berjalan di tray saat jendela utama ditutup" },
+      "desktop-toggle-remote-control-hide-titlebar": { "title": "Remote: sembunyikan bilah atas", "description": "Alihkan bilah kontrol jendela melayang di atas jendela remote control" },
+      "desktop-unlock-remote-control": { "title": "Buka kunci jendela remote control", "description": "Matikan click-through remote control agar jendela dapat dipakai dan dipindahkan lagi" },
       "sleep-timer": { "title": "Timer Tidur", "description": "Jeda pemutaran setelah durasi tertentu, atau tutup aplikasi desktop" },
       "navigate-home": { "title": "Ke beranda", "description": "Kembali ke tampilan beranda" },
       "navigate-player": { "title": "Ke pemutar", "description": "Kembali ke tampilan pemutar" },
@@ -627,6 +635,7 @@ export default {
       "visualizer-pendolo": { "title": "Visualizer: Pendolo", "description": "Alihkan ke visualizer Pendolo" },
       "visualizer-sonnet": { "title": "Visualizer: Sonnet", "description": "Alihkan ke PV lirik Jepang Sonnet" },
       "visualizer-tempera": { "title": "Visualizer: Tempera", "description": "Alihkan ke PV lirik blok warna Tempera" },
+      "visualizer-lumiere": { "title": "Visualizer: Lumiere", "description": "Alihkan ke PV lirik cahaya panggung Lumiere" },
       "desktop-toggle-remote-control": { "title": "Alihkan jendela remote control", "description": "Buka atau tutup jendela remote control" },
       "desktop-toggle-main-window-always-on-top": { "title": "Alihkan jendela utama selalu di atas", "description": "Sematkan atau lepas jendela utama di atas jendela lain" },
       "background-monet-full-overlay": { "title": "Latar: Overlay Layar Penuh Monet", "description": "Alihkan latar ke tata letak overlay layar penuh Monet" },
@@ -653,12 +662,14 @@ export default {
       "settings-toggle-follow-system-reduced-motion": { "title": "Ikuti pengurangan gerakan sistem", "description": "Alihkan apakah pengaturan animasi sistem boleh mengurangi gerakan di aplikasi" },
       "settings-toggle-track-switch-buttons": { "title": "Selalu tampilkan panah pengganti trek", "description": "Alihkan apakah panah pengganti trek tetap terlihat di samping judul" },
       "settings-toggle-main-window-titlebar": { "title": "Selalu tampilkan tombol kontrol jendela", "description": "Alihkan apakah tombol kontrol jendela tetap terlihat" },
+      "settings-toggle-fullscreen-titlebar-button": { "title": "Alihkan visibilitas tombol layar penuh", "description": "Tampilkan atau sembunyikan tombol layar penuh di kontrol jendela desktop" },
       "settings-toggle-native-mac-fullscreen-button": { "title": "Tombol layar penuh asli macOS", "description": "Alihkan kontrol jendela macOS ke layar penuh asli alih-alih memaksimalkan" },
       "settings-toggle-cursor-auto-hide": { "title": "Sembunyikan kursor bersama kontrol pemutar", "description": "Alihkan apakah penunjuk tetikus ikut menghilang bersama kontrol pemutar yang tersembunyi otomatis" },
       "settings-toggle-auto-play-on-launch": { "title": "Putar otomatis saat dibuka", "description": "Alihkan apakah membuka aplikasi langsung melanjutkan sesi terakhir" },
       "settings-toggle-transcode-fallback": { "title": "Konversi audio yang tidak didukung", "description": "Alihkan pemulihan Electron untuk audio lokal dan Navidrome yang tidak dapat didekode Chromium" },
+      "settings-toggle-playback-fade": { "title": "Fade saat jeda dan lanjut", "description": "Alihkan fade singkat saat menjeda dan melanjutkan pemutaran" },
       "settings-toggle-bottom-subtitle-overlay": { "title": "Alihkan overlay subtitle bawah", "description": "Tampilkan atau sembunyikan seluruh overlay subtitle bawah" },
-      "settings-cycle-subtitle-content-mode": { "title": "Putar mode konten subtitle", "description": "Alihkan antara mode terjemahan dan romanisasi" },
+      "settings-cycle-subtitle-content-mode": { "title": "Putar mode konten subtitle", "description": "Putar konten subtitle antara terjemahan, romanisasi, dan romanisasi plus terjemahan" },
       "settings-toggle-subtitle-background": { "title": "Alihkan latar subtitle", "description": "Tampilkan atau sembunyikan latar belakang subtitle untuk keterbacaan" },
       "settings-language-system": { "title": "Ikuti bahasa sistem", "description": "Gunakan bahasa browser atau sistem" },
       "settings-language-zh-CN": { "title": "Ganti bahasa ke Tionghoa", "description": "Gunakan Bahasa Tionghoa Sederhana di antarmuka" },
@@ -1131,6 +1142,7 @@ export default {
     "onlineProvider": "Penyedia musik online",
     "providerNotLoggedIn": "Belum login · klik untuk pindai",
     "providerNotConfigured": "API tidak dikonfigurasi untuk Web",
+    "providerNoAccount": "Tanpa login",
     "loadingQr": "Memuat QR...",
     "scanQr": "Silakan pindai kode QR",
     "qrExpired": "Kode QR kedaluwarsa. Muat ulang untuk mencoba lagi.",
@@ -1192,6 +1204,9 @@ export default {
     "guestTitle": "Coba cari beberapa lagu dulu",
     "guestPrompt": "Login untuk mengakses playlist, album tersimpan, dan radio Anda.",
     "guestPromptProvider": "Login dengan {{provider}} untuk mengakses perpustakaan musik online Anda.",
+    "accountlessTitle": "{{provider}} belum menyediakan perpustakaan",
+    "accountlessBody": "Playlist, album, dan radio akan didukung oleh antarmuka sumber lengkap di Folium v2.\nUntuk saat ini, cari lagu untuk diputar.",
+    "accountlessSearch": "Cari lagu",
     "multiPlatformLoginTitle": "Coba cari beberapa lagu dulu",
     "multiPlatformLoginPrompt": "Login untuk mengakses playlist, album tersimpan, dan radio Anda.",
     "loginProvider": "Hubungkan Akun {{provider}}",
@@ -1662,6 +1677,8 @@ export default {
     "alwaysShowTrackSwitchButtonsDesc": "Pertahankan panah sebelumnya/berikutnya di kedua sisi judul bilah progres tetap terlihat alih-alih muncul saat diarahkan.",
     "alwaysShowMainWindowTitlebar": "Selalu Tampilkan Tombol Kontrol Jendela",
     "alwaysShowMainWindowTitlebarDesc": "Pertahankan tombol minimalkan, maksimalkan, dan tutup tetap terlihat tanpa menampilkan strip titlebar.",
+    "hideFullscreenButton": "Sembunyikan tombol layar penuh",
+    "hideFullscreenButtonDesc": "Jika diaktifkan, sembunyikan tombol layar penuh pada kontrol jendela aplikasi desktop.",
     "useNativeMacFullscreenButton": "Gunakan tombol layar penuh asli macOS",
     "useNativeMacFullscreenButtonDesc": "Buat kontrol jendela masuk ke layar penuh asli macOS alih-alih memaksimalkan jendela. Nonaktif secara bawaan.",
     "hidePlayerProgressBar": "Sembunyikan bilah kontrol bawah pemutar",
@@ -1731,17 +1748,27 @@ export default {
     "gridViewCardFalloffReset": "Pulihkan peredupan bawaan",
     "disableVisualizerGeometricBackground": "Sembunyikan latar belakang geometris umum",
     "disableVisualizerGeometricBackgroundDesc": "Sembunyikan bentuk latar belakang geometris bersama di halaman pemutar.",
-    "desktopTrayBehavior": "Perilaku tray desktop",
-    "desktopTrayBehaviorDesc": "Hanya desktop. Kontrol minimalkan-ke-tray dan apakah peluncuran langsung membuka halaman pemutar.",
+    "desktopTrayBehavior": "Perilaku jendela desktop",
+    "desktopTrayBehaviorDesc": "Khusus desktop. Atur tombol layar penuh, perilaku tray dan taskbar, serta halaman yang dibuka saat aplikasi dimulai.",
     "minimizeToTray": "Minimalkan ke tray",
+    "closeToTray": "Tutup jendela ke tray",
+    "closeToTrayDesc": "Tombol tutup menyembunyikan jendela ke system tray alih-alih keluar, sehingga pemutaran tetap berjalan. Gunakan Keluar di menu tray untuk mengakhiri aplikasi.",
     "hideTaskbarIcon": "Sembunyikan ikon taskbar",
     "hideTaskbarIconDesc": "Sembunyikan aplikasi dari taskbar meskipun jendela utama masih terbuka. Ikon tray tetap menjadi cara utama untuk kembali ke aplikasi.",
     "hideRemoteControlTaskbarIcon": "Sembunyikan ikon taskbar Remote Control",
     "hideRemoteControlTaskbarIconDesc": "Sembunyikan jendela Remote Control dari taskbar saat terbuka.",
-    "openPlayerOnLaunch": "Buka pemutar saat diluncurkan",
+    "hideRemoteControlTitlebar": "Sembunyikan bilah melayang atas Remote Control",
+    "hideRemoteControlTitlebarDesc": "Jangan tampilkan bilah kontrol jendela (latar belakang, sematkan, tutup) saat kursor mendekati bagian atas. Area transparan di atas masih bisa diseret untuk memindahkan jendela. Untuk menutupnya, gunakan \"Jendela Remote\" di menu tray, atau \"Toggle remote control window\" di palet perintah.",
+    "remoteControlClickThrough": "Click-through Remote Control",
+    "remoteControlClickThroughDesc": "Jika aktif, jendela Remote Control mengabaikan mouse dan klik diteruskan ke desktop dan jendela di bawahnya; jendela itu sendiri tidak dapat dipakai atau diseret. Untuk memakai atau memindahkannya, pilih \"Buka Kunci Jendela Remote\" di menu tray atau \"Buka kunci jendela remote control\" di palet perintah terlebih dahulu, atau matikan sakelar ini di sini.",
+    "openPlayerOnLaunch": "Buka tampilan pemutaran saat diluncurkan",
+    "openPlayerOnLaunchDesc": "Membuka tampilan pemutaran saat aplikasi dimulai. Mengikuti \"Tampilan yang dibuka Putar\": jika Lattice dipilih, peluncuran membuka kolase antrean.",
     "wallpaperMode": "Mode wallpaper",
     "wallpaperModeDesc": "Turunkan jendela aplikasi ke dasar desktop dan pertahankan selalu terlihat sebagai wallpaper lirik. Input keyboard tidak tersedia.",
     "wallpaperModeMacPermissionHint": "Mode wallpaper Mac memerlukan Input Monitoring: aktifkan Folia di Pengaturan Sistem → Privasi & Keamanan → Input Monitoring, lalu mulai ulang aplikasi.",
+    "wallpaperEnterConfirmTitle": "Masuk ke mode wallpaper?",
+    "wallpaperEnterConfirmDesc": "Jendela akan turun ke dasar desktop dan tetap di sana sebagai wallpaper lirik. Jendela tidak dapat lagi ditutup, diminimalkan, atau dipindahkan, dan keyboard tidak dapat menjangkau aplikasi.\n\nUntuk keluar, buka menu Folia di system tray (bilah menu di macOS) lalu klik \"Mode Wallpaper\" lagi.",
+    "wallpaperEnterConfirmAction": "Masuk ke mode wallpaper",
     "wallpaperMacAutohideDock": "Sembunyikan Dock otomatis",
     "wallpaperMacAutohideDockDesc": "Dock disembunyikan otomatis selama mode wallpaper",
     "voiceInputSettings": "Input suara",
@@ -1798,7 +1825,16 @@ export default {
     "discordPresenceDisconnected": "Terputus",
     "obsBrowserSource": "Sumber Browser OBS",
     "enableObsBrowserSource": "Aktifkan sumber browser OBS",
-    "obsBrowserSourceDesc": "Render animasi lirik lengkap di OBS tanpa audio. Saat terhubung, jendela utama berhenti merender visualizer berat.",
+    "obsBrowserSourceDesc": "Render animasi lirik lengkap di OBS tanpa audio. Secara default, jendela utama berhenti merender visualizer berat saat OBS terhubung.",
+    "obsKeepMainWindowAnimation": "Pertahankan animasi jendela utama saat OBS terhubung",
+    "obsKeepMainWindowAnimationDesc": "Jika aktif, jendela utama tetap merender animasi lirik saat OBS terhubung. Jendela utama dan OBS sama-sama merender animasi berat, sehingga memakai lebih banyak GPU / CPU.",
+    "obsBrowserSourceGuideTitle": "Cara penggunaan",
+    "obsBrowserSourceGuideStep1": "Di OBS, tambahkan sumber Browser pada bagian Sources.",
+    "obsBrowserSourceGuideStep2": "Tempel URL OBS di atas ke kolom URL.",
+    "obsBrowserSourceGuideStep3": "Atur ukuran ke 1920x1080 (1080x1920 untuk potret). Ukuran lebih besar seperti 3840x2160 memperbesar tata letak secara proporsional agar teks lebih tajam.",
+    "obsBrowserSourceGuideStep4": "Sumber browser hanya merender gambar dan tidak memutar suara. Untuk merekam audio, gunakan Desktop Audio atau Application Audio Capture di OBS untuk Folia.",
+    "obsBrowserSourceGuideStep5": "Pengaturan visual seperti tema, font, dan animasi disinkronkan ke OBS. Latar di OBS menjadi transparan jika jendela utama memakai latar pemutar transparan atau latar blur native pada halaman pemutar.",
+    "obsBrowserSourceGuideStep6": "Jumlah klien di atas 0 berarti OBS sudah terhubung. Membuat ulang token membatalkan URL lama, jadi perbarui URL di OBS.",
     "obsBrowserSourceAddress": "URL OBS",
     "copyObsBrowserSourceAddress": "Salin URL OBS",
     "regenerateObsBrowserSourceToken": "Hasilkan Ulang Token",
@@ -1863,6 +1899,7 @@ export default {
     "subtitleContentMode": "Konten Subtitle",
     "subtitleContentTranslation": "Terjemahan",
     "subtitleContentRomanization": "Romanisasi",
+    "subtitleContentBoth": "Romanisasi + Terjemahan",
     "subtitleContentNone": "Tidak Ada",
     "classicSettings": "Penyetelan Classic",
     "classicSettingsDesc": "Kontrol rotasi per kata dan rentang melayang pernapasan seluruh baris.",
@@ -2105,6 +2142,8 @@ export default {
     "audioOutputSettings": "Perangkat Pemutaran",
     "transcodeFallback": "Konversi audio yang tidak didukung secara otomatis",
     "transcodeFallbackDesc": "Di Electron, gunakan FFmpeg untuk memulihkan trek lokal dan Navidrome yang tidak dapat didekode Chromium tanpa mengubah file asli.",
+    "playbackFade": "Fade saat jeda dan lanjut",
+    "playbackFadeDesc": "Kecilkan suara sebentar sebelum menjeda dan naikkan kembali saat melanjutkan, bukan memotongnya. Fade dilewati bila audio tidak melalui mesin audio.",
     "audioOutputDevice": "Perangkat Output Saat Ini",
     "audioOutputDeviceDesc": "Ganti output audio yang digunakan oleh pemutar saat ini. Target utama adalah desktop Electron, dan lingkungan browser juga berfungsi bila setSinkId tersedia.",
     "audioOutputRefresh": "Segarkan",
@@ -2153,6 +2192,17 @@ export default {
     "openaiApiModelDesc": "Diperlukan oleh banyak penyedia kompatibel OpenAI. Contoh: gpt-5.6-luna, gpt-4.1-mini, deepseek-v4-flash.",
     "openaiApiTemperature": "Temperatur",
     "openaiApiTemperatureDesc": "Rentang: 0–2. Default ke 0.7 bila dibiarkan kosong.",
+    "openaiApiStream": "Streaming",
+    "openaiApiStreamDesc": "Aktifkan hanya jika penyedia mewajibkan streaming; hasil tetap diurai setelah diterima sepenuhnya.",
+    "aiTestConnection": "Uji koneksi",
+    "aiTestRunning": "Menguji...",
+    "aiTestConnectionDesc": "Mengirim \"hello\" ke endpoint dengan nilai yang ada di formulir saat ini (tidak perlu disimpan dulu).",
+    "aiTestSuccess": "Terhubung",
+    "aiTestFailed": "Koneksi gagal",
+    "aiTestDuration": "Waktu",
+    "aiTestModel": "Model",
+    "aiTestEmptyReasoning": "Terhubung, tetapi model tidak mengembalikan teks: penalaran menghabiskan anggaran token.",
+    "aiTestEmpty": "Terhubung, tetapi model tidak mengembalikan teks.",
     "geminiApiKeyDesc": "Backend API Netease berjalan lokal.",
     "openaiApiUrlDesc": "API yang kompatibel dengan OpenAI tidak selalu merupakan API resmi OpenAI. Anda dapat memakai penyedia dan model kompatibel seperti DeepSeek.",
     "save": "Simpan",
@@ -2611,6 +2661,48 @@ export default {
         "description": "Setelah masuk, playlist pribadi buatan Anda kini dapat memuat lagu dengan paging sungguhan. Backend yang di-host sendiri harus memakai qq-music-api 3.1.2 atau lebih baru; backend lama beralih otomatis, dan playlist yang tidak dapat dibaca kini menjelaskan bahwa playlist itu tidak publik, alih-alih tampil kosong tanpa keterangan."
       }
     },
+    "v0_7_12": {
+      "intro": "0.7.12 menghadirkan fade saat jeda dan lanjut, subtitle dwibaris, tutup ke tray, antrean lagu populer artis sekali ketuk, pengaturan penyedia AI yang lebih mudah, dan tampilan awal yang lebih cerdas.",
+      "playbackFade": {
+        "title": "Jeda dan Lanjut Lebih Halus",
+        "description": "Pemutaran kini memudar sejenak sebelum dijeda dan memudar masuk saat dilanjutkan, tanpa potongan mendadak. Dapat dimatikan di pengaturan pemutaran."
+      },
+      "dualSubtitles": {
+        "title": "Romanisasi dan Terjemahan Bersama",
+        "description": "Subtitle dapat menampilkan romanisasi di atas dan terjemahan di bawah, berguna untuk belajar lagu berbahasa asing. Didukung di subtitle bersama serta mode lirik Monet dan Chrono; Lattice masih hanya menampilkan terjemahan."
+      },
+      "closeToTray": {
+        "title": "Tutup Jendela ke Tray",
+        "description": "Secara opsional sembunyikan jendela ke system tray saat tombol tutup diklik, sehingga pemutaran terus berjalan. Nonaktif secara default; aktifkan di pengaturan Desktop."
+      },
+      "artistTopQueue": {
+        "title": "Antrekan Lagu Populer Artis",
+        "description": "Tombol baru di samping Kembali pada halaman artis menambahkan lagu populer yang tercantum ke antrean sekali ketuk, tanpa menghentikan pemutaran."
+      },
+      "aiProviderSetup": {
+        "title": "Pengaturan Penyedia AI Lebih Mudah",
+        "description": "Tombol \"Uji koneksi\" memeriksa endpoint, kunci, dan model sebelum disimpan, plus sakelar streaming untuk penyedia kompatibel OpenAI yang hanya menerima permintaan streaming."
+      },
+      "startupView": {
+        "title": "Langsung Masuk ke Pemutaran",
+        "description": "Saat \"buka pemutar saat peluncuran\" aktif, aplikasi kini mengikuti tampilan pilihan Anda setelah memutar, dan dapat langsung ke Lattice."
+      }
+    },
+    "v0_7_10": {
+      "intro": "0.7.10 menghadirkan mode lirik Lumiere, transisi grid playlist yang lebih mulus, dan tombol layar penuh di aplikasi desktop.",
+      "lumiere": {
+        "title": "Mode Lirik Baru: Lumiere",
+        "description": "Cahaya volumetrik, kabut, dan gambar garis mengikuti lagu saat berkas cahaya menerangi lirik kata demi kata. Atur pencahayaan, teks, warna tema, dan kualitas. Lumiere memerlukan WebGL."
+      },
+      "gridTransitions": {
+        "title": "Transisi Grid Playlist Lebih Mulus",
+        "description": "Saat berpindah tampilan atau melompat antarplaylist, kartu sampul kini bergeser mulus ke tempatnya. Jika gerakan mikro antarmuka dikurangi, perpindahan berlangsung langsung."
+      },
+      "fullscreenButton": {
+        "title": "Tombol Layar Penuh Desktop",
+        "description": "Alihkan layar penuh dari kontrol jendela aplikasi desktop. Tombolnya dapat disembunyikan di pengaturan Desktop."
+      }
+    },
     "v0_7_9": {
       "intro": "0.7.9 menghadirkan impor dan ekspor lirik, lapisan video, dan mod terverifikasi, membuat pengaturan lebih mudah dicari, serta memperbaiki lirik macet di Linux.",
       "lyricFiles": {
@@ -2904,7 +2996,11 @@ export default {
     "popularSongs": "Populer / POPULER",
     "artistAlbums": "Album / ALBUM",
     "searchAlbums": "Cari album...",
-    "viewAlbums": "Lihat album"
+    "viewAlbums": "Lihat album",
+    "addTopSongsToQueue": "Antrekan lagu teratas",
+    "topSongsAddedToQueue_one": "{{count}} lagu teratas ditambahkan ke antrean putar",
+    "topSongsAddedToQueue_other": "{{count}} lagu teratas ditambahkan ke antrean putar",
+    "noTopSongsToQueue": "Tidak ada lagu teratas yang bisa diantrekan",
   },
   "obs": {
     "connecting": "Menghubungkan ke Folia",
@@ -3831,7 +3927,7 @@ export default {
         "combineBackground": "Ganti latarnya saja: gaya lirik tetap. Pengaturan latar ada di halaman Latar Belakang pada pengaturan animasi lirik.",
         "combineStyle": "Sekarang ganti gaya liriknya saja: latar yang baru dipilih tetap. Latar apa pun cocok dengan gaya lirik apa pun; hanya gaya Still yang tidak menggambar latar.",
         "subtitleShared": "Sebagian besar gaya lirik berbagi satu baris subtitel di bawah ini. Monet, Pendolo, dan Still menaruh terjemahan di tata letaknya sendiri dan tidak memakainya.",
-        "subtitleContent": "Pengaturannya ada di halaman Subtitle pada pengaturan animasi lirik dan berlaku untuk semua gaya yang memakainya. Baris pertama memilih terjemahan, romanisasi, atau tidak ada.",
+        "subtitleContent": "Pengaturannya ada di halaman Subtitle pada pengaturan animasi lirik dan berlaku untuk semua gaya yang memakainya. Baris pertama memilih terjemahan, romanisasi, keduanya bertumpuk, atau tidak ada.",
         "subtitleBlur": "Matikan “Buramkan lirik non-terjemahan”, dan subtitel tidak lagi buram.",
         "subtitleFont": "Matikan “Subtitle Menggunakan Font Lirik” untuk memberi subtitel font dan ketebalan sendiri. “Skala subtitle” mengatur ukurannya sendiri dan selalu tersedia."
       },
@@ -3849,7 +3945,7 @@ export default {
         "animation": "Halaman animasi dimulai dari modenya sendiri. Jumlahnya lebih banyak daripada yang muat di sini dan layak kamu telusuri sendiri, jadi bab ini berhenti pada apa halaman ini, bukan mendaftar semuanya.",
         "perMode": "Yang mengikuti mode adalah penyetelan milik mode itu. Ini bukan sekumpulan baris tetap: ganti modenya dan baris-baris ini ikut berganti \u2014 itu sebabnya penggeser yang kamu ingat bisa hilang: ia milik mode yang kamu tinggalkan.",
         "background": "Halaman latar bekerja dengan cara yang sama: pilih latarnya, lalu setel latar itu. Ia lapisan terpisah dari animasi, jadi keduanya dipilih sendiri-sendiri dan pasangan mana pun boleh.",
-        "subtitleContent": "Subtitel adalah baris kedua di bawah lirik, dan baris pertama menentukan isinya: kosong, terjemahan, atau romanisasi. Ini satu pilihan, bukan tiga sakelar \u2014 terjemahan dan romanisasi tidak bisa menyala bersamaan.",
+        "subtitleContent": "Subtitel adalah baris kedua di bawah lirik, dan baris pertama menentukan isinya: kosong, terjemahan, romanisasi, atau keduanya dengan romanisasi di atas. Ini satu pilihan, bukan sakelar terpisah. Monet, Pendolo, dan Still hanya menampilkan terjemahan saat memilih keduanya.",
         "subtitleLegibility": "Baris di bawahnya soal keterbacaan di atas gambar yang bergerak: alas di belakang teks, seberapa pekat alas itu, dan kaburan pada baris yang belum dinyanyikan supaya baris yang sekarang menonjol.",
         "subtitleFont": "Baris terakhir adalah huruf subtitelnya sendiri, dan secara bawaan ia mengikuti fon lirik. Matikan itu dan keluarga, ukuran, serta ketebalannya sendiri muncul di bawah \u2014 selagi menyala mereka memang tidak ada di sana, dan itulah jawaban dari \u201ckenapa pengaturan fon subtitel tidak ketemu\u201d."
       },

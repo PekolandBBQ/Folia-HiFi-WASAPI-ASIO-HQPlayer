@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, session, screen, dialog, shell, nativeImage, desktopCapturer, Menu, Tray, nativeTheme, powerSaveBlocker, safeStorage, protocol, net: electronNet } = require('electron');
+const { app, BrowserWindow, ipcMain, session, screen, dialog, shell, nativeImage, desktopCapturer, Menu, Tray, nativeTheme, powerSaveBlocker, safeStorage, protocol, crashReporter, net: electronNet } = require('electron');
 const fs = require('fs');
 const http = require('http');
 const path = require('path');
@@ -9,7 +9,15 @@ const { createStageApi } = require('./stageApi.cjs');
 const { createModSystem } = require('./modSystem/modSystem.cjs');
 const { MOD_PROTOCOL_PRIVILEGED_SCHEME } = require('./modSystem/modProtocol.cjs');
 const { createWindowPlaybackHandoffStore } = require('./windowPlaybackHandoff.cjs');
+const {
+  REMOTE_CONTROL_HIDE_TITLEBAR_SETTING_KEY,
+  REMOTE_CONTROL_CLICK_THROUGH_SETTING_KEY,
+  readRemoteControlWindowSettings,
+  shouldShowRemoteUnlockTrayItem,
+  applyRemoteControlMouseIgnore,
+} = require('./remoteControlWindowSettings.cjs');
 const wallpaperWatchdogModule = require('./wallpaperWatchdog.cjs');
+const { requestWallpaperEntryConfirmation } = require('./wallpaperEntryRequest.cjs');
 const windowsWallpaperModule = require('./windowsWallpaperController.cjs');
 const { createWindowsWallpaperTargetResolver } = require('./windowsWallpaperTarget.cjs');
 const { createWindowsWallpaperMouseInjector } = require('./windowsWallpaperMouse.cjs');
@@ -41,6 +49,7 @@ const { sanitizeDualTheme: sanitizeGeneratedDualTheme } = require('../shared/the
 const {
   detectOpenAICompatibleProvider,
   normalizeOpenAIChatCompletionsUrl,
+  runAiConnectionTest,
   runAiJsonCompletion,
 } = require('./aiTextClient.cjs');
 const {
@@ -1566,6 +1575,7 @@ const mainLocale = {
     trayShowWindow: '显示窗口',
     trayHideWindow: '隐藏窗口',
     trayOpenRemote: '遥控窗口',
+    trayUnlockRemote: '解锁遥控窗口',
     trayTransparentBackground: '透明背景',
     trayToggleClickThrough: '点击穿透',
     trayAlwaysOnTop: '窗口置顶',
@@ -1587,6 +1597,7 @@ const mainLocale = {
     trayShowWindow: 'Show Window',
     trayHideWindow: 'Hide Window',
     trayOpenRemote: 'Remote Window',
+    trayUnlockRemote: 'Unlock Remote Window',
     trayTransparentBackground: 'Transparent Background',
     trayToggleClickThrough: 'Click-Through',
     trayAlwaysOnTop: 'Always on Top',
@@ -1608,6 +1619,7 @@ const mainLocale = {
     trayShowWindow: 'Tampilkan Jendela',
     trayHideWindow: 'Sembunyikan Jendela',
     trayOpenRemote: 'Jendela Remote',
+    trayUnlockRemote: 'Buka Kunci Jendela Remote',
     trayTransparentBackground: 'Latar Belakang Transparan',
     trayToggleClickThrough: 'Click-Through',
     trayAlwaysOnTop: 'Selalu di Atas',
@@ -1703,13 +1715,46 @@ const crashLog = createCrashLog({
   getLocale: getMainLocale,
   onLine: runtimeLine,
 });
+// Keep native crash dumps beside the text reports so one folder contains the evidence needed
+// to identify the faulting module. Dumps stay on this machine until the user shares them.
+if (crashLog.dir) {
+  const crashDumpDir = path.join(crashLog.dir, 'crash-dumps');
+  try {
+    fs.mkdirSync(crashDumpDir, { recursive: true });
+    app.setPath('crashDumps', crashDumpDir);
+  } catch (error) {
+    console.warn('[Crash] Could not place crash dumps beside logs', error);
+  }
+}
+try {
+  crashReporter.start({ uploadToServer: false });
+} catch (error) {
+  console.warn('[Crash] Native crash dumps are unavailable', error);
+}
+
+const RENDERER_CRASH_RELOAD_WINDOW_MS = 60_000;
+const MAX_RENDERER_CRASH_RELOADS = 2;
+
+// Limit automatic reloads to avoid trapping the user in a crash loop.
+function shouldReloadMainRenderer(win, details) {
+  if (details?.reason !== 'crashed' || !win || win.isDestroyed() || isWallpaperModeEnabled()) {
+    return false;
+  }
+  const now = Date.now();
+  win.__rendererCrashReloads = (win.__rendererCrashReloads || [])
+    .filter(at => now - at < RENDERER_CRASH_RELOAD_WINDOW_MS);
+  return win.__rendererCrashReloads.length < MAX_RENDERER_CRASH_RELOADS;
+}
+
 installCrashHandlers({
   app,
   crashLog,
-  // 壁纸模式对渲染进程崩溃有自己的恢复路径：Linux 的 windowtolayer watchdog 会重启进程回到普通
-  // 窗口，Windows / macOS 就地 reload 页面。两处都只认 reason === 'crashed'，这里跟着它们走。
-  // 崩溃文件照写，只是不弹窗——桌面正在自己恢复，弹出来的框用户除了关掉别无选择。
-  isRendererCrashRecovered: (details) => details?.reason === 'crashed' && isWallpaperModeEnabled(),
+  // 壁纸模式沿用自己的恢复路径；普通主窗口短时间内最多自动重载两次。
+  // 恢复期间仍写日志，但不弹出会打断恢复的提示框。
+  isRendererCrashRecovered: (details, contents) => details?.reason === 'crashed' && (
+    isWallpaperModeEnabled()
+    || (contents === mainWindow?.webContents && shouldReloadMainRenderer(mainWindow, details))
+  ),
 });
 
 
@@ -1726,6 +1771,8 @@ let latestObsBrowserSourceAudio = null;
 const obsBrowserSourceClients = new Set();
 let remoteControlAlwaysOnTop = false;
 let remoteControlSkipTaskbarEnabled = false;
+let remoteControlHideTitlebarEnabled = false;
+let remoteControlClickThroughEnabled = false;
 let mainWindowAlwaysOnTop = false;
 let mainWindowClickThroughEnabled = false;
 let mainWindowClickThroughUnlockHover = false;
@@ -1744,8 +1791,11 @@ let windowStateSaveTimer = null;
 let wallpaperModeRelaunchTimer = null;
 let wallpaperModeRelaunchGeneration = 0;
 const x11WallpaperWindows = new WeakSet();
+// Must match CLICK_THROUGH_UNLOCK_HOTSPOT in src/utils/clickThroughUnlockHotspot.ts (the renderer
+// runs the same hit test on mousemove). The width covers the unlock button both at right-[180px]
+// and at right-[224px] (titlebar showing the fullscreen button).
 const MAIN_WINDOW_CLICK_THROUGH_UNLOCK_HOTSPOT = {
-  width: 48,
+  width: 84,
   height: 40,
   rightInset: 176,
   topInset: 4,
@@ -1772,6 +1822,7 @@ const OBS_BROWSER_SOURCE_PORT_SETTING_KEY = 'OBS_BROWSER_SOURCE_PORT';
 const LYRIC_API_ENABLED_SETTING_KEY = 'LYRIC_API_ENABLED';
 const DISCORD_RICH_PRESENCE_ENABLED_SETTING_KEY = 'DISCORD_RICH_PRESENCE_ENABLED';
 const MINIMIZE_TO_TRAY_SETTING_KEY = 'MINIMIZE_TO_TRAY';
+const CLOSE_TO_TRAY_SETTING_KEY = 'CLOSE_TO_TRAY';
 const HIDE_TASKBAR_ICON_SETTING_KEY = 'HIDE_TASKBAR_ICON';
 const REMOTE_CONTROL_ALWAYS_ON_TOP_SETTING_KEY = 'REMOTE_CONTROL_ALWAYS_ON_TOP';
 const REMOTE_CONTROL_SKIP_TASKBAR_SETTING_KEY = 'REMOTE_CONTROL_SKIP_TASKBAR';
@@ -1892,9 +1943,12 @@ function getPublicSettings() {
   return {
     ...store.store,
     [MINIMIZE_TO_TRAY_SETTING_KEY]: readStoredBoolean(MINIMIZE_TO_TRAY_SETTING_KEY, false),
+    [CLOSE_TO_TRAY_SETTING_KEY]: readStoredBoolean(CLOSE_TO_TRAY_SETTING_KEY, false),
     [HIDE_TASKBAR_ICON_SETTING_KEY]: readStoredBoolean(HIDE_TASKBAR_ICON_SETTING_KEY, false),
     [REMOTE_CONTROL_ALWAYS_ON_TOP_SETTING_KEY]: readStoredBoolean(REMOTE_CONTROL_ALWAYS_ON_TOP_SETTING_KEY, true),
     [REMOTE_CONTROL_SKIP_TASKBAR_SETTING_KEY]: readStoredBoolean(REMOTE_CONTROL_SKIP_TASKBAR_SETTING_KEY, false),
+    [REMOTE_CONTROL_HIDE_TITLEBAR_SETTING_KEY]: readStoredBoolean(REMOTE_CONTROL_HIDE_TITLEBAR_SETTING_KEY, false),
+    [REMOTE_CONTROL_CLICK_THROUGH_SETTING_KEY]: readStoredBoolean(REMOTE_CONTROL_CLICK_THROUGH_SETTING_KEY, false),
     [MAIN_WINDOW_ALWAYS_ON_TOP_SETTING_KEY]: readStoredBoolean(MAIN_WINDOW_ALWAYS_ON_TOP_SETTING_KEY, false),
     [TRANSPARENT_PLAYER_BACKGROUND_SETTING_KEY]: readStoredBoolean(TRANSPARENT_PLAYER_BACKGROUND_SETTING_KEY, false),
     [DISCORD_RICH_PRESENCE_ENABLED_SETTING_KEY]: readStoredBoolean(DISCORD_RICH_PRESENCE_ENABLED_SETTING_KEY, false),
@@ -1966,6 +2020,11 @@ function broadcastObsBrowserSourceStatus() {
 mainWindowSkipTaskbarEnabled = readStoredBoolean(HIDE_TASKBAR_ICON_SETTING_KEY, false);
 remoteControlAlwaysOnTop = readStoredBoolean(REMOTE_CONTROL_ALWAYS_ON_TOP_SETTING_KEY, true);
 remoteControlSkipTaskbarEnabled = readStoredBoolean(REMOTE_CONTROL_SKIP_TASKBAR_SETTING_KEY, false);
+{
+  const remoteWindowSettings = readRemoteControlWindowSettings(readStoredBoolean);
+  remoteControlHideTitlebarEnabled = remoteWindowSettings.hideTitlebar;
+  remoteControlClickThroughEnabled = remoteWindowSettings.clickThrough;
+}
 mainWindowAlwaysOnTop = readStoredBoolean(MAIN_WINDOW_ALWAYS_ON_TOP_SETTING_KEY, false);
 
 const stageApi = createStageApi({
@@ -2100,7 +2159,7 @@ function saveWindowState(win, options = {}) {
   // A wallpaper window's geometry is dictated by the display; persisting it would clobber the
   // bounds a normal window restores to after leaving wallpaper mode (same reason as the X11
   // guards — the Windows wallpaper path just has no separate window set to check against).
-  if (!win || win.isDestroyed() || isX11WallpaperMode() || x11WallpaperWindows.has(win) || win.__wallpaperGeometry === true) {
+  if (!win || win.isDestroyed() || isX11WallpaperMode() || x11WallpaperWindows.has(win) || win.__wallpaperGeometry === true || win.__transparentFullscreen === true) {
     return;
   }
 
@@ -2124,6 +2183,26 @@ function saveWindowState(win, options = {}) {
   pendingWindowStateSave = null;
   clearWindowStateSaveTimer();
   persistWindowStateSnapshot(snapshot);
+}
+
+// Electron sizes Windows transparent windows to the display without updating isFullScreen().
+// Track that path per window so F11 can restore its original bounds on the next press.
+function isMainWindowFullscreen(win) {
+  return win.__transparentFullscreen === true || win.isFullScreen();
+}
+
+function setMainWindowFullscreen(win, fullscreen) {
+  if (process.platform === 'win32' && win.__wallpaperWindowTransparent === true) {
+    if (isMainWindowFullscreen(win) === fullscreen) {
+      return;
+    }
+    if (fullscreen) {
+      saveWindowState(win);
+      win.__transparentFullscreenRestoreBounds = win.getBounds();
+    }
+    win.__transparentFullscreen = fullscreen;
+  }
+  win.setFullScreen(fullscreen);
 }
 
 function isWindowsThumbarSupported() {
@@ -2356,6 +2435,38 @@ function applyRemoteControlSkipTaskbar(win) {
   return remoteControlSkipTaskbarEnabled;
 }
 
+function buildRemoteControlWindowSettings() {
+  return {
+    hideTitlebar: remoteControlHideTitlebarEnabled,
+    clickThrough: remoteControlClickThroughEnabled,
+  };
+}
+
+// Applies click-through to the remote window and tells its renderer about both switches.
+function applyRemoteControlWindowPresentation(win) {
+  if (!win || win.isDestroyed()) {
+    return false;
+  }
+
+  applyRemoteControlMouseIgnore(win, remoteControlClickThroughEnabled);
+  if (!win.webContents.isDestroyed()) {
+    win.webContents.send('remote-control-window-settings-changed', buildRemoteControlWindowSettings());
+  }
+  return true;
+}
+
+// Tray / command palette unlock path: persist, apply, and let the main renderer's store follow.
+function setRemoteControlClickThroughEnabled(enabled) {
+  remoteControlClickThroughEnabled = Boolean(enabled);
+  store.set(REMOTE_CONTROL_CLICK_THROUGH_SETTING_KEY, remoteControlClickThroughEnabled);
+  applyRemoteControlWindowPresentation(remoteControlWindow);
+  refreshTrayMenu();
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('wallpaper-mode-changed', getPublicSettings());
+  }
+  return remoteControlClickThroughEnabled;
+}
+
 function applyMainWindowAlwaysOnTop() {
   if (!mainWindow || mainWindow.isDestroyed()) {
     return false;
@@ -2486,6 +2597,12 @@ function refreshTrayMenu() {
         }
       },
     },
+    ...(shouldShowRemoteUnlockTrayItem({ remoteOpen, clickThrough: remoteControlClickThroughEnabled }) ? [{
+      label: locale.trayUnlockRemote,
+      click: () => {
+        setRemoteControlClickThroughEnabled(false);
+      },
+    }] : []),
     { type: 'separator' },
     {
       label: locale.trayDesktopLyricMode,
@@ -2509,6 +2626,13 @@ function refreshTrayMenu() {
       checked: isWallpaperModeEnabled(),
       click: () => {
         const nextEnabled = !isWallpaperModeEnabled();
+        // Entering is a user-initiated switch, so the renderer asks for confirmation first and
+        // then enters through save-settings. Leaving never needs one.
+        if (nextEnabled && requestWallpaperEntryConfirmation({ mainWindow, focusMainWindow, isClickThroughActive: () => mainWindowClickThroughEnabled })) {
+          // The click already flipped the checkbox; nothing is entered until the user confirms.
+          refreshTrayMenu();
+          return;
+        }
         // NOTE: no Electron window calls here. Calling setAlwaysOnTop/setIgnoreMouseEvents
         // on the window right before the entry poisons the upcoming simple-full-screen
         // presentation (measured on-device: the content is presented 33pt low, leaving an
@@ -4641,6 +4765,7 @@ function createRemoteControlWindow() {
     remoteControlWindow.setTitle(REMOTE_CONTROL_WINDOW_TITLE);
     applyRemoteControlAlwaysOnTop(remoteControlWindow);
     applyRemoteControlSkipTaskbar(remoteControlWindow);
+    applyRemoteControlWindowPresentation(remoteControlWindow);
     remoteControlWindow.show();
     remoteControlWindow.focus();
     broadcastPlaybackSyncBridgeStatus();
@@ -4687,11 +4812,13 @@ function createRemoteControlWindow() {
     win.setTitle(REMOTE_CONTROL_WINDOW_TITLE);
   });
   applyRemoteControlAlwaysOnTop(win);
+  applyRemoteControlMouseIgnore(win, remoteControlClickThroughEnabled);
   loadAppEntry(win, { remote: '1' });
 
   win.once('ready-to-show', () => {
     win.setTitle(REMOTE_CONTROL_WINDOW_TITLE);
     applyRemoteControlAlwaysOnTop(win);
+    applyRemoteControlWindowPresentation(win);
     if (latestRemoteControlSnapshot) {
       sendRemoteControlSnapshot(latestRemoteControlSnapshot);
     }
@@ -4959,6 +5086,19 @@ function createWindow(options = {}) {
   }
   win.__wallpaperWindowTransparent = useTransparentWindow;
   win.__wallpaperGeometry = useWallpaperGeometry;
+  win.__transparentFullscreen = false;
+
+  if (process.platform === 'win32' && useTransparentWindow) {
+    win.webContents.on('before-input-event', (event, input) => {
+      if (input.type !== 'keyDown' || input.key !== 'F11' || input.isAutoRepeat) {
+        return;
+      }
+      event.preventDefault();
+      if (!isWallpaperModeEnabled()) {
+        setMainWindowFullscreen(win, !isMainWindowFullscreen(win));
+      }
+    });
+  }
 
   if (useDesktopWindowType) {
     x11WallpaperWindows.add(win);
@@ -4967,6 +5107,11 @@ function createWindow(options = {}) {
   // Watchdog trigger point 1: a crashed renderer breaks the wallpaper connection.
   win.webContents.on('render-process-gone', (_event, details) => {
     wallpaperWatchdog.handleRendererGone(details);
+    if (win === mainWindow && shouldReloadMainRenderer(win, details)) {
+      win.__rendererCrashReloads.push(Date.now());
+      win.webContents.reload();
+      return;
+    }
     // Windows: a renderer crash kills only the page — the BrowserWindow (and its place in the
     // WorkerW) survives, so the helper keeps the still-valid hwnd and must NOT be touched.
     // Reloading the webContents restores the UI in place; the full window rebuild
@@ -5023,9 +5168,19 @@ function createWindow(options = {}) {
   // macOS completes fullscreen asynchronously; notify after the native transition, including
   // transitions initiated by the system menu or keyboard instead of the titlebar button.
   win.on('enter-full-screen', () => {
+    if (process.platform === 'win32' && useTransparentWindow) {
+      if (!win.__transparentFullscreen) {
+        saveWindowState(win);
+        win.__transparentFullscreenRestoreBounds = win.getBounds();
+      }
+      win.__transparentFullscreen = true;
+    }
     win.webContents.send('window-fullscreen-changed', true);
   });
   win.on('leave-full-screen', () => {
+    if (process.platform === 'win32' && useTransparentWindow) {
+      win.__transparentFullscreen = false;
+    }
     win.webContents.send('window-fullscreen-changed', false);
   });
   win.on('maximize', () => {
@@ -5529,9 +5684,12 @@ ipcMain.handle('save-settings', (event, key, value) => {
   }
   if (
     key === MINIMIZE_TO_TRAY_SETTING_KEY ||
+    key === CLOSE_TO_TRAY_SETTING_KEY ||
     key === HIDE_TASKBAR_ICON_SETTING_KEY ||
     key === REMOTE_CONTROL_ALWAYS_ON_TOP_SETTING_KEY ||
     key === REMOTE_CONTROL_SKIP_TASKBAR_SETTING_KEY ||
+    key === REMOTE_CONTROL_HIDE_TITLEBAR_SETTING_KEY ||
+    key === REMOTE_CONTROL_CLICK_THROUGH_SETTING_KEY ||
     key === TRANSPARENT_PLAYER_BACKGROUND_SETTING_KEY ||
     key === DISCORD_RICH_PRESENCE_ENABLED_SETTING_KEY ||
     key === VOICE_INPUT_PAUSE_ENABLED_SETTING_KEY ||
@@ -5699,6 +5857,17 @@ ipcMain.handle('save-settings', (event, key, value) => {
   if (key === REMOTE_CONTROL_SKIP_TASKBAR_SETTING_KEY) {
     remoteControlSkipTaskbarEnabled = Boolean(nextValue);
     applyRemoteControlSkipTaskbar(remoteControlWindow);
+  }
+
+  if (key === REMOTE_CONTROL_HIDE_TITLEBAR_SETTING_KEY) {
+    remoteControlHideTitlebarEnabled = Boolean(nextValue);
+    applyRemoteControlWindowPresentation(remoteControlWindow);
+  }
+
+  if (key === REMOTE_CONTROL_CLICK_THROUGH_SETTING_KEY) {
+    remoteControlClickThroughEnabled = Boolean(nextValue);
+    applyRemoteControlWindowPresentation(remoteControlWindow);
+    refreshTrayMenu();
   }
 
   if (key === STAGE_MODE_SOURCE_SETTING_KEY) {
@@ -6024,11 +6193,11 @@ ipcMain.handle('window-toggle-fullscreen', (event) => {
 
   // Fullscreen would tear the wallpaper window out of its desktop-layer geometry.
   if (isWallpaperModeEnabled()) {
-    return mainWindow.isFullScreen();
+    return isMainWindowFullscreen(mainWindow);
   }
 
-  const nextFullscreen = !mainWindow.isFullScreen();
-  mainWindow.setFullScreen(nextFullscreen);
+  const nextFullscreen = !isMainWindowFullscreen(mainWindow);
+  setMainWindowFullscreen(mainWindow, nextFullscreen);
   return nextFullscreen;
 });
 
@@ -6040,6 +6209,12 @@ ipcMain.handle('window-close', () => {
   // Closing a wallpaper window is meaningless; exit goes through the wallpaper mode setting.
   if (isWallpaperModeEnabled()) {
     return false;
+  }
+
+  // Only the titlebar X hides to the tray. Alt+F4, the taskbar's Close window, logoff and
+  // app.quit() still emit a real 'close', so there is always a way to actually exit.
+  if (readStoredBoolean(CLOSE_TO_TRAY_SETTING_KEY, false) && appTray) {
+    return hideMainWindow();
   }
 
   mainWindow.close();
@@ -6068,7 +6243,7 @@ ipcMain.handle('window-is-fullscreen', (event) => {
   if (!isTrustedMainWindowContents(event.sender) || !mainWindow || mainWindow.isDestroyed()) {
     return false;
   }
-  return mainWindow.isFullScreen();
+  return isMainWindowFullscreen(mainWindow);
 });
 
 ipcMain.handle('window-get-transparent-mode', (event) => {
@@ -6386,6 +6561,14 @@ ipcMain.handle('remote-control-set-always-on-top', (event, nextAlwaysOnTop) => {
   return remoteControlAlwaysOnTop;
 });
 
+ipcMain.handle('remote-control-get-window-settings', (event) => {
+  if (!isTrustedRemoteControlContents(event.sender) && !isTrustedMainWindowContents(event.sender)) {
+    throw new Error('Untrusted renderer attempted to read remote control window settings.');
+  }
+
+  return buildRemoteControlWindowSettings();
+});
+
 ipcMain.handle('remote-control-publish-snapshot', (event, snapshot) => {
   if (!isTrustedMainWindowContents(event.sender)) {
     throw new Error('Untrusted renderer attempted to publish remote control state.');
@@ -6443,8 +6626,8 @@ ipcMain.handle('remote-control-send-command', (event, command) => {
       return false;
     }
 
-    if (mainWindow.isFullScreen()) {
-      mainWindow.setFullScreen(false);
+    if (isMainWindowFullscreen(mainWindow)) {
+      setMainWindowFullscreen(mainWindow, false);
     }
 
     if (mainWindow.isMaximized()) {
@@ -6518,14 +6701,16 @@ ipcMain.handle('video-export-prepare-window', (event, size) => {
 
   if (!videoExportWindowRestoreState) {
     videoExportWindowRestoreState = {
-      bounds: mainWindow.getBounds(),
+      bounds: mainWindow.__transparentFullscreen === true
+        ? (mainWindow.__transparentFullscreenRestoreBounds || mainWindow.getBounds())
+        : mainWindow.getBounds(),
       isMaximized: mainWindow.isMaximized(),
-      isFullScreen: mainWindow.isFullScreen(),
+      isFullScreen: isMainWindowFullscreen(mainWindow),
     };
   }
 
-  if (mainWindow.isFullScreen()) {
-    mainWindow.setFullScreen(false);
+  if (isMainWindowFullscreen(mainWindow)) {
+    setMainWindowFullscreen(mainWindow, false);
   }
 
   if (mainWindow.isMaximized()) {
@@ -6559,7 +6744,7 @@ ipcMain.handle('video-export-restore-window', (event) => {
   mainWindow.setBounds(restoreState.bounds, true);
 
   if (restoreState.isFullScreen) {
-    mainWindow.setFullScreen(true);
+    setMainWindowFullscreen(mainWindow, true);
   } else if (restoreState.isMaximized) {
     mainWindow.maximize();
   }
@@ -6662,6 +6847,25 @@ ipcMain.handle('generate-theme', async (event, lyricsText, options = {}) => {
   } catch (e) {
     console.error(e);
     throw new Error(e instanceof Error ? e.message : String(e));
+  }
+});
+
+// "Test connection" button in AI settings: sends "hello" using the values currently in the form
+// (not the saved ones, nothing is persisted) over the same fetch/proxy path as real AI requests.
+// Never throws: a failed connection is returned as a displayable result, and the key is not echoed.
+ipcMain.handle('ai-test-connection', async (event, payload) => {
+  if (!isTrustedMainWindowContents(event.sender)) {
+    return { ok: false, durationMs: 0, errorKind: 'invalid', error: 'Untrusted caller.' };
+  }
+  try {
+    const useSystemProxy = payload && typeof payload === 'object' && typeof payload.useSystemProxy === 'boolean'
+      ? payload.useSystemProxy
+      : (store.get('USE_SYSTEM_PROXY_FOR_AI') || false);
+    const customFetch = (url, options) => fetchWithOptionalSystemProxy(url, options, useSystemProxy);
+    return await runAiConnectionTest(payload, { customFetch });
+  } catch (e) {
+    console.error('[ai-test] failed:', e instanceof Error ? e.message : String(e));
+    return { ok: false, durationMs: 0, errorKind: 'network', error: 'Connection test failed unexpectedly.' };
   }
 });
 

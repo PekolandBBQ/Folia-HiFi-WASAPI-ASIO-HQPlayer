@@ -7,5 +7,6 @@ export default defineConfig({ ...base,
     projects: base.projects!.map(project => ({ ...project, use: { ...project.use,
         baseURL: project.name === 'components' ? 'http://127.0.0.1:4187/dev-probe.html' : 'http://127.0.0.1:4187' } })),
     webServer: { command: 'node node_modules/vite/bin/vite.js --host 127.0.0.1 --port 4187 --strictPort',
+        env: { VITE_NETEASE_API_BASE: 'http://127.0.0.1:4187/__mock_netease__' },
         url: 'http://127.0.0.1:4187', reuseExistingServer: false, timeout: 120000 },
 });

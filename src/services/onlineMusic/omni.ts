@@ -29,9 +29,11 @@ import { saveSongReplayGain } from './resourceCache';
 import {
     getOnlineMusicProvider,
     getOnlineMusicProviderForSong,
+    getOnlineMusicProviderRegistryVersion,
     listOnlineMusicProviders,
     providerSupports,
     requireOnlineMusicProvider,
+    subscribeOnlineMusicProviderRegistry,
 } from './providerRegistry';
 import { saveProviderAccountSnapshot } from './providerAccountCache';
 import { applyOmniAudioHook, applyOmniLyricsHook } from '../hostExtensionHooks';
@@ -42,7 +44,11 @@ import { applyOmniAudioHook, applyOmniLyricsHook } from '../hostExtensionHooks';
 
 type PageInput = { limit: number; offset: number };
 
-const activeProviderId = (): OmniProviderId => useOnlineProviderAccountStore.getState().activeProviderId;
+const activeProviderId = (): OmniProviderId => {
+    const storedProviderId = useOnlineProviderAccountStore.getState().activeProviderId;
+    // A persisted selection can outlive its provider when switching builds or branches.
+    return getOnlineMusicProvider(storedProviderId) ? storedProviderId : 'netease';
+};
 
 const activeProvider = () => requireOnlineMusicProvider(activeProviderId());
 
@@ -110,6 +116,16 @@ export const omni = {
     getActiveRequestGeneration(): number {
         return activeRequestGeneration;
     },
+
+    // The provider list changes at runtime (Folium mods). A useSyncExternalStore pair for the UI.
+    subscribeProviders(listener: () => void): () => void {
+        return subscribeOnlineMusicProviderRegistry(listener);
+    },
+
+    getProviderRegistryVersion(): number {
+        return getOnlineMusicProviderRegistryVersion();
+    },
+
     getProviderSummaries(): OmniProviderSummary[] {
         const accounts = useOnlineProviderAccountStore.getState().accounts;
         return listOnlineMusicProviders().map(provider => {
@@ -119,6 +135,7 @@ export const omni = {
                 displayName: provider.displayName,
                 shortName: provider.shortName || provider.displayName,
                 availability: provider.getAvailability?.() ?? { configured: true },
+                requiresAccount: provider.capabilities.auth,
                 status: account?.status || 'unknown',
                 user: account?.user || null,
                 collections: account?.collections || [],
@@ -446,7 +463,7 @@ export const omni = {
     },
 
     canPlaySong(song: SongResult): boolean {
-        return Boolean(providerForSong(song).playback);
+        return Boolean(getOnlineMusicProviderForSong(song)?.playback);
     },
 
     async getAudioSource(song: SongResult, quality: AudioQualityPreference): Promise<OmniAudioSource | null> {

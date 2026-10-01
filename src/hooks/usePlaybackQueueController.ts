@@ -28,6 +28,7 @@ import { buildStagePlayerSnapshot, resolveStagePlayerQueueItemIndex } from '../u
 import type { LocalLibraryDisplayCatalog } from '../services/playbackAdapters';
 import type { SearchReturnView, SearchSource } from '../stores/useSearchNavigationStore';
 import { dispatchSearchTrackAction } from '../components/app/search/searchTrackActions';
+import { playbackFade } from '../services/playbackFade';
 import { getProviderSongMetadata } from '../services/onlineMusic/songMetadata';
 import { setStatusMessage as setStatusMsg } from '../stores/useStatusMessageStore';
 import { setAudioSrc, setCachedCoverUrl, setCurrentLineIndex, setCurrentSong, setDuration, setIsFmMode, setPlayQueue, setPlayerState, usePlaybackStore } from '../stores/usePlaybackStore';
@@ -265,8 +266,9 @@ export function usePlaybackQueueController({
         appendOnlineSongsToMainQueue([song]);
     }, [appendOnlineSongsToMainQueue]);
 
-    const addOnlineSongsToQueue = useCallback((songs: SongResult[]) => {
-        appendOnlineSongsToMainQueue(songs);
+    // Batch variant; returns how many songs the queue actually took so callers that want their own toast can count.
+    const addOnlineSongsToQueue = useCallback((songs: SongResult[], options?: { suppressToast?: boolean }) => {
+        return appendOnlineSongsToMainQueue(songs, options).affectedCount;
     }, [appendOnlineSongsToMainQueue]);
 
     const clearPendingUnavailableSkip = useCallback(() => {
@@ -457,6 +459,14 @@ export function usePlaybackQueueController({
             return;
         }
         const song = allowedSong;
+        // A pause still fading out belongs to the song being replaced. Run it now instead of
+        // dropping it: the old song is still sounding and the new one can take seconds to load, so
+        // dropping it would leave the old song at full volume under a PAUSED player. The fade node
+        // is back at unity afterwards, so the new song does not start silent. The automix advance is
+        // left alone: that is the blend's own handover, and a pause pressed during it is still meant.
+        if (!options.isAutomixAdvance) {
+            playbackFade.flush();
+        }
         interruptStagePlaybackForMainTransition();
 
         console.log('[App] playSong initiated:', song.name, song.id, 'isFm:', isFmCall);

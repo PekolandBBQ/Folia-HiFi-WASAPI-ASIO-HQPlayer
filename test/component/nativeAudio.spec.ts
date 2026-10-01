@@ -255,6 +255,22 @@ test('switches a playing track between native outputs without another Play and r
 });
 
 
+test('browser to native handoff uses listener volume rather than the media element unity gain', async ({ mount, page }) => {
+    await page.addInitScript(() => {
+        localStorage.setItem('folia_native_audio_backend', 'browser');
+        localStorage.setItem('player_volume', '0.18');
+    });
+    await mount('nativeAudio');
+    await page.getByRole('button', { name: 'Play', exact: true }).click();
+    await expect(page.getByTestId('status')).toHaveText('playing');
+    // A browser Web Audio graph owns listener volume; the element itself stays at unity.
+    await page.locator('audio').evaluate(audio => { (audio as HTMLAudioElement).volume = 1; });
+    await page.getByRole('button', { name: 'WASAPI / ASIO exclusive playback' }).click();
+    await page.getByText('WASAPI exclusive — Test DAC', { exact: true }).click();
+    await expect(page.getByTestId('status')).toHaveText('playing');
+    await expect.poll(() => page.evaluate(() => (window as any).__nativeRequests.filter((r: any) => r.action === 'volume').at(-1)?.volume)).toBe(0.18);
+});
+
 test('signal path is optional, reports source resolution, and responds to narrow and short windows', async ({ mount, page }) => {
     await mount('nativeAudio');
     await expect(page.getByTestId('status')).toHaveText('ready');

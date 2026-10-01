@@ -236,11 +236,14 @@ export type CommandPaletteSettingsContext = {
     setLatticePosterTintIntensity: (intensity: number) => void;
     toggleAlwaysShowTrackSwitchButtons: () => void;
     toggleAlwaysShowMainWindowTitlebar: () => void;
+    toggleHideFullscreenButton: () => void;
     toggleNativeMacFullscreenButton: () => void;
     toggleAutoHideCursorWithPlayerChrome: () => void;
     /** Lab switch: whether the restored session starts playing by itself on launch. */
     toggleAutoPlayOnLaunch: () => void;
     toggleTranscodeFallback: () => void;
+    /** Whether pause and resume fade the sound out and in. */
+    togglePlaybackFade: () => void;
     /**
      * Whether this build can watch the imported local folders at all. A getter because the answer
      * is a runtime API check (FileSystemObserver) rather than a stored value, and the settings
@@ -264,6 +267,14 @@ export type CommandPaletteSettingsContext = {
     toggleVoiceInputPause: () => void;
     togglePreventDisplaySleepDuringPlayback: () => void;
     toggleWallpaperMode: () => void;
+    /** Close button hides the main window to the tray instead of quitting (main process owns it). */
+    toggleCloseToTray: () => void;
+    /** Remote control window: hide the top floating window-control bar. */
+    toggleHideRemoteControlTitlebar: () => void;
+    /** Turns remote control click-through off (the way back into a click-through window). */
+    unlockRemoteControl: () => void;
+    /** OBS browser source: keep the main window's heavy animation while an OBS client is connected. */
+    toggleObsKeepMainWindowAnimation: () => void;
     /** macOS-only: the wallpaper-mode Dock auto-hide override (on by default). */
     toggleWallpaperMacAutohideDock: () => void;
     sleepTimerEnabled: boolean;
