@@ -20,6 +20,17 @@ async function main() {
     let page, originalSilent;
     try {
         page = await app.firstWindow(); page.setDefaultTimeout(25000);
+        // Retain provider status codes without signed source URLs, cookies or response contents.
+        result.providerReplies = [];
+        page.on('response', async response => {
+            if (!response.url().startsWith('https://u.y.qq.com/cgi-bin/musicu.fcg')) return;
+            const body = await response.json().catch(() => null);
+            result.providerReplies.push({ status: response.status(), code: body?.code, requestCode: body?.request?.code });
+        });
+        page.on('requestfailed', request => {
+            if (request.url().startsWith('https://u.y.qq.com/cgi-bin/musicu.fcg'))
+                result.providerReplies.push({ networkError: request.failure()?.errorText });
+        });
         await page.waitForFunction(() => window.electron?.nativeAudio && document.querySelector('#root')?.children.length);
         originalSilent = await page.evaluate(() => localStorage.getItem('folia_hqplayer_silent_launch'));
         await page.evaluate(() => {
