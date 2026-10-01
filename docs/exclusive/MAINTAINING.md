@@ -23,7 +23,7 @@ $env:FOLIA_FFMPEG_DIR='C:\build\ffmpeg\win-x64'
 node packaging/exclusive/build.cjs
 ```
 
-默认同时生成 Windows x64 NSIS 安装 EXE 和免安装 ZIP；应用名称与专版版本取自 `packaging/exclusive/release.json`。应用标识保持不变，配置目录为 `Folia HiFi`；卸载默认保留配置。软件版本始终与所基于的上游版本一致，本版为 0.7.9。专版 Git 标签使用 `hifi-v0.7.9`，同一上游版本的后续专版修订用 `hifi-v0.7.9-r2`、`-r3` 等独立标签，应用版本保持 0.7.9，避免覆盖已发布标签或上游 `v0.7.9`；GitHub Release 标记为正式版。
+默认同时生成 Windows x64 NSIS 安装 EXE 和免安装 ZIP；应用名称与专版版本取自 `packaging/exclusive/release.json`。应用标识保持不变，配置目录为 `Folia HiFi`；卸载默认保留配置。软件版本始终与所基于的上游版本一致，本版为 0.7.12。专版 Git 标签使用 `hifi-v0.7.12`，同一上游版本的后续专版修订用 `hifi-v0.7.12-r2`、`-r3` 等独立标签，应用版本保持 0.7.12，避免覆盖已发布标签或上游 `v0.7.12`；GitHub Release 标记为正式版。
 
 可用 `FOLIA_EXCLUSIVE_OUTPUT` 指定新输出目录。开发机器有共享依赖目录时，`FOLIA_BUILD_ROOT` 只指定依赖与公共构建资源所在项目；实际 renderer、Electron 和 shared 源码始终来自本脚本所在专版 checkout。不能将旧集成分支的构建产物当作最新专版。
 
