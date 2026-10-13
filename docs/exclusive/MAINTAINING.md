@@ -27,6 +27,8 @@ node packaging/exclusive/build.cjs
 
 可用 `FOLIA_EXCLUSIVE_OUTPUT` 指定新输出目录。开发机器有共享依赖目录时，`FOLIA_BUILD_ROOT` 只指定依赖与公共构建资源所在项目；实际 renderer、Electron 和 shared 源码始终来自本脚本所在专版 checkout。不能将旧集成分支的构建产物当作最新专版。
 
+Spotify 接入从本次开始采用用户指定标签 `folia-hifi-v0.7.12-r3`，后续修订沿用 `folia-` 前缀；旧 `hifi-v*` 标签保留。应用版本仍与上游保持一致。
+
 ## 发布前检查
 
 ```powershell

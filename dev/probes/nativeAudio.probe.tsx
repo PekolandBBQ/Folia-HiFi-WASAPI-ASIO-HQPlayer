@@ -30,6 +30,7 @@ function NativeAudioProbe({ hqplayer = false }: { hqplayer?: boolean } = {}) {
     const backend = useAudioSettingsStore(state => state.nativeAudioBackend);
     const device = useAudioSettingsStore(state => state.nativeAudioDeviceId);
     const processingMode = useAudioSettingsStore(state => state.nativeAudioProcessingMode);
+    const outputRevision = useAudioSettingsStore(state => state.nativeAudioOutputRevision);
     const audio = useRef<HTMLAudioElement | null>(null);
     const recover = useNativeAudioRecovery(audio, backend !== 'browser');
     const register = useCallback((element: HTMLAudioElement | null) => { audio.current = element; }, []);
@@ -42,7 +43,7 @@ function NativeAudioProbe({ hqplayer = false }: { hqplayer?: boolean } = {}) {
     }, []);
     const [source, setSource] = useState(() => sourceKind === 'remote' && remoteUrl ? remoteUrl : URL.createObjectURL(silentLocalFile()));
     const pendingResume = useRef<number | null>(null), autoPlay = useRef(false);
-    useOutputPlaybackHandoff(audio, backend, device, source, pendingResume, autoPlay);
+    useOutputPlaybackHandoff(audio, backend, device, source, pendingResume, autoPlay, outputRevision);
     const revocations = useRef(new Map<string, ReturnType<typeof setTimeout>>());
     useEffect(() => {
         // StrictMode's simulated unmount must not revoke the still-active source.
@@ -63,7 +64,7 @@ function NativeAudioProbe({ hqplayer = false }: { hqplayer?: boolean } = {}) {
         {hqplayer && <HQPlayerSettingsSection className="border-white/20" />}
         <NativeAudioSettingsSection isDaylight={false} theme={DEFAULT_THEME} className="rounded-xl border border-white/20 p-5" />
         <PlaybackDeck register={register} nativeBackend={backend} nativeDeviceId={device} src={source}
-            nativeProcessingMode={processingMode}
+            nativeProcessingMode={processingMode} outputRevision={outputRevision}
             getLocalFile={async () => sourceKind ? null : silentLocalFile()}
             onLoadedMetadata={() => setStatus('ready')}
             onPlay={() => { setStatus('playing'); usePlaybackStore.setState({ playerState: PlayerState.PLAYING }); }} onPause={() => { setStatus('paused'); usePlaybackStore.setState({ playerState: PlayerState.PAUSED }); }}

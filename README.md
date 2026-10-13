@@ -1,58 +1,64 @@
-# Folia-HiFi-WASAPI-ASIO-HQPlayer
+# Folia-HiFi-WASAPI-ASIO-HQPlayer-Spotify
 
-基于 [Folia](https://github.com/chthollyphile/folia-major) 的个人维护 fork，由 [PekolandBBQ](https://github.com/PekolandBBQ) 维护。在原有歌词与音乐库体验上追加 Windows WASAPI/ASIO 独占播放、HQPlayer 独立连接、整数直通、音频链路展示等功能。
+基于 [Folia](https://github.com/chthollyphile/folia-major) 的个人公益、非商业维护 fork，由 [PekolandBBQ](https://github.com/PekolandBBQ) 维护。保留原有歌词与音乐库体验，追加 Windows WASAPI/ASIO 独占输出、HQPlayer 连接、整数 PCM、音频链路，以及 **Spotify 桌面客户端接入**。
 
-**独立维护的正式专版，非上游官方发行版。** 目前基于 Folia v0.7.12，专版应用版本始终与所基于的上游版本一致；同版本的专版修订使用独立发布标签（本次 `hifi-v0.7.12`），HQPlayer 组件独立版本为 **0.1.3**；上游暂未合入这些扩展，我会在本分支维护、验证并独立发布。原项目及贡献者的署名和许可证保留。
+当前正式修订为 **0.7.12 r3**，标签为 `folia-hifi-v0.7.12-r3`。应用版本继续与上游保持一致，为 **0.7.12**；修订号只用于区分本 fork 的发行件。原项目署名和许可证保留，专版独立维护。
 
-[下载 Windows x64 专版](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/releases/tag/hifi-v0.7.12) · [使用说明](docs/exclusive/USAGE.md) · [验证结果](docs/exclusive/VALIDATION.md) · [反馈问题](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/issues)
+[下载 Windows x64 正式版](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/releases/tag/folia-hifi-v0.7.12-r3) · [使用说明](docs/exclusive/USAGE.md) · [本次更新说明](docs/exclusive/releases/0.7.12-r3.md) · [验证结果](docs/exclusive/VALIDATION.md) · [反馈问题](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/issues)
+
+**Spotify 当前适用范围：Windows x64，路由组件限定 Windows 内核构建号 10.0.28000。其他构建暂不能启用此 Spotify 路由。** 本次真实运行的是 Microsoft Store 版；官网桌面版安装检测有代码测试。其他构建与全新 Windows 上的完整 Spicetify 首次安装仍待验证，已安装组件继续复用。
 
 ## 我追加了哪些功能
 
 | 功能 | 实际体验 |
 | --- | --- |
-| **WASAPI / ASIO 独占播放** | 在“设置 → 播放 → WASAPI及ASIO独占播放”中选择设备；支持本地音乐、Navidrome 及现有在线源的完整准备播放，保留歌词和基本播放控制，切换输出保留当前歌曲、位置与播放／暂停状态 |
-| **HQPlayer 独立连接** | 独立设置及侧栏入口，使用本机 HQPlayer Desktop 播放，自动发现多个版本（含 6），也可指定程序路径；默认完整前台启动、可选后台静默、已有实例确认连接、切换输出时关闭全部 HQPlayer 实例；浮窗支持显示／隐藏 HQPlayer 窗口且不停止播放；支持 DSP 默认值、当前歌曲断点自动续播／下一首应用、同曲时钟、暂停与定位、24/32 位音频输入、格式识别及 PCM32 回退、默认 −2 dB 余量与可选增益记忆。|
-| **整数直通（实验性）** | 可选整数 PCM 处理，仍保留软件音量、静音及 ReplayGain；合并增益为 1 时保持准备后的 PCM 采样值，在解析力较好设备上的信息量与听感密度、背景宁静度有所改善； |
-| **音频链路展示** | 可选显示音源规格、引擎输出格式和增益，帮助确认当前播放路径；界面基于实际读取和引擎回报的数据；显示 PCM／DSD 升频标注，悬停进度条时收起链路按钮 |
-| **严格／容错并行恢复** | 解决音频文件部分损坏下歌曲解码失败时的跳曲问题。并行准备严格与容错结果，严格成功优先；坏帧时采用经过校验的容错输出，保留同曲、位置和暂停意图。实测处理时间中位数缩短约 38% |
-| **环境与组件检查** | 非 Windows、不受支持的架构或 IPC 环境隐藏原生设置；兼容环境缺少组件时显示安装提示，不保存无效设备或开关选择 |
-| **组件管理与恢复** | 固定版本与 SHA-256 校验、离线安装/停用、上一版恢复；组件异常时可回退浏览器播放，Windows 文件占用采用有界重试 |
-
-### 实际界面
-
-以下截图来自本专版可执行文件的实际设置页面，未使用界面示意图。
-
-![WASAPI、ASIO、整数直通和音频链路设置](docs/exclusive/images/settings.png)
-
-![HQPlayer 独立连接与增益设置](docs/exclusive/images/hqplayer.png)
-
-![0.7.12 HQPlayer 毛玻璃浮窗、DSP 与窗口显示开关](docs/exclusive/images/hqplayer-floating.png)
-
-![真实 Windows 音频设备选择](docs/exclusive/images/devices.png)
-
-![组件缺失时的安装提示](docs/exclusive/images/component-required.png)
+| **Spotify 接入** | 使用 Wrapper、Spicetify 桥接与 VB-CABLE 实时采集，将 Spotify 歌单歌曲接入 Folia 的 WASAPI、ASIO、HQPlayer 和整数模式；播放来自用户本机 Spotify 客户端 |
+| **首次使用向导** | 检测官网桌面版和 Microsoft Store 版；未安装时提示用户自行安装。固定版本组件“一键安装”紧接“一键配置”，提示首次驱动安装重启，并引导 Windows 默认输出选择实际扬声器或 DAC |
+| **后台启动与桌面协同** | 点歌时可后台拉起 Spotify，左下角显示启动准备；Spotify 桌面换歌后 Folia 自动暂停，用户选择追随歌曲/进度，或直接交还 Spotify 播放。退出 Folia 或实际切换音源时选择是否同时退出由 Folia 拉起的 Spotify |
+| **Spotify 封面与原歌词** | 已点赞歌曲以九首歌曲封面组成九宫格；有可用原歌词时回传 Spotify 歌曲自带歌词，缺失内容不冒充原歌词 |
+| **WASAPI / ASIO 独占输出** | 在设置中选择设备；切换输出保留歌曲、检查点和播放/暂停意图，本地、QQ、网易云等音源仍经过原有 Folia 播放链路 |
+| **HQPlayer 独立连接** | 自动发现或选择本机 HQPlayer Desktop；支持静默启动、显示/隐藏窗口、DSP 当前曲/下一曲应用、输出切换续播、官方时钟及音频链路回报 |
+| **整数 PCM 与音频链路** | 可选整数处理，音量和 ReplayGain 仍生效；显示实际读取的音源、输出格式和增益，未回报的数据明确标为未知 |
+| **短缺口继续播放** | Spotify 采集出现不连续标记时，位置连续则继续；已知缺口不超过 100 毫秒时补等长静音。较大、未知缺口仍提示失败；补偿区间不称 bit-perfect |
 
 ## 下载与开始使用
 
-1. 从 [v0.7.12 正式版](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/releases/tag/hifi-v0.7.12) 选择以下一种方式：**[EXE 安装版（推荐）](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/releases/download/hifi-v0.7.12/Folia-HiFi-WASAPI-ASIO-HQPlayer-0.7.12-win-x64-Setup.exe)** 提供安装向导、目录选择、开始菜单快捷方式和卸载入口；**[ZIP 免安装版](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/releases/download/hifi-v0.7.12/Folia-HiFi-WASAPI-ASIO-HQPlayer-0.7.12-win-x64.zip)** 完整解压后运行 `Folia-HiFi-WASAPI-ASIO-HQPlayer.exe`，不要单独移动 EXE。
-2. 专版使用独立配置目录 **%APPDATA%\Folia HiFi**，不会自动读取或迁移官方 Folia / 旧人工验证版的账号和音乐库；首次请自行配置音源。旧 Exclusive HiFi 专版的 `FoliaExclusive` 目录会在新目录不存在时复制迁移，旧目录保留。
-3. 先确认默认的浏览器模式正常播放，再选择 WASAPI 或已安装厂商 x64 驱动的 ASIO 设备。整数直通与链路展示默认关闭，按需启用。
-4. HQPlayer 用户需另行安装并授权 HQPlayer Desktop，在 HQPlayer 中配置 DAC、DSP 和 `Allow control from network`，再使用独立的“HQPlayer 连接”设置项启用连接；自动连接失败可选择程序路径。
-5. 本版随附经哈希校验的原生组件和 PCM24/PCM32 FFmpeg，无需安装 Node 或 .NET SDK。专版关闭上游自动更新，请从本 fork 的 Releases 手动更新。
+1. 从 [0.7.12 r3 Release](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/releases/tag/folia-hifi-v0.7.12-r3) 下载 **[EXE 安装版](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/releases/download/folia-hifi-v0.7.12-r3/Folia-HiFi-WASAPI-ASIO-HQPlayer-0.7.12-win-x64-Setup.exe)**，或 **[ZIP 免安装版](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/releases/download/folia-hifi-v0.7.12-r3/Folia-HiFi-WASAPI-ASIO-HQPlayer-0.7.12-win-x64.zip)**。ZIP 完整解压后运行其中的 EXE；更新前先退出旧版。
+2. 两种方式共用 `%APPDATA%\Folia HiFi`。已有配置保留；旧 `FoliaExclusive` 仅在目标目录不存在时复制迁移，不合并或覆盖。
+3. 使用 Spotify 时，先自行安装官网桌面版或 Microsoft Store 版，启动并登录账号。在 Folia 点击“连接 Spotify”，按向导选择安装版本。
+4. 按顺序点击“① 一键安装”及“② 一键配置”。首次安装/重装 VB-CABLE 后按提示重启，再“重新检查”；Windows 默认输出应选实际扬声器或 DAC，不能选 CABLE Input / CABLE In 16ch。配置步骤按向导提示正常退出 Spotify，已有组件和备份继续沿用。
+5. 完成后“启动并连接 Spotify”，就绪后“完成并返回歌单”，在 Folia 点歌。需要 HQPlayer 时自行安装、授权 Desktop，配置 DAC/DSP 和 `Allow control from network`，再启用 Folia 的 HQPlayer 连接。
 
-## 适用范围
+Spotify 内暂停、停止、切歌、Seek 和后端切换保留路由；暂停/停止会停止采集。仅退出 Folia、实际播放其他流媒体/本地音源，或明确交还 Spotify 播放时恢复路由。Folia 不自动查询或修改 Spotify 音量。
 
-- **发行包仅面向 Windows x64。** 项目原有其他平台能力仍归上游维护，本专版没有新增 macOS/Linux 原生输出实现。
-- 原生后端需要完整准备音频后播放；为保证音频质量，当前不提供流式原生解码、无缝切歌或原生 automix。浏览器模式仍可用于原有音效、频谱和 automix。
-- 并行解码用于媒体失败后的恢复作业，普通健康播放不启动双路转码。完整 App 实测冷恢复约 0.66–1.00 秒，仍可能听到停顿；坏帧容错不等于修好源文件。
-- 个人使用反馈涵盖部分XingCore（沐声006）、拓品（DX5II,DX9D )解码界面；本轮附原始证据的自动硬件矩阵为 XingCore，其他 DAC/ASIO 驱动需独立验证。本正式版尚未进行代码签名；Windows 可能显示未知发布者，请核对本仓库下载来源和 SHA256SUMS。
-- 整数直通依赖 Windows 引擎；音频链路目前接收原生引擎和 HQPlayer 回报，分别在对应模块中提供开关；未回报的输出规格明确显示“未回报”。浏览器和其他系统不展示空功能入口。
+完整步骤、组件版本、桌面协同和退出说明见 [使用方法](docs/exclusive/USAGE.md)。HQPlayer Desktop 与 Spotify 客户端不包含在发行包内；Spicetify、VB-CABLE 按固定版本由向导准备，无需用户安装 Node 或 .NET SDK。
 
-## 维护与验证
+## 本次修复与验证
 
-[本次更新说明](docs/exclusive/releases/0.7.12.md)记录 HQPlayer 组件和播放更新；[验证摘要](docs/exclusive/VALIDATION.md)区分基线全量测试、最新设置回归和本次独立发行件检查。源码和构建入口位于 [packaging/exclusive](packaging/exclusive)，维护流程见 [MAINTAINING](docs/exclusive/MAINTAINING.md)。上游审查的 A/B/C 拆分与本专版并行维护；独立发布不代表上游已经批准合入。
+- 修复暂停后立即 Seek 可能漏发暂停命令：Seek 改变位置，不取消用户的暂停意图。
+- 修复 Microsoft Store Spotify 启动脚本缺少资源文件，以及没有实际路由时退出误报恢复失败。
+- 实际采集约 78 毫秒缺口补偿后继续交付；旧 everscape 间歇中断记录保留。
+- 当前测试口径为 **7024 项单测通过、0 失败、2 项原有跳过**，类型检查、构建、包内代码核对及 EXE/ZIP 主要文件一致性通过。退役测试与迁移原因可审查。
+- 最新实播、HQPlayer、跨音源和整数模式结果按各自日期/组件版本记录；r3 工程修复没有重新跑整套真机矩阵。三秒性能与偶发 Seek 保留观察。
 
-Folia-HiFi-WASAPI-ASIO-HQPlayer is an independently maintained Windows x64 fork of Folia, adding WASAPI/ASIO output, a separate HQPlayer connection, optional integer PCM, signal-path display, and opt-in compatibility decoding recovery. This stable fork release is available as an EXE installer and a ZIP archive. It is maintained independently from upstream.
+## 实际界面
+
+以下为本 fork 已保存的真实设置界面，Spotify 首次向导以实际程序为准。
+
+![WASAPI、ASIO、整数 PCM 和链路](docs/exclusive/images/settings.png)
+![HQPlayer 独立连接](docs/exclusive/images/hqplayer.png)
+![HQPlayer 浮窗、DSP 和窗口显示开关](docs/exclusive/images/hqplayer-floating.png)
+
+## 使用边界
+
+- Windows x64 专版；本次不提供 macOS/Linux 的这些原生扩展。Spotify 的构建号限制见页首。
+- Spotify 使用实时 PCM；其他流媒体可采用渐进准备，具体由源和后端决定。没有承诺无缝切歌、外部后端 automix 或三秒内实际出声。
+- 整数处理不等于源文件到 DAC 全链路 bit-perfect；软件增益、Windows 混音、Spotify 客户端和 HQPlayer DSP 都会影响链路，补静音区间另行记录。
+- 当前硬件证据主要来自 XingCore DAC 与 HQPlayer Desktop 6；其他驱动与 DSP 配置需要各自验证。发行件尚未代码签名，请核对 Release 的 SHA256SUMS。
+
+源码、构建、验证与维护约束见 [MAINTAINING](docs/exclusive/MAINTAINING.md)。
+
+Folia-HiFi-WASAPI-ASIO-HQPlayer-Spotify is an independently maintained, personal noncommercial Windows x64 fork of Folia. It adds Spotify desktop integration, WASAPI/ASIO output, HQPlayer control, integer PCM and signal-path reporting. The current Spotify route is limited to Windows kernel build 10.0.28000. The application version remains 0.7.12; fork revision r3 uses a separate release tag.
 
 ---
 

@@ -2686,7 +2686,30 @@ export default {
     "temperaPoolExportFailed": "Ekspor gagal"
   },
   "releaseNotes": {
-        hifi0_7_12r2: {
+        hifi0_7_12r3: {
+        "intro": "Rilis fork ini menambahkan integrasi desktop Spotify, koordinasi pemutaran dan toleransi jeda singkat, serta memperbaiki konkurensi jeda/seek.",
+        "spotifyWrapper": {
+                "title": "Pemutaran Spotify lokal",
+                "description": "Putar melalui klien desktop Spotify dan tangkapan lokal dengan output eksklusif Folia, HQPlayer, dan mode integer."
+        },
+        "spotifySetup": {
+                "title": "Instal dan konfigurasi bersama",
+                "description": "Kelola versi Spicetify dan VB-CABLE yang ditetapkan, deteksi Spotify desktop dan Store, serta panduan mulai ulang dan perangkat output fisik."
+        },
+        "spotifyDesktop": {
+                "title": "Mulai di latar dan perubahan desktop",
+                "description": "Jalankan Spotify di latar. Saat lagu desktop berubah, jeda dan tanyakan apakah mengikuti atau mengembalikan pemutaran. Pilih penutupan Spotify yang dijalankan Folia saat keluar."
+        },
+        "spotifyLibrary": {
+                "title": "Sampul dan lirik asli",
+                "description": "Lagu yang disukai mendapat kolase sembilan gambar. Lirik lagu Spotify dikembalikan bila tersedia."
+        },
+        "spotifyCapture": {
+                "title": "Lanjutkan setelah celah singkat",
+                "description": "Isi celah tangkapan singkat yang diketahui dengan keheningan berdurasi sama dan catat kompensasi. Gangguan besar tetap dilaporkan."
+        }
+},
+hifi0_7_12r2: {
         "intro": "Revisi fork lokal ini menambahkan pemutaran Spotify Wrapper dan koordinasi desktop.",
         "spotifyWrapper": {
                 "title": "Pemutaran Spotify lokal",

@@ -191,14 +191,14 @@ for (const [language, checking, pending, required, title] of [
     }, language);
     await mount('nativeAudio');
     const section = page.locator('[data-settings-anchor="nativeAudioOutput"]');
-    await expect(section.getByRole('status')).toHaveText(checking);
+    await expect(section.locator('p[role="status"]')).toHaveText(checking);
     await expect(section).not.toContainText(pending);
     await expect(section).not.toContainText(required);
     await expect(section.getByRole('button', { name: title, exact: true })).toBeDisabled();
     await expect.poll(() => page.evaluate(() => (window as any).__nativeRequests.filter((request: any) => request.action === 'status').length)).toBeGreaterThan(0);
     await page.evaluate(() => (window as any).__releaseNativeStatus());
     await expect(section).toContainText('v0.1.0');
-    await expect(section.getByRole('status')).toHaveCount(0);
+    await expect(section.locator('p[role="status"]')).toHaveCount(0);
     await expect(section.getByRole('button', { name: title, exact: true })).toBeEnabled();
     await expect(section).not.toContainText(pending);
     await expect(section).not.toContainText(required);
@@ -220,10 +220,10 @@ test('a delayed unavailable result retains installation guidance and protects th
     });
     await mount('nativeAudio');
     const section = page.locator('[data-settings-anchor="nativeAudioOutput"]');
-    await expect(section.getByRole('status')).toHaveText('Checking native audio component…');
+    await expect(section.locator('p[role="status"]')).toHaveText('Checking native audio component…');
     await expect(section).not.toContainText('Install and enable the native audio component before selecting a device');
     await page.evaluate(() => (window as any).__releaseNativeStatus());
-    await expect(section.getByRole('status')).toHaveCount(0);
+    await expect(section.locator('p[role="status"]')).toHaveCount(0);
     await expect(section).toContainText('Install and enable the native audio component before selecting a device');
     await expect(section).not.toContainText('No component release is approved in this build yet.');
     await section.getByRole('switch', { name: 'Show audio signal path', exact: true }).click();
@@ -377,11 +377,12 @@ test('selects ASIO and preserves basic control and clock behavior through native
     await expect(page.getByTestId('status')).toHaveText('ready');
     await expect.poll(() => page.evaluate(() => localStorage.getItem('folia_native_audio_processing_mode')))
         .toBe('integer-direct');
+    // A paused output handoff defers preparation until explicit Play.
+    await page.getByRole('button', { name: 'Play', exact: true }).click();
     await expect.poll(() => page.evaluate(() => {
         const requests = (window as unknown as { __nativeRequests: Array<Record<string, unknown>> }).__nativeRequests;
         return requests.slice().reverse().find(request => request.action === 'begin')?.processingMode;
     })).toBe('integer-direct');
-    await page.getByRole('button', { name: 'Play', exact: true }).click();
     await expect(page.getByTestId('status')).toHaveText('playing');
     await expect.poll(async () => Number(await page.getByTestId('clock').textContent())).toBeGreaterThan(0.1);
     await page.getByRole('button', { name: 'Seek 5s' }).click();
@@ -392,7 +393,7 @@ test('selects ASIO and preserves basic control and clock behavior through native
         (window as unknown as { __nativeRequests: Array<{ action: string }> }).__nativeRequests.at(-1)?.action)).toBe('pause');
     await page.getByRole('button', { name: 'WASAPI / ASIO exclusive playback' }).click();
     await page.getByText('ASIO — Test ASIO Driver', { exact: true }).click();
-    await expect(page.getByTestId('status')).toHaveText('ready');
+    await expect(page.getByTestId('status')).toHaveText('paused');
     await page.getByRole('button', { name: 'Play', exact: true }).click();
     await expect(page.getByTestId('status')).toHaveText('playing');
     await expect.poll(() => page.evaluate(() => localStorage.getItem('folia_native_audio_backend'))).toBe('asio');
@@ -420,7 +421,7 @@ test('switches a playing track between native outputs without another Play and r
     await page.getByRole('button', { name: 'Pause', exact: true }).click();
     await page.getByRole('button', { name: 'WASAPI / ASIO exclusive playback' }).click();
     await page.getByText('WASAPI exclusive — Test DAC', { exact: true }).click();
-    await expect(page.getByTestId('status')).toHaveText('ready');
+    await expect(page.getByTestId('status')).toHaveText('paused');
     await expect.poll(async () => Number(await page.getByTestId('clock').textContent())).toBeGreaterThanOrEqual(5);
     const count = await page.evaluate(() => (window as any).__nativeRequests.filter((r: any) => r.action === 'play').length);
     await page.waitForTimeout(250);
@@ -501,7 +502,7 @@ for (const installed of [false, true]) {
             await expect(page.getByRole('button', { name: 'WASAPI / ASIO exclusive playback', exact: true })).toContainText('Select a WASAPI / ASIO device');
         } else {
             await expect(hq.getByRole('status')).toContainText('Install HQPlayer');
-            await expect(hq.getByRole('spinbutton')).toBeDisabled();
+            await expect(hq.getByRole('spinbutton', { name: 'HQPlayer gain headroom (dB)', exact: true })).toBeDisabled();
             expect(await page.evaluate(() => localStorage.getItem('folia_native_audio_backend'))).toBe('browser');
         }
     });
@@ -517,9 +518,9 @@ test('HQPlayer offers a manual path when automatic discovery fails and preserves
     await page.evaluate(()=>localStorage.setItem('hqplayer_mock_cancel','false'));
     await hq.getByRole('button', { name: 'Choose program path…', exact:true }).click();
     await expect(hq.getByTestId('hqplayer-program-path')).toContainText('HQPlayer5Desktop.exe');
-    await expect(hq.getByRole('spinbutton')).toBeEnabled();
+    await expect(hq.getByRole('spinbutton', { name: 'HQPlayer gain headroom (dB)', exact: true })).toBeEnabled();
     expect(await page.evaluate(()=>localStorage.getItem('folia_native_audio_backend'))).toBe('browser');
     await hq.getByRole('button', { name: 'Restore automatic detection', exact:true }).click();
     await expect(hq.getByTestId('hqplayer-program-path')).toContainText('Not found');
-    await expect(hq.getByRole('spinbutton')).toBeDisabled();
+    await expect(hq.getByRole('spinbutton', { name: 'HQPlayer gain headroom (dB)', exact: true })).toBeDisabled();
 });

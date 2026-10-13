@@ -13,6 +13,23 @@ import { APP_VERSION, GUIDE_VERSION_STORAGE_KEY } from '../helpers/appState';
  * 共享 context 会让这条 init script 累积，用例之间开始互相污染。
  */
 export const test = base.extend<{ seededStorage: void }>({
+    // Preserve Playwright's gallery mount/update/unmount contract, while waiting
+    // for Vite's gallery module to expose the bridge before invoking it.
+    mount: async ({ page, baseURL }, use) => {
+        await use(async (storyId, props) => {
+            if (!baseURL) throw new Error('Component gallery baseURL is required');
+            await page.goto(baseURL);
+            await page.waitForFunction(() => typeof window.mount === 'function');
+            const render = (nextProps: typeof props) => page.evaluate(async params => {
+                await window.mount(params as { story: string; props?: Record<string, unknown> });
+            }, { story: storyId, props: nextProps }, { exposeFunctions: true });
+            await render(props);
+            return Object.assign(page.locator('#root'), {
+                update: render,
+                unmount: () => page.evaluate(async () => { await window.unmount?.(); }),
+            });
+        });
+    },
     seededStorage: [async ({ page }, use) => {
         await page.addInitScript(([version, guideKey]) => {
             localStorage.clear();

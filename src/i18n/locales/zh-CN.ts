@@ -2790,7 +2790,30 @@ export default {
     "noDescription": "暂无详细介绍",
   },
   "releaseNotes": {
-        hifi0_7_12r2: {
+        hifi0_7_12r3: {
+        "intro": "本次正式修订加入 Spotify 接入、桌面协同与短缺口容错，并修复暂停与定位并发。",
+        "spotifyWrapper": {
+                "title": "Spotify 本机播放",
+                "description": "通过 Spotify 桌面客户端与本机采集链路播放，接入 Folia 的独占输出、HQPlayer 和整数模式。"
+        },
+        "spotifySetup": {
+                "title": "一键安装与配置",
+                "description": "统一管理固定版本的 Spicetify 与 VB-CABLE，检测桌面版及商店版 Spotify，并引导重启和实际输出设备配置。"
+        },
+        "spotifyDesktop": {
+                "title": "后台启动与桌面协同",
+                "description": "可后台拉起 Spotify；桌面换歌后暂停并询问是否追随，也可交还 Spotify 播放。退出时选择是否关闭由 Folia 拉起的 Spotify。"
+        },
+        "spotifyLibrary": {
+                "title": "歌单封面与原歌词",
+                "description": "已点赞歌曲使用九宫格封面；有可用原歌词时回传 Spotify 歌曲歌词。"
+        },
+        "spotifyCapture": {
+                "title": "短缺口继续播放",
+                "description": "播放中的已知短缺口补入等长静音继续交付，记录补偿区间；较大异常仍提示失败。"
+        }
+},
+hifi0_7_12r2: {
         "intro": "本次本地修订加入 Spotify Wrapper 接入与播放协同。",
         "spotifyWrapper": {
                 "title": "Spotify 本机播放",

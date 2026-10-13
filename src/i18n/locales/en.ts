@@ -2791,7 +2791,30 @@ export default {
     "noDescription": "No description available",
   },
   "releaseNotes": {
-        hifi0_7_12r2: {
+        hifi0_7_12r3: {
+        "intro": "This fork release adds Spotify desktop integration, coordinated playback and short-gap tolerance, and fixes pause/seek concurrency.",
+        "spotifyWrapper": {
+                "title": "Local Spotify playback",
+                "description": "Play through the Spotify desktop client and local capture, with Folia exclusive output, HQPlayer and integer mode."
+        },
+        "spotifySetup": {
+                "title": "Install and configure together",
+                "description": "Manage pinned Spicetify and VB-CABLE versions, detect desktop and Store Spotify, and guide restart and physical output setup."
+        },
+        "spotifyDesktop": {
+                "title": "Background start and desktop changes",
+                "description": "Start Spotify in the background. When its track changes, pause and ask whether to follow or hand playback back. Choose whether to close Folia-started Spotify on exit."
+        },
+        "spotifyLibrary": {
+                "title": "Artwork and original lyrics",
+                "description": "Liked Songs gains a nine-image cover. Spotify track lyrics are returned when available."
+        },
+        "spotifyCapture": {
+                "title": "Continue across short gaps",
+                "description": "Conceal known short capture gaps with equal-duration silence and record them. Larger faults still report failure."
+        }
+},
+hifi0_7_12r2: {
         "intro": "This local fork revision adds Spotify Wrapper playback and desktop coordination.",
         "spotifyWrapper": {
                 "title": "Local Spotify playback",

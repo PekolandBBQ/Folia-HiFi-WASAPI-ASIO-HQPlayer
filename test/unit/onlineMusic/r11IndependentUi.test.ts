@@ -56,7 +56,12 @@ describe('independent real modal integration', () => {
         }
         await render(React.createElement(Probe));
         await key(document.querySelector('[role=dialog]')!, 'Escape');
-        await act(async () => { await new Promise(resolve => setTimeout(resolve, 350)); });
+        // Observe the exit commit rather than assuming one wall-clock sleep
+        // also covers requestAnimationFrame scheduling under full-suite load.
+        await vi.waitFor(async () => {
+            await act(async () => { await new Promise(resolve => setTimeout(resolve, 16)); });
+            expect(document.querySelector('[role=dialog]')).toBeNull();
+        }, { timeout: 2000, interval: 16 });
         expect(document.querySelector('[role=dialog]')).toBeNull(); expect(hasBlockingWindow()).toBe(false);
         await act(async () => reopen());
         expect(document.querySelectorAll('[role=dialog]')).toHaveLength(1);

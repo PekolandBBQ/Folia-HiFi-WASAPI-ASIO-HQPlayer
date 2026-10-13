@@ -1,16 +1,16 @@
 <!-- docs/exclusive/USAGE.md -->
-# Folia-HiFi-WASAPI-ASIO-HQPlayer 使用与人工验证说明
+# Folia-HiFi-WASAPI-ASIO-HQPlayer-Spotify 使用说明
 
-这是我维护的 Windows x64 正式专版，名称为 **Folia-HiFi-WASAPI-ASIO-HQPlayer**，当前版本 **0.7.12**。它基于 Folia v0.7.12，保留原项目的许可证和署名。
+这是我维护的 Windows x64 正式专版，名称为 **Folia-HiFi-WASAPI-ASIO-HQPlayer**，当前应用版本 **0.7.12**、专版修订 **r3**。它基于 Folia v0.7.12，保留原项目的许可证和署名。
 
 ## 安装与更新
 
-从 [v0.7.12 正式版](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/releases/tag/hifi-v0.7.12) 选择一种安装方式：
+从 [0.7.12 r3 正式版](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/releases/tag/folia-hifi-v0.7.12-r3) 选择一种安装方式：
 
 | 方式 | 下载与使用 |
 | --- | --- |
-| **EXE 安装版（推荐）** | 下载 [Folia-HiFi-WASAPI-ASIO-HQPlayer-0.7.12-win-x64-Setup.exe](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/releases/download/hifi-v0.7.12/Folia-HiFi-WASAPI-ASIO-HQPlayer-0.7.12-win-x64-Setup.exe)，运行安装向导并选择目录；安装后从开始菜单启动。仅为当前用户安装，提供 Windows“已安装的应用”卸载入口。 |
-| **ZIP 免安装版** | 下载 [Folia-HiFi-WASAPI-ASIO-HQPlayer-0.7.12-win-x64.zip](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/releases/download/hifi-v0.7.12/Folia-HiFi-WASAPI-ASIO-HQPlayer-0.7.12-win-x64.zip)，完整解压到可写目录，运行 `Folia-HiFi-WASAPI-ASIO-HQPlayer.exe`。不要在压缩包内直接运行，也不要单独移动 EXE。 |
+| **EXE 安装版（推荐）** | 下载 [Folia-HiFi-WASAPI-ASIO-HQPlayer-0.7.12-win-x64-Setup.exe](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/releases/download/folia-hifi-v0.7.12-r3/Folia-HiFi-WASAPI-ASIO-HQPlayer-0.7.12-win-x64-Setup.exe)，运行安装向导并选择目录；安装后从开始菜单启动。仅为当前用户安装，提供 Windows“已安装的应用”卸载入口。 |
+| **ZIP 免安装版** | 下载 [Folia-HiFi-WASAPI-ASIO-HQPlayer-0.7.12-win-x64.zip](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/releases/download/folia-hifi-v0.7.12-r3/Folia-HiFi-WASAPI-ASIO-HQPlayer-0.7.12-win-x64.zip)，完整解压到可写目录，运行 `Folia-HiFi-WASAPI-ASIO-HQPlayer.exe`。不要在压缩包内直接运行，也不要单独移动 EXE。 |
 
 两种方式包含相同程序、WASAPI/ASIO 组件 0.1.2、独立 HQPlayer 组件 0.1.3 和支持 PCM24/PCM32 的 FFmpeg，无需安装 Node 或 .NET SDK。ASIO 需要另行安装厂商的 x64 驱动，HQPlayer 需另行安装并授权。
 
@@ -18,7 +18,35 @@
 
 更新前先退出专版。EXE 用户重新运行新版安装程序；ZIP 用户将新版完整解压到新目录。配置保留，正常卸载安装版也保留配置。专版关闭上游自动更新，请从本 fork 的 Releases 手动更新。源码 ZIP 与证据 ZIP 用于审查，不是运行包。
 
-发行包尚未进行代码签名。Windows 可能显示未知发布者；请确认下载来源为本仓库，再用 `Get-FileHash -Algorithm SHA256 文件路径` 与 Release 的 `SHA256SUMS.txt` 比对。
+发行包尚未进行代码签名。Windows 可能显示未知发布者；请确认下载来源为本仓库，再用 `Get-FileHash -Algorithm SHA256 文件路径` 与 Release 的 `SHA256SUMS` 比对。
+
+## Spotify 首次使用与播放
+
+当前路由仅允许 Windows x64、内核构建号 **10.0.28000**；可在 Windows“设置 → 系统 → 系统信息”核对。其他构建暂不能启用本次 Spotify 路由。官网桌面版与 Microsoft Store 版均有安装检测；本机实播为 Store 版。
+
+1. 自行安装 Spotify，打开并登录账号。未安装时 Folia 只提示自行安装并提供下载入口。
+2. Folia 首页点击“连接 Spotify”。检测到两种安装时，明确选择要连接的版本。
+3. 点击“① 一键安装”，按提示完成 VB-CABLE 管理员授权和驱动安装。Spicetify、VB-CABLE、桥接与路由组件由一个固定版本组件组合管理；已有组件继续复用。
+4. 首次安装/重装 VB-CABLE 后重启 Windows，返回向导“重新检查”，确认驱动和完整输入输出设备对就绪。不要反复安装。Windows 默认输出必须是实际扬声器或 DAC，不能是 CABLE Input / CABLE In 16ch；向导可打开系统声音设置。
+5. 按提示正常退出 Spotify，再点击“② 一键配置”。有已有配置和备份时继续原进度；中断的 backup/apply 会保留现场并提示处理，不能靠重复覆盖备份恢复。
+6. “启动并连接 Spotify”，就绪后点击“完成并返回歌单”。随后在 Folia 打开 Spotify 歌单并点歌；Spotify 未运行时可后台拉起，左下角显示启动准备。
+7. 选择 WASAPI、ASIO 或 HQPlayer 输出。整数模式是 WASAPI/ASIO 的 PCM 处理选项；HQPlayer 的 DAC 和 DSP 仍在 Desktop 中配置。
+
+组件组合：Spicetify **2.45.3**、VB-CABLE **Pack45 / 3.3.1.7**、路由 **0.19.0-dev.25**、采集 **0.1.5-capture.9**、统一组件包 **0.1.0-preview.2**。主程序正式修订与内部组件版本各自标记；正式发布不改写组件验证事实。
+
+### 桌面换歌、跨音源与退出
+
+- 在 Spotify 桌面直接换歌，Folia 检测到后暂停，询问是否追随歌曲与进度；可选择交还 Spotify 直接播放，避免两端争抢控制。
+- Spotify 内暂停、停止、切歌、Seek、后端切换保留路由；暂停和停止关闭采集。浏览其他歌单不代表已经切换音源。
+- 真正开始播放 QQ、网易云或本地歌曲，或退出 Folia、明确交还 Spotify 时，恢复 Spotify 原路由。退出/切换音源时可选择是否同时退出由 Folia 后台拉起的 Spotify；用户自己打开的实例按实际所有权处理。
+- Spotify 音量由用户管理，Folia 不自动查询或修改。旧音量恢复记录保留为历史证据，不用于自动恢复。
+- 已点赞歌曲以随机九首歌曲封面组成九宫格；有可用 Spotify 原歌词时回传，缺失或接口不可用时不冒充原歌词。
+
+### 采集短缺口
+
+不连续标记但位置连续时继续交付；已知缺口最多 100 毫秒时补等长静音，随后继续原采样。未知/较大缺口仍报错，无强制跳进度或自动重建。补偿区间不称整数位一致或 bit-perfect。三秒性能与偶发 Seek 留作后续观察。
+
+全新 Windows 中完整 Spicetify 首次安装尚未实测；已有备份没有重新 backup。VB-CABLE 卸载、重装、重启检测与默认输出引导具有本机记录，不覆盖全新环境全部安装流程。
 
 ## 三种输出方式
 
@@ -68,6 +96,6 @@ HQPlayer 默认预留 −2 dB 余量，可在独立设置中调整。Folia 音�
 
 ## 当前边界
 
-原生/HQPlayer 输出需要完整准备文件，当前没有承诺流式播放、无缝切歌或外部后端 automix。并行严格／容错处理仅用于失败恢复；本机两首故障曲目冷恢复仍约 0.66–1.00 秒，不能承诺完全无感。坏帧容错输出可播放不代表原文件已经修复。
+Spotify 采用实时 PCM，其他在线源可按后端渐进准备；当前没有承诺无缝切歌或外部后端 automix。并行严格／容错处理仅用于失败恢复；本机两首故障曲目冷恢复仍约 0.66–1.00 秒，不能承诺完全无感。坏帧容错输出可播放不代表原文件已经修复。
 
 本轮硬件验证主要为 XingCore，HQPlayer Desktop 6 使用本机既有 DSP 配置；Desktop 4/5 的发现与路径关联通过模拟文件布局测试，尚未做旧版播放硬件实测；其他 DAC、驱动和 HQPlayer 配置仍需人工验证。macOS、Linux 和普通浏览器隐藏这些 Windows 专版入口。
