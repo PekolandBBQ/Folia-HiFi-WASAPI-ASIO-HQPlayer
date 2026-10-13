@@ -53,7 +53,6 @@ exports[`command palette registry contract > keeps the registered command order 
   "spotify-playback-stop",
   "spotify-cable-probe",
   "settings-hqplayer-component",
-  "settings-hqplayer-spotify-experiment",
   "hqplayer-silent-launch-toggle",
   "hqplayer-dsp-panel",
   "decode-compatibility-toggle",

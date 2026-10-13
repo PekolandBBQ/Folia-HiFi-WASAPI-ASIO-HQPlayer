@@ -12,18 +12,19 @@
 
 | 功能 | 实际体验 |
 | --- | --- |
-| **Spotify 接入** | 使用 Wrapper、Spicetify 桥接与 VB-CABLE 实时采集，将 Spotify 歌单歌曲接入 Folia 的 WASAPI、ASIO、HQPlayer 和整数模式；播放来自用户本机 Spotify 客户端 |
+| **Spotify 接入** | 使用 Wrapper、Spicetify 桥接与 VB-CABLE 实时采集，将 Spotify 歌单歌曲接入 Folia 的 WASAPI、ASIO、HQPlayer 与整数模式；播放来自用户本机 Spotify 客户端 |
 | **首次使用向导** | 检测官网桌面版和 Microsoft Store 版；未安装时提示用户自行安装。固定版本组件“一键安装”紧接“一键配置”，提示首次驱动安装重启，并引导 Windows 默认输出选择实际扬声器或 DAC |
 | **后台启动与桌面协同** | 点歌时可后台拉起 Spotify，左下角显示启动准备；Spotify 桌面换歌后 Folia 自动暂停，用户选择追随歌曲/进度，或直接交还 Spotify 播放。退出 Folia 或实际切换音源时选择是否同时退出由 Folia 拉起的 Spotify |
 | **Spotify 封面与原歌词** | 已点赞歌曲以九首歌曲封面组成九宫格；有可用原歌词时回传 Spotify 歌曲自带歌词，缺失内容不冒充原歌词 |
 | **WASAPI / ASIO 独占输出** | 在设置中选择设备；切换输出保留歌曲、检查点和播放/暂停意图，本地、QQ、网易云等音源仍经过原有 Folia 播放链路 |
+| **流式输出** | 支持流式的在线音源边下载、边解码、边输出；Spotify 使用实时 PCM 采集与交付。由音源与输出组件自动选择链路，准备好初始缓冲即可开始，不要求先下载完整歌曲；不支持渐进解码的格式或输出回到完整准备 |
 | **HQPlayer 独立连接** | 自动发现或选择本机 HQPlayer Desktop；支持静默启动、显示/隐藏窗口、DSP 当前曲/下一曲应用、输出切换续播、官方时钟及音频链路回报 |
 | **整数 PCM 与音频链路** | 可选整数处理，音量和 ReplayGain 仍生效；显示实际读取的音源、输出格式和增益，未回报的数据明确标为未知 |
 | **短缺口继续播放** | Spotify 采集出现不连续标记时，位置连续则继续；已知缺口不超过 100 毫秒时补等长静音。较大、未知缺口仍提示失败；补偿区间不称 bit-perfect |
 
 ## 下载与开始使用
 
-1. 从 [0.7.12 r3 Release](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/releases/tag/folia-hifi-v0.7.12-r4) 下载 **[EXE 安装版](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/releases/download/folia-hifi-v0.7.12-r3/Folia-HiFi-WASAPI-ASIO-HQPlayer-0.7.12-win-x64-Setup.exe)**，或 **[ZIP 免安装版](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/releases/download/folia-hifi-v0.7.12-r3/Folia-HiFi-WASAPI-ASIO-HQPlayer-0.7.12-win-x64.zip)**。ZIP 完整解压后运行其中的 EXE；更新前先退出旧版。
+1. 从 [0.7.12 r4 Release](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/releases/tag/folia-hifi-v0.7.12-r4) 下载 **[EXE 安装版](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/releases/download/folia-hifi-v0.7.12-r4/Folia-HiFi-WASAPI-ASIO-HQPlayer-0.7.12-win-x64-Setup.exe)**，或 **[ZIP 免安装版](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/releases/download/folia-hifi-v0.7.12-r4/Folia-HiFi-WASAPI-ASIO-HQPlayer-0.7.12-win-x64.zip)**。ZIP 完整解压后运行其中的 EXE；更新前先退出旧版。
 2. 两种方式共用 `%APPDATA%\Folia HiFi`。已有配置保留；旧 `FoliaExclusive` 仅在目标目录不存在时复制迁移，不合并或覆盖。
 3. 使用 Spotify 时，先自行安装官网桌面版或 Microsoft Store 版，启动并登录账号。在 Folia 点击“连接 Spotify”，按向导选择安装版本。
 4. 按顺序点击“① 一键安装”及“② 一键配置”。首次安装/重装 VB-CABLE 后按提示重启，再“重新检查”；Windows 默认输出应选实际扬声器或 DAC，不能选 CABLE Input / CABLE In 16ch。配置步骤按向导提示正常退出 Spotify，已有组件和备份继续沿用。
@@ -38,20 +39,48 @@ Spotify 内暂停、停止、切歌、Seek 和后端切换保留路由；暂停/
 - 修复暂停后立即 Seek 可能漏发暂停命令：Seek 改变位置，不取消用户的暂停意图。
 - 修复 Microsoft Store Spotify 启动脚本缺少资源文件，以及没有实际路由时退出误报恢复失败。
 - 实际采集约 78 毫秒缺口补偿后继续交付；旧 everscape 间歇中断记录保留。
-- 当前测试口径为 **7024 项单测通过、0 失败、2 项原有跳过**，类型检查、构建、包内代码核对及 EXE/ZIP 主要文件一致性通过。退役测试与迁移原因可审查。
-- 最新实播、HQPlayer、跨音源和整数模式结果按各自日期/组件版本记录；r3 工程修复没有重新跑整套真机矩阵。三秒性能与偶发 Seek 保留观察。
+- r4 发布前的验证基线为 **7032 项单测通过、0 失败、2 项原有跳过**；43 项组件界面测试、类型检查、构建、包内代码核对及 EXE/ZIP 主要文件一致性通过。退役测试与迁移原因可审查。
+- 最新实播、HQPlayer、跨音源和整数模式结果按各自日期/组件版本记录；r4 的 Windows 路由接口适配通过代码测试，其他系统仍待完整实播验证。三秒性能与偶发 Seek 保留观察。
 
 ## 实际界面
 
-以下为本 fork 已保存的真实设置界面，Spotify 首次向导以实际程序为准。
+图片展示本 fork 的操作入口；HQPlayer 设置图由当前代码离线渲染，其余截图来自本机实际界面。播放、恢复和性能结论见 [验证结果](docs/exclusive/VALIDATION.md)。
 
-![WASAPI、ASIO、整数 PCM 和链路](docs/exclusive/images/settings.png)
-![HQPlayer 独立连接](docs/exclusive/images/hqplayer.png)
+**Spotify 首次使用向导**：检测桌面版 / Microsoft Store 版，显示固定组件版本与安装状态；按“一键安装 → 一键配置 → 启动并连接”的顺序完成准备。
+
+![Spotify 组件检测、一键安装与一键配置](docs/exclusive/images/r4/spotify-setup.png)
+
+**Spotify 歌单封面**：已点赞歌曲使用九首歌曲封面组成九宫格；右侧为本机 Spotify 已加载曲目入口。图中歌单来自已有本机资料。
+
+![Spotify 已点赞歌曲九宫格封面与本机曲目](docs/exclusive/images/r4/spotify-library.png)
+
+**后台 Spotify 退出询问**：退出 Folia 或真正切换播放音源时，可选择是否同时退出由 Folia 拉起的 Spotify。
+
+![是否同时退出后台 Spotify 的提示](docs/exclusive/images/r4/spotify-exit.png)
+
+**WASAPI / ASIO 输出**：从实际枚举的设备中选择输出，Spotify PCM 预缓冲可调；整数处理与音频链路显示在同一区域设置。
+
+![WASAPI 与 ASIO 实际输出设备](docs/exclusive/images/r4/native-output.png)
+![整数 PCM 与音频链路显示开关](docs/exclusive/images/r4/integer-mode.png)
+
+**流式输出与实际链路**：Spotify 实时 PCM 经初始缓冲后持续交付 WASAPI / ASIO；其他支持渐进解码的在线音源可在下载继续时播放。无需另开“流式模式”，左下角分阶段显示准备与缓冲，音频链路显示实际处理和输出格式；遇到需完整文件索引的格式会先完整准备。
+
+![Spotify 实时 PCM 与 WASAPI 流式输出链路](docs/exclusive/images/r4/streaming-output.png)
+
+**HQPlayer 独立连接**：检测组件与 Desktop，选择连接和窗口行为；播放时还可在 DSP 面板选择应用于当前曲或下一曲。Spotify 与其他音源一样，选择 HQPlayer 输出后直接播放；Spotify PCM 预缓冲与 WASAPI / ASIO 共用。
+
+![HQPlayer 独立组件、连接与窗口设置](docs/exclusive/images/r4/hqplayer-settings.png)
+
+<details>
+<summary>查看 HQPlayer DSP 播放面板（此前已保存的实际界面）</summary>
+
 ![HQPlayer 浮窗、DSP 和窗口显示开关](docs/exclusive/images/hqplayer-floating.png)
+
+</details>
 
 ## 使用边界
 
-- Windows x64 专版；本次不提供 macOS/Linux 的这些原生扩展。Spotify 的构建号限制见页首。
+- Windows x64 专版；本次不提供 macOS/Linux 的这些原生扩展。Spotify 的系统范围与验证边界见页首。
 - Spotify 使用实时 PCM；其他流媒体可采用渐进准备，具体由源和后端决定。没有承诺无缝切歌、外部后端 automix 或三秒内实际出声。
 - 整数处理不等于源文件到 DAC 全链路 bit-perfect；软件增益、Windows 混音、Spotify 客户端和 HQPlayer DSP 都会影响链路，补静音区间另行记录。
 - 当前硬件证据主要来自 XingCore DAC 与 HQPlayer Desktop 6；其他驱动与 DSP 配置需要各自验证。发行件尚未代码签名，请核对 Release 的 SHA256SUMS。
@@ -298,3 +327,32 @@ Folia 会读取音频文件元数据、同目录歌词和封面，并可通过�
 本项目基于 `AGPL-3.0` 许可证开源。
 
 </details>
+
+---
+
+## 项目基础与致谢
+
+感谢以下项目的作者、贡献者和维护者。本 fork 在 Folia 的基础上扩展 HiFi 输出与 Spotify 接入；下表列出主要项目及其实际用途，相关署名与许可证保留在源码、依赖和发行材料中。
+
+| 项目 / 仓库 | 关系与用途 |
+| --- | --- |
+| [Folia · chthollyphile/folia-major](https://github.com/chthollyphile/folia-major) | 本 fork 的直接基础，提供播放器、歌词界面、音乐库和多音源框架 |
+| [Electron](https://github.com/electron/electron) / [React](https://github.com/facebook/react) | 桌面应用运行与界面框架 |
+| [Spicetify CLI](https://github.com/spicetify/cli) | Spotify 客户端扩展的安装与配置基础；本项目在此之上实现 Wrapper 通信与播放协同 |
+| [NAudio](https://github.com/naudio/NAudio) | Windows 原生音频组件使用的音频库，支持设备访问、采集及 WASAPI / ASIO 链路 |
+| [FFmpeg](https://github.com/FFmpeg/FFmpeg) | 音频解码、格式转换及支持条件下的渐进解码；发行版附对应构建源码与许可证 |
+| [NeteaseCloudMusicApiEnhanced](https://github.com/NeteaseCloudMusicApiEnhanced/api-enhanced) | 网易云音乐接口依赖 |
+| [yakult-green-tea/qq-music-api](https://github.com/yakult-green-tea/qq-music-api) | QQ 音乐接口依赖 |
+| [MakcRe/KuGouMusicApi](https://github.com/MakcRe/KuGouMusicApi) | 酷狗音乐接口依赖 |
+| [Apple Music-like Lyrics](https://github.com/amll-dev/applemusic-like-lyrics) | 使用其 TTML 解析组件 |
+| [AMLL TTML DB](https://github.com/amll-dev/amll-ttml-db) | 接入的逐词歌词数据来源 |
+| [chenglou/pretext](https://github.com/chenglou/pretext) | 文本测量与布局 |
+| [paper-design/shaders](https://github.com/paper-design/shaders) | 背景与界面着色器效果 |
+| [Borewit/music-metadata](https://github.com/Borewit/music-metadata) | 音乐文件格式、标签和时长解析 |
+| [EarTrumpet](https://github.com/File-New-Project/EarTrumpet) | 实现参考：Windows 10 / 11 每应用音频路由接口定义与方法布局 |
+| [Music Assistant](https://github.com/music-assistant/server) | 早期 Spotify 方案研究中，参考其官方播放程序、PCM 管道与控制分离的架构 |
+| [spotify-player](https://github.com/aome510/spotify-player) | 早期 Spotify 方案研究中，参考其授权、Web API 与播放引擎分离的设计 |
+
+保留 Folia 上游对 [chenmozhijin/LDDC](https://github.com/chenmozhijin/LDDC) 的致谢。Music Assistant 与 spotify-player 属于历史方案参考，当前 Wrapper 无需安装这两个项目。
+
+相关官方软件与资料：[Signalyst HQPlayer Control 源码与接口资料](https://www.signalyst.eu/custom.html)用于 HQPlayer 控制接入；[VB-Audio VB-CABLE](https://vb-audio.com/Cable/)用于 Spotify 的 Windows 音频采集桥接。感谢两者提供的工具与资料。

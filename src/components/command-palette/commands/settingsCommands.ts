@@ -47,10 +47,6 @@ export const settingsCommands: CommandPaletteCommand[] = [
     spotifySetupCommand('spotify-playback-stop', 'stop', 'Stop Spotify playback connection', 'Stop the current capture connection or cancel verification', ['vb cable', 'capture disconnect', '断开采集']),
     spotifySetupCommand('spotify-cable-probe', 'probe', 'Check Spotify audio route', 'Inspect the selected cable endpoints and actual audio format', ['vb cable', 'sample rate', '采样率检测']),
     createSettingsAnchorCommand('settings-hqplayer-component', 'HQPlayer component', 'Manage the independent HQPlayer component version', ['hqplayer', 'component', 'HQPlayer组件'], 'hqPlayerOutput', { platform: ['win'], isAvailable: isNativeAudioSupported }),
-    // The unverified audio path requires its visible warning and manual checkbox; the command only opens its controls.
-    defineCommand(createSettingsAnchorCommand('settings-hqplayer-spotify-experiment', 'Spotify HQPlayer experiment', 'Review the noise warning and tune the next live PCM preparation',
-        ['spotify experiment', 'startup delay', 'HQPlayer实验', '播放延迟', '实验音频'], 'hqPlayerOutput',
-        { platform: ['win'], isAvailable: isNativeAudioSupported })),
     createToggleCommand('hqplayer-silent-launch-toggle', 'settings', 'Launch HQPlayer in background', 'Toggle silent background startup',
         ['hqplayer', 'background', '静默启动'], () => { const s = useHQPlayerSettingsStore.getState(); s.setSilentLaunch(!s.silentLaunch); },
         { platform: ['win'], isAvailable: isNativeAudioSupported }),
