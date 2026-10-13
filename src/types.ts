@@ -1141,6 +1141,8 @@ export interface StatusMessage {
   onAction?: () => void;
   cancelLabel?: string;
   onCancel?: () => void;
+  /** Stable semantic key for scoped dismissal; message identity distinguishes newer failures. */
+  statusKey?: 'spotify-cold-volume-recovery-required';
   persistent?: boolean;
 }
 

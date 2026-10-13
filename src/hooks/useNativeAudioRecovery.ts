@@ -14,6 +14,13 @@ const currentSongKey = () => { const song = usePlaybackStore.getState().currentS
 // src/hooks/useNativeAudioRecovery.ts — one recovery decision per fatal session; no restart loop.
 export function useNativeAudioRecovery(audioRef: MutableRefObject<HTMLAudioElement | null>, nativePlayback: boolean) {
     const { t } = useTranslation();
+    // Quit restoration can fail after every deck has been disposed. This app-owned,
+    // fixed-code event has no playback session and cannot change a song or revive a deck.
+    useEffect(() => window.electron?.nativeAudio?.onEvent(event => {
+        if (event.event === 'lifecycle-error' && event.errorCode === 'SOURCE_RESTORE_UNCONFIRMED') {
+            setStatusMessage({ type: 'error', persistent: true, text: t(nativeErrorKey({ code: event.errorCode })) });
+        }
+    }), [t]);
     const resume = useRef<{ song: string; position: number; playing: boolean } | null>(null);
     const generation = useRef(0);
     useEffect(() => {

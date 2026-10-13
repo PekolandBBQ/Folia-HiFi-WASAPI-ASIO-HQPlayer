@@ -1,10 +1,13 @@
 import type { SongResult } from '../types';
+import { isSessionBoundAudio } from './onlineMusic/audioPolicy';
+import { getAudioSourceQuality } from './onlineMusic/audioSourceQuality';
 import { saveAudioBlob } from './audioCache';
 import { saveToCache } from './db';
 import { hasCachedSongAudio, hasCachedSongCover } from './onlineMusic/resourceCache';
-import { getSongResourceCacheKey } from './onlineMusic/resourceKeys';
+import { getSongResourceCacheKey, getSongAudioCacheKey } from './onlineMusic/resourceKeys';
 import { getProviderSongMetadata } from './onlineMusic/songMetadata';
 import { getPlaybackSourceRef } from '../utils/appPlaybackGuards';
+import { readNativeCachedSource } from './nativeAudio/readCachedSource';
 
 // src/services/playedTrackCache.ts
 
@@ -38,12 +41,22 @@ export const cachePlayedTrackAssets = async (
 
     // Audio needs a source that can actually be refetched: a blob: URL is this session's own handle
     // to bytes that are either already cached or on disk, so there is nothing to fetch and store.
-    if (src && !src.startsWith('blob:') && !await hasCachedSongAudio(song)) {
+    const quality = src ? getAudioSourceQuality(song, src) : undefined;
+    if (!isSessionBoundAudio(song) && src && !src.startsWith('blob:') && !await hasCachedSongAudio(song, quality)) {
         console.log('[Cache] Caching fully played song:', song.name);
         try {
-            const response = await fetch(src);
+            const nativeSource = await readNativeCachedSource(song, src);
+            let response;
+            try {
+                response = await fetch(nativeSource || src);
+                if (response.ok === false) throw new Error('Audio cache source is unavailable');
+            } catch (error) {
+                if (!nativeSource) throw error;
+                response = await fetch(src);
+                if (response.ok === false) throw new Error('Audio cache source is unavailable');
+            }
             const blob = await response.blob();
-            await saveAudioBlob(getSongResourceCacheKey('audio', song), blob);
+            await saveAudioBlob(getSongAudioCacheKey(song, quality), blob);
             result.audio = true;
             console.log('[Cache] Audio saved');
         } catch (error) {

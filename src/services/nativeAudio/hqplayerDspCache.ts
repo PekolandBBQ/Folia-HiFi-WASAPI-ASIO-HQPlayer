@@ -5,7 +5,7 @@ let session = '';
 let cached: HQPlayerDspCatalog | null = null;
 let pending: Promise<HQPlayerDspCatalog> | null = null;
 let revision = 0;
-export const getHQPlayerDspCache = () => cached;
+export const getHQPlayerDspCache = (expectedSession?: string) => expectedSession === undefined || expectedSession === session ? cached : null;
 export function setHQPlayerDspSession(next: string) {
     if (next === session) return;
     session = next; cached = null; pending = null; ++revision;

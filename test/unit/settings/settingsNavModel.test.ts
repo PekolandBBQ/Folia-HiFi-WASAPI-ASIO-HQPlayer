@@ -4,13 +4,14 @@ import { SETTINGS_NAV_GROUP_SPECS, buildSettingsNavGroups, findSettingsNavItem, 
 import en from '../../../src/i18n/locales/en';
 import zhCN from '../../../src/i18n/locales/zh-CN';
 import id from '../../../src/i18n/locales/in';
+import { omni } from '../../../src/services/onlineMusic/omni';
 
 // test/unit/settings/settingsNavModel.test.ts
 // The nav model replaced four parallel id-keyed lists in SettingsModal; these lock in that every
 // section still appears exactly once and that every key it points at actually exists in all locales.
 
 const echo = (key: string) => key;
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 
 const ALL_SECTIONS: SettingsSectionId[] = [
     'appearance', 'general', 'playback', 'interaction', 'integration', 'storage', 'desktop', 'graphics', 'mods', 'lab', 'developer',
@@ -52,11 +53,22 @@ describe('settingsNavModel', () => {
 
     it('expands every declared anchor under its owning section', () => {
         vi.stubGlobal('window', { electron: { platform: 'win32', nativeAudio: { supported: true, request: vi.fn() } } });
+        vi.spyOn(omni, 'hasProviderConnectionSettings').mockReturnValue(true);
         const items = flattenSettingsNavItems(buildSettingsNavGroups(echo, { isElectron: true }));
         const rendered = items.flatMap(item => item.anchors.map(anchor => [anchor.id, item.id]));
         const declared = Object.entries(SETTINGS_ANCHOR_DEFINITIONS).map(([id, definition]) => [id, definition.section]);
 
         expect(rendered).toEqual(declared);
+    });
+
+    it('omits Spotify connection navigation when the provider is unavailable', () => {
+        vi.stubGlobal('window', { electron: { platform: 'win32', nativeAudio: { supported: true, request: vi.fn() } } });
+        vi.spyOn(omni, 'hasProviderConnectionSettings').mockReturnValue(false);
+        const items = flattenSettingsNavItems(buildSettingsNavGroups(echo, { isElectron: true }));
+        const anchors = items.flatMap(item => item.anchors.map(anchor => anchor.id));
+        expect(anchors).not.toContain('spotifyConnection');
+        expect(anchors).toContain('hqPlayerOutput');
+        expect(anchors).toContain('nativeAudioOutput');
     });
 
     it.each([['en', en], ['zh-CN', zhCN], ['in', id]] as const)('has every label and description key in %s', (_name, bundle) => {

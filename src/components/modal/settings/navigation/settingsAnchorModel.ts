@@ -1,5 +1,6 @@
 import type { SettingsSubviewId } from '../../../../stores/useSettingsModalStore';
 import { isNativeAudioSupported } from '../../../../services/nativeAudio/capabilities';
+import { omni } from '../../../../services/onlineMusic/omni';
 
 // src/components/modal/settings/navigation/settingsAnchorModel.ts
 // Which options-tab section each <SettingsAnchor> lives in and which translated label its expanded
@@ -50,6 +51,7 @@ export const SETTINGS_ANCHOR_DEFINITIONS = {
     lyricApi: { section: 'integration', labelKey: 'options.lyricApi', electronOnly: true },
     stageMode: { section: 'integration', labelKey: 'options.stageMode' },
     navidrome: { section: 'integration', labelKey: 'navidrome.settings' },
+    spotifyConnection: { section: 'integration', labelKey: 'spotifySettings.title', electronOnly: true, isAvailable: () => omni.hasProviderConnectionSettings('spotify') },
 
     // StorageSettingsSection (LocalLibraryWatchSection renders inside it)
     cacheDetails: { section: 'storage', labelKey: 'options.cacheDetails' },

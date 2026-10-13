@@ -36,12 +36,15 @@ vi.mock('react', () => ({
 
 const playbackState = vi.hoisted(() => ({
     audioSrc: null as string | null,
-    currentSong: null,
+    currentSong: null as import('../../../src/types').SongResult | null,
     replayGainMode: 'off',
 }));
+const commitSource = vi.hoisted(() => vi.fn(async (_song?: unknown, _options?: unknown) => {}));
+vi.mock('../../../src/services/playbackSourceCommit', () => ({ preparePlaybackSourceCommit: commitSource }));
+vi.mock('../../../src/components/app/playback/onlinePlaybackFailure', () => ({ createOnlinePlaybackFailureStatus: (error: Error) => ({ type: 'error', text: error.message }) }));
 const setPlayerStateMock = vi.hoisted(() => vi.fn());
 vi.mock('../../../src/stores/usePlaybackStore', () => ({
-    usePlaybackStore: (selector: (state: typeof playbackState) => unknown) => selector(playbackState),
+    usePlaybackStore: Object.assign((selector: (state: typeof playbackState) => unknown) => selector(playbackState), { getState: () => playbackState }),
     setPlayerState: setPlayerStateMock,
 }));
 vi.mock('../../../src/stores/useAudioSettingsStore', () => ({
@@ -56,7 +59,8 @@ vi.mock('../../../src/stores/useAppViewStore', () => ({
         panelTab: 'queue',
     }),
 }));
-vi.mock('../../../src/stores/useStatusMessageStore', () => ({ setStatusMessage: vi.fn() }));
+const statusMessage = vi.hoisted(() => vi.fn());
+vi.mock('../../../src/stores/useStatusMessageStore', () => ({ setStatusMessage: statusMessage }));
 vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
 vi.mock('../../../src/utils/appPlaybackGuards', () => ({ resolveNavidromePlaybackCarrier: () => null }));
 vi.mock('../../../src/utils/replayGain', () => ({ calculateReplayGain: () => ({ linearGain: 1 }) }));
@@ -87,7 +91,7 @@ const renderBridge = (deck: ReturnType<typeof createDeck>, shouldAutoPlayRef: { 
         localSongs: [],
         isLyricsLoading: false,
         shouldAutoPlayRef,
-        audioContextRef: { current: null },
+        audioContextRef: { current: {} as AudioContext },
         analyserRef: { current: null },
         gainNodeRef: { current: null },
         connectDecks: () => true,
@@ -106,6 +110,9 @@ describe('autoplay intent while a failed source is being transcoded', () => {
     beforeEach(() => {
         reactHooks.refs.length = 0;
         setPlayerStateMock.mockClear();
+        statusMessage.mockClear();
+        commitSource.mockReset().mockResolvedValue(undefined);
+        playbackState.currentSong = null;
         // node 环境下没有可写的 localStorage，被测 hook 会往里写 replaygain 模式。
         globalThis.localStorage = { setItem: () => {}, getItem: () => null } as never;
     });
@@ -131,4 +138,41 @@ describe('autoplay intent while a failed source is being transcoded', () => {
         expect(deck.play).toHaveBeenCalledTimes(1);
         expect(shouldAutoPlayRef.current).toBe(false);
     });
+    it('waits for the provider restoration barrier before autoplay', async () => {
+        const deck = createDeck(null), intent = { current: true };
+        playbackState.currentSong = { id: 'local', name: 'Local', artists: [], album: { id: 0, name: '' }, durationMs: 1000 };
+        let release!: () => void;
+        commitSource.mockImplementationOnce(() => new Promise(resolve => { release = resolve; }));
+        renderBridge(deck, intent);
+        expect(deck.play).not.toHaveBeenCalled();
+        expect(commitSource).toHaveBeenCalledOnce();
+        release();
+        await vi.waitFor(() => expect(deck.play).toHaveBeenCalledOnce());
+    });
+
+    it('cannot autoplay a source superseded while restoration was pending', async () => {
+        const deck = createDeck(null), intent = { current: true };
+        playbackState.currentSong = { id: 'local', name: 'Local', artists: [], album: { id: 0, name: '' }, durationMs: 1000 };
+        let release!: () => void;
+        commitSource.mockImplementationOnce(() => new Promise(resolve => { release = resolve; }));
+        renderBridge(deck, intent);
+        playbackState.audioSrc = 'blob:new-source';
+        release();
+        await new Promise(resolve => setTimeout(resolve, 0));
+        expect(deck.play).not.toHaveBeenCalled();
+        expect(setPlayerStateMock).not.toHaveBeenCalled();
+    });
+
+    it.each([false, true])('handles output-release failure before autoplay (cancelled=%s)', async cancelled => {
+        const deck = createDeck(null), intent = { current: true };
+        playbackState.currentSong = { id: 'local', name: 'Local', artists: [], album: { id: 0, name: '' }, durationMs: 1000 };
+        commitSource.mockRejectedValueOnce(cancelled ? new DOMException('Cancelled', 'AbortError') : new Error('Output suspend failed'));
+        renderBridge(deck, intent);
+        await new Promise(resolve => setTimeout(resolve, 0));
+        expect(deck.play).not.toHaveBeenCalled();
+        expect(statusMessage).toHaveBeenCalledTimes(cancelled ? 0 : 1);
+        expect(setPlayerStateMock).toHaveBeenCalledTimes(cancelled ? 0 : 1);
+        expect(intent.current).toBe(false);
+    });
+
 });

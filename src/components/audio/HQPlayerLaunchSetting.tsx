@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next';
 import { useHQPlayerSettingsStore } from '../../stores/useHQPlayerSettingsStore';
 import SettingsSwitch from '../shared/SettingsSwitch';
 
-// Foreground is the default; this preference never hides an already-running user instance.
+// New settings default to background launch; saved foreground choices and existing user instances are preserved.
 export default function HQPlayerLaunchSetting() {
     const { t } = useTranslation();
     const silent = useHQPlayerSettingsStore(state => state.silentLaunch);

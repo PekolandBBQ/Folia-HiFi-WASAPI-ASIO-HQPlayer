@@ -3,6 +3,8 @@
 // Starts @yakult-green-tea/qq-music-api inside the Electron main process. The package is a regular
 // production dependency, so npm nests its own ws@7 under it and the app's ws@8 is left alone.
 
+const { installQqAuthenticatedSearch } = require('./qqAuthenticatedSearch.cjs');
+
 const QQ_API_MODULE = '@yakult-green-tea/qq-music-api';
 
 function getErrorMessage(error) {
@@ -72,6 +74,7 @@ async function startQqApi(options = {}) {
     moduleId = QQ_API_MODULE,
     loadModule = (target) => require(target),
     env = process.env,
+    installAuthenticatedSearch = installQqAuthenticatedSearch,
   } = options;
 
   if (!port) {
@@ -104,6 +107,7 @@ async function startQqApi(options = {}) {
   }
 
   let qqApi;
+  let authenticatedSearchAvailable = false;
   try {
     qqApi = loadModule(moduleId);
     if (authSessionRepository) {
@@ -120,6 +124,7 @@ async function startQqApi(options = {}) {
       // stack returns. Injecting here restores encrypted credentials before the first status probe.
       configureAuthSessionRepository(authSessionRepository);
     }
+    authenticatedSearchAvailable = installAuthenticatedSearch(qqApi);
   } catch (error) {
     if (isModuleNotFound(error)) {
       const missing = new Error(
@@ -153,6 +158,7 @@ async function startQqApi(options = {}) {
     port,
     stateFilePath: stateFilePath || null,
     server,
+    authenticatedSearchAvailable,
     close: () => closeServer(server),
   };
 }

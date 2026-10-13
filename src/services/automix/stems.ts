@@ -262,7 +262,8 @@ const parked = new Map<string, StemRequest>();
 // and the first request parks inside the first call to `ensureStems` - there is no earlier hook.
 onAudioCached((cacheKey) => {
     for (const [key, request] of [...parked]) {
-        if (getSongResourceCacheKey('audio', request.song) !== cacheKey) continue;
+        const songKey = getSongResourceCacheKey('audio', request.song);
+        if (songKey !== cacheKey && !cacheKey.startsWith(`${songKey}:quality:`)) continue;
         parked.delete(key);
         // Asked here as well as inside `ensureStems`, because this can fire long after the request
         // was parked. The check in there sits after the decode, which is tens of megabytes spent to

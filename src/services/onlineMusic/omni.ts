@@ -1,6 +1,9 @@
+import { createSpotifyLibraryObservation } from './spotifyLibraryDiagnostics';
 import type { SongResult, UnifiedSong } from '../../types';
+import { rememberAudioSourceQuality } from './audioSourceQuality';
 import type {
     AudioQualityPreference,
+    AudioSourceRequestOptions,
     MediaId,
     OmniAudioSource,
     OmniChorusRange,
@@ -18,6 +21,9 @@ import type {
     OnlineMusicProvider,
     PersonalFmRequestOptions,
     ProviderCatalogEntityKind,
+    ProviderConnectionSettings,
+    ProviderPlaybackSetupRequest,
+    ProviderPlaybackSetupStatus,
     QrLoginMethod,
     QrLoginState,
 } from '../../types/onlineMusic';
@@ -35,8 +41,9 @@ import {
     requireOnlineMusicProvider,
     subscribeOnlineMusicProviderRegistry,
 } from './providerRegistry';
-import { saveProviderAccountSnapshot } from './providerAccountCache';
+import { saveProviderAccountSnapshot, clearProviderAccountSnapshot } from './providerAccountCache';
 import { applyOmniAudioHook, applyOmniLyricsHook } from '../hostExtensionHooks';
+import { collectProviderPages } from './providerPagination';
 
 // src/services/onlineMusic/omni.ts
 // Online Music Network Interface (Omni) - a unified interface for interacting with multiple online music providers.
@@ -193,6 +200,41 @@ export const omni = {
         return provider?.shortName || provider?.displayName || providerId;
     },
 
+    hasProviderConnectionSettings(providerId: OmniProviderId): boolean {
+        return Boolean(getOnlineMusicProvider(providerId)?.connection);
+    },
+
+    async getProviderConnectionSettings(providerId: OmniProviderId): Promise<ProviderConnectionSettings> {
+        const connection = requireOnlineMusicProvider(providerId).connection;
+        if (!connection) throw new OnlineProviderError('unsupported', 'Connection settings unavailable', providerId);
+        return connection.getSettings();
+    },
+
+    async setProviderConnectionSettings(providerId: OmniProviderId, settings: ProviderConnectionSettings) {
+        const connection = requireOnlineMusicProvider(providerId).connection;
+        if (!connection) throw new OnlineProviderError('unsupported', 'Connection settings unavailable', providerId);
+        const result = await connection.setSettings(settings);
+        if (result.changed) {
+            const store = useOnlineProviderAccountStore.getState();
+            const revision = (store.accounts[providerId]?.connectionRevision || 0) + 1;
+            store.clearAccount(providerId);
+            store.updateAccount(providerId, { connectionRevision: revision });
+            await clearProviderAccountSnapshot(providerId);
+        }
+        return result;
+    },
+
+    hasProviderPlaybackSetup(providerId: OmniProviderId): boolean {
+        return Boolean(getOnlineMusicProvider(providerId)?.playbackSetup);
+    },
+
+    async requestProviderPlaybackSetup(providerId: OmniProviderId, input: ProviderPlaybackSetupRequest,
+        options?: AudioSourceRequestOptions): Promise<ProviderPlaybackSetupStatus> {
+        const setup = requireOnlineMusicProvider(providerId).playbackSetup;
+        if (!setup) throw new OnlineProviderError('unsupported', 'Playback setup unavailable', providerId);
+        return setup.request(input, options);
+    },
+
     async searchSongs(query: string, page: PageInput): Promise<OmniPage<UnifiedSong>> {
         return withActiveProvider(async provider => {
             if (!providerSupports(provider, 'search') || !provider.search) return emptyPage(page.offset);
@@ -278,40 +320,54 @@ export const omni = {
         const account = useOnlineProviderAccountStore.getState().accounts[providerId];
         const userId = account?.user?.id;
         if (userId === undefined || userId === null) return [];
+        const observation = createSpotifyLibraryObservation(providerId, account.collections);
+        const revision = account.connectionRevision || 0;
+        const isCurrent = () => {
+            const latest = useOnlineProviderAccountStore.getState().accounts[providerId];
+            return latest?.user?.id === userId && (latest.connectionRevision || 0) === revision;
+        };
         useOnlineProviderAccountStore.getState().updateAccount(providerId, {
             freshness: 'refreshing',
             error: undefined,
         });
 
         try {
-            const playlists: OmniCollection[] = [];
-            const limit = 50;
-            let offset = 0;
-            let hasMore = true;
-            while (hasMore && offset < 1000) {
-                const page = await this.getProviderUserPlaylists(providerId, userId, { limit, offset });
-                playlists.push(...page.items.filter(collection => collection.type === 'playlist'));
-                hasMore = page.hasMore && page.nextOffset > offset;
-                offset = page.nextOffset;
-            }
+            const result = await collectProviderPages({
+                providerId,
+                fetchPage: offset => this.getProviderUserPlaylists(providerId, userId, { limit: 50, offset }),
+                getKey: collection => `${collection.providerId}:${collection.type}:${String(collection.id)}`,
+                isCancelled: () => !isCurrent(),
+                onPage: observation.page,
+            });
+            if (!result || !isCurrent()) { observation.result(false, { reason: 'cancelled', revisionChanged: !isCurrent() }); return []; }
+            const playlists = result.filter(collection => collection.type === 'playlist');
 
-            const existingCollections = account.collections || [];
+            // Liked Songs can be a separate library resource absent from the playlist endpoint.
+            // Read the latest account: a full library refresh may have completed during paging.
+            const latest = useOnlineProviderAccountStore.getState().accounts[providerId];
+            const playlistKeys = new Set(playlists.map(collection => `${collection.providerId}:${collection.type}:${String(collection.id)}`));
             const collections = [
-                ...existingCollections.filter(collection => collection.type !== 'playlist'),
+                ...latest.collections.filter(collection => (collection.type !== 'playlist' || collection.isLiked)
+                    && !playlistKeys.has(`${collection.providerId}:${collection.type}:${String(collection.id)}`)),
                 ...playlists,
             ];
             const snapshot = await saveProviderAccountSnapshot(providerId, {
-                user: account.user!,
+                user: latest.user!,
                 collections,
-                likedSongIds: account.likedSongIds || [],
+                likedSongIds: latest.likedSongIds || [],
             });
+            if (!isCurrent()) { observation.result(false, { reason: 'cancelled', revisionChanged: true }); return []; }
+            observation.replace(latest.collections, collections);
             useOnlineProviderAccountStore.getState().updateAccount(providerId, {
                 collections,
                 freshness: 'fresh',
                 lastUpdatedAt: snapshot.savedAt,
             });
+            observation.result(true);
             return playlists;
         } catch (error) {
+            observation.result(false, { reason: isCurrent() ? 'failed' : 'cancelled', revisionChanged: !isCurrent() });
+            if (!isCurrent()) return [];
             useOnlineProviderAccountStore.getState().updateAccount(providerId, {
                 freshness: 'error',
                 error: error instanceof Error ? error.message : 'provider_playlist_refresh_failed',
@@ -466,15 +522,21 @@ export const omni = {
         return Boolean(getOnlineMusicProviderForSong(song)?.playback);
     },
 
-    async getAudioSource(song: SongResult, quality: AudioQualityPreference): Promise<OmniAudioSource | null> {
-        const source = await (providerForSong(song).playback?.getAudioSource(song, quality) ?? null);
+    async leavePlaybackProvider(providerId: OmniProviderId, options?: { signal?: AbortSignal; isCurrent?: () => boolean }): Promise<void> {
+        await getOnlineMusicProvider(providerId)?.playback?.leaveSource?.(options);
+    },
+
+    async getAudioSource(song: SongResult, quality: AudioQualityPreference, options?: AudioSourceRequestOptions): Promise<OmniAudioSource | null> {
+        const source = await (providerForSong(song).playback?.getAudioSource(song, quality, options) ?? null);
         // Written here rather than at either caller because this is the only moment a provider ever
         // states a track's ReplayGain, and both callers - the prefetch pass and playback itself -
         // may be the one that happens to see it. See getCachedSongReplayGain for what is lost
         // otherwise: the URL is never fetched again once the bytes are cached.
         if (source?.replayGain) void saveSongReplayGain(song, source.replayGain);
         // Extension layers (Folium omni hooks) may swap the URL; the ReplayGain above stays the provider's.
-        return applyOmniAudioHook(song, source);
+        const result = await applyOmniAudioHook(song, source);
+        if (result && result.url === source?.url) rememberAudioSourceQuality(song, result);
+        return result;
     },
 
     // Asked once per track, including for local and Navidrome songs, so an unsupported source is a
@@ -492,6 +554,9 @@ export const omni = {
 
     async getLyrics(song: SongResult, context?: { userId?: MediaId | null }): Promise<OmniLyricsResult> {
         const provider = providerForSong(song);
+        // Absence of a lyrics capability is normal, including during session restore and prefetch.
+        // Missing lyrics must neither fail audio playback nor label a vocal track as instrumental.
+        if (!provider.capabilities.lyrics) return applyOmniLyricsHook(song, { lyrics: null, isPureMusic: false });
         if (!provider.lyrics) return unsupported(provider.id, 'lyrics');
         const providerUserId = useOnlineProviderAccountStore.getState().accounts[provider.id]?.user?.id ?? context?.userId;
         const providerResult = await provider.lyrics.getLyrics(song, { ...context, userId: providerUserId });

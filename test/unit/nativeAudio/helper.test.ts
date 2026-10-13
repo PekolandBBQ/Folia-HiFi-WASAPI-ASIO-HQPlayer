@@ -50,3 +50,30 @@ it('logs sanitized driver diagnostics before process exit without emitting a pla
         expect(event).not.toHaveBeenCalled();
     } finally { helper.dispose(); log.mockRestore(); }
 });
+
+
+it('does not acknowledge Stop or reopen after kill until the exact old process exit is observed', async () => {
+    const { child, spawn, helper } = fixture(15);
+    await expect(helper.request({ action: 'hello' })).rejects.toMatchObject({ code: 'COMPONENT_TIMEOUT' });
+    expect(child.kill).toHaveBeenCalledOnce();
+    await expect(helper.request({ action: 'stop' })).rejects.toMatchObject({ code: 'COMPONENT_TIMEOUT' });
+    await expect(helper.request({ action: 'stream-load' })).rejects.toMatchObject({ code: 'COMPONENT_TIMEOUT' });
+    expect(spawn).toHaveBeenCalledOnce();
+    const stopped = helper.request({ action: 'stop' }); child.emit('exit', 0); await stopped;
+    expect(spawn).toHaveBeenCalledOnce();
+});
+
+it('a delayed duplicate old exit cannot cancel or retire the new driver owner', async () => {
+    const { child, spawn, helper } = fixture(15);
+    await expect(helper.request({ action: 'hello' })).rejects.toMatchObject({ code: 'COMPONENT_TIMEOUT' });
+    const next = Object.assign(new EventEmitter(), { stdin: new PassThrough(), stdout: new PassThrough(), stderr: new PassThrough(), kill: vi.fn() });
+    spawn.mockReturnValue(next);
+    next.stdin.once('data', () => {
+        child.emit('exit', 1); child.emit('close', 1);
+        next.stdout.write(JSON.stringify({ id: 2, ok: true, result: { session: 'new' } }) + '\n');
+    });
+    const loading = helper.request({ action: 'stream-load' });
+    expect(spawn).toHaveBeenCalledOnce(); child.emit('exit', 1);
+    expect(await loading).toEqual({ session: 'new' }); expect(next.kill).not.toHaveBeenCalled();
+    helper.dispose(); next.emit('exit', 0);
+});

@@ -6,9 +6,34 @@ const { audioError, errorCode, diagnostic } = require('./errors.cjs');
 function createHelper(executable, onEvent, spawnProcess = spawn, timeoutMs = 15000) {
     let child = null, nextId = 0;
     const pending = new Map();
+    const retiring = new Map(), lifetimes = new WeakMap();
+    function observedExit(process) {
+        const lifetime = lifetimes.get(process);
+        if (!lifetime || lifetime.exited) return;
+        lifetime.exited = true; retiring.delete(process);
+        for (const resolve of lifetime.waiters) resolve();
+        lifetime.waiters.clear();
+    }
+    async function waitForRetired() {
+        // kill() only requests termination. Preserve the exact child owner until
+        // its exit/close event, and do not spawn another driver while it is unknown.
+        for (const lifetime of retiring.values()) {
+            if (lifetime.exited) continue;
+            await new Promise((resolve, reject) => {
+                const done = () => { clearTimeout(timer); lifetime.waiters.delete(done); resolve(); };
+                const timer = setTimeout(() => {
+                    lifetime.waiters.delete(done); reject(audioError('COMPONENT_TIMEOUT', 'Previous driver exit is unconfirmed'));
+                }, timeoutMs);
+                lifetime.waiters.add(done);
+                if (lifetime.exited) done();
+            });
+        }
+    }
     function fail(error, process, notify = true) {
         if (child !== process) return;
         child = null;
+        const lifetime = lifetimes.get(process);
+        if (lifetime && !lifetime.exited) retiring.set(process, lifetime);
         for (const item of pending.values()) { clearTimeout(item.timer); item.reject(error); }
         pending.clear();
         if (notify) { diagnostic(error); onEvent({ event: 'error', errorCode: errorCode(error) }); }
@@ -17,6 +42,7 @@ function createHelper(executable, onEvent, spawnProcess = spawn, timeoutMs = 150
         if (child) return child;
         const process = spawnProcess(executable, [], { windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] });
         child = process;
+        lifetimes.set(process, { exited: false, waiters: new Set() });
         let diagnostics = '';
         process.stderr.on('data', data => {
             diagnostics = (diagnostics + data).slice(-4096);
@@ -42,22 +68,27 @@ function createHelper(executable, onEvent, spawnProcess = spawn, timeoutMs = 150
             if (message.ok) item.resolve(message.result);
             else { const error = audioError(message.errorCode, message.error); diagnostic(error); item.reject(error); }
         });
-        process.on('error', error => fail(audioError('COMPONENT_CRASHED', error.message), process));
+        process.on('error', error => { fail(audioError('COMPONENT_CRASHED', error.message), process);
+            try { process.kill(); } catch { /* Keep the owner unconfirmed until exit. */ } });
         process.on('exit', code => {
-            lines.close();
+            observedExit(process); lines.close();
             fail(audioError('COMPONENT_CRASHED', `Audio driver host exited (${code}). ${diagnostics}`), process);
         });
-        process.stdin.on('error', error => fail(audioError('COMPONENT_CRASHED', error.message), process));
+        process.on('close', () => { observedExit(process); lines.close();
+            fail(audioError('COMPONENT_CRASHED', 'Audio driver process closed'), process); });
+        process.stdin.on('error', error => { fail(audioError('COMPONENT_CRASHED', error.message), process);
+            try { process.kill(); } catch { /* Keep the owner unconfirmed until exit. */ } });
         return process;
     }
-    function request(command) {
+    async function request(command) {
+        if (retiring.size) await waitForRetired();
         if (!child && command.action === 'stop') return Promise.resolve({ ok: true });
         const process = start();
         const id = ++nextId;
         return new Promise((resolve, reject) => {
             const timer = setTimeout(() => {
                 fail(audioError('COMPONENT_TIMEOUT', 'Driver request exceeded deadline'), process);
-                process.kill();
+                try { process.kill(); } catch { /* A failed kill is not an exit acknowledgement. */ }
             }, timeoutMs);
             pending.set(id, { resolve, reject, timer });
             process.stdin.write(JSON.stringify({ ...command, id }) + '\n');
@@ -67,8 +98,8 @@ function createHelper(executable, onEvent, spawnProcess = spawn, timeoutMs = 150
         if (!child) return;
         const process = child;
         fail(audioError('CANCELLED', 'Audio driver host closed'), process, false);
-        process.kill();
+        try { process.kill(); } catch { /* Wait for the owned process exit on the next request. */ }
     }
-    return { request, dispose };
+    return { request, dispose, waitForExit: waitForRetired };
 }
 module.exports = { createHelper };

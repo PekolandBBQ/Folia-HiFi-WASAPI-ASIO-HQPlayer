@@ -1,6 +1,7 @@
 import React, { useCallback, useLayoutEffect, useRef } from 'react';
 import { MotionValue, useMotionValueEvent } from 'framer-motion';
 import { FoliumControlButtonSlot, FoliumProgressLayers, useFoliumProgressContext } from '../mods/folium/registries/progress';
+import { PLAYER_PROGRESS_TEXT_CLASS, PLAYER_PROGRESS_NUMERIC_CLASS } from './floating-player/playerProgressAppearance';
 
 // Folium public parts (mods/README.md): `data-folium-part` marks what mod CSS may
 // restyle — progress.root / track / fill / thumb / time / duration. Colors come
@@ -157,7 +158,7 @@ const ProgressBar: React.FC<ProgressBarProps> = ({
 
             <span
                 ref={timeRef}
-                className="text-[10px] font-mono font-medium opacity-60 w-8 text-right text-[var(--folium-progress-text)]"
+                className={`${PLAYER_PROGRESS_TEXT_CLASS} ${PLAYER_PROGRESS_NUMERIC_CLASS} w-8 text-right`}
                 data-folium-part="progress.time"
             >
                 00:00
@@ -208,7 +209,7 @@ const ProgressBar: React.FC<ProgressBarProps> = ({
             </div>
 
             <span
-                className="text-[10px] font-mono font-medium opacity-60 w-8 text-[var(--folium-progress-text)]"
+                className={`${PLAYER_PROGRESS_TEXT_CLASS} ${PLAYER_PROGRESS_NUMERIC_CLASS} w-8`}
                 data-folium-part="progress.duration"
             >
                 {formatTime(duration)}

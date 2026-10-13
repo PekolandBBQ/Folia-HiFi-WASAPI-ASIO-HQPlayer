@@ -57,6 +57,7 @@ vi.mock('@/utils/blobGuards', () => ({
 import { loadOnlineSongAudioSource, loadOnlineSongLyrics } from '@/services/onlinePlayback';
 import { markOnlineLyricsPureMusic } from '@/utils/onlineLyricsState';
 import type { SongResult } from '@/types';
+import { getAudioSourceMetadata } from '@/services/onlineMusic/audioSourceQuality';
 
 // test/unit/onlinePlayback.test.ts
 
@@ -68,6 +69,26 @@ const song: SongResult = {
     durationMs: 1000,
     sourceRef: { kind: 'online', providerId: 'kugou', mediaId: 'online-song' },
 };
+
+describe('Spotify original lyrics playback', () => {
+    it('bypasses old unlabelled lyrics caches and releases audio before the network response', async () => {
+        vi.clearAllMocks();
+        loadLyricsStateMock.mockResolvedValue(null);
+        songCacheMock.mockResolvedValue({ lines: [{ fullText: 'old cross-provider cache' }] });
+        let resolve!: (value: unknown) => void;
+        lyricsMock.mockImplementation(() => new Promise(done => { resolve = done; }));
+        const onDone = vi.fn(), onLyrics = vi.fn();
+        const pending = loadOnlineSongLyrics({ ...song, sourceRef: { kind: 'online', providerId: 'spotify', mediaId: 'spotify-track' } }, null, null,
+            { isCurrent: () => true, onDone, onLyrics });
+        await vi.waitFor(() => expect(lyricsMock).toHaveBeenCalled());
+        expect(onDone).toHaveBeenCalledOnce();
+        const original = { lines: [{ fullText: 'original', startTime: 1, endTime: 2, words: [] }] };
+        resolve({ lyrics: original, isPureMusic: false });
+        await pending;
+        expect(onLyrics).toHaveBeenCalledWith(original);
+        expect(autoMatchMock).not.toHaveBeenCalled();
+    });
+});
 
 describe('online audio ReplayGain plumbing', () => {
     beforeEach(() => {
@@ -131,6 +152,16 @@ describe('online audio ReplayGain plumbing', () => {
             expect(result.replayGain).toBeUndefined();
         }
         expect(updatePrefetchedAudioUrlMock).toHaveBeenCalledWith(song, 'https://audio.test/song.mp3', 'high', undefined);
+    });
+
+    it('retains the exact cached tier through its new blob URL without claiming an encoded format', async () => {
+        cachedAudioMock.mockResolvedValue(new Blob([new Uint8Array([1, 2, 3])]));
+        const target = { ...song, replayGain: { trackGain: -1 } };
+        const result = await loadOnlineSongAudioSource(target, 'lossless', null);
+        expect(result).toMatchObject({ kind: 'ok', audioSrc: 'blob:test', blobUrl: 'blob:test' });
+        expect(cachedAudioMock).toHaveBeenCalledWith(target, 'lossless');
+        expect(sourceMock).not.toHaveBeenCalled();
+        expect(getAudioSourceMetadata(song, 'blob:test')).toEqual({ quality: 'lossless', requestedQuality: 'lossless' });
     });
 });
 

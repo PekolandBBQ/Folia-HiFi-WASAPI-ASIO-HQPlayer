@@ -1,0 +1,2412 @@
+{
+  "name": "restore-barrier",
+  "passed": true,
+  "requests": [
+    {
+      "operation": "metadata",
+      "method": "GET",
+      "url": "/v1/tracks/3n3Ppam7vgaVa1iaRUc9Lp",
+      "at": 1791607927612,
+      "startedMs": 157.952505,
+      "delayActualMs": 0.32795300000000793,
+      "finishedMs": 160.617011,
+      "elapsedMs": 2.6645059999999887
+    },
+    {
+      "operation": "devices",
+      "method": "GET",
+      "url": "/v1/me/player/devices",
+      "at": 1791607927629,
+      "startedMs": 175.835086,
+      "delayActualMs": 1.1973619999999983,
+      "finishedMs": 177.423842,
+      "elapsedMs": 1.5887560000000178
+    },
+    {
+      "operation": "state",
+      "method": "GET",
+      "url": "/v1/me/player",
+      "at": 1791607927935,
+      "startedMs": 481.114934,
+      "delayActualMs": 2.442598999999973,
+      "finishedMs": 484.351767,
+      "elapsedMs": 3.23683299999999
+    },
+    {
+      "operation": "select",
+      "method": "PUT",
+      "url": "/v1/me/player/play?device_id=local-fake-desktop",
+      "at": 1791607928006,
+      "startedMs": 552.542802,
+      "delayActualMs": 1.137822999999912,
+      "finishedMs": 553.925918,
+      "elapsedMs": 1.3831159999999727
+    },
+    {
+      "operation": "state",
+      "method": "GET",
+      "url": "/v1/me/player",
+      "at": 1791607928011,
+      "startedMs": 557.020324,
+      "delayActualMs": 1.2537680000000364,
+      "finishedMs": 558.522094,
+      "elapsedMs": 1.5017700000000787
+    },
+    {
+      "operation": "pause",
+      "method": "PUT",
+      "url": "/v1/me/player/pause?device_id=local-fake-desktop",
+      "at": 1791607928016,
+      "startedMs": 562.285282,
+      "delayActualMs": 1.1261159999999109,
+      "finishedMs": 563.554467,
+      "elapsedMs": 1.2691849999999931
+    },
+    {
+      "operation": "state",
+      "method": "GET",
+      "url": "/v1/me/player",
+      "at": 1791607928028,
+      "startedMs": 574.66678,
+      "delayActualMs": 1.6981869999999617,
+      "finishedMs": 576.644789,
+      "elapsedMs": 1.978008999999929
+    },
+    {
+      "operation": "seek",
+      "method": "PUT",
+      "url": "/v1/me/player/seek?device_id=local-fake-desktop&position_ms=0",
+      "at": 1791607928039,
+      "startedMs": 585.397604,
+      "delayActualMs": 2.1071759999999813,
+      "finishedMs": 587.829223,
+      "elapsedMs": 2.431618999999955
+    },
+    {
+      "operation": "state",
+      "method": "GET",
+      "url": "/v1/me/player",
+      "at": 1791607928046,
+      "startedMs": 592.068277,
+      "delayActualMs": 1.2064300000000685,
+      "finishedMs": 593.615537,
+      "elapsedMs": 1.5472600000000511
+    },
+    {
+      "operation": "play",
+      "method": "PUT",
+      "url": "/v1/me/player/play?device_id=local-fake-desktop",
+      "at": 1791607928069,
+      "startedMs": 615.825942,
+      "delayActualMs": 2.541872999999896,
+      "finishedMs": 620.53786,
+      "elapsedMs": 4.711917999999969
+    },
+    {
+      "operation": "state",
+      "method": "GET",
+      "url": "/v1/me/player",
+      "at": 1791607928077,
+      "startedMs": 623.683274,
+      "delayActualMs": 1.1471850000000359,
+      "finishedMs": 625.021444,
+      "elapsedMs": 1.338169999999991
+    },
+    {
+      "operation": "metadata",
+      "method": "GET",
+      "url": "/v1/tracks/4n4Qqam7vgaVa1iaRUc9Lp",
+      "at": 1791607928107,
+      "startedMs": 653.40458,
+      "delayActualMs": 1.7557150000000092,
+      "finishedMs": 655.350246,
+      "elapsedMs": 1.9456659999999601
+    },
+    {
+      "operation": "state",
+      "method": "GET",
+      "url": "/v1/me/player",
+      "at": 1791607928107,
+      "startedMs": 653.52688,
+      "delayActualMs": 1.8304229999999961,
+      "finishedMs": 655.526295,
+      "elapsedMs": 1.999414999999999
+    },
+    {
+      "operation": "devices",
+      "method": "GET",
+      "url": "/v1/me/player/devices",
+      "at": 1791607928108,
+      "startedMs": 654.031578,
+      "delayActualMs": 1.6373909999999796,
+      "finishedMs": 655.882755,
+      "elapsedMs": 1.851177000000007
+    },
+    {
+      "operation": "pause",
+      "method": "PUT",
+      "url": "/v1/me/player/pause?device_id=local-fake-desktop",
+      "at": 1791607928116,
+      "startedMs": 662.66686,
+      "delayActualMs": 0.6244919999999183,
+      "finishedMs": 663.450819,
+      "elapsedMs": 0.7839589999999816
+    },
+    {
+      "operation": "state",
+      "method": "GET",
+      "url": "/v1/me/player",
+      "at": 1791607928119,
+      "startedMs": 665.603096,
+      "delayActualMs": 3.9041519999999537,
+      "finishedMs": 669.724815,
+      "elapsedMs": 4.121718999999985
+    },
+    {
+      "operation": "state",
+      "method": "GET",
+      "url": "/v1/me/player",
+      "at": 1791607928132,
+      "startedMs": 677.976943,
+      "delayActualMs": 1.1788470000000189,
+      "finishedMs": 679.28353,
+      "elapsedMs": 1.306587000000036
+    },
+    {
+      "operation": "state",
+      "method": "GET",
+      "url": "/v1/me/player",
+      "at": 1791607928144,
+      "startedMs": 690.301102,
+      "delayActualMs": 1.1121019999999362,
+      "finishedMs": 691.517268,
+      "elapsedMs": 1.2161659999999301
+    },
+    {
+      "operation": "select",
+      "method": "PUT",
+      "url": "/v1/me/player/play?device_id=local-fake-desktop",
+      "at": 1791607928154,
+      "startedMs": 700.874251,
+      "delayActualMs": 1.1185159999999996,
+      "finishedMs": 702.104683,
+      "elapsedMs": 1.2304320000000644
+    },
+    {
+      "operation": "state",
+      "method": "GET",
+      "url": "/v1/me/player",
+      "at": 1791607928157,
+      "startedMs": 703.913167,
+      "delayActualMs": 1.1138369999999895,
+      "finishedMs": 705.160521,
+      "elapsedMs": 1.247353999999973
+    },
+    {
+      "operation": "pause",
+      "method": "PUT",
+      "url": "/v1/me/player/pause?device_id=local-fake-desktop",
+      "at": 1791607928161,
+      "startedMs": 707.590336,
+      "delayActualMs": 1.1083190000000513,
+      "finishedMs": 708.78879,
+      "elapsedMs": 1.1984539999999697
+    },
+    {
+      "operation": "state",
+      "method": "GET",
+      "url": "/v1/me/player",
+      "at": 1791607928165,
+      "startedMs": 710.967177,
+      "delayActualMs": 1.105271000000016,
+      "finishedMs": 712.201128,
+      "elapsedMs": 1.2339510000000473
+    },
+    {
+      "operation": "seek",
+      "method": "PUT",
+      "url": "/v1/me/player/seek?device_id=local-fake-desktop&position_ms=0",
+      "at": 1791607928168,
+      "startedMs": 714.847167,
+      "delayActualMs": 1.4969710000000305,
+      "finishedMs": 716.466141,
+      "elapsedMs": 1.6189739999999802
+    },
+    {
+      "operation": "state",
+      "method": "GET",
+      "url": "/v1/me/player",
+      "at": 1791607928172,
+      "startedMs": 718.328093,
+      "delayActualMs": 1.1166279999999915,
+      "finishedMs": 719.557311,
+      "elapsedMs": 1.2292180000000599
+    }
+  ],
+  "events": [
+    "http:metadata",
+    "http:devices",
+    "native-csharp:hello",
+    "native-csharp:inspect",
+    "http:state",
+    "native-csharp:acquire",
+    "native-csharp:authorizePreparedSelection",
+    "http:select",
+    "http:state",
+    "http:pause",
+    "http:state",
+    "http:seek",
+    "http:state",
+    "native-csharp:completePreparedSelection",
+    "capture:open",
+    "native-csharp:armCaptureInterval",
+    "capture:start",
+    "native-csharp:authorizeResume",
+    "http:play",
+    "http:state",
+    "native-csharp:status",
+    "capture:promote",
+    "native-csharp:status",
+    "capture:publish",
+    "capture:stop",
+    "http:metadata",
+    "http:state",
+    "http:devices",
+    "http:pause",
+    "http:state",
+    "capture:stop-verified",
+    "native-csharp:release",
+    "http:state",
+    "control:revoke:CLOSED",
+    "native-csharp:inspect",
+    "http:state",
+    "native-csharp:acquire",
+    "native-csharp:authorizePreparedSelection",
+    "http:select",
+    "http:state",
+    "http:pause",
+    "http:state",
+    "http:seek",
+    "http:state",
+    "native-csharp:completePreparedSelection"
+  ],
+  "native": [
+    {
+      "type": "native-send",
+      "operation": "hello",
+      "id": "1",
+      "atMs": 190.310212
+    },
+    {
+      "type": "native-result",
+      "operation": "hello",
+      "atMs": 369.769756,
+      "elapsedMs": 179.48749,
+      "value": {
+        "id": "1",
+        "ok": true,
+        "state": "idle",
+        "code": "CAPABILITIES",
+        "ready": false,
+        "capabilities": {
+          "productionQualified": true,
+          "heldPausedAcquire": true,
+          "completeSessionProof": true,
+          "notificationCoherent": true,
+          "retainedJournalRecovery": true,
+          "blockers": [],
+          "trialAuthorized": false,
+          "validationProfile": null,
+          "intervalIsolation": true,
+          "ownedSilentRenderLease": true,
+          "preparedSelection": true,
+          "boundedPreparationObservation": true,
+          "boundedRestoreObservation": true,
+          "indefiniteHeldPause": true,
+          "freshResumeInterval": true,
+          "protocolMajor": 1,
+          "componentVersion": "0.19.0-dev.13",
+          "platform": "win32-x64",
+          "contract": "folia-owned-route-v1",
+          "implementationAvailable": true,
+          "supported": true,
+          "canOperate": true,
+          "operations": [
+            "hello",
+            "inspect",
+            "acquire",
+            "authorizePreparedSelection",
+            "completePreparedSelection",
+            "suspendPaused",
+            "resumePreparation",
+            "armCaptureInterval",
+            "authorizeResume",
+            "status",
+            "heartbeat",
+            "release",
+            "close"
+          ]
+        },
+        "inspection": null,
+        "lease": null,
+        "resumeAuthorized": false,
+        "exactOriginalRolesRestored": false,
+        "defaultsUnchanged": false,
+        "defaults": null,
+        "globalDefaultsWritten": false,
+        "observedDefaultsChanged": null,
+        "intervalIsolated": false,
+        "intervalGeneration": null,
+        "intervalArmed": false,
+        "intervalId": null,
+        "noPolicyWrites": false,
+        "failureCode": null,
+        "physicalOwnerDiagnostic": null,
+        "operationFailureDiagnostic": null,
+        "preparedSelectionAuthorized": false,
+        "preparedSelectionCompleted": false,
+        "cleanupRetryable": false,
+        "restoreWritesStarted": null,
+        "pausedHeld": false,
+        "intervalEpoch": 0,
+        "_fixtureMetrics": {
+          "sourceReads": 0,
+          "sessionScans": 0,
+          "policyScans": 0,
+          "writes": 0,
+          "suspended": false
+        }
+      }
+    },
+    {
+      "type": "native-send",
+      "operation": "inspect",
+      "id": "2",
+      "atMs": 371.452795
+    },
+    {
+      "type": "native-result",
+      "operation": "inspect",
+      "atMs": 395.989663,
+      "elapsedMs": 24.545142,
+      "value": {
+        "id": "2",
+        "ok": true,
+        "state": "inspected",
+        "code": "INSPECTED",
+        "ready": false,
+        "capabilities": null,
+        "inspection": {
+          "process": {
+            "pid": 12,
+            "startTimeUtcTicks": "639271872000000000",
+            "startedAtUnixMs": 1791590400000,
+            "userSid": "sid",
+            "policyIdentity": "policy",
+            "imageIdentity": "image",
+            "distribution": "desktop"
+          },
+          "sourcePaused": true,
+          "sourceOutputDefault": false,
+          "baseCableVerified": true,
+          "originalPolicySafe": true,
+          "defaultsUnchanged": true,
+          "noOtherWriters": true,
+          "captureDeviceId": "local-fake-capture",
+          "renderDeviceId": "local-fake-render",
+          "originalRoles": [
+            {
+              "role": 0,
+              "original": null
+            },
+            {
+              "role": 1,
+              "original": "raw-original-endpoint"
+            }
+          ]
+        },
+        "lease": null,
+        "resumeAuthorized": false,
+        "exactOriginalRolesRestored": false,
+        "defaultsUnchanged": false,
+        "defaults": null,
+        "globalDefaultsWritten": false,
+        "observedDefaultsChanged": null,
+        "intervalIsolated": false,
+        "intervalGeneration": null,
+        "intervalArmed": false,
+        "intervalId": null,
+        "noPolicyWrites": false,
+        "failureCode": null,
+        "physicalOwnerDiagnostic": null,
+        "operationFailureDiagnostic": null,
+        "preparedSelectionAuthorized": false,
+        "preparedSelectionCompleted": false,
+        "cleanupRetryable": false,
+        "restoreWritesStarted": null,
+        "pausedHeld": false,
+        "intervalEpoch": 0,
+        "_fixtureMetrics": {
+          "sourceReads": 0,
+          "sessionScans": 0,
+          "policyScans": 0,
+          "writes": 0,
+          "suspended": false
+        }
+      }
+    },
+    {
+      "type": "native-send",
+      "operation": "acquire",
+      "id": "3",
+      "atMs": 489.308349
+    },
+    {
+      "type": "source-request",
+      "atMs": 502.962482,
+      "input": {
+        "event": "sourceControl",
+        "requestId": "source-9f5f747c-bbe8-4d78-bc57-b27afd0fa035",
+        "action": "read",
+        "session": "9c3b6446-5d61-4fe5-8293-779ef35d1b10",
+        "generation": 1,
+        "sourceDeviceId": "local-fake-desktop",
+        "expectedSourceUri": "spotify:track:4n4Qqam7vgaVa1iaRUc9Lp",
+        "pausedPreviousUri": null,
+        "allowPreviousPaused": false,
+        "requirePreparedSelection": false,
+        "preparationSelectedSourceUri": null,
+        "requirePreparationObservation": true,
+        "preparationPhase": "baseline",
+        "restoreOperationId": null,
+        "allowChangedTrackPausedForRestore": false
+      }
+    },
+    {
+      "type": "source-result",
+      "atMs": 514.394476,
+      "elapsedMs": 1.4591020000000299,
+      "input": {
+        "action": "read",
+        "session": "9c3b6446-5d61-4fe5-8293-779ef35d1b10",
+        "generation": 1,
+        "sourceDeviceId": "local-fake-desktop",
+        "expectedSourceUri": "spotify:track:4n4Qqam7vgaVa1iaRUc9Lp",
+        "pausedPreviousUri": null,
+        "allowPreviousPaused": false,
+        "requirePreparationObservation": true,
+        "preparationPhase": "baseline"
+      },
+      "result": {
+        "sourceDeviceId": "local-fake-desktop",
+        "trackUri": "spotify:track:4n4Qqam7vgaVa1iaRUc9Lp",
+        "isPlaying": false,
+        "observedAtUtc": "2026-10-10T04:52:07.941Z",
+        "pcmStopped": true,
+        "preparationOwned": true,
+        "playbackRequestPending": false,
+        "observationGeneration": 1,
+        "mutationEpoch": 0,
+        "preparationPhase": "baseline",
+        "positionMs": 0
+      }
+    },
+    {
+      "type": "source-request",
+      "atMs": 517.51759,
+      "input": {
+        "event": "sourceControl",
+        "requestId": "source-cc7349e0-3eb8-4985-88a9-1a6e5b1c0a99",
+        "action": "read",
+        "session": "9c3b6446-5d61-4fe5-8293-779ef35d1b10",
+        "generation": 1,
+        "sourceDeviceId": "local-fake-desktop",
+        "expectedSourceUri": "spotify:track:4n4Qqam7vgaVa1iaRUc9Lp",
+        "pausedPreviousUri": null,
+        "allowPreviousPaused": false,
+        "requirePreparedSelection": false,
+        "preparationSelectedSourceUri": null,
+        "requirePreparationObservation": true,
+        "preparationPhase": "baseline",
+        "restoreOperationId": null,
+        "allowChangedTrackPausedForRestore": false
+      }
+    },
+    {
+      "type": "source-result",
+      "atMs": 517.983702,
+      "elapsedMs": 0.22707600000001094,
+      "input": {
+        "action": "read",
+        "session": "9c3b6446-5d61-4fe5-8293-779ef35d1b10",
+        "generation": 1,
+        "sourceDeviceId": "local-fake-desktop",
+        "expectedSourceUri": "spotify:track:4n4Qqam7vgaVa1iaRUc9Lp",
+        "pausedPreviousUri": null,
+        "allowPreviousPaused": false,
+        "requirePreparationObservation": true,
+        "preparationPhase": "baseline"
+      },
+      "result": {
+        "sourceDeviceId": "local-fake-desktop",
+        "trackUri": "spotify:track:4n4Qqam7vgaVa1iaRUc9Lp",
+        "isPlaying": false,
+        "observedAtUtc": "2026-10-10T04:52:07.941Z",
+        "pcmStopped": true,
+        "preparationOwned": true,
+        "playbackRequestPending": false,
+        "observationGeneration": 1,
+        "mutationEpoch": 0,
+        "preparationPhase": "baseline",
+        "positionMs": 0
+      }
+    },
+    {
+      "type": "native-result",
+      "operation": "acquire",
+      "atMs": 540.601423,
+      "elapsedMs": 51.29674499999999,
+      "value": {
+        "id": "3",
+        "ok": true,
+        "state": "heldPaused",
+        "code": "ROUTE_HELDPAUSED",
+        "ready": false,
+        "capabilities": null,
+        "inspection": null,
+        "lease": {
+          "leaseId": "7bd0e644-d6d0-41cb-a537-0c100032d3fd",
+          "session": "9c3b6446-5d61-4fe5-8293-779ef35d1b10",
+          "generation": 1,
+          "state": "heldPaused",
+          "ready": false,
+          "process": {
+            "pid": 12,
+            "startTimeUtcTicks": "639271872000000000",
+            "startedAtUnixMs": 1791590400000,
+            "userSid": "sid",
+            "policyIdentity": "policy",
+            "imageIdentity": "image",
+            "distribution": "desktop"
+          },
+          "originalRoles": [
+            {
+              "role": 0,
+              "original": null
+            },
+            {
+              "role": 1,
+              "original": "raw-original-endpoint"
+            }
+          ],
+          "captureDeviceId": "local-fake-capture",
+          "renderDeviceId": "local-fake-render",
+          "sourceDeviceId": "local-fake-desktop",
+          "expectedSourceUri": "spotify:track:4n4Qqam7vgaVa1iaRUc9Lp",
+          "intervalIsolated": false
+        },
+        "resumeAuthorized": false,
+        "exactOriginalRolesRestored": false,
+        "defaultsUnchanged": false,
+        "defaults": null,
+        "globalDefaultsWritten": false,
+        "observedDefaultsChanged": null,
+        "intervalIsolated": false,
+        "intervalGeneration": 0,
+        "intervalArmed": false,
+        "intervalId": null,
+        "noPolicyWrites": false,
+        "failureCode": null,
+        "physicalOwnerDiagnostic": null,
+        "operationFailureDiagnostic": null,
+        "preparedSelectionAuthorized": false,
+        "preparedSelectionCompleted": false,
+        "cleanupRetryable": false,
+        "restoreWritesStarted": null,
+        "pausedHeld": false,
+        "intervalEpoch": 1,
+        "_fixtureMetrics": {
+          "sourceReads": 2,
+          "sessionScans": 1,
+          "policyScans": 5,
+          "writes": 2,
+          "suspended": false
+        }
+      }
+    },
+    {
+      "type": "native-send",
+      "operation": "authorizePreparedSelection",
+      "id": "4",
+      "atMs": 541.423447
+    },
+    {
+      "type": "source-request",
+      "atMs": 544.797984,
+      "input": {
+        "event": "sourceControl",
+        "requestId": "source-efe459e0-b2e4-4b8b-a8eb-ef71aeee1bb4",
+        "action": "read",
+        "session": "9c3b6446-5d61-4fe5-8293-779ef35d1b10",
+        "generation": 1,
+        "sourceDeviceId": "local-fake-desktop",
+        "expectedSourceUri": "spotify:track:4n4Qqam7vgaVa1iaRUc9Lp",
+        "pausedPreviousUri": null,
+        "allowPreviousPaused": false,
+        "requirePreparedSelection": true,
+        "preparationSelectedSourceUri": "spotify:track:3n3Ppam7vgaVa1iaRUc9Lp",
+        "requirePreparationObservation": true,
+        "preparationPhase": "baseline",
+        "restoreOperationId": null,
+        "allowChangedTrackPausedForRestore": false
+      }
+    },
+    {
+      "type": "source-result",
+      "atMs": 545.101601,
+      "elapsedMs": 0.1671769999999242,
+      "input": {
+        "action": "read",
+        "session": "9c3b6446-5d61-4fe5-8293-779ef35d1b10",
+        "generation": 1,
+        "sourceDeviceId": "local-fake-desktop",
+        "expectedSourceUri": "spotify:track:4n4Qqam7vgaVa1iaRUc9Lp",
+        "pausedPreviousUri": null,
+        "allowPreviousPaused": false,
+        "requirePreparedSelection": true,
+        "preparationSelectedSourceUri": "spotify:track:3n3Ppam7vgaVa1iaRUc9Lp",
+        "requirePreparationObservation": true,
+        "preparationPhase": "baseline"
+      },
+      "result": {
+        "sourceDeviceId": "local-fake-desktop",
+        "trackUri": "spotify:track:4n4Qqam7vgaVa1iaRUc9Lp",
+        "isPlaying": false,
+        "observedAtUtc": "2026-10-10T04:52:07.941Z",
+        "pcmStopped": true,
+        "preparationOwned": true,
+        "playbackRequestPending": false,
+        "observationGeneration": 1,
+        "mutationEpoch": 0,
+        "preparationPhase": "baseline",
+        "positionMs": 0
+      }
+    },
+    {
+      "type": "source-request",
+      "atMs": 545.572155,
+      "input": {
+        "event": "sourceControl",
+        "requestId": "source-eb703a06-1162-43d3-a74c-14f113479d91",
+        "action": "read",
+        "session": "9c3b6446-5d61-4fe5-8293-779ef35d1b10",
+        "generation": 1,
+        "sourceDeviceId": "local-fake-desktop",
+        "expectedSourceUri": "spotify:track:4n4Qqam7vgaVa1iaRUc9Lp",
+        "pausedPreviousUri": null,
+        "allowPreviousPaused": false,
+        "requirePreparedSelection": true,
+        "preparationSelectedSourceUri": "spotify:track:3n3Ppam7vgaVa1iaRUc9Lp",
+        "requirePreparationObservation": true,
+        "preparationPhase": "baseline",
+        "restoreOperationId": null,
+        "allowChangedTrackPausedForRestore": false
+      }
+    },
+    {
+      "type": "source-result",
+      "atMs": 545.835042,
+      "elapsedMs": 0.1718509999999469,
+      "input": {
+        "action": "read",
+        "session": "9c3b6446-5d61-4fe5-8293-779ef35d1b10",
+        "generation": 1,
+        "sourceDeviceId": "local-fake-desktop",
+        "expectedSourceUri": "spotify:track:4n4Qqam7vgaVa1iaRUc9Lp",
+        "pausedPreviousUri": null,
+        "allowPreviousPaused": false,
+        "requirePreparedSelection": true,
+        "preparationSelectedSourceUri": "spotify:track:3n3Ppam7vgaVa1iaRUc9Lp",
+        "requirePreparationObservation": true,
+        "preparationPhase": "baseline"
+      },
+      "result": {
+        "sourceDeviceId": "local-fake-desktop",
+        "trackUri": "spotify:track:4n4Qqam7vgaVa1iaRUc9Lp",
+        "isPlaying": false,
+        "observedAtUtc": "2026-10-10T04:52:07.941Z",
+        "pcmStopped": true,
+        "preparationOwned": true,
+        "playbackRequestPending": false,
+        "observationGeneration": 1,
+        "mutationEpoch": 0,
+        "preparationPhase": "baseline",
+        "positionMs": 0
+      }
+    },
+    {
+      "type": "native-result",
+      "operation": "authorizePreparedSelection",
+      "atMs": 546.589763,
+      "elapsedMs": 5.169802000000004,
+      "value": {
+        "id": "4",
+        "ok": true,
+        "state": "preparedSelection",
+        "code": "PREPARED_SELECTION_AUTHORIZED",
+        "ready": false,
+        "capabilities": null,
+        "inspection": null,
+        "lease": {
+          "leaseId": "7bd0e644-d6d0-41cb-a537-0c100032d3fd",
+          "session": "9c3b6446-5d61-4fe5-8293-779ef35d1b10",
+          "generation": 1,
+          "state": "preparedSelection",
+          "ready": false,
+          "process": {
+            "pid": 12,
+            "startTimeUtcTicks": "639271872000000000",
+            "startedAtUnixMs": 1791590400000,
+            "userSid": "sid",
+            "policyIdentity": "policy",
+            "imageIdentity": "image",
+            "distribution": "desktop"
+          },
+          "originalRoles": [
+            {
+              "role": 0,
+              "original": null
+            },
+            {
+              "role": 1,
+              "original": "raw-original-endpoint"
+            }
+          ],
+          "captureDeviceId": "local-fake-capture",
+          "renderDeviceId": "local-fake-render",
+          "sourceDeviceId": "local-fake-desktop",
+          "expectedSourceUri": "spotify:track:4n4Qqam7vgaVa1iaRUc9Lp",
+          "intervalIsolated": false
+        },
+        "resumeAuthorized": false,
+        "exactOriginalRolesRestored": false,
+        "defaultsUnchanged": false,
+        "defaults": null,
+        "globalDefaultsWritten": false,
+        "observedDefaultsChanged": null,
+        "intervalIsolated": false,
+        "intervalGeneration": 0,
+        "intervalArmed": false,
+        "intervalId": null,
+        "noPolicyWrites": false,
+        "failureCode": null,
+        "physicalOwnerDiagnostic": null,
+        "operationFailureDiagnostic": null,
+        "preparedSelectionAuthorized": true,
+        "preparedSelectionCompleted": false,
+        "cleanupRetryable": false,
+        "restoreWritesStarted": null,
+        "pausedHeld": false,
+        "intervalEpoch": 1,
+        "_fixtureMetrics": {
+          "sourceReads": 4,
+          "sessionScans": 2,
+          "policyScans": 7,
+          "writes": 2,
+          "suspended": false
+        }
+      }
+    },
+    {
+      "type": "native-send",
+      "operation": "completePreparedSelection",
+      "id": "5",
+      "atMs": 595.390614
+    },
+    {
+      "type": "source-request",
+      "atMs": 597.789768,
+      "input": {
+        "event": "sourceControl",
+        "requestId": "source-24845061-0879-434e-8385-c8704114662d",
+        "action": "read",
+        "session": "9c3b6446-5d61-4fe5-8293-779ef35d1b10",
+        "generation": 1,
+        "sourceDeviceId": "local-fake-desktop",
+        "expectedSourceUri": "spotify:track:3n3Ppam7vgaVa1iaRUc9Lp",
+        "pausedPreviousUri": null,
+        "allowPreviousPaused": false,
+        "requirePreparedSelection": true,
+        "preparationSelectedSourceUri": "spotify:track:3n3Ppam7vgaVa1iaRUc9Lp",
+        "requirePreparationObservation": true,
+        "preparationPhase": "selected",
+        "restoreOperationId": null,
+        "allowChangedTrackPausedForRestore": false
+      }
+    },
+    {
+      "type": "source-result",
+      "atMs": 598.121019,
+      "elapsedMs": 0.23315000000002328,
+      "input": {
+        "action": "read",
+        "session": "9c3b6446-5d61-4fe5-8293-779ef35d1b10",
+        "generation": 1,
+        "sourceDeviceId": "local-fake-desktop",
+        "expectedSourceUri": "spotify:track:3n3Ppam7vgaVa1iaRUc9Lp",
+        "pausedPreviousUri": null,
+        "allowPreviousPaused": false,
+        "requirePreparedSelection": true,
+        "preparationSelectedSourceUri": "spotify:track:3n3Ppam7vgaVa1iaRUc9Lp",
+        "requirePreparationObservation": true,
+        "preparationPhase": "selected"
+      },
+      "result": {
+        "sourceDeviceId": "local-fake-desktop",
+        "trackUri": "spotify:track:3n3Ppam7vgaVa1iaRUc9Lp",
+        "isPlaying": false,
+        "observedAtUtc": "2026-10-10T04:52:08.048Z",
+        "pcmStopped": true,
+        "preparationOwned": true,
+        "playbackRequestPending": false,
+        "observationGeneration": 4,
+        "mutationEpoch": 4,
+        "preparationPhase": "selected",
+        "positionMs": 0
+      }
+    },
+    {
+      "type": "source-request",
+      "atMs": 598.464343,
+      "input": {
+        "event": "sourceControl",
+        "requestId": "source-9f4f18cc-ab88-4c25-9436-4ed3d7d809ab",
+        "action": "read",
+        "session": "9c3b6446-5d61-4fe5-8293-779ef35d1b10",
+        "generation": 1,
+        "sourceDeviceId": "local-fake-desktop",
+        "expectedSourceUri": "spotify:track:3n3Ppam7vgaVa1iaRUc9Lp",
+        "pausedPreviousUri": null,
+        "allowPreviousPaused": false,
+        "requirePreparedSelection": true,
+        "preparationSelectedSourceUri": "spotify:track:3n3Ppam7vgaVa1iaRUc9Lp",
+        "requirePreparationObservation": true,
+        "preparationPhase": "selected",
+        "restoreOperationId": null,
+        "allowChangedTrackPausedForRestore": false
+      }
+    },
+    {
+      "type": "source-result",
+      "atMs": 598.660983,
+      "elapsedMs": 0.119103999999993,
+      "input": {
+        "action": "read",
+        "session": "9c3b6446-5d61-4fe5-8293-779ef35d1b10",
+        "generation": 1,
+        "sourceDeviceId": "local-fake-desktop",
+        "expectedSourceUri": "spotify:track:3n3Ppam7vgaVa1iaRUc9Lp",
+        "pausedPreviousUri": null,
+        "allowPreviousPaused": false,
+        "requirePreparedSelection": true,
+        "preparationSelectedSourceUri": "spotify:track:3n3Ppam7vgaVa1iaRUc9Lp",
+        "requirePreparationObservation": true,
+        "preparationPhase": "selected"
+      },
+      "result": {
+        "sourceDeviceId": "local-fake-desktop",
+        "trackUri": "spotify:track:3n3Ppam7vgaVa1iaRUc9Lp",
+        "isPlaying": false,
+        "observedAtUtc": "2026-10-10T04:52:08.048Z",
+        "pcmStopped": true,
+        "preparationOwned": true,
+        "playbackRequestPending": false,
+        "observationGeneration": 4,
+        "mutationEpoch": 4,
+        "preparationPhase": "selected",
+        "positionMs": 0
+      }
+    },
+    {
+      "type": "native-result",
+      "operation": "completePreparedSelection",
+      "atMs": 599.555012,
+      "elapsedMs": 4.168142999999986,
+      "value": {
+        "id": "5",
+        "ok": true,
+        "state": "heldPaused",
+        "code": "PREPARED_SELECTION_COMPLETED",
+        "ready": false,
+        "capabilities": null,
+        "inspection": null,
+        "lease": {
+          "leaseId": "7bd0e644-d6d0-41cb-a537-0c100032d3fd",
+          "session": "9c3b6446-5d61-4fe5-8293-779ef35d1b10",
+          "generation": 1,
+          "state": "heldPaused",
+          "ready": false,
+          "process": {
+            "pid": 12,
+            "startTimeUtcTicks": "639271872000000000",
+            "startedAtUnixMs": 1791590400000,
+            "userSid": "sid",
+            "policyIdentity": "policy",
+            "imageIdentity": "image",
+            "distribution": "desktop"
+          },
+          "originalRoles": [
+            {
+              "role": 0,
+              "original": null
+            },
+            {
+              "role": 1,
+              "original": "raw-original-endpoint"
+            }
+          ],
+          "captureDeviceId": "local-fake-capture",
+          "renderDeviceId": "local-fake-render",
+          "sourceDeviceId": "local-fake-desktop",
+          "expectedSourceUri": "spotify:track:3n3Ppam7vgaVa1iaRUc9Lp",
+          "intervalIsolated": false
+        },
+        "resumeAuthorized": false,
+        "exactOriginalRolesRestored": false,
+        "defaultsUnchanged": false,
+        "defaults": null,
+        "globalDefaultsWritten": false,
+        "observedDefaultsChanged": null,
+        "intervalIsolated": false,
+        "intervalGeneration": 0,
+        "intervalArmed": false,
+        "intervalId": null,
+        "noPolicyWrites": false,
+        "failureCode": null,
+        "physicalOwnerDiagnostic": null,
+        "operationFailureDiagnostic": null,
+        "preparedSelectionAuthorized": false,
+        "preparedSelectionCompleted": true,
+        "cleanupRetryable": false,
+        "restoreWritesStarted": null,
+        "pausedHeld": false,
+        "intervalEpoch": 1,
+        "_fixtureMetrics": {
+          "sourceReads": 6,
+          "sessionScans": 3,
+          "policyScans": 9,
+          "writes": 2,
+          "suspended": false
+        }
+      }
+    },
+    {
+      "type": "native-send",
+      "operation": "armCaptureInterval",
+      "id": "6",
+      "atMs": 603.856038
+    },
+    {
+      "type": "source-request",
+      "atMs": 608.395478,
+      "input": {
+        "event": "sourceControl",
+        "requestId": "source-1949cb0c-86b0-47f6-af7e-bcc7f41512ae",
+        "action": "read",
+        "session": "9c3b6446-5d61-4fe5-8293-779ef35d1b10",
+        "generation": 1,
+        "sourceDeviceId": "local-fake-desktop",
+        "expectedSourceUri": "spotify:track:3n3Ppam7vgaVa1iaRUc9Lp",
+        "pausedPreviousUri": null,
+        "allowPreviousPaused": false,
+        "requirePreparedSelection": false,
+        "preparationSelectedSourceUri": null,
+        "requirePreparationObservation": true,
+        "preparationPhase": "selected",
+        "restoreOperationId": null,
+        "allowChangedTrackPausedForRestore": false
+      }
+    },
+    {
+      "type": "source-result",
+      "atMs": 608.758125,
+      "elapsedMs": 0.2328420000000051,
+      "input": {
+        "action": "read",
+        "session": "9c3b6446-5d61-4fe5-8293-779ef35d1b10",
+        "generation": 1,
+        "sourceDeviceId": "local-fake-desktop",
+        "expectedSourceUri": "spotify:track:3n3Ppam7vgaVa1iaRUc9Lp",
+        "pausedPreviousUri": null,
+        "allowPreviousPaused": false,
+        "requirePreparationObservation": true,
+        "preparationPhase": "selected"
+      },
+      "result": {
+        "sourceDeviceId": "local-fake-desktop",
+        "trackUri": "spotify:track:3n3Ppam7vgaVa1iaRUc9Lp",
+        "isPlaying": false,
+        "observedAtUtc": "2026-10-10T04:52:08.048Z",
+        "pcmStopped": true,
+        "preparationOwned": true,
+        "playbackRequestPending": false,
+        "observationGeneration": 4,
+        "mutationEpoch": 4,
+        "preparationPhase": "selected",
+        "positionMs": 0
+      }
+    },
+    {
+      "type": "source-request",
+      "atMs": 609.370896,
+      "input": {
+        "event": "sourceControl",
+        "requestId": "source-3c3eafa1-1009-49d0-acb6-79e48462a48b",
+        "action": "read",
+        "session": "9c3b6446-5d61-4fe5-8293-779ef35d1b10",
+        "generation": 1,
+        "sourceDeviceId": "local-fake-desktop",
+        "expectedSourceUri": "spotify:track:3n3Ppam7vgaVa1iaRUc9Lp",
+        "pausedPreviousUri": null,
+        "allowPreviousPaused": false,
+        "requirePreparedSelection": false,
+        "preparationSelectedSourceUri": null,
+        "requirePreparationObservation": true,
+        "preparationPhase": "selected",
+        "restoreOperationId": null,
+        "allowChangedTrackPausedForRestore": false
+      }
+    },
+    {
+      "type": "source-result",
+      "atMs": 609.59473,
+      "elapsedMs": 0.13289800000006835,
+      "input": {
+        "action": "read",
+        "session": "9c3b6446-5d61-4fe5-8293-779ef35d1b10",
+        "generation": 1,
+        "sourceDeviceId": "local-fake-desktop",
+        "expectedSourceUri": "spotify:track:3n3Ppam7vgaVa1iaRUc9Lp",
+        "pausedPreviousUri": null,
+        "allowPreviousPaused": false,
+        "requirePreparationObservation": true,
+        "preparationPhase": "selected"
+      },
+      "result": {
+        "sourceDeviceId": "local-fake-desktop",
+        "trackUri": "spotify:track:3n3Ppam7vgaVa1iaRUc9Lp",
+        "isPlaying": false,
+        "observedAtUtc": "2026-10-10T04:52:08.048Z",
+        "pcmStopped": true,
+        "preparationOwned": true,
+        "playbackRequestPending": false,
+        "observationGeneration": 4,
+        "mutationEpoch": 4,
+        "preparationPhase": "selected",
+        "positionMs": 0
+      }
+    },
+    {
+      "type": "native-result",
+      "operation": "armCaptureInterval",
+      "atMs": 610.166224,
+      "elapsedMs": 6.31388800000002,
+      "value": {
+        "id": "6",
+        "ok": true,
+        "state": "heldPaused",
+        "code": "CAPTURE_INTERVAL_ARMED",
+        "ready": false,
+        "capabilities": null,
+        "inspection": null,
+        "lease": {
+          "leaseId": "7bd0e644-d6d0-41cb-a537-0c100032d3fd",
+          "session": "9c3b6446-5d61-4fe5-8293-779ef35d1b10",
+          "generation": 1,
+          "state": "heldPaused",
+          "ready": false,
+          "process": {
+            "pid": 12,
+            "startTimeUtcTicks": "639271872000000000",
+            "startedAtUnixMs": 1791590400000,
+            "userSid": "sid",
+            "policyIdentity": "policy",
+            "imageIdentity": "image",
+            "distribution": "desktop"
+          },
+          "originalRoles": [
+            {
+              "role": 0,
+              "original": null
+            },
+            {
+              "role": 1,
+              "original": "raw-original-endpoint"
+            }
+          ],
+          "captureDeviceId": "local-fake-capture",
+          "renderDeviceId": "local-fake-render",
+          "sourceDeviceId": "local-fake-desktop",
+          "expectedSourceUri": "spotify:track:3n3Ppam7vgaVa1iaRUc9Lp",
+          "intervalIsolated": true
+        },
+        "resumeAuthorized": false,
+        "exactOriginalRolesRestored": false,
+        "defaultsUnchanged": false,
+        "defaults": null,
+        "globalDefaultsWritten": false,
+        "observedDefaultsChanged": null,
+        "intervalIsolated": true,
+        "intervalGeneration": 1,
+        "intervalArmed": true,
+        "intervalId": "3c7fff18-c118-4326-9c4f-ce4061f2936a",
+        "noPolicyWrites": false,
+        "failureCode": null,
+        "physicalOwnerDiagnostic": null,
+        "operationFailureDiagnostic": null,
+        "preparedSelectionAuthorized": false,
+        "preparedSelectionCompleted": false,
+        "cleanupRetryable": false,
+        "restoreWritesStarted": null,
+        "pausedHeld": false,
+        "intervalEpoch": 1,
+        "_fixtureMetrics": {
+          "sourceReads": 8,
+          "sessionScans": 4,
+          "policyScans": 10,
+          "writes": 2,
+          "suspended": false
+        }
+      }
+    },
+    {
+      "type": "native-send",
+      "operation": "authorizeResume",
+      "id": "7",
+      "atMs": 611.789014
+    },
+    {
+      "type": "source-request",
+      "atMs": 612.021783,
+      "input": {
+        "event": "sourceControl",
+        "requestId": "source-c6262928-f4a1-4193-9549-9e22fc288928",
+        "action": "read",
+        "session": "9c3b6446-5d61-4fe5-8293-779ef35d1b10",
+        "generation": 1,
+        "sourceDeviceId": "local-fake-desktop",
+        "expectedSourceUri": "spotify:track:3n3Ppam7vgaVa1iaRUc9Lp",
+        "pausedPreviousUri": null,
+        "allowPreviousPaused": false,
+        "requirePreparedSelection": false,
+        "preparationSelectedSourceUri": null,
+        "requirePreparationObservation": true,
+        "preparationPhase": "selected",
+        "restoreOperationId": null,
+        "allowChangedTrackPausedForRestore": false
+      }
+    },
+    {
+      "type": "source-result",
+      "atMs": 612.33528,
+      "elapsedMs": 0.17442500000004202,
+      "input": {
+        "action": "read",
+        "session": "9c3b6446-5d61-4fe5-8293-779ef35d1b10",
+        "generation": 1,
+        "sourceDeviceId": "local-fake-desktop",
+        "expectedSourceUri": "spotify:track:3n3Ppam7vgaVa1iaRUc9Lp",
+        "pausedPreviousUri": null,
+        "allowPreviousPaused": false,
+        "requirePreparationObservation": true,
+        "preparationPhase": "selected"
+      },
+      "result": {
+        "sourceDeviceId": "local-fake-desktop",
+        "trackUri": "spotify:track:3n3Ppam7vgaVa1iaRUc9Lp",
+        "isPlaying": false,
+        "observedAtUtc": "2026-10-10T04:52:08.048Z",
+        "pcmStopped": false,
+        "preparationOwned": true,
+        "playbackRequestPending": false,
+        "observationGeneration": 4,
+        "mutationEpoch": 4,
+        "preparationPhase": "selected",
+        "positionMs": 0
+      }
+    },
+    {
+      "type": "source-request",
+      "atMs": 612.55791,
+      "input": {
+        "event": "sourceControl",
+        "requestId": "source-6928931c-6f7a-45b9-8a9f-5598f3bee4c8",
+        "action": "read",
+        "session": "9c3b6446-5d61-4fe5-8293-779ef35d1b10",
+        "generation": 1,
+        "sourceDeviceId": "local-fake-desktop",
+        "expectedSourceUri": "spotify:track:3n3Ppam7vgaVa1iaRUc9Lp",
+        "pausedPreviousUri": null,
+        "allowPreviousPaused": false,
+        "requirePreparedSelection": false,
+        "preparationSelectedSourceUri": null,
+        "requirePreparationObservation": true,
+        "preparationPhase": "selected",
+        "restoreOperationId": null,
+        "allowChangedTrackPausedForRestore": false
+      }
+    },
+    {
+      "type": "source-result",
+      "atMs": 612.792656,
+      "elapsedMs": 0.12698899999998048,
+      "input": {
+        "action": "read",
+        "session": "9c3b6446-5d61-4fe5-8293-779ef35d1b10",
+        "generation": 1,
+        "sourceDeviceId": "local-fake-desktop",
+        "expectedSourceUri": "spotify:track:3n3Ppam7vgaVa1iaRUc9Lp",
+        "pausedPreviousUri": null,
+        "allowPreviousPaused": false,
+        "requirePreparationObservation": true,
+        "preparationPhase": "selected"
+      },
+      "result": {
+        "sourceDeviceId": "local-fake-desktop",
+        "trackUri": "spotify:track:3n3Ppam7vgaVa1iaRUc9Lp",
+        "isPlaying": false,
+        "observedAtUtc": "2026-10-10T04:52:08.048Z",
+        "pcmStopped": false,
+        "preparationOwned": true,
+        "playbackRequestPending": false,
+        "observationGeneration": 4,
+        "mutationEpoch": 4,
+        "preparationPhase": "selected",
+        "positionMs": 0
+      }
+    },
+    {
+      "type": "native-result",
+      "operation": "authorizeResume",
+      "atMs": 613.178035,
+      "elapsedMs": 1.3916120000000092,
+      "value": {
+        "id": "7",
+        "ok": true,
+        "state": "resumeAuthorized",
+        "code": "RESUME_AUTHORIZED",
+        "ready": false,
+        "capabilities": null,
+        "inspection": null,
+        "lease": {
+          "leaseId": "7bd0e644-d6d0-41cb-a537-0c100032d3fd",
+          "session": "9c3b6446-5d61-4fe5-8293-779ef35d1b10",
+          "generation": 1,
+          "state": "resumeAuthorized",
+          "ready": false,
+          "process": {
+            "pid": 12,
+            "startTimeUtcTicks": "639271872000000000",
+            "startedAtUnixMs": 1791590400000,
+            "userSid": "sid",
+            "policyIdentity": "policy",
+            "imageIdentity": "image",
+            "distribution": "desktop"
+          },
+          "originalRoles": [
+            {
+              "role": 0,
+              "original": null
+            },
+            {
+              "role": 1,
+              "original": "raw-original-endpoint"
+            }
+          ],
+          "captureDeviceId": "local-fake-capture",
+          "renderDeviceId": "local-fake-render",
+          "sourceDeviceId": "local-fake-desktop",
+          "expectedSourceUri": "spotify:track:3n3Ppam7vgaVa1iaRUc9Lp",
+          "intervalIsolated": true
+        },
+        "resumeAuthorized": true,
+        "exactOriginalRolesRestored": false,
+        "defaultsUnchanged": false,
+        "defaults": null,
+        "globalDefaultsWritten": false,
+        "observedDefaultsChanged": null,
+        "intervalIsolated": true,
+        "intervalGeneration": 1,
+        "intervalArmed": true,
+        "intervalId": "3c7fff18-c118-4326-9c4f-ce4061f2936a",
+        "noPolicyWrites": false,
+        "failureCode": null,
+        "physicalOwnerDiagnostic": null,
+        "operationFailureDiagnostic": null,
+        "preparedSelectionAuthorized": false,
+        "preparedSelectionCompleted": false,
+        "cleanupRetryable": false,
+        "restoreWritesStarted": null,
+        "pausedHeld": false,
+        "intervalEpoch": 1,
+        "_fixtureMetrics": {
+          "sourceReads": 10,
+          "sessionScans": 5,
+          "policyScans": 12,
+          "writes": 2,
+          "suspended": false
+        }
+      }
+    },
+    {
+      "type": "native-send",
+      "operation": "status",
+      "id": "8",
+      "atMs": 627.645962
+    },
+    {
+      "type": "native-result",
+      "operation": "status",
+      "atMs": 631.768832,
+      "elapsedMs": 4.125977999999918,
+      "value": {
+        "id": "8",
+        "ok": true,
+        "state": "active",
+        "code": "ROUTE_ACTIVE",
+        "ready": true,
+        "capabilities": null,
+        "inspection": null,
+        "lease": {
+          "leaseId": "7bd0e644-d6d0-41cb-a537-0c100032d3fd",
+          "session": "9c3b6446-5d61-4fe5-8293-779ef35d1b10",
+          "generation": 1,
+          "state": "active",
+          "ready": true,
+          "process": {
+            "pid": 12,
+            "startTimeUtcTicks": "639271872000000000",
+            "startedAtUnixMs": 1791590400000,
+            "userSid": "sid",
+            "policyIdentity": "policy",
+            "imageIdentity": "image",
+            "distribution": "desktop"
+          },
+          "originalRoles": [
+            {
+              "role": 0,
+              "original": null
+            },
+            {
+              "role": 1,
+              "original": "raw-original-endpoint"
+            }
+          ],
+          "captureDeviceId": "local-fake-capture",
+          "renderDeviceId": "local-fake-render",
+          "sourceDeviceId": "local-fake-desktop",
+          "expectedSourceUri": "spotify:track:3n3Ppam7vgaVa1iaRUc9Lp",
+          "intervalIsolated": true
+        },
+        "resumeAuthorized": false,
+        "exactOriginalRolesRestored": false,
+        "defaultsUnchanged": false,
+        "defaults": null,
+        "globalDefaultsWritten": false,
+        "observedDefaultsChanged": null,
+        "intervalIsolated": true,
+        "intervalGeneration": 1,
+        "intervalArmed": true,
+        "intervalId": "3c7fff18-c118-4326-9c4f-ce4061f2936a",
+        "noPolicyWrites": false,
+        "failureCode": null,
+        "physicalOwnerDiagnostic": null,
+        "operationFailureDiagnostic": null,
+        "preparedSelectionAuthorized": false,
+        "preparedSelectionCompleted": false,
+        "cleanupRetryable": false,
+        "restoreWritesStarted": null,
+        "pausedHeld": false,
+        "intervalEpoch": 1,
+        "_fixtureMetrics": {
+          "sourceReads": 10,
+          "sessionScans": 6,
+          "policyScans": 13,
+          "writes": 2,
+          "suspended": false
+        }
+      }
+    },
+    {
+      "type": "native-send",
+      "operation": "status",
+      "id": "9",
+      "atMs": 632.191641
+    },
+    {
+      "type": "native-result",
+      "operation": "status",
+      "atMs": 634.051579,
+      "elapsedMs": 1.8619120000000748,
+      "value": {
+        "id": "9",
+        "ok": true,
+        "state": "active",
+        "code": "ROUTE_ACTIVE",
+        "ready": true,
+        "capabilities": null,
+        "inspection": null,
+        "lease": {
+          "leaseId": "7bd0e644-d6d0-41cb-a537-0c100032d3fd",
+          "session": "9c3b6446-5d61-4fe5-8293-779ef35d1b10",
+          "generation": 1,
+          "state": "active",
+          "ready": true,
+          "process": {
+            "pid": 12,
+            "startTimeUtcTicks": "639271872000000000",
+            "startedAtUnixMs": 1791590400000,
+            "userSid": "sid",
+            "policyIdentity": "policy",
+            "imageIdentity": "image",
+            "distribution": "desktop"
+          },
+          "originalRoles": [
+            {
+              "role": 0,
+              "original": null
+            },
+            {
+              "role": 1,
+              "original": "raw-original-endpoint"
+            }
+          ],
+          "captureDeviceId": "local-fake-capture",
+          "renderDeviceId": "local-fake-render",
+          "sourceDeviceId": "local-fake-desktop",
+          "expectedSourceUri": "spotify:track:3n3Ppam7vgaVa1iaRUc9Lp",
+          "intervalIsolated": true
+        },
+        "resumeAuthorized": false,
+        "exactOriginalRolesRestored": false,
+        "defaultsUnchanged": false,
+        "defaults": null,
+        "globalDefaultsWritten": false,
+        "observedDefaultsChanged": null,
+        "intervalIsolated": true,
+        "intervalGeneration": 1,
+        "intervalArmed": true,
+        "intervalId": "3c7fff18-c118-4326-9c4f-ce4061f2936a",
+        "noPolicyWrites": false,
+        "failureCode": null,
+        "physicalOwnerDiagnostic": null,
+        "operationFailureDiagnostic": null,
+        "preparedSelectionAuthorized": false,
+        "preparedSelectionCompleted": false,
+        "cleanupRetryable": false,
+        "restoreWritesStarted": null,
+        "pausedHeld": false,
+        "intervalEpoch": 1,
+        "_fixtureMetrics": {
+          "sourceReads": 10,
+          "sessionScans": 7,
+          "policyScans": 14,
+          "writes": 2,
+          "suspended": false
+        }
+      }
+    },
+    {
+      "type": "native-send",
+      "operation": "release",
+      "id": "10",
+      "atMs": 671.941026
+    },
+    {
+      "type": "source-request",
+      "atMs": 675.396483,
+      "input": {
+        "event": "sourceControl",
+        "requestId": "source-089b1a46-7b93-4f85-bcd5-6b829689c210",
+        "action": "read",
+        "session": "9c3b6446-5d61-4fe5-8293-779ef35d1b10",
+        "generation": 1,
+        "sourceDeviceId": "local-fake-desktop",
+        "expectedSourceUri": "spotify:track:3n3Ppam7vgaVa1iaRUc9Lp",
+        "pausedPreviousUri": null,
+        "allowPreviousPaused": false,
+        "requirePreparedSelection": false,
+        "preparationSelectedSourceUri": null,
+        "requirePreparationObservation": false,
+        "preparationPhase": null,
+        "restoreOperationId": "400a878d-2817-4f59-bd96-ee9f3f0c5221",
+        "allowChangedTrackPausedForRestore": true
+      }
+    },
+    {
+      "type": "source-result",
+      "atMs": 680.104192,
+      "elapsedMs": 3.8899209999999584,
+      "input": {
+        "action": "read",
+        "session": "9c3b6446-5d61-4fe5-8293-779ef35d1b10",
+        "generation": 1,
+        "sourceDeviceId": "local-fake-desktop",
+        "expectedSourceUri": "spotify:track:3n3Ppam7vgaVa1iaRUc9Lp",
+        "pausedPreviousUri": null,
+        "allowPreviousPaused": false,
+        "restoreOperationId": "400a878d-2817-4f59-bd96-ee9f3f0c5221",
+        "allowChangedTrackPausedForRestore": true
+      },
+      "result": {
+        "sourceDeviceId": "local-fake-desktop",
+        "trackUri": "spotify:track:3n3Ppam7vgaVa1iaRUc9Lp",
+        "isPlaying": false,
+        "observedAtUtc": "2026-10-10T04:52:08.134Z",
+        "pcmStopped": true,
+        "restoreOperationId": "400a878d-2817-4f59-bd96-ee9f3f0c5221",
+        "observationGeneration": 8,
+        "mutationEpoch": 6,
+        "positionMs": 45,
+        "playbackRequestPending": false
+      }
+    },
+    {
+      "type": "source-request",
+      "atMs": 681.773795,
+      "input": {
+        "event": "sourceControl",
+        "requestId": "source-0afe27bc-e9be-41a7-9d72-f2d725bb47d7",
+        "action": "read",
+        "session": "9c3b6446-5d61-4fe5-8293-779ef35d1b10",
+        "generation": 1,
+        "sourceDeviceId": "local-fake-desktop",
+        "expectedSourceUri": "spotify:track:3n3Ppam7vgaVa1iaRUc9Lp",
+        "pausedPreviousUri": null,
+        "allowPreviousPaused": false,
+        "requirePreparedSelection": false,
+        "preparationSelectedSourceUri": null,
+        "requirePreparationObservation": false,
+        "preparationPhase": null,
+        "restoreOperationId": "400a878d-2817-4f59-bd96-ee9f3f0c5221",
+        "allowChangedTrackPausedForRestore": true
+      }
+    },
+    {
+      "type": "source-result",
+      "atMs": 682.109783,
+      "elapsedMs": 0.1389000000000351,
+      "input": {
+        "action": "read",
+        "session": "9c3b6446-5d61-4fe5-8293-779ef35d1b10",
+        "generation": 1,
+        "sourceDeviceId": "local-fake-desktop",
+        "expectedSourceUri": "spotify:track:3n3Ppam7vgaVa1iaRUc9Lp",
+        "pausedPreviousUri": null,
+        "allowPreviousPaused": false,
+        "restoreOperationId": "400a878d-2817-4f59-bd96-ee9f3f0c5221",
+        "allowChangedTrackPausedForRestore": true
+      },
+      "result": {
+        "sourceDeviceId": "local-fake-desktop",
+        "trackUri": "spotify:track:3n3Ppam7vgaVa1iaRUc9Lp",
+        "isPlaying": false,
+        "observedAtUtc": "2026-10-10T04:52:08.134Z",
+        "pcmStopped": true,
+        "restoreOperationId": "400a878d-2817-4f59-bd96-ee9f3f0c5221",
+        "observationGeneration": 8,
+        "mutationEpoch": 6,
+        "positionMs": 45,
+        "playbackRequestPending": false
+      }
+    },
+    {
+      "type": "native-result",
+      "operation": "release",
+      "atMs": 685.815554,
+      "elapsedMs": 13.876978000000008,
+      "value": {
+        "id": "10",
+        "ok": true,
+        "state": "restored",
+        "code": "RELEASED",
+        "ready": false,
+        "capabilities": null,
+        "inspection": null,
+        "lease": {
+          "leaseId": "7bd0e644-d6d0-41cb-a537-0c100032d3fd",
+          "session": "9c3b6446-5d61-4fe5-8293-779ef35d1b10",
+          "generation": 1,
+          "state": "restored",
+          "ready": false,
+          "process": {
+            "pid": 12,
+            "startTimeUtcTicks": "639271872000000000",
+            "startedAtUnixMs": 1791590400000,
+            "userSid": "sid",
+            "policyIdentity": "policy",
+            "imageIdentity": "image",
+            "distribution": "desktop"
+          },
+          "originalRoles": [
+            {
+              "role": 0,
+              "original": null
+            },
+            {
+              "role": 1,
+              "original": "raw-original-endpoint"
+            }
+          ],
+          "captureDeviceId": "local-fake-capture",
+          "renderDeviceId": "local-fake-render",
+          "sourceDeviceId": "local-fake-desktop",
+          "expectedSourceUri": "spotify:track:3n3Ppam7vgaVa1iaRUc9Lp",
+          "intervalIsolated": true
+        },
+        "resumeAuthorized": false,
+        "exactOriginalRolesRestored": true,
+        "defaultsUnchanged": true,
+        "defaults": {
+          "unchanged": true,
+          "frozen": [
+            "physical",
+            "physical",
+            "physical"
+          ],
+          "current": [
+            "physical",
+            "physical",
+            "physical"
+          ],
+          "feedbackRisk": false,
+          "feedbackIssue": null
+        },
+        "globalDefaultsWritten": false,
+        "observedDefaultsChanged": false,
+        "intervalIsolated": true,
+        "intervalGeneration": 1,
+        "intervalArmed": true,
+        "intervalId": "3c7fff18-c118-4326-9c4f-ce4061f2936a",
+        "noPolicyWrites": false,
+        "failureCode": null,
+        "physicalOwnerDiagnostic": null,
+        "operationFailureDiagnostic": null,
+        "preparedSelectionAuthorized": false,
+        "preparedSelectionCompleted": false,
+        "cleanupRetryable": false,
+        "restoreWritesStarted": null,
+        "pausedHeld": false,
+        "intervalEpoch": 1,
+        "_fixtureMetrics": {
+          "sourceReads": 12,
+          "sessionScans": 8,
+          "policyScans": 14,
+          "writes": 4,
+          "suspended": false
+        }
+      }
+    },
+    {
+      "type": "native-send",
+      "operation": "inspect",
+      "id": "11",
+      "atMs": 687.90845
+    },
+    {
+      "type": "native-result",
+      "operation": "inspect",
+      "atMs": 688.41841,
+      "elapsedMs": 0.5112570000000005,
+      "value": {
+        "id": "11",
+        "ok": true,
+        "state": "inspected",
+        "code": "INSPECTED",
+        "ready": false,
+        "capabilities": null,
+        "inspection": {
+          "process": {
+            "pid": 12,
+            "startTimeUtcTicks": "639271872000000000",
+            "startedAtUnixMs": 1791590400000,
+            "userSid": "sid",
+            "policyIdentity": "policy",
+            "imageIdentity": "image",
+            "distribution": "desktop"
+          },
+          "sourcePaused": true,
+          "sourceOutputDefault": false,
+          "baseCableVerified": true,
+          "originalPolicySafe": true,
+          "defaultsUnchanged": true,
+          "noOtherWriters": true,
+          "captureDeviceId": "local-fake-capture",
+          "renderDeviceId": "local-fake-render",
+          "originalRoles": [
+            {
+              "role": 0,
+              "original": null
+            },
+            {
+              "role": 1,
+              "original": "raw-original-endpoint"
+            }
+          ]
+        },
+        "lease": {
+          "leaseId": "7bd0e644-d6d0-41cb-a537-0c100032d3fd",
+          "session": "9c3b6446-5d61-4fe5-8293-779ef35d1b10",
+          "generation": 1,
+          "state": "inspected",
+          "ready": false,
+          "process": {
+            "pid": 12,
+            "startTimeUtcTicks": "639271872000000000",
+            "startedAtUnixMs": 1791590400000,
+            "userSid": "sid",
+            "policyIdentity": "policy",
+            "imageIdentity": "image",
+            "distribution": "desktop"
+          },
+          "originalRoles": [
+            {
+              "role": 0,
+              "original": null
+            },
+            {
+              "role": 1,
+              "original": "raw-original-endpoint"
+            }
+          ],
+          "captureDeviceId": "local-fake-capture",
+          "renderDeviceId": "local-fake-render",
+          "sourceDeviceId": "local-fake-desktop",
+          "expectedSourceUri": "spotify:track:3n3Ppam7vgaVa1iaRUc9Lp",
+          "intervalIsolated": false
+        },
+        "resumeAuthorized": false,
+        "exactOriginalRolesRestored": false,
+        "defaultsUnchanged": false,
+        "defaults": null,
+        "globalDefaultsWritten": false,
+        "observedDefaultsChanged": null,
+        "intervalIsolated": false,
+        "intervalGeneration": null,
+        "intervalArmed": false,
+        "intervalId": null,
+        "noPolicyWrites": false,
+        "failureCode": null,
+        "physicalOwnerDiagnostic": null,
+        "operationFailureDiagnostic": null,
+        "preparedSelectionAuthorized": false,
+        "preparedSelectionCompleted": false,
+        "cleanupRetryable": false,
+        "restoreWritesStarted": null,
+        "pausedHeld": false,
+        "intervalEpoch": 1,
+        "_fixtureMetrics": {
+          "sourceReads": 12,
+          "sessionScans": 8,
+          "policyScans": 14,
+          "writes": 4,
+          "suspended": false
+        }
+      }
+    },
+    {
+      "type": "native-send",
+      "operation": "acquire",
+      "id": "12",
+      "atMs": 692.046865
+    },
+    {
+      "type": "source-request",
+      "atMs": 692.451918,
+      "input": {
+        "event": "sourceControl",
+        "requestId": "source-2614c17f-3be1-4c6a-88e7-4693a929fbf6",
+        "action": "read",
+        "session": "6429baeb-f349-403f-8021-f8064d6ed32e",
+        "generation": 2,
+        "sourceDeviceId": "local-fake-desktop",
+        "expectedSourceUri": "spotify:track:3n3Ppam7vgaVa1iaRUc9Lp",
+        "pausedPreviousUri": null,
+        "allowPreviousPaused": false,
+        "requirePreparedSelection": false,
+        "preparationSelectedSourceUri": null,
+        "requirePreparationObservation": true,
+        "preparationPhase": "baseline",
+        "restoreOperationId": null,
+        "allowChangedTrackPausedForRestore": false
+      }
+    },
+    {
+      "type": "source-result",
+      "atMs": 692.663385,
+      "elapsedMs": 0.14023099999997157,
+      "input": {
+        "action": "read",
+        "session": "6429baeb-f349-403f-8021-f8064d6ed32e",
+        "generation": 2,
+        "sourceDeviceId": "local-fake-desktop",
+        "expectedSourceUri": "spotify:track:3n3Ppam7vgaVa1iaRUc9Lp",
+        "pausedPreviousUri": null,
+        "allowPreviousPaused": false,
+        "requirePreparationObservation": true,
+        "preparationPhase": "baseline"
+      },
+      "result": {
+        "sourceDeviceId": "local-fake-desktop",
+        "trackUri": "spotify:track:3n3Ppam7vgaVa1iaRUc9Lp",
+        "isPlaying": false,
+        "observedAtUtc": "2026-10-10T04:52:08.145Z",
+        "pcmStopped": true,
+        "preparationOwned": true,
+        "playbackRequestPending": false,
+        "observationGeneration": 9,
+        "mutationEpoch": 0,
+        "preparationPhase": "baseline",
+        "positionMs": 45
+      }
+    },
+    {
+      "type": "source-request",
+      "atMs": 696.394322,
+      "input": {
+        "event": "sourceControl",
+        "requestId": "source-0608a84a-dd41-43e6-abce-b2d49052642b",
+        "action": "read",
+        "session": "6429baeb-f349-403f-8021-f8064d6ed32e",
+        "generation": 2,
+        "sourceDeviceId": "local-fake-desktop",
+        "expectedSourceUri": "spotify:track:3n3Ppam7vgaVa1iaRUc9Lp",
+        "pausedPreviousUri": null,
+        "allowPreviousPaused": false,
+        "requirePreparedSelection": false,
+        "preparationSelectedSourceUri": null,
+        "requirePreparationObservation": true,
+        "preparationPhase": "baseline",
+        "restoreOperationId": null,
+        "allowChangedTrackPausedForRestore": false
+      }
+    },
+    {
+      "type": "source-result",
+      "atMs": 696.550652,
+      "elapsedMs": 0.10022700000001805,
+      "input": {
+        "action": "read",
+        "session": "6429baeb-f349-403f-8021-f8064d6ed32e",
+        "generation": 2,
+        "sourceDeviceId": "local-fake-desktop",
+        "expectedSourceUri": "spotify:track:3n3Ppam7vgaVa1iaRUc9Lp",
+        "pausedPreviousUri": null,
+        "allowPreviousPaused": false,
+        "requirePreparationObservation": true,
+        "preparationPhase": "baseline"
+      },
+      "result": {
+        "sourceDeviceId": "local-fake-desktop",
+        "trackUri": "spotify:track:3n3Ppam7vgaVa1iaRUc9Lp",
+        "isPlaying": false,
+        "observedAtUtc": "2026-10-10T04:52:08.145Z",
+        "pcmStopped": true,
+        "preparationOwned": true,
+        "playbackRequestPending": false,
+        "observationGeneration": 9,
+        "mutationEpoch": 0,
+        "preparationPhase": "baseline",
+        "positionMs": 45
+      }
+    },
+    {
+      "type": "native-result",
+      "operation": "acquire",
+      "atMs": 697.023604,
+      "elapsedMs": 4.977589999999964,
+      "value": {
+        "id": "12",
+        "ok": true,
+        "state": "heldPaused",
+        "code": "ROUTE_HELDPAUSED",
+        "ready": false,
+        "capabilities": null,
+        "inspection": null,
+        "lease": {
+          "leaseId": "0d4ddeba-03cf-45ff-abc8-ff86d9c3795b",
+          "session": "6429baeb-f349-403f-8021-f8064d6ed32e",
+          "generation": 2,
+          "state": "heldPaused",
+          "ready": false,
+          "process": {
+            "pid": 12,
+            "startTimeUtcTicks": "639271872000000000",
+            "startedAtUnixMs": 1791590400000,
+            "userSid": "sid",
+            "policyIdentity": "policy",
+            "imageIdentity": "image",
+            "distribution": "desktop"
+          },
+          "originalRoles": [
+            {
+              "role": 0,
+              "original": null
+            },
+            {
+              "role": 1,
+              "original": "raw-original-endpoint"
+            }
+          ],
+          "captureDeviceId": "local-fake-capture",
+          "renderDeviceId": "local-fake-render",
+          "sourceDeviceId": "local-fake-desktop",
+          "expectedSourceUri": "spotify:track:3n3Ppam7vgaVa1iaRUc9Lp",
+          "intervalIsolated": false
+        },
+        "resumeAuthorized": false,
+        "exactOriginalRolesRestored": false,
+        "defaultsUnchanged": false,
+        "defaults": null,
+        "globalDefaultsWritten": false,
+        "observedDefaultsChanged": null,
+        "intervalIsolated": false,
+        "intervalGeneration": 0,
+        "intervalArmed": false,
+        "intervalId": null,
+        "noPolicyWrites": false,
+        "failureCode": null,
+        "physicalOwnerDiagnostic": null,
+        "operationFailureDiagnostic": null,
+        "preparedSelectionAuthorized": false,
+        "preparedSelectionCompleted": false,
+        "cleanupRetryable": false,
+        "restoreWritesStarted": null,
+        "pausedHeld": false,
+        "intervalEpoch": 1,
+        "_fixtureMetrics": {
+          "sourceReads": 14,
+          "sessionScans": 9,
+          "policyScans": 19,
+          "writes": 6,
+          "suspended": false
+        }
+      }
+    },
+    {
+      "type": "native-send",
+      "operation": "authorizePreparedSelection",
+      "id": "13",
+      "atMs": 697.295392
+    },
+    {
+      "type": "source-request",
+      "atMs": 697.500379,
+      "input": {
+        "event": "sourceControl",
+        "requestId": "source-2aad5462-0d05-4949-bc38-34a5fb9b59f2",
+        "action": "read",
+        "session": "6429baeb-f349-403f-8021-f8064d6ed32e",
+        "generation": 2,
+        "sourceDeviceId": "local-fake-desktop",
+        "expectedSourceUri": "spotify:track:3n3Ppam7vgaVa1iaRUc9Lp",
+        "pausedPreviousUri": null,
+        "allowPreviousPaused": false,
+        "requirePreparedSelection": true,
+        "preparationSelectedSourceUri": "spotify:track:4n4Qqam7vgaVa1iaRUc9Lp",
+        "requirePreparationObservation": true,
+        "preparationPhase": "baseline",
+        "restoreOperationId": null,
+        "allowChangedTrackPausedForRestore": false
+      }
+    },
+    {
+      "type": "source-result",
+      "atMs": 697.685407,
+      "elapsedMs": 0.13128299999993942,
+      "input": {
+        "action": "read",
+        "session": "6429baeb-f349-403f-8021-f8064d6ed32e",
+        "generation": 2,
+        "sourceDeviceId": "local-fake-desktop",
+        "expectedSourceUri": "spotify:track:3n3Ppam7vgaVa1iaRUc9Lp",
+        "pausedPreviousUri": null,
+        "allowPreviousPaused": false,
+        "requirePreparedSelection": true,
+        "preparationSelectedSourceUri": "spotify:track:4n4Qqam7vgaVa1iaRUc9Lp",
+        "requirePreparationObservation": true,
+        "preparationPhase": "baseline"
+      },
+      "result": {
+        "sourceDeviceId": "local-fake-desktop",
+        "trackUri": "spotify:track:3n3Ppam7vgaVa1iaRUc9Lp",
+        "isPlaying": false,
+        "observedAtUtc": "2026-10-10T04:52:08.145Z",
+        "pcmStopped": true,
+        "preparationOwned": true,
+        "playbackRequestPending": false,
+        "observationGeneration": 9,
+        "mutationEpoch": 0,
+        "preparationPhase": "baseline",
+        "positionMs": 45
+      }
+    },
+    {
+      "type": "source-request",
+      "atMs": 697.943425,
+      "input": {
+        "event": "sourceControl",
+        "requestId": "source-27e3d1a7-c99e-4e4c-99ce-10903ee4d88b",
+        "action": "read",
+        "session": "6429baeb-f349-403f-8021-f8064d6ed32e",
+        "generation": 2,
+        "sourceDeviceId": "local-fake-desktop",
+        "expectedSourceUri": "spotify:track:3n3Ppam7vgaVa1iaRUc9Lp",
+        "pausedPreviousUri": null,
+        "allowPreviousPaused": false,
+        "requirePreparedSelection": true,
+        "preparationSelectedSourceUri": "spotify:track:4n4Qqam7vgaVa1iaRUc9Lp",
+        "requirePreparationObservation": true,
+        "preparationPhase": "baseline",
+        "restoreOperationId": null,
+        "allowChangedTrackPausedForRestore": false
+      }
+    },
+    {
+      "type": "source-result",
+      "atMs": 698.229552,
+      "elapsedMs": 0.17369399999995494,
+      "input": {
+        "action": "read",
+        "session": "6429baeb-f349-403f-8021-f8064d6ed32e",
+        "generation": 2,
+        "sourceDeviceId": "local-fake-desktop",
+        "expectedSourceUri": "spotify:track:3n3Ppam7vgaVa1iaRUc9Lp",
+        "pausedPreviousUri": null,
+        "allowPreviousPaused": false,
+        "requirePreparedSelection": true,
+        "preparationSelectedSourceUri": "spotify:track:4n4Qqam7vgaVa1iaRUc9Lp",
+        "requirePreparationObservation": true,
+        "preparationPhase": "baseline"
+      },
+      "result": {
+        "sourceDeviceId": "local-fake-desktop",
+        "trackUri": "spotify:track:3n3Ppam7vgaVa1iaRUc9Lp",
+        "isPlaying": false,
+        "observedAtUtc": "2026-10-10T04:52:08.145Z",
+        "pcmStopped": true,
+        "preparationOwned": true,
+        "playbackRequestPending": false,
+        "observationGeneration": 9,
+        "mutationEpoch": 0,
+        "preparationPhase": "baseline",
+        "positionMs": 45
+      }
+    },
+    {
+      "type": "native-result",
+      "operation": "authorizePreparedSelection",
+      "atMs": 698.593589,
+      "elapsedMs": 1.2991909999999507,
+      "value": {
+        "id": "13",
+        "ok": true,
+        "state": "preparedSelection",
+        "code": "PREPARED_SELECTION_AUTHORIZED",
+        "ready": false,
+        "capabilities": null,
+        "inspection": null,
+        "lease": {
+          "leaseId": "0d4ddeba-03cf-45ff-abc8-ff86d9c3795b",
+          "session": "6429baeb-f349-403f-8021-f8064d6ed32e",
+          "generation": 2,
+          "state": "preparedSelection",
+          "ready": false,
+          "process": {
+            "pid": 12,
+            "startTimeUtcTicks": "639271872000000000",
+            "startedAtUnixMs": 1791590400000,
+            "userSid": "sid",
+            "policyIdentity": "policy",
+            "imageIdentity": "image",
+            "distribution": "desktop"
+          },
+          "originalRoles": [
+            {
+              "role": 0,
+              "original": null
+            },
+            {
+              "role": 1,
+              "original": "raw-original-endpoint"
+            }
+          ],
+          "captureDeviceId": "local-fake-capture",
+          "renderDeviceId": "local-fake-render",
+          "sourceDeviceId": "local-fake-desktop",
+          "expectedSourceUri": "spotify:track:3n3Ppam7vgaVa1iaRUc9Lp",
+          "intervalIsolated": false
+        },
+        "resumeAuthorized": false,
+        "exactOriginalRolesRestored": false,
+        "defaultsUnchanged": false,
+        "defaults": null,
+        "globalDefaultsWritten": false,
+        "observedDefaultsChanged": null,
+        "intervalIsolated": false,
+        "intervalGeneration": 0,
+        "intervalArmed": false,
+        "intervalId": null,
+        "noPolicyWrites": false,
+        "failureCode": null,
+        "physicalOwnerDiagnostic": null,
+        "operationFailureDiagnostic": null,
+        "preparedSelectionAuthorized": true,
+        "preparedSelectionCompleted": false,
+        "cleanupRetryable": false,
+        "restoreWritesStarted": null,
+        "pausedHeld": false,
+        "intervalEpoch": 1,
+        "_fixtureMetrics": {
+          "sourceReads": 16,
+          "sessionScans": 10,
+          "policyScans": 21,
+          "writes": 6,
+          "suspended": false
+        }
+      }
+    },
+    {
+      "type": "native-send",
+      "operation": "completePreparedSelection",
+      "id": "14",
+      "atMs": 720.061333
+    },
+    {
+      "type": "source-request",
+      "atMs": 720.426888,
+      "input": {
+        "event": "sourceControl",
+        "requestId": "source-c556de97-9eb9-4785-bbe4-ca4841acc0bf",
+        "action": "read",
+        "session": "6429baeb-f349-403f-8021-f8064d6ed32e",
+        "generation": 2,
+        "sourceDeviceId": "local-fake-desktop",
+        "expectedSourceUri": "spotify:track:4n4Qqam7vgaVa1iaRUc9Lp",
+        "pausedPreviousUri": null,
+        "allowPreviousPaused": false,
+        "requirePreparedSelection": true,
+        "preparationSelectedSourceUri": "spotify:track:4n4Qqam7vgaVa1iaRUc9Lp",
+        "requirePreparationObservation": true,
+        "preparationPhase": "selected",
+        "restoreOperationId": null,
+        "allowChangedTrackPausedForRestore": false
+      }
+    },
+    {
+      "type": "source-result",
+      "atMs": 720.591582,
+      "elapsedMs": 0.10337700000002314,
+      "input": {
+        "action": "read",
+        "session": "6429baeb-f349-403f-8021-f8064d6ed32e",
+        "generation": 2,
+        "sourceDeviceId": "local-fake-desktop",
+        "expectedSourceUri": "spotify:track:4n4Qqam7vgaVa1iaRUc9Lp",
+        "pausedPreviousUri": null,
+        "allowPreviousPaused": false,
+        "requirePreparedSelection": true,
+        "preparationSelectedSourceUri": "spotify:track:4n4Qqam7vgaVa1iaRUc9Lp",
+        "requirePreparationObservation": true,
+        "preparationPhase": "selected"
+      },
+      "result": {
+        "sourceDeviceId": "local-fake-desktop",
+        "trackUri": "spotify:track:4n4Qqam7vgaVa1iaRUc9Lp",
+        "isPlaying": false,
+        "observedAtUtc": "2026-10-10T04:52:08.174Z",
+        "pcmStopped": true,
+        "preparationOwned": true,
+        "playbackRequestPending": false,
+        "observationGeneration": 12,
+        "mutationEpoch": 4,
+        "preparationPhase": "selected",
+        "positionMs": 0
+      }
+    },
+    {
+      "type": "source-request",
+      "atMs": 720.795214,
+      "input": {
+        "event": "sourceControl",
+        "requestId": "source-cba00fd1-3412-4afd-8829-a3e5352e0f8d",
+        "action": "read",
+        "session": "6429baeb-f349-403f-8021-f8064d6ed32e",
+        "generation": 2,
+        "sourceDeviceId": "local-fake-desktop",
+        "expectedSourceUri": "spotify:track:4n4Qqam7vgaVa1iaRUc9Lp",
+        "pausedPreviousUri": null,
+        "allowPreviousPaused": false,
+        "requirePreparedSelection": true,
+        "preparationSelectedSourceUri": "spotify:track:4n4Qqam7vgaVa1iaRUc9Lp",
+        "requirePreparationObservation": true,
+        "preparationPhase": "selected",
+        "restoreOperationId": null,
+        "allowChangedTrackPausedForRestore": false
+      }
+    },
+    {
+      "type": "source-result",
+      "atMs": 720.916372,
+      "elapsedMs": 0.07232699999997294,
+      "input": {
+        "action": "read",
+        "session": "6429baeb-f349-403f-8021-f8064d6ed32e",
+        "generation": 2,
+        "sourceDeviceId": "local-fake-desktop",
+        "expectedSourceUri": "spotify:track:4n4Qqam7vgaVa1iaRUc9Lp",
+        "pausedPreviousUri": null,
+        "allowPreviousPaused": false,
+        "requirePreparedSelection": true,
+        "preparationSelectedSourceUri": "spotify:track:4n4Qqam7vgaVa1iaRUc9Lp",
+        "requirePreparationObservation": true,
+        "preparationPhase": "selected"
+      },
+      "result": {
+        "sourceDeviceId": "local-fake-desktop",
+        "trackUri": "spotify:track:4n4Qqam7vgaVa1iaRUc9Lp",
+        "isPlaying": false,
+        "observedAtUtc": "2026-10-10T04:52:08.174Z",
+        "pcmStopped": true,
+        "preparationOwned": true,
+        "playbackRequestPending": false,
+        "observationGeneration": 12,
+        "mutationEpoch": 4,
+        "preparationPhase": "selected",
+        "positionMs": 0
+      }
+    },
+    {
+      "type": "native-result",
+      "operation": "completePreparedSelection",
+      "atMs": 721.29976,
+      "elapsedMs": 1.2394789999999603,
+      "value": {
+        "id": "14",
+        "ok": true,
+        "state": "heldPaused",
+        "code": "PREPARED_SELECTION_COMPLETED",
+        "ready": false,
+        "capabilities": null,
+        "inspection": null,
+        "lease": {
+          "leaseId": "0d4ddeba-03cf-45ff-abc8-ff86d9c3795b",
+          "session": "6429baeb-f349-403f-8021-f8064d6ed32e",
+          "generation": 2,
+          "state": "heldPaused",
+          "ready": false,
+          "process": {
+            "pid": 12,
+            "startTimeUtcTicks": "639271872000000000",
+            "startedAtUnixMs": 1791590400000,
+            "userSid": "sid",
+            "policyIdentity": "policy",
+            "imageIdentity": "image",
+            "distribution": "desktop"
+          },
+          "originalRoles": [
+            {
+              "role": 0,
+              "original": null
+            },
+            {
+              "role": 1,
+              "original": "raw-original-endpoint"
+            }
+          ],
+          "captureDeviceId": "local-fake-capture",
+          "renderDeviceId": "local-fake-render",
+          "sourceDeviceId": "local-fake-desktop",
+          "expectedSourceUri": "spotify:track:4n4Qqam7vgaVa1iaRUc9Lp",
+          "intervalIsolated": false
+        },
+        "resumeAuthorized": false,
+        "exactOriginalRolesRestored": false,
+        "defaultsUnchanged": false,
+        "defaults": null,
+        "globalDefaultsWritten": false,
+        "observedDefaultsChanged": null,
+        "intervalIsolated": false,
+        "intervalGeneration": 0,
+        "intervalArmed": false,
+        "intervalId": null,
+        "noPolicyWrites": false,
+        "failureCode": null,
+        "physicalOwnerDiagnostic": null,
+        "operationFailureDiagnostic": null,
+        "preparedSelectionAuthorized": false,
+        "preparedSelectionCompleted": true,
+        "cleanupRetryable": false,
+        "restoreWritesStarted": null,
+        "pausedHeld": false,
+        "intervalEpoch": 1,
+        "_fixtureMetrics": {
+          "sourceReads": 18,
+          "sessionScans": 11,
+          "policyScans": 23,
+          "writes": 6,
+          "suspended": false
+        }
+      }
+    }
+  ],
+  "jsArtifacts": [
+    {
+      "file": "/workspace/scratch/d96e392874a5/folia-r36-performance/integrated/application/electron/spotify/cableAudioPreparation.cjs",
+      "bytes": 39905,
+      "sha256": "391d7ca290dae17cc38969939c1b1ac91ab83bb014f501e9e8cc933446af00a4"
+    },
+    {
+      "file": "/workspace/scratch/d96e392874a5/folia-r36-performance/integrated/application/electron/spotify/desktopPlaybackControl.cjs",
+      "bytes": 54698,
+      "sha256": "aa7fe78d5b9a8dab00ed3b4be0698fc183a8b577c09fa9988d98553a949412bc"
+    },
+    {
+      "file": "/workspace/scratch/d96e392874a5/folia-r36-performance/integrated/application/electron/spotify/ownedRouteAudio.cjs",
+      "bytes": 5546,
+      "sha256": "1a1b634ac433f9b79b71a814507000c0f5e52ecb99678c3a368f51f5af77b1bb"
+    },
+    {
+      "file": "/workspace/scratch/d96e392874a5/folia-r36-performance/integrated/application/electron/spotify/ownedRouteLifecycle.cjs",
+      "bytes": 21228,
+      "sha256": "6a705f3d2a8e5902f00ca5ffb1e40b5846e59d1ac11aaf95c22884e84dc7d214"
+    },
+    {
+      "file": "/workspace/scratch/d96e392874a5/folia-r36-performance/integrated/application/electron/spotify/ownedRouteHost.cjs",
+      "bytes": 21537,
+      "sha256": "a25d51e039533a8d48d6cea29e671f03930f04874a1ab17fe18dd6c2d29e2bac"
+    },
+    {
+      "file": "/workspace/scratch/d96e392874a5/folia-r36-performance/integrated/application/electron/spotify/ownedRouteProtocol.cjs",
+      "bytes": 12158,
+      "sha256": "1f2d358d3ee2139db4528d2e18fcdedfaebfa1f59dfd68921641f5870c0684a6"
+    }
+  ],
+  "nativeArtifacts": [
+    {
+      "file": "/workspace/scratch/d96e392874a5/folia-rebuild-r34/source-lifecycle/final-test-snapshot/native/OwnedRoute.HeldPause.Tests.dll",
+      "bytes": 49664,
+      "sha256": "f2b673ab466bdc86cf1ed75a282942a251053fef52a1f2ff21aed40289898af0"
+    },
+    {
+      "file": "/workspace/scratch/d96e392874a5/folia-rebuild-r34/source-lifecycle/final-test-snapshot/native/folia-route-service.dll",
+      "bytes": 113664,
+      "sha256": "c2f7d8774e887fcb84ded634d5fc55a720f44f311e7468208c9b49f972f5efe6"
+    },
+    {
+      "file": "/workspace/scratch/d96e392874a5/folia-rebuild-r34/source-lifecycle/final-test-snapshot/native/OwnedRoute.Core.dll",
+      "bytes": 46080,
+      "sha256": "7c6761f3f5e17ba079325bbc7a7a30b6275dee04abdc60ba7e56e9a90428bbdb"
+    }
+  ]
+}

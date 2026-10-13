@@ -7,10 +7,7 @@ let closing: Promise<boolean> | null = null;
 export function releaseHQPlayerOutput(): Promise<boolean> {
     if (!closing) closing = (async () => {
         try {
-            const { setPlayerState } = await import('../../stores/usePlaybackStore');
-            const { PlayerState } = await import('../../types');
-            setPlayerState(PlayerState.PAUSED);
-            await window.electron?.nativeAudio?.request({ action: 'hqplayer-shutdown' });
+            await window.electron?.nativeAudio?.request({ action: 'hqplayer-shutdown', reason: 'handoff' });
             return true;
         } catch (error) {
             setStatusMessage({ type: 'error', text: i18n.t(nativeErrorKey(error)) });

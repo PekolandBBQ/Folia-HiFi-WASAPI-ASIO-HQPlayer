@@ -48,15 +48,18 @@
     "dev:electron:dist:sourcemap": "cross-env-shell ELECTRON_DEV=false ELECTRON=true NODE_OPTIONS=--enable-source-maps FOLIA_WINDOWTOLAYER_PATH=build/windowtolayer \"vite build --sourcemap && electron .\"",
     "dev:electron:dist:swiftshader": "cross-env ELECTRON_DEV=false ELECTRON=true ELECTRON_LINUX_PACKAGED_GRAPHICS=true FOLIA_LINUX_GRAPHICS_MODE=swiftshader FOLIA_WINDOWTOLAYER_PATH=build/windowtolayer vite build && electron .",
     "dev:electron:dist:software": "cross-env ELECTRON_DEV=false ELECTRON=true ELECTRON_LINUX_PACKAGED_GRAPHICS=true FOLIA_LINUX_GRAPHICS_MODE=software FOLIA_WINDOWTOLAYER_PATH=build/windowtolayer vite build && electron .",
-    "build:electron:dir": "cross-env ELECTRON_DEV=false ELECTRON=true vite build && npm run build:windowtolayer && npm run build:wallpaper-helper && electron-builder --linux dir",
-    "build:electron": "cross-env ELECTRON_DEV=false ELECTRON=true vite build && npm run build:windowtolayer && npm run build:wallpaper-helper && electron-builder",
+    "build:electron:dir": "npm run build:renderer:desktop && npm run build:windowtolayer && npm run build:wallpaper-helper && electron-builder --linux dir",
+    "build:electron": "npm run build:renderer:desktop && npm run build:windowtolayer && npm run build:wallpaper-helper && electron-builder",
     "build:windowtolayer": "node packaging/linux/build-windowtolayer.mjs",
     "build:wallpaper-helper": "node packaging/windows/build-wallpaper-helper.mjs",
     "build:ffmpeg": "node packaging/ffmpeg/fetch-ffmpeg.mjs",
     "contributors:add": "npx all-contributors-cli add",
     "contributors:generate": "npx all-contributors-cli generate",
     "models:fetch": "node build/fetchModels.mjs",
-    "manual:ai-probe": "node test/manual/ai_probe.mjs"
+    "manual:ai-probe": "node test/manual/ai_probe.mjs",
+    "build:renderer:desktop": "node build/build-desktop-renderer.mjs",
+    "validate:renderer:desktop": "node build/validate-desktop-renderer.mjs",
+    "test:renderer:desktop": "node --test test/build/desktop-renderer.test.mjs"
   },
   "build": {
     "appId": "top.izuna.foliamajor",
@@ -83,11 +86,15 @@
       "dist/**/*",
       "electron/**/*",
       "shared/**/*",
+      "native/spotify-cable/**/*",
+      "native/spotify-route/**/*",
       "package.json",
       "build/miao.png",
       "build/thumbar/*.png"
     ],
     "asarUnpack": [
+      "native/spotify-cable/**/*",
+      "native/spotify-route/**/*",
       "electron/analysis/htdemucs_runner.py",
       "node_modules/@koromix/koffi-*/**/*.node"
     ],
@@ -201,6 +208,7 @@
     "@google/genai": "^2.24.0",
     "@neteasecloudmusicapienhanced/api": "^4.40.1",
     "@xhayper/discord-rpc": "^1.5.1",
+    "@xmldom/xmldom": "^0.9.12",
     "@yakult-green-tea/qq-music-api": "3.1.2",
     "axios": "^1.20.0",
     "busboy": "^1.6.0",
@@ -209,10 +217,12 @@
     "fflate": "^0.8.3",
     "koffi": "^3.3.1",
     "kugoumusicapi": "https://github.com/MakcRe/KuGouMusicApi/archive/refs/tags/v1.6.0.tar.gz",
+    "multicast-dns": "7.2.5",
     "music-metadata": "^11.16.1",
     "onnxruntime-node": "^1.30.0",
+    "qrcode": "^1.5.4",
     "ws": "^8.21.3",
-    "@xmldom/xmldom": "^0.9.12"
+    "parse5": "7.3.0"
   },
   "devDependencies": {
     "@applemusic-like-lyrics/ttml": "^1.0.1",
@@ -276,5 +286,12 @@
     "three-stdlib": {
       "fflate": "$fflate"
     }
+  },
+  "allowScripts": {
+    "@google/genai@2.24.0": true,
+    "electron-winstaller@5.4.0": true,
+    "koffi@3.3.1": true,
+    "onnxruntime-node@1.30.0": true,
+    "protobufjs@7.6.6": true
   }
 }

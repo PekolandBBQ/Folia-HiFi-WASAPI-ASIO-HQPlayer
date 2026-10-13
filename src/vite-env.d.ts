@@ -666,7 +666,15 @@ declare global {
 
   interface Window {
     electron?: {
+      /** Exact capability from the private main-process entry, absent from ordinary builds. */
+      privatePreview?: true;
+      privateDiagnostics?: import('./types/privateDiagnostics').PrivateDiagnosticsApi;
       nativeAudio?: import('./types/nativeAudio').NativeAudioApi;
+      spotify?: { request(input: import('./services/onlineMusic/spotifyTransport').SpotifyRequest): Promise<unknown>;
+        browserPcm?(input: import('./services/onlineMusic/SoloistBrowserTransport').SoloistBrowserRequest): Promise<unknown>;
+        onSetupRequired?(listener:()=>void):()=>void;
+        onExternalSelection?(listener:(value:{phase:'paused'|'follow';trackId:string;positionMs:number})=>void):()=>void;
+        onProgress?(listener: (value: import('./services/onlineMusic/spotifyTransport').SpotifyProgress) => void): () => void };
       webUtils?: {
         /** Resolves the OS path of a dropped File (File.path was removed in modern Electron). */
         getPathForFile: (file: File) => string;

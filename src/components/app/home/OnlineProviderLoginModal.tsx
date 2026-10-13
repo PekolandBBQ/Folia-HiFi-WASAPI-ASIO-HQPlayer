@@ -1,6 +1,7 @@
-import { AlertTriangle, Check, Loader2, RotateCcw, ServerCog, X } from 'lucide-react';
+import { AlertTriangle, Check, Loader2, Monitor, RotateCcw, ServerCog, X } from 'lucide-react';
 import { motion } from 'framer-motion';
 import QrLoginDiagnosticsPrompt, { type QrLoginDiagnosticsPromptProps } from './QrLoginDiagnosticsPrompt';
+import { audioGlass } from '../../audio/audioGlass';
 
 // src/components/app/home/OnlineProviderLoginModal.tsx
 
@@ -28,6 +29,9 @@ type BackendFailureProps = {
 };
 
 type OnlineProviderLoginModalProps = {
+    glass?: boolean;
+    daylight?: boolean;
+    browserAuthorization?: string;
     title: string;
     note: string;
     qrCodeImg: string;
@@ -44,6 +48,9 @@ type OnlineProviderLoginModalProps = {
 };
 
 const OnlineProviderLoginModal = ({
+    glass = false,
+    daylight = false,
+    browserAuthorization,
     title,
     note,
     qrCodeImg,
@@ -67,7 +74,7 @@ const OnlineProviderLoginModal = ({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.25 }}
-            className="absolute inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-xl p-4"
+            className={`absolute inset-0 z-[100] flex items-center justify-center backdrop-blur-xl p-4 ${glass ? (daylight ? 'bg-white/10' : 'bg-black/20') : 'bg-black/60'}`}
             role="dialog"
             aria-modal="true"
             aria-label={title}
@@ -77,7 +84,7 @@ const OnlineProviderLoginModal = ({
                 animate={{ scale: 1, opacity: 1, y: 0 }}
                 exit={{ scale: 0.92, opacity: 0, y: 12 }}
                 transition={{ type: 'spring', bounce: 0, duration: 0.5 }}
-                className="bg-zinc-900/90 border border-white/10 p-8 rounded-3xl max-w-sm w-full text-center relative shadow-2xl"
+                className={`border p-8 rounded-3xl max-w-sm w-full text-center relative shadow-2xl ${glass ? `backdrop-blur-2xl ${audioGlass(daylight)}` : 'bg-zinc-900/90 border-white/10'}`}
             >
                 <button
                     type="button"
@@ -123,8 +130,15 @@ const OnlineProviderLoginModal = ({
                         </div>
                     </div>
                 )}
-                <div className="relative inline-block bg-white p-2 rounded-xl mb-4 shadow-inner">
-                    {backendFailure ? (
+                <div className={`relative inline-block p-2 rounded-xl mb-4 ${browserAuthorization ? 'bg-white/5 border border-current/10' : 'bg-white shadow-inner'}`}>
+                    {browserAuthorization ? (
+                        <div className="w-40 h-32 flex flex-col items-center justify-center gap-3 px-3">
+                            {state === 'loading' || state === 'scanned'
+                                ? <Loader2 className="animate-spin opacity-60" size={30} />
+                                : <Monitor className="opacity-70" size={36} />}
+                            <span className="text-xs leading-relaxed opacity-75">{browserAuthorization}</span>
+                        </div>
+                    ) : backendFailure ? (
                         <div className="w-40 h-40 flex flex-col items-center justify-center gap-1.5 rounded-lg bg-red-50 px-3 text-center">
                             <AlertTriangle className="text-red-500 shrink-0" size={22} />
                             <p className="text-[11px] font-semibold leading-snug text-red-600">{backendFailure.title}</p>
@@ -175,7 +189,7 @@ const OnlineProviderLoginModal = ({
                     </button>
                 )}
                 {diagnostics && !backendFailure && <QrLoginDiagnosticsPrompt {...diagnostics} />}
-                <p className="text-[10px] opacity-30 mt-6" style={{ color: 'var(--text-secondary)' }}>{note}</p>
+                <p className={`text-[10px] mt-6 ${glass ? 'opacity-70' : 'opacity-30'}`} style={{ color: 'var(--text-secondary)' }}>{note}</p>
             </motion.div>
         </motion.div>
     );

@@ -33,16 +33,27 @@ test.beforeEach(async ({ page }) => {
                         return { canceled: false, available: true, custom: true, executablePath: localStorage.getItem('hqplayer_mock_path') };
                     }
                     if (request.action === 'hqplayer-reset-executable') { localStorage.removeItem('hqplayer_mock_path'); return { canceled: false, available: false, custom: false }; }
-                    if (request.action === 'status') return { supported: true, ...component, version: component.installed ? '0.1.0' : undefined };
+                    if (request.action === 'status') {
+                        const reply = (window as unknown as { __nativeStatusReply?: () => Promise<unknown> }).__nativeStatusReply;
+                        if (reply) return reply();
+                        await (window as unknown as { __nativeStatusGate?: () => Promise<void> }).__nativeStatusGate?.();
+                        return { supported: true, ...component, version: component.installed ? '0.1.0' : undefined };
+                    }
                     if (request.action === 'component-uninstall') { component.available = false; component.installed = false; return { ok: true }; }
                     if (request.action === 'component-install') {
                         if (component.failInstall) throw Object.assign(new Error('private diagnostic'), { code: 'COMPONENT_UPDATE_FAILED' });
                         component.available = true; component.installed = true; return { ok: true };
                     }
-                    if (request.action === 'devices') return [
-                        { backend: 'wasapi-exclusive', id: 'wasapi-device', name: 'Test DAC' },
-                        { backend: 'asio', id: 'asio-device', name: 'Test ASIO Driver' },
-                    ];
+                    if (request.action === 'devices') {
+                        const probe = window as unknown as { __nativeDevicesGate?: () => Promise<void>;
+                            __nativeDevicesFixture?: { fail?: boolean; devices?: unknown[] } };
+                        await probe.__nativeDevicesGate?.();
+                        if (probe.__nativeDevicesFixture?.fail) throw Object.assign(new Error('enumeration fixture failure'), { code: 'NATIVE_REQUEST_FAILED' });
+                        return probe.__nativeDevicesFixture?.devices || [
+                            { backend: 'wasapi-exclusive', id: 'wasapi-device', name: 'Test DAC' },
+                            { backend: 'asio', id: 'asio-device', name: 'Test ASIO Driver' },
+                        ];
+                    }
                     if (request.action === 'begin') state = { ...state, session: String(request.session),
                         position: 0, playing: false, backend: String(request.backend), deviceId: String(request.deviceId) };
                     if (request.session !== state.session) throw new Error('Stale session');
@@ -59,6 +70,168 @@ test.beforeEach(async ({ page }) => {
             listeners.forEach(listener => listener({ event: 'state', session: state.session, state: { ...state } }));
         }, 40);
     });
+});
+
+
+
+// Component availability precedes asynchronous device discovery. Absence is known only after success.
+const noAsioDescription = "No x64 ASIO driver found. Install the audio interface manufacturer's driver to use ASIO.";
+
+// Hold the two actual StrictMode status requests independently; late results must not change the latest view.
+for (const scenario of ['older-unavailable', 'newer-unavailable', 'older-finishes-first'] as const) {
+    test(`overlapping device discovery preserves the latest request: ${scenario}`, async ({ mount, page }) => {
+        await page.addInitScript(() => {
+            localStorage.setItem('folia_app_language', 'en'); localStorage.setItem('folia_native_audio_backend', 'browser');
+            const replies: Array<(value: unknown) => void> = [];
+            Object.assign(window, { __nativeStatusReply: () => new Promise(resolve => replies.push(resolve)),
+                __releaseNativeStatus: (index: number, available: boolean) => replies[index]({ supported: true,
+                    available, installed: true, version: '0.1.0', errorCode: available ? undefined : 'COMPONENT_UNAVAILABLE' }) });
+        });
+        await mount('nativeAudio');
+        await expect.poll(() => page.evaluate(() => (window as any).__nativeRequests.filter((request: any) => request.action === 'status').length)).toBe(2);
+        const section = page.locator('[data-settings-anchor="nativeAudioOutput"]');
+        const refresh = section.getByRole('button', { name: 'Refresh audio devices', exact: true });
+        if (scenario === 'older-finishes-first') {
+            await page.evaluate(() => (window as any).__releaseNativeStatus(0, true));
+            // A later page task lets the completed older promise settle without a timing sleep.
+            await page.evaluate(() => new Promise<void>(resolve => setTimeout(resolve, 0)));
+            await expect(refresh).toBeDisabled();
+            await expect(section).not.toContainText(noAsioDescription);
+            await page.evaluate(() => (window as any).__releaseNativeStatus(1, true));
+            await expect(refresh).toBeEnabled();
+        } else {
+            await page.evaluate(available => (window as any).__releaseNativeStatus(1, available), scenario === 'older-unavailable');
+            await expect(refresh).toBeEnabled();
+            if (scenario === 'newer-unavailable') await expect(section.getByRole('alert')).toBeVisible();
+            await page.evaluate(available => (window as any).__releaseNativeStatus(0, available), scenario === 'newer-unavailable');
+            await page.evaluate(() => new Promise<void>(resolve => setTimeout(resolve, 0)));
+            if (scenario === 'newer-unavailable') {
+                await expect(section.getByRole('alert')).toBeVisible();
+                await expect(section).not.toContainText(noAsioDescription);
+            } else {
+                await expect(section.getByRole('alert')).toHaveCount(0);
+                await section.getByRole('button', { name: 'WASAPI / ASIO exclusive playback', exact: true }).click();
+                await expect(page.getByRole('option', { name: 'ASIO — Test ASIO Driver', exact: true })).toBeVisible();
+            }
+        }
+        expect(await page.evaluate(() => localStorage.getItem('folia_native_audio_backend'))).toBe('browser');
+    });
+}
+test('late device enumeration never reports a missing ASIO driver before the actual ASIO list arrives', async ({ mount, page }) => {
+    await page.addInitScript(() => {
+        localStorage.setItem('folia_app_language', 'en'); localStorage.setItem('folia_native_audio_backend', 'browser');
+        const waiting: Array<() => void> = [];
+        Object.assign(window, { __nativeDevicesGate: () => new Promise<void>(resolve => waiting.push(resolve)),
+            __releaseNativeDevices: () => { delete (window as any).__nativeDevicesGate; waiting.splice(0).forEach(resolve => resolve()); } });
+    });
+    await mount('nativeAudio');
+    const section = page.locator('[data-settings-anchor="nativeAudioOutput"]');
+    await expect(section).toContainText('v0.1.0');
+    await expect.poll(() => page.evaluate(() => (window as any).__nativeRequests.filter((request: any) => request.action === 'devices').length)).toBeGreaterThan(0);
+    await expect(section.getByRole('button', { name: 'Refresh audio devices', exact: true })).toBeDisabled();
+    await expect(section).not.toContainText(noAsioDescription);
+    await page.evaluate(() => (window as any).__releaseNativeDevices());
+    await expect(section.getByRole('button', { name: 'Refresh audio devices', exact: true })).toBeEnabled();
+    await section.getByRole('button', { name: 'WASAPI / ASIO exclusive playback', exact: true }).click();
+    await expect(page.getByRole('option', { name: 'ASIO — Test ASIO Driver', exact: true })).toBeVisible();
+    await expect(section).not.toContainText(noAsioDescription);
+    expect(await page.evaluate(() => localStorage.getItem('folia_native_audio_backend'))).toBe('browser');
+});
+test('failed first device enumeration is unknown rather than proof of no ASIO driver', async ({ mount, page }) => {
+    await page.addInitScript(() => {
+        localStorage.setItem('folia_app_language', 'en'); localStorage.setItem('folia_native_audio_backend', 'browser');
+        Object.assign(window, { __nativeDevicesFixture: { fail: true } });
+    });
+    await mount('nativeAudio');
+    const section = page.locator('[data-settings-anchor="nativeAudioOutput"]');
+    await expect(section.getByRole('button', { name: 'Refresh audio devices', exact: true })).toBeEnabled();
+    await expect(section.getByRole('alert')).toBeVisible();
+    await expect(section).not.toContainText(noAsioDescription);
+    expect(await page.evaluate(() => localStorage.getItem('folia_native_audio_backend'))).toBe('browser');
+});
+test('a failed refresh retains prior devices but withdraws the unconfirmed no-ASIO assertion', async ({ mount, page }) => {
+    await page.addInitScript(() => {
+        localStorage.setItem('folia_app_language', 'en'); localStorage.setItem('folia_native_audio_backend', 'browser');
+        Object.assign(window, { __nativeDevicesFixture: { devices: [{ backend: 'wasapi-exclusive', id: 'wasapi-device', name: 'Test DAC' }] } });
+    });
+    await mount('nativeAudio');
+    const section = page.locator('[data-settings-anchor="nativeAudioOutput"]');
+    await expect(section).toContainText(noAsioDescription);
+    const refresh = section.getByRole('button', { name: 'Refresh audio devices', exact: true });
+    await expect(refresh).toBeEnabled();
+    await page.evaluate(() => {
+        const waiting: Array<() => void> = [];
+        Object.assign(window, { __nativeDevicesFixture: { fail: true },
+            __nativeDevicesGate: () => new Promise<void>(resolve => waiting.push(resolve)),
+            __releaseNativeDevices: () => { delete (window as any).__nativeDevicesGate; waiting.splice(0).forEach(resolve => resolve()); } });
+    });
+    await refresh.click(); await expect(refresh).toBeDisabled();
+    await expect(section).not.toContainText(noAsioDescription);
+    await page.evaluate(() => (window as any).__releaseNativeDevices());
+    await expect(refresh).toBeEnabled(); await expect(section.getByRole('alert')).toBeVisible();
+    await expect(section).not.toContainText(noAsioDescription);
+    await section.getByRole('button', { name: 'WASAPI / ASIO exclusive playback', exact: true }).click();
+    await expect(page.getByRole('option', { name: 'WASAPI exclusive — Test DAC', exact: true })).toBeVisible();
+    await expect.poll(() => page.evaluate(() => (window as any).__nativeRequests.filter((request: any) => request.action === 'begin' || request.action === 'component-install').length)).toBe(0);
+    expect(await page.evaluate(() => localStorage.getItem('folia_native_audio_backend'))).toBe('browser');
+});
+
+// A held status response reproduces the real first-open interval without arbitrary sleeps.
+for (const [language, checking, pending, required, title] of [
+    ['en', 'Checking native audio component…', 'No component release is approved in this build yet.', 'Install and enable the native audio component before selecting a device', 'WASAPI / ASIO exclusive playback'],
+    ['zh-CN', '正在检查原生音频组件…', '此构建尚未配置已审核的组件发布。', '请先安装并启用原生音频组件', 'WASAPI及ASIO独占播放'],
+    ['in', 'Memeriksa komponen audio asli…', 'Belum ada rilis komponen yang disetujui.', 'Instal dan aktifkan komponen audio asli sebelum memilih perangkat', 'Pemutaran eksklusif WASAPI / ASIO'],
+]) test(language + ' waits for component status without presenting a false installation failure', async ({ mount, page }) => {
+    await page.addInitScript(language => {
+        localStorage.setItem('folia_native_audio_backend', 'browser');
+        localStorage.setItem('folia_app_language', language);
+        const waiting: Array<() => void> = [];
+        Object.assign(window, { __nativeStatusGate: () => new Promise<void>(resolve => waiting.push(resolve)),
+            __releaseNativeStatus: () => { delete (window as any).__nativeStatusGate; waiting.splice(0).forEach(resolve => resolve()); } });
+    }, language);
+    await mount('nativeAudio');
+    const section = page.locator('[data-settings-anchor="nativeAudioOutput"]');
+    await expect(section.getByRole('status')).toHaveText(checking);
+    await expect(section).not.toContainText(pending);
+    await expect(section).not.toContainText(required);
+    await expect(section.getByRole('button', { name: title, exact: true })).toBeDisabled();
+    await expect.poll(() => page.evaluate(() => (window as any).__nativeRequests.filter((request: any) => request.action === 'status').length)).toBeGreaterThan(0);
+    await page.evaluate(() => (window as any).__releaseNativeStatus());
+    await expect(section).toContainText('v0.1.0');
+    await expect(section.getByRole('status')).toHaveCount(0);
+    await expect(section.getByRole('button', { name: title, exact: true })).toBeEnabled();
+    await expect(section).not.toContainText(pending);
+    await expect(section).not.toContainText(required);
+    await section.getByRole('button', { name: title, exact: true }).click();
+    await expect(page.getByRole('option', { name: 'ASIO — Test ASIO Driver', exact: true })).toBeVisible();
+    await expect.poll(() => page.evaluate(() => (window as any).__nativeRequests.filter((request: any) => request.action === 'component-install' || request.action === 'begin').length)).toBe(0);
+    expect(await page.evaluate(() => localStorage.getItem('folia_native_audio_backend'))).toBe('browser');
+});
+
+test('a delayed unavailable result retains installation guidance and protects the current output', async ({ mount, page }) => {
+    await page.addInitScript(() => {
+        localStorage.setItem('folia_native_audio_backend', 'browser');
+        const waiting: Array<() => void> = [];
+        Object.assign(window, { __nativeStatusGate: () => new Promise<void>(resolve => waiting.push(resolve)),
+            __releaseNativeStatus: () => {
+                Object.assign((window as any).__nativeComponent, { available: false, installed: false, installable: true });
+                delete (window as any).__nativeStatusGate; waiting.splice(0).forEach(resolve => resolve());
+            } });
+    });
+    await mount('nativeAudio');
+    const section = page.locator('[data-settings-anchor="nativeAudioOutput"]');
+    await expect(section.getByRole('status')).toHaveText('Checking native audio component…');
+    await expect(section).not.toContainText('Install and enable the native audio component before selecting a device');
+    await page.evaluate(() => (window as any).__releaseNativeStatus());
+    await expect(section.getByRole('status')).toHaveCount(0);
+    await expect(section).toContainText('Install and enable the native audio component before selecting a device');
+    await expect(section).not.toContainText('No component release is approved in this build yet.');
+    await section.getByRole('switch', { name: 'Show audio signal path', exact: true }).click();
+    const dialog = page.locator('[data-folia-keyboard-window]');
+    await expect(dialog.getByRole('heading', { name: 'Native audio component required' })).toBeVisible();
+    await expect(dialog.getByRole('button', { name: 'Install / update component', exact: true })).toBeEnabled();
+    expect(await page.evaluate(() => localStorage.getItem('folia_native_audio_backend'))).toBe('browser');
+    await expect(section.getByRole('switch', { name: 'Show audio signal path' })).toHaveAttribute('aria-checked', 'false');
 });
 
 for (const target of ['WASAPI exclusive — Test DAC', 'ASIO — Test ASIO Driver',

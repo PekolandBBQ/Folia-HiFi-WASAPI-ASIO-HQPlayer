@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { getStoredBoolean, setStoredBoolean } from './storagePrimitives';
 import type { HQPlayerDspSettings } from '../types/hqplayerDsp';
+import type { HQPlayerSpotifyExperimentSettings } from '../types/nativeAudio';
+import { HQPLAYER_SPOTIFY_EXPERIMENT_DEFAULTS, normalizeHQPlayerSpotifyExperiment, readHQPlayerSpotifyExperiment, writeHQPlayerSpotifyExperiment } from '../utils/hqplayerSpotifyExperiment';
 
 // src/stores/useHQPlayerSettingsStore.ts — fork-only HQPlayer gain preferences, independent of the native component.
 export const clampHQPlayerGain = (value: number) => Math.round(Math.max(-120, Math.min(0, Number.isFinite(value) ? value : -2)) * 10) / 10;
@@ -21,10 +23,24 @@ export const useHQPlayerSettingsStore = create<{
     dspOpen: boolean; setDspOpen: (open: boolean) => void;
     gainDb: number; remember: boolean;
     setGain: (value: number) => void; setRemember: (value: boolean) => void;
-}>(set => ({
+    spotifyExperiment: HQPlayerSpotifyExperimentSettings;
+    setSpotifyExperiment: (change: Partial<HQPlayerSpotifyExperimentSettings>) => void;
+    resetSpotifyExperiment: () => void;
+}>((set, get) => ({
+    spotifyExperiment: readHQPlayerSpotifyExperiment(),
+    setSpotifyExperiment: change => {
+        const spotifyExperiment = normalizeHQPlayerSpotifyExperiment({ ...get().spotifyExperiment, ...change });
+        writeHQPlayerSpotifyExperiment(spotifyExperiment);
+        set({ spotifyExperiment });
+    },
+    resetSpotifyExperiment: () => {
+        const spotifyExperiment = { ...HQPLAYER_SPOTIFY_EXPERIMENT_DEFAULTS };
+        writeHQPlayerSpotifyExperiment(spotifyExperiment);
+        set({ spotifyExperiment });
+    },
     dspDefaults: readDefaults(),
     setDspDefaults: dspDefaults => { localStorage.setItem(defaultsKey, JSON.stringify(dspDefaults)); set({ dspDefaults }); },
-    silentLaunch: getStoredBoolean('folia_hqplayer_silent_launch', false),
+    silentLaunch: getStoredBoolean('folia_hqplayer_silent_launch', true),
     setSilentLaunch: silentLaunch => { setStoredBoolean('folia_hqplayer_silent_launch', silentLaunch); set({ silentLaunch }); },
     dspOpen: false, setDspOpen: dspOpen => set({ dspOpen }),
     gainDb: savedGain === null ? -2 : clampHQPlayerGain(Number(savedGain)),

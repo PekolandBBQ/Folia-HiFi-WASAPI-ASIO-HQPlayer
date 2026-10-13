@@ -7,11 +7,12 @@ const clearSessionMock = vi.hoisted(() => vi.fn());
 const writeSessionValueMock = vi.hoisted(() => vi.fn());
 const searchQQLyricsMock = vi.hoisted(() => vi.fn());
 const fetchQQLyricsMock = vi.hoisted(() => vi.fn());
-const transportState = vi.hoisted(() => ({ hasSession: true }));
+const transportState = vi.hoisted(() => ({ hasSession: true, embedded: false }));
 
 vi.mock('@/services/onlineMusic/qqTransport', () => ({
     getQqTransportAvailability: () => ({ configured: true }),
     hasQqSession: () => transportState.hasSession,
+    canUseEmbeddedQqSearch: () => transportState.embedded,
     clearQqSession: clearSessionMock,
     requestQq: requestMock,
 }));
@@ -162,6 +163,7 @@ describe('qqProvider', () => {
         searchQQLyricsMock.mockReset();
         fetchQQLyricsMock.mockReset();
         transportState.hasSession = true;
+        transportState.embedded = false;
         resetQqProviderRuntimeCache();
     });
 
@@ -507,6 +509,48 @@ describe('qqProvider', () => {
         expect(clearSessionMock).toHaveBeenCalledTimes(2);
     });
 
+    it('uses embedded authenticated search without changing the Omni provider page contract', async () => {
+        transportState.embedded = true;
+        requestMock.mockResolvedValue({ code: 200, data: { songs: [SEARCH_ITEM], hasMore: false, total: 1 } });
+        const result = await qqProvider.search!.searchSongs('海阔天空', 20, 20);
+        expect(requestMock).toHaveBeenCalledWith('search_songs', { query: '海阔天空', limit: 20, page: 2 });
+        expect(searchQQLyricsMock).not.toHaveBeenCalled();
+        expect(result).toMatchObject({ nextOffset: 21, hasMore: false, total: 1 });
+        expect(result.items[0].sourceRef).toMatchObject({ mediaId: SEARCH_ITEM.mid, providerData: { mediaMid: '001MediaMidFixture' } });
+    });
+
+    it.each(['auth-required', 'invalid-response', 'network'] as const)('keeps %s failure without anonymous fallback', async (code) => {
+        transportState.embedded = true;
+        const failure = new OnlineProviderError(code, 'controlled error', 'qq');
+        requestMock.mockRejectedValue(failure);
+        await expect(qqProvider.search!.searchSongs('海阔天空', 20, 0)).rejects.toBe(failure);
+        expect(searchQQLyricsMock).not.toHaveBeenCalled();
+    });
+
+    it('only falls back for a known absent route on an older embedded backend', async () => {
+        transportState.embedded = true;
+        requestMock.mockRejectedValue(new OnlineProviderError('unsupported', 'No search route', 'qq'));
+        searchQQLyricsMock.mockResolvedValue([SEARCH_ITEM]);
+        expect((await qqProvider.search!.searchSongs('海阔天空', 20, 0)).items).toHaveLength(1);
+        expect(searchQQLyricsMock).toHaveBeenCalledWith('海阔天空', 1, 20, { throwOnError: true });
+    });
+
+    it('keeps the existing public search when an embedded caller has no login session', async () => {
+        transportState.embedded = true;
+        transportState.hasSession = false;
+        searchQQLyricsMock.mockResolvedValue([]);
+        await qqProvider.search!.searchSongs('海阔天空', 20, 0);
+        expect(requestMock).not.toHaveBeenCalled();
+        expect(searchQQLyricsMock).toHaveBeenCalledOnce();
+    });
+
+    it('rejects malformed authenticated results instead of publishing an empty page', async () => {
+        transportState.embedded = true;
+        requestMock.mockResolvedValue({ code: 200, data: {} });
+        await expect(qqProvider.search!.searchSongs('海阔天空', 20, 0)).rejects.toMatchObject({ code: 'invalid-response' });
+        expect(searchQQLyricsMock).not.toHaveBeenCalled();
+    });
+
     it('routes search and lyrics through the existing QQ modules', async () => {
         searchQQLyricsMock.mockResolvedValue([{
             id: 5105918,
@@ -519,7 +563,7 @@ describe('qqProvider', () => {
         fetchQQLyricsMock.mockResolvedValue({ lines: [], isWordByWord: true });
 
         const page = await qqProvider.search!.searchSongs('海阔天空', 20, 20);
-        expect(searchQQLyricsMock).toHaveBeenCalledWith('海阔天空', 2, 20);
+        expect(searchQQLyricsMock).toHaveBeenCalledWith('海阔天空', 2, 20, { throwOnError: true });
         expect(page).toMatchObject({ hasMore: false, nextOffset: 21 });
         expect(page.items[0]?.sourceRef).toMatchObject({ providerId: 'qq', mediaId: '003rJSwm3TechU' });
 
@@ -530,6 +574,13 @@ describe('qqProvider', () => {
             qqMid: '003rJSwm3TechU',
         }));
         expect(result).toEqual({ lyrics: { lines: [], isWordByWord: true }, isPureMusic: false });
+    });
+
+    it('does not interpret a failed QQ catalog search as an empty successful result', async () => {
+        const error = new Error('QQ Music API error: code 403');
+        searchQQLyricsMock.mockRejectedValue(error);
+        await expect(qqProvider.search!.searchSongs('海阔天空', 20, 0)).rejects.toBe(error);
+        expect(searchQQLyricsMock).toHaveBeenCalledWith('海阔天空', 1, 20, { throwOnError: true });
     });
 
     it('resolves song detail and degrades authenticated playback quality until a URL exists', async () => {
@@ -545,12 +596,23 @@ describe('qqProvider', () => {
             url: 'https://audio.example.test/song.mp3',
             fetchedAt: expect.any(Number),
             quality: 'high',
+            requestedQuality: 'lossless',
+            providerLevel: '320',
         });
         expect(requestMock.mock.calls).toEqual([
             ['song_info', { songmid: '003rJSwm3TechU' }],
             ['music_play', { songmid: '003rJSwm3TechU', mediaId: '001MediaMidFixture', quality: 'flac' }],
             ['music_play', { songmid: '003rJSwm3TechU', mediaId: '001MediaMidFixture', quality: '320' }],
         ]);
+    });
+
+    it('preserves a HiRes request separately from the supported QQ FLAC fallback without inventing its original format', async () => {
+        requestMock.mockResolvedValueOnce({ data: { playUrl: { '003rJSwm3TechU': { url: 'https://audio.example.test/song.flac' } } } });
+        const source = await qqProvider.playback!.getAudioSource(normalizeQqSong(SEARCH_ITEM), 'hires');
+        expect(source).toMatchObject({ quality: 'lossless', requestedQuality: 'hires', providerLevel: 'flac' });
+        expect(source).not.toHaveProperty('sourceFormat');
+        expect(source).not.toHaveProperty('preparedAudio');
+        expect(requestMock).toHaveBeenCalledWith('music_play', expect.objectContaining({ quality: 'flac' }));
     });
 
     it('loads regular playlists normally but uses the encrypted-UIN endpoint for liked songs', async () => {

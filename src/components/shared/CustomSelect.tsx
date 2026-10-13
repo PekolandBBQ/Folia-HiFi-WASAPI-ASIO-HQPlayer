@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { AnimatePresence } from 'framer-motion';
 import { ChevronDown } from 'lucide-react';
 import { Theme } from '../../types';
+import { useReducedMotionFor } from '../../hooks/useReducedMotionFor';
 import {
     CustomSelectMenu,
     type CustomSelectMenuPosition,
@@ -44,6 +45,7 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
     theme,
     frosted = false,
 }) => {
+    const reduced = useReducedMotionFor('uiMicroMotion');
     const [isOpen, setIsOpen] = useState(false);
     const [dropdownPosition, setDropdownPosition] = useState<CustomSelectMenuPosition | null>(null);
     const containerRef = useRef<HTMLDivElement>(null);
@@ -159,6 +161,7 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
                     borderColor: isOpen ? accentColor : frosted ? borderColor : 'var(--border-color)',
                     color: 'var(--text-primary)',
                     boxShadow: isOpen ? `0 0 0 1px ${accentColor}` : undefined,
+                    transitionDuration: reduced ? '0ms' : undefined,
                 }}
             >
                 <span className="truncate">
@@ -167,7 +170,7 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
                 <ChevronDown
                     size={16}
                     className={`transition-transform duration-200 shrink-0 opacity-70 ${isOpen ? 'rotate-180' : ''}`}
-                    style={{ color: 'var(--text-secondary)' }}
+                    style={{ color: 'var(--text-secondary)', transitionDuration: reduced ? '0ms' : undefined }}
                 />
             </button>
 

@@ -102,3 +102,98 @@ describe('online playback recovery bounds', () => {
         expect(loadAudioSourceMock).toHaveBeenCalledTimes(2);
     });
 });
+
+import { PlayerState } from '@/types';
+import { usePlaybackStore } from '@/stores/usePlaybackStore';
+import { cancelPlaybackSourceRequest } from '@/services/playbackSourceRequest';
+
+const spotifySong: SongResult = { id: 'spotify-song', name: 'Spotify song', artists: [],
+    album: { id: 'album', name: 'Album' }, durationMs: 200_000,
+    sourceRef: { kind: 'online', providerId: 'spotify', mediaId: 'spotify-song', providerData: { sessionBoundAudio: true } } };
+const sessionSrc = 'http://127.0.0.1/session/expired/audio.wav';
+
+function sessionController(audioSrc: string | null = sessionSrc) {
+    const refs = {
+        audioRef: ref<HTMLAudioElement | null>({ currentTime: 0, currentSrc: audioSrc || '', error: { code: 2 } } as HTMLAudioElement),
+        currentSongRef: ref<string | number | null>(getPlaybackSongKey(spotifySong)),
+        shouldAutoPlayRef: ref(false), pendingResumeTimeRef: ref<number | null>(42.75),
+        onlinePlaybackRecoveryRef: ref<Promise<boolean> | null>(null),
+        lastAudioRecoverySourceRef: ref<string | null>('old-recovery-key'),
+        currentOnlineAudioUrlFetchedAtRef: ref<number | null>(Date.now()),
+    };
+    const controller = createOnlineRecoveryController({ audioQuality: 'high', currentSong: spotifySong, audioSrc,
+        ...refs, blobUrlRef: ref<string | null>(null), persistLastPlaybackCache: vi.fn(async () => undefined),
+        playQueue: [spotifySong], onlineAudioUrlTtlMs: 60_000, onlineAudioUrlRefreshBufferMs: 5_000 });
+    return { controller, ...refs };
+}
+
+describe('session-bound paused failure and explicit resume', () => {
+    beforeEach(() => {
+        cancelPlaybackSourceRequest();
+        loadAudioSourceMock.mockReset();
+        usePlaybackStore.setState({ currentSong: spotifySong, audioSrc: sessionSrc,
+            playQueue: [spotifySong], playerState: PlayerState.PAUSED });
+    });
+
+    it('handles a paused expired source without fetching or advancing and keeps the saved checkpoint', async () => {
+        const f = sessionController();
+        await expect(f.controller.recoverOnlinePlaybackSource({ failedSrc: sessionSrc, resumeAt: 0, autoplay: false })).resolves.toBe(true);
+        expect(usePlaybackStore.getState()).toMatchObject({ currentSong: spotifySong, audioSrc: null,
+            playQueue: [spotifySong], playerState: PlayerState.PAUSED });
+        expect(f.pendingResumeTimeRef.current).toBe(42.75);
+        expect(f.shouldAutoPlayRef.current).toBe(false);
+        expect(f.lastAudioRecoverySourceRef.current).toBeNull();
+        expect(f.currentOnlineAudioUrlFetchedAtRef.current).toBeNull();
+        expect(loadAudioSourceMock).not.toHaveBeenCalled();
+    });
+
+    it('does not clear a newer URL for the same song after a stale failure', async () => {
+        const f = sessionController();
+        usePlaybackStore.setState({ audioSrc: 'http://127.0.0.1/session/new/audio.wav' });
+        await expect(f.controller.recoverOnlinePlaybackSource({ failedSrc: sessionSrc, autoplay: false })).rejects.toMatchObject({ name: 'AbortError' });
+        expect(usePlaybackStore.getState().audioSrc).toBe('http://127.0.0.1/session/new/audio.wav');
+        expect(loadAudioSourceMock).not.toHaveBeenCalled();
+    });
+
+    it('does not clear a new song when an old controller reports failure', async () => {
+        const f = sessionController();
+        usePlaybackStore.setState({ currentSong: song, audioSrc: streamUrl('new') });
+        await expect(f.controller.recoverOnlinePlaybackSource({ failedSrc: sessionSrc, autoplay: false })).rejects.toMatchObject({ name: 'AbortError' });
+        expect(usePlaybackStore.getState()).toMatchObject({ currentSong: song, audioSrc: streamUrl('new') });
+        expect(loadAudioSourceMock).not.toHaveBeenCalled();
+    });
+
+    it('does not discard a healthy paused session or prepare it in the background', async () => {
+        const f = sessionController();
+        Object.assign(f.audioRef.current!, { error: null });
+        await expect(f.controller.recoverOnlinePlaybackSource({ failedSrc: sessionSrc, autoplay: false })).resolves.toBe(false);
+        expect(usePlaybackStore.getState().audioSrc).toBe(sessionSrc);
+        expect(loadAudioSourceMock).not.toHaveBeenCalled();
+    });
+
+    it('prepares the empty session only for explicit Play and retains the checkpoint over empty-deck zero', async () => {
+        usePlaybackStore.setState({ audioSrc: null });
+        const f = sessionController(null);
+        loadAudioSourceMock.mockResolvedValue({ kind: 'ok', audioSrc: 'http://127.0.0.1/session/fresh/audio.wav' });
+        expect(f.controller.shouldRefreshCurrentOnlineAudioSource()).toBe(true);
+        await expect(f.controller.recoverOnlinePlaybackSource({ resumeAt: 0, autoplay: true })).resolves.toBe(true);
+        expect(loadAudioSourceMock).toHaveBeenCalledOnce();
+        expect(f.pendingResumeTimeRef.current).toBe(42.75);
+        expect(f.shouldAutoPlayRef.current).toBe(true);
+        expect(usePlaybackStore.getState().audioSrc).toBe('http://127.0.0.1/session/fresh/audio.wav');
+    });
+
+    it.each(['cancel', 'change-song'] as const)('does not publish a late preparation after %s', async action => {
+        usePlaybackStore.setState({ audioSrc: null });
+        const f = sessionController(null);
+        let resolve!: (value: unknown) => void;
+        loadAudioSourceMock.mockImplementation(() => new Promise(done => { resolve = done; }));
+        const pending = f.controller.recoverOnlinePlaybackSource({ autoplay: true });
+        if (action === 'cancel') cancelPlaybackSourceRequest();
+        else usePlaybackStore.setState({ currentSong: song, audioSrc: streamUrl('new') });
+        resolve({ kind: 'ok', audioSrc: 'http://127.0.0.1/session/late/audio.wav' });
+        await expect(pending).rejects.toMatchObject({ name: 'AbortError' });
+        expect(f.shouldAutoPlayRef.current).toBe(false);
+        expect(usePlaybackStore.getState().audioSrc).toBe(action === 'cancel' ? null : streamUrl('new'));
+    });
+});

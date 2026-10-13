@@ -1,3 +1,4 @@
+import { readLivePcmPrebufferMs, writeLivePcmPrebufferMs } from '../utils/livePcmPrebuffer';
 import { prepareOutputHandoff } from '../services/nativeAudio/outputHandoff';
 // src/stores/useAudioSettingsStore.ts
 // Audio output and the media cache: stream quality, output device, the equalizer, how queued
@@ -18,6 +19,8 @@ import { setStatusMessage } from './useStatusMessageStore';
 import i18n from '../i18n/config';
 
 let outputChange = 0;
+// Reconstructed from the authentic r31 client: all selections share one release barrier.
+let outputRelease: Promise<boolean> | null = null;
 
 export const CACHE_SIZE_KEY = 'folia_cache_size';
 
@@ -136,7 +139,10 @@ const readStoredVolume = () => {
 };
 
 export type AudioSettingsState = {
+    livePcmPrebufferMs: number;
+    handleSetLivePcmPrebufferMs: (value: number) => void;
     nativeAudioBackend: NativeAudioBackend;
+    nativeAudioOutputRevision: number;
     nativeAudioAutoFallback: boolean;
     handleSetNativeAudioAutoFallback: (enabled: boolean) => void;
     nativeAudioDeviceId: string;
@@ -183,6 +189,8 @@ export type AudioSettingsState = {
 };
 
 export const useAudioSettingsStore = create<AudioSettingsState>((set, get) => ({
+    livePcmPrebufferMs: readLivePcmPrebufferMs(),
+    handleSetLivePcmPrebufferMs: value => set({ livePcmPrebufferMs: writeLivePcmPrebufferMs(value) }),
     audioQuality: readStoredAudioQuality(),
     enableMediaCache: readStoredEnableMediaCache(),
     mediaCacheLimitGb: readStoredMediaCacheLimitGb(),
@@ -198,6 +206,7 @@ export const useAudioSettingsStore = create<AudioSettingsState>((set, get) => ({
     handleSetNativeAudioAutoFallback: enabled => { setStoredBoolean('folia_native_audio_auto_fallback', enabled); set({ nativeAudioAutoFallback: enabled }); },
     nativeAudioBackend: typeof localStorage !== 'undefined' && ['wasapi-exclusive', 'asio', 'hqplayer'].includes(localStorage.getItem('folia_native_audio_backend') || '')
         ? localStorage.getItem('folia_native_audio_backend') as NativeAudioBackend : 'browser',
+    nativeAudioOutputRevision: 0,
     nativeAudioDeviceId: typeof localStorage !== 'undefined' ? localStorage.getItem('folia_native_audio_device') || '' : '',
     showAudioSignalPath: getStoredBoolean('folia_show_audio_signal_path', false),
     handleSetShowAudioSignalPath: (enabled) => { setStoredBoolean('folia_show_audio_signal_path', enabled); set({ showAudioSignalPath: enabled }); },
@@ -206,22 +215,35 @@ export const useAudioSettingsStore = create<AudioSettingsState>((set, get) => ({
     handleSetNativeAudioOutput: async (backend, deviceId, closeHQPlayer = true) => {
         const ticket = ++outputChange;
         const previous = get();
-        if (previous.nativeAudioBackend === backend && previous.nativeAudioDeviceId === deviceId) return;
+        if (previous.nativeAudioBackend === backend && previous.nativeAudioDeviceId === deviceId && !outputRelease) return;
         const cancelHandoff = prepareOutputHandoff(backend, deviceId);
-        if (closeHQPlayer && previous.nativeAudioBackend === 'hqplayer' && backend !== 'hqplayer') {
-            const { releaseHQPlayerOutput } = await import('../services/nativeAudio/switchFromHQPlayer');
-            if (!await releaseHQPlayerOutput() || ticket !== outputChange) { cancelHandoff(); return; }
+        if (closeHQPlayer && previous.nativeAudioBackend === 'hqplayer' && backend !== 'hqplayer' && !outputRelease) {
+            outputRelease = import('../services/nativeAudio/switchFromHQPlayer').then(({ releaseHQPlayerOutput }) => releaseHQPlayerOutput());
+        }
+        if (outputRelease) {
+            const barrier = outputRelease;
+            let released: boolean;
+            try { released = await barrier; }
+            catch (error) { cancelHandoff(); throw error; }
+            finally { if (outputRelease === barrier) outputRelease = null; }
+            if (!released || ticket !== outputChange) { cancelHandoff(); return; }
         }
         if (backend === 'hqplayer' && previous.nativeAudioBackend !== 'hqplayer') {
             localStorage.setItem('folia_hqplayer_previous_output', JSON.stringify({ backend: previous.nativeAudioBackend, deviceId: previous.nativeAudioDeviceId }));
         }
         localStorage.setItem('folia_native_audio_backend', backend);
         localStorage.setItem('folia_native_audio_device', deviceId);
-        set({ nativeAudioBackend: backend, nativeAudioDeviceId: deviceId });
+        set({ nativeAudioBackend: backend, nativeAudioDeviceId: deviceId, nativeAudioOutputRevision: get().nativeAudioOutputRevision + 1 });
     },
     handleSetNativeAudioProcessingMode: (mode) => {
+        const previous = get();
+        if (previous.nativeAudioProcessingMode === mode) return;
+        // Processing changes replace the native deck just like device changes;
+        // preserve the same song, output position and play/pause intent.
+        if (previous.nativeAudioBackend !== 'browser')
+            prepareOutputHandoff(previous.nativeAudioBackend, previous.nativeAudioDeviceId);
         localStorage.setItem(NATIVE_AUDIO_PROCESSING_MODE_KEY, mode);
-        set({ nativeAudioProcessingMode: mode });
+        set({ nativeAudioProcessingMode: mode, nativeAudioOutputRevision: previous.nativeAudioOutputRevision + 1 });
     },
     playbackFadeEnabled: getStoredBoolean(PLAYBACK_FADE_KEY, true),
     audioOutputDeviceId: readStoredAudioOutputDeviceId(),

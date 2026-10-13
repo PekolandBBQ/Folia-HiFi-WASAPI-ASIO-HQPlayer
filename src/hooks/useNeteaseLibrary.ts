@@ -10,7 +10,7 @@ import {
     getProviderCacheWithLegacyMigration,
     removeProviderSessionValue,
 } from '../services/onlineMusic/providerStorage';
-import type { MediaId, ProviderCollection, ProviderUser } from '../types/onlineMusic';
+import { OnlineProviderError, type MediaId, type ProviderCollection, type ProviderUser } from '../types/onlineMusic';
 import { StatusMessage } from '../types';
 import { useOnlineProviderAccountStore } from '../stores/useOnlineProviderAccountStore';
 import { omni } from '../services/onlineMusic/omni';
@@ -21,6 +21,8 @@ import {
     saveProviderAccountSnapshot,
 } from '../services/onlineMusic/providerAccountCache';
 import { setStatusMessage as setStatusMsg } from '../stores/useStatusMessageStore';
+import { isAuthRequiredFailure } from '../services/onlineMusic/loginStatusFailure';
+import { enqueueNeteaseCacheWrite, readNeteaseSession, useNeteaseLibrarySession, waitForNeteaseCacheWrites, type NeteaseRequestFence } from './neteaseLibrarySession';
 
 type StatusSetter = Dispatch<SetStateAction<StatusMessage | null>>;
 
@@ -39,14 +41,15 @@ const formatBytes = (bytes: number) => {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 };
 
-const getAllUserPlaylists = async (userId: MediaId): Promise<ProviderCollection[]> => {
+const getAllUserPlaylists = async (userId: MediaId, active: () => boolean): Promise<ProviderCollection[]> => {
     const allPlaylists: ProviderCollection[] = [];
     let offset = 0;
     const limit = 50;
     let hasMore = true;
 
-    while (hasMore) {
+    while (hasMore && active()) {
         const page = await omni.getProviderUserPlaylists('netease', userId, { limit, offset });
+        if (!active()) return [];
         allPlaylists.push(...page.items);
         hasMore = page.hasMore && page.nextOffset > offset;
         offset = page.nextOffset;
@@ -78,43 +81,46 @@ export function useNeteaseLibrary({
     const [isUserDataReady, setIsUserDataReady] = useState(false);
     const lastRefreshAuthExpiredRef = useRef(false);
     const initialBackgroundRefreshStartedRef = useRef(false);
+    const { beginRequest, captureRequest, isAlive } = useNeteaseLibrarySession();
     const updateProviderAccount = useOnlineProviderAccountStore(state => state.updateAccount);
     const clearProviderAccount = useOnlineProviderAccountStore(state => state.clearAccount);
 
-    const clearAuthState = useCallback(async () => {
+    const clearAuthState = useCallback(async (fence: NeteaseRequestFence) => {
+        if (!fence.active()) return;
         removeProviderSessionValue('netease', 'cookie', ['netease_cookie']);
         setUser(null);
         setPlaylists([]);
         setCloudPlaylist(null);
         setLikedSongIds(new Set());
         clearProviderAccount('netease');
+        setIsUserDataReady(true);
+        setIsSyncing(false);
 
         try {
-            await Promise.all([
-                removeCacheEntries(Object.values(NETEASE_USER_CACHE_KEYS)),
+            // Enqueue synchronously after an authorized clear; every newer snapshot writes after it.
+            await enqueueNeteaseCacheWrite(() => Promise.all([
+                removeCacheEntries([...Object.values(NETEASE_USER_CACHE_KEYS), 'user_profile', 'user_playlists', 'user_liked_songs', 'user_cloud_playlist']),
                 clearProviderAccountSnapshot('netease'),
-            ]);
+            ]));
         } catch (error) {
             console.warn('Failed to clear auth cache', error);
         }
     }, [clearProviderAccount]);
 
     useEffect(() => {
-        updateProviderAccount('netease', {
-            status: isUserDataReady ? (user ? 'authenticated' : 'anonymous') : 'unknown',
-            user,
-            collections: [...playlists, ...(cloudPlaylist ? [cloudPlaylist] : [])],
-            likedSongIds: Array.from(likedSongIds),
-            hydration: isUserDataReady ? 'ready' : 'loading',
-        });
-    }, [cloudPlaylist, isUserDataReady, likedSongIds, playlists, updateProviderAccount, user]);
+        if (isUserDataReady && user && String(useOnlineProviderAccountStore.getState().accounts.netease?.user?.id) === String(user.id)) {
+            updateProviderAccount('netease', { likedSongIds: Array.from(likedSongIds) });
+        }
+    }, [isUserDataReady, likedSongIds, updateProviderAccount, user]);
 
     const updateCacheSize = useCallback(async () => {
         const size = await getCacheUsage();
-        setCacheSize(formatBytes(size));
-    }, []);
+        if (isAlive()) setCacheSize(formatBytes(size));
+    }, [isAlive]);
 
     const refreshUserData = useCallback(async (uid?: MediaId) => {
+        const fence = beginRequest();
+        if (!fence.active()) return false;
         lastRefreshAuthExpiredRef.current = false;
         const retainedAccount = useOnlineProviderAccountStore.getState().accounts.netease;
         updateProviderAccount('netease', {
@@ -125,38 +131,48 @@ export function useNeteaseLibrary({
         });
         try {
             const profile = await omni.getLoginStatus('netease');
+            if (!fence.active()) return false;
             if (profile) {
-                setUser(profile);
-
-                const targetUid = uid ?? profile.id;
-                const allPlaylists = await getAllUserPlaylists(targetUid);
-                setPlaylists(allPlaylists);
-                let nextCloudPlaylist = retainedAccount?.collections.find(collection => collection.type === 'cloud') || null;
-                let nextLikedSongIds = retainedAccount?.likedSongIds || [];
+                if (uid != null && String(uid) !== String(profile.id)) {
+                    throw new OnlineProviderError('unavailable', 'NetEase account changed before library refresh', 'netease');
+                }
+                const targetUid = profile.id;
+                const allPlaylists = await getAllUserPlaylists(targetUid, fence.active);
+                if (!fence.active()) return false;
+                const sameAccount = String(retainedAccount?.user?.id) === String(profile.id);
+                let nextCloudPlaylist = sameAccount ? retainedAccount?.collections.find(collection => collection.type === 'cloud') || null : null;
+                let nextLikedSongIds = sameAccount ? retainedAccount?.likedSongIds || [] : [];
 
                 try {
                     nextCloudPlaylist = await getUserCloudPlaylist(profile, t);
-                    setCloudPlaylist(nextCloudPlaylist);
                 } catch (error) {
+                    if (isAuthRequiredFailure(error)) throw error;
                     console.warn('Failed to fetch user cloud playlist', error);
                 }
+                if (!fence.active()) return false;
 
                 try {
                     const ids = await omni.getProviderLikedSongIds('netease', targetUid);
                     if (ids) {
                         nextLikedSongIds = ids;
-                        setLikedSongIds(new Set(ids));
                     }
                 } catch (error) {
+                    if (isAuthRequiredFailure(error)) throw error;
                     console.warn('Failed to fetch liked songs', error);
                 }
+                if (!fence.active()) return false;
 
                 const collections = [...allPlaylists, ...(nextCloudPlaylist ? [nextCloudPlaylist] : [])];
-                const snapshot = await saveProviderAccountSnapshot('netease', {
+                const snapshot = await enqueueNeteaseCacheWrite(() => fence.active() ? saveProviderAccountSnapshot('netease', {
                     user: profile,
                     collections,
                     likedSongIds: nextLikedSongIds,
-                });
+                }) : Promise.resolve(null));
+                if (!fence.active() || !snapshot) return false;
+                setUser(profile);
+                setPlaylists(allPlaylists);
+                setCloudPlaylist(nextCloudPlaylist);
+                setLikedSongIds(new Set(nextLikedSongIds));
                 updateProviderAccount('netease', {
                     status: 'authenticated',
                     user: profile,
@@ -172,12 +188,12 @@ export function useNeteaseLibrary({
             }
 
             lastRefreshAuthExpiredRef.current = true;
-            await clearAuthState();
+            await clearAuthState(fence);
         } catch (error) {
-            console.log('Not logged in, session expired, or offline');
-            if (error instanceof Error && error.message === 'NETEASE_AUTH_EXPIRED') {
+            if (!fence.active()) return false;
+            if (isAuthRequiredFailure(error)) {
                 lastRefreshAuthExpiredRef.current = true;
-                await clearAuthState();
+                await clearAuthState(fence);
             } else {
                 const cachedAccount = useOnlineProviderAccountStore.getState().accounts.netease;
                 updateProviderAccount('netease', {
@@ -187,21 +203,31 @@ export function useNeteaseLibrary({
                     error: error instanceof Error ? error.message : 'netease_refresh_failed',
                 });
             }
+        } finally {
+            if (fence.current()) { setIsUserDataReady(true); setIsSyncing(false); }
         }
         return false;
-    }, [clearAuthState, t, updateProviderAccount]);
+    }, [beginRequest, clearAuthState, t, updateProviderAccount]);
 
     const loadUserData = useCallback(async () => {
+        const fence = beginRequest();
         try {
+            await waitForNeteaseCacheWrites();
+            if (!fence.active()) return;
             const snapshot = await loadProviderAccountSnapshot('netease');
+            if (!fence.active()) return;
             const cachedUserRaw = snapshot?.user
-                ?? await getProviderCacheWithLegacyMigration<unknown>('netease', 'user_profile', ['user_profile']);
+                ?? await enqueueNeteaseCacheWrite(() => fence.active() ? getProviderCacheWithLegacyMigration<unknown>('netease', 'user_profile', ['user_profile']) : Promise.resolve(null));
+            if (!fence.active()) return;
             const cachedPlaylistsRaw = snapshot?.collections.filter(collection => collection.type === 'playlist')
-                ?? await getProviderCacheWithLegacyMigration<unknown>('netease', 'user_playlists', ['user_playlists']);
+                ?? await enqueueNeteaseCacheWrite(() => fence.active() ? getProviderCacheWithLegacyMigration<unknown>('netease', 'user_playlists', ['user_playlists']) : Promise.resolve(null));
+            if (!fence.active()) return;
             const cachedLikedSongs = snapshot?.likedSongIds
-                ?? await getProviderCacheWithLegacyMigration<unknown>('netease', 'user_liked_songs', ['user_liked_songs']);
+                ?? await enqueueNeteaseCacheWrite(() => fence.active() ? getProviderCacheWithLegacyMigration<unknown>('netease', 'user_liked_songs', ['user_liked_songs']) : Promise.resolve(null));
+            if (!fence.active()) return;
             const cachedCloudPlaylistRaw = snapshot?.collections.find(collection => collection.type === 'cloud')
-                ?? await getProviderCacheWithLegacyMigration<unknown>('netease', 'user_cloud_playlist', ['user_cloud_playlist']);
+                ?? await enqueueNeteaseCacheWrite(() => fence.active() ? getProviderCacheWithLegacyMigration<unknown>('netease', 'user_cloud_playlist', ['user_cloud_playlist']) : Promise.resolve(null));
+            if (!fence.active()) return;
             const cachedUser: ProviderUser | null = cachedUserRaw != null
                 ? omni.normalizeCachedUser('netease', cachedUserRaw)
                 : null;
@@ -213,22 +239,18 @@ export function useNeteaseLibrary({
                 : null;
 
             if (cachedUser) {
-                setUser(cachedUser);
-                setPlaylists(cachedPlaylists);
-
-                if (Array.isArray(cachedLikedSongs)) {
-                    setLikedSongIds(new Set(cachedLikedSongs as MediaId[]));
-                }
-                if (cachedCloudPlaylist) {
-                    setCloudPlaylist(cachedCloudPlaylist);
-                }
                 const collections = [...cachedPlaylists, ...(cachedCloudPlaylist ? [cachedCloudPlaylist] : [])];
                 const normalizedLikedSongIds = Array.isArray(cachedLikedSongs) ? cachedLikedSongs as MediaId[] : [];
-                const cachedSnapshot = snapshot ?? await saveProviderAccountSnapshot('netease', {
+                const cachedSnapshot = snapshot ?? await enqueueNeteaseCacheWrite(() => fence.active() ? saveProviderAccountSnapshot('netease', {
                     user: cachedUser,
                     collections,
                     likedSongIds: normalizedLikedSongIds,
-                });
+                }) : Promise.resolve(null));
+                if (!fence.active() || !cachedSnapshot) return;
+                setUser(cachedUser);
+                setPlaylists(cachedPlaylists);
+                setLikedSongIds(new Set(normalizedLikedSongIds));
+                setCloudPlaylist(cachedCloudPlaylist);
                 updateProviderAccount('netease', {
                     status: 'authenticated',
                     user: cachedUser,
@@ -243,10 +265,15 @@ export function useNeteaseLibrary({
 
             initialBackgroundRefreshStartedRef.current = true;
             await refreshUserData();
+        } catch (error) {
+            if (fence.active()) {
+                updateProviderAccount('netease', { hydration: 'ready', freshness: 'error', error: 'netease_cache_load_failed' });
+                console.warn('Failed to load NetEase account cache', error);
+            }
         } finally {
-            setIsUserDataReady(true);
+            if (fence.current()) setIsUserDataReady(true);
         }
-    }, [refreshUserData, updateProviderAccount]);
+    }, [beginRequest, refreshUserData, updateProviderAccount]);
 
     useEffect(() => {
         if (!isUserDataReady || !user || initialBackgroundRefreshStartedRef.current) return;
@@ -283,8 +310,11 @@ export function useNeteaseLibrary({
 
         setIsSyncing(true);
         console.info('[NeteaseSync] Sync data requested', { userId: user.id });
+        const request = refreshUserData(user.id);
+        const fence = captureRequest();
         try {
-            const synced = await refreshUserData(user.id);
+            const synced = await request;
+            if (!fence.current()) return;
             if (!synced) {
                 console.info('[NeteaseSync] Sync data skipped because login is expired or unavailable', {
                     userId: user.id,
@@ -303,20 +333,25 @@ export function useNeteaseLibrary({
             console.warn('[NeteaseSync] Sync data failed', error);
             setStatusMsg({ type: 'error', text: t('status.syncFailed') });
         } finally {
-            setIsSyncing(false);
+            if (fence.current()) setIsSyncing(false);
         }
-    }, [refreshUserData, setStatusMsg, t, updateCacheSize, user]);
+    }, [captureRequest, refreshUserData, setStatusMsg, t, updateCacheSize, user]);
 
     const handleLogout = useCallback(async () => {
+        const fence = beginRequest();
+        if (!fence.active()) return;
+        // The transport captures the old session synchronously; invalidate and clear locally now.
+        const notifyLogout = omni.logout('netease');
+        const clear = clearAuthState(fence);
         try {
-            await omni.logout('netease');
+            await notifyLogout;
         } catch (error) {
             console.warn('Failed to notify logout endpoint', error);
         }
 
-        await clearAuthState();
-        setStatusMsg({ type: 'info', text: t('status.loggedOut') });
-    }, [clearAuthState, setStatusMsg, t]);
+        await clear;
+        if (fence.current() && readNeteaseSession() === null) setStatusMsg({ type: 'info', text: t('status.loggedOut') });
+    }, [beginRequest, clearAuthState, setStatusMsg, t]);
 
     useEffect(() => {
         loadUserData();

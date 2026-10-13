@@ -23,6 +23,7 @@ describe('QQ lyric provider', () => {
     afterEach(() => {
         vi.unstubAllGlobals();
         vi.clearAllMocks();
+        vi.restoreAllMocks();
     });
 
     it('fetches and parses QQ romanization anonymously', async () => {
@@ -66,6 +67,23 @@ describe('QQ lyric provider', () => {
         expect(searchRequestBody.request.method).toBe('DoSearchForQQMusicLite');
     });
 
+    it('retains lyric fallback but exposes HTTP errors when catalog search requests it', async () => {
+        vi.spyOn(console, 'error').mockImplementation(() => {});
+        vi.stubGlobal('fetch', vi.fn(async () => new Response('unavailable', { status: 503 })));
+        await expect(searchQQLyrics('test')).resolves.toEqual([]);
+        await expect(searchQQLyrics('test', 1, 20, { throwOnError: true })).rejects.toThrow('503');
+    });
+
+    it('exposes provider errors to catalog search without rejecting a valid empty search', async () => {
+        vi.spyOn(console, 'error').mockImplementation(() => {});
+        const fetchMock = vi.fn()
+            .mockResolvedValueOnce(new Response(JSON.stringify({ code: 0, request: { code: 1000 } })))
+            .mockResolvedValueOnce(new Response(JSON.stringify({ code: 0, request: { code: 0, data: { body: { item_song: [] } } } })));
+        vi.stubGlobal('fetch', fetchMock);
+        await expect(searchQQLyrics('test', 1, 20, { throwOnError: true })).rejects.toThrow('1000');
+        await expect(searchQQLyrics('test', 1, 20, { throwOnError: true })).resolves.toEqual([]);
+    });
+
     it('normalizes QQ search covers and duration for metadata matching', async () => {
         const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({
             code: 0,
@@ -76,6 +94,7 @@ describe('QQ lyric provider', () => {
                         item_song: [{
                             id: 42,
                             mid: 'song-mid',
+                            file: { media_mid: 'different-file-mid' },
                             title: 'Test song',
                             interval: 60,
                             singer: [{ id: 1, name: 'Artist' }],
@@ -91,6 +110,8 @@ describe('QQ lyric provider', () => {
 
         expect(result).toMatchObject({
             durationMs: 60_000,
+            sourceRef: { kind: 'online', providerId: 'qq', mediaId: 'song-mid',
+                providerData: { songMid: 'song-mid', mediaMid: 'different-file-mid', albumMid: 'album-mid' } },
             album: {
                 coverUrl: 'https://y.gtimg.cn/music/photo_new/T002M000album-mid.jpg?max_age=2592000',
             },

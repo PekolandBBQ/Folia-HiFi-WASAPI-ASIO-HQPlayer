@@ -1,4 +1,5 @@
 import { appendUniqueByKey } from './progressiveGrid';
+import { assertProviderPageProgress, MAX_PROVIDER_PAGES, paginationFailure } from '../../services/onlineMusic/providerPagination';
 
 // src/components/folia-grid/onlineCollectionSync.ts
 // Background paging for large online collections (GridView fills the rest after the first page).
@@ -12,6 +13,7 @@ export type CollectionSyncPage<T> = {
     total?: number;
     hasMore: boolean;
     nextOffset: number;
+    preserveDuplicates?: boolean;
 };
 
 export type CollectionSyncResult<T> =
@@ -28,19 +30,24 @@ export type CollectionSyncOptions<T> = {
     getKey: (item: T) => string;
     /** Checked after every await; a newer sync or an unmount makes the old one stop quietly. */
     isCancelled: () => boolean;
-    onPage: (items: T[], offset: number) => void;
+    onPage: (items: T[], offset: number, hasMore: boolean) => void;
     wait?: (ms: number) => Promise<void>;
     retryDelaysMs?: readonly number[];
 };
 
 export const COLLECTION_SYNC_PAGE_INTERVAL_MS = 100;
 export const COLLECTION_SYNC_RETRY_DELAYS_MS = [500, 1500, 4000] as const;
-// 只在拿不到 total 时兜底；拿得到 total 时 offset 严格递增，本身就会收敛。
-const MAX_PAGES = 1000;
+// A broken provider remains bounded even if it invents advancing offsets and totals.
 
 const defaultWait = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms));
 
 class SyncCancelled extends Error {}
+
+// Shared by the first page, manual paging and background sync; never infer a cursor from item count.
+export const mergeCollectionPage = <T>(items: T[], offset: number, page: CollectionSyncPage<T>, getKey: (item: T) => string) => {
+    assertProviderPageProgress(page, offset);
+    return { items: page.preserveDuplicates ? [...items, ...page.items] : appendUniqueByKey(items, page.items, getKey), offset: page.nextOffset, hasMore: page.hasMore };
+};
 
 // Fetches one page, retrying with backoff; throws the last error once retries run out.
 const fetchPageWithRetry = async <T>(
@@ -62,18 +69,16 @@ const fetchPageWithRetry = async <T>(
     }
 };
 
-// Pages through the rest of a collection until the upstream offset reaches total or runs dry.
+// Pages until the provider ends continuation; filtered rows and stale totals cannot end it early.
 export const syncRemainingCollectionPages = async <T>(
     options: CollectionSyncOptions<T>,
 ): Promise<CollectionSyncResult<T>> => {
     const wait = options.wait ?? defaultWait;
-    const { total } = options;
+    let total = options.total;
     let items = options.initialItems;
     let offset = options.startOffset;
 
-    for (let pageIndex = 0; pageIndex < MAX_PAGES; pageIndex++) {
-        if (total !== undefined && offset >= total) break;
-
+    for (let pageIndex = 0; pageIndex < MAX_PROVIDER_PAGES; pageIndex++) {
         await wait(COLLECTION_SYNC_PAGE_INTERVAL_MS);
         if (options.isCancelled()) return { status: 'cancelled', items, offset };
 
@@ -87,18 +92,23 @@ export const syncRemainingCollectionPages = async <T>(
             return { status: 'failed', items, offset, error };
         }
         if (options.isCancelled()) return { status: 'cancelled', items, offset };
-        if (page.items.length === 0) break;
-
         const previousLength = items.length;
-        const previousOffset = offset;
-        items = appendUniqueByKey(items, page.items, options.getKey);
-        offset = Math.max(offset, page.nextOffset);
-        options.onPage(items, offset);
+        try {
+            const merged = mergeCollectionPage(items, offset, page, options.getKey);
+            items = merged.items;
+            offset = merged.offset;
+        } catch (error) {
+            return { status: 'failed', items, offset, error };
+        }
+        total = page.total ?? total;
+        options.onPage(items, offset, page.hasMore);
 
-        if (!page.hasMore || offset <= previousOffset) break;
+        if (!page.hasMore) return { status: 'complete', items, offset };
         // 没有 total 时，一整页都是旧条目通常说明上游忽略了 offset，继续翻只会原地打转。
-        if (total === undefined && items.length === previousLength) break;
+        if (!page.preserveDuplicates && total === undefined && page.items.length > 0 && items.length === previousLength) {
+            return { status: 'failed', items, offset, error: paginationFailure('repeated-page') };
+        }
     }
 
-    return { status: 'complete', items, offset };
+    return { status: 'failed', items, offset, error: paginationFailure('page-limit') };
 };

@@ -53,6 +53,26 @@ function moduleThatBinds(server: FakeServer) {
 }
 
 describe('QQ API startup', () => {
+    it('installs host search after restoring the exact shared session repository', async () => {
+        const events: string[] = [];
+        const server = new FakeServer();
+        const repository = { kind: 'test-repository' };
+        const api = { server, configureAuthSessionRepository: (value: unknown) => { expect(value).toBe(repository); events.push('restore'); } };
+        const installAuthenticatedSearch = vi.fn((value) => { expect(value).toBe(api); events.push('install'); return true; });
+        const result = await startQqApi({ port: 45123, authSessionRepository: repository, env: {},
+            loadModule: () => { setImmediate(() => server.bind()); return api; }, installAuthenticatedSearch });
+        expect(events).toEqual(['restore', 'install']);
+        expect(result).toMatchObject({ authenticatedSearchAvailable: true });
+    });
+
+    it('retains legacy package startup when the pinned host extension is unavailable', async () => {
+        const server = new FakeServer();
+        const result = await startQqApi({ port: 45123, env: {}, loadModule: moduleThatBinds(server),
+            installAuthenticatedSearch: () => false });
+        expect(result).toMatchObject({ authenticatedSearchAvailable: false });
+        expect(result.server).toBe(server);
+    });
+
     it('hands the port, state path and explorer opt-out to the package', async () => {
         const env: Record<string, string | undefined> = {};
         const server = new FakeServer();

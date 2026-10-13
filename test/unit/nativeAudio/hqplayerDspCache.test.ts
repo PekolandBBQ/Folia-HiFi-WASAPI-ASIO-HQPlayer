@@ -17,6 +17,8 @@ it('shares prewarming with the open editor and ignores an old session reply', as
     expect(getHQPlayerDspCache()).toBeNull();
     const next = readHQPlayerDsp(); finish(data); await next;
     expect(getHQPlayerDspCache()).toBe(data);
+    expect(getHQPlayerDspCache('one')).toBeNull();
+    expect(getHQPlayerDspCache('two')).toBe(data);
     expect(request).toHaveBeenCalledTimes(2);
 });
 it('keeps complete cached data during refresh and retries failed reads', async () => {

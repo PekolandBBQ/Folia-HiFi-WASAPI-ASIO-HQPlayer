@@ -184,6 +184,42 @@ describe('useSearchNavigationStore', () => {
         expect(useSearchNavigationStore.getState().searchResults).toBeNull();
     });
 
+    it('keeps a failed search visible when its completed request opens the same search history entry', async () => {
+        cloudSearchMock.mockRejectedValueOnce(new Error('Provider search error: code 2001'));
+        await useSearchNavigationStore.getState().submitSearch({ query: 'failed', sourceTab: 'netease', deps });
+        expect(useSearchNavigationStore.getState().searchError).toContain('2001');
+        // Grid3D commits navigation after await submitSearch, even for a completed error.
+        useSearchNavigationStore.getState().restoreSearch({ query: 'failed', sourceTab: 'netease' });
+        expect(useSearchNavigationStore.getState().searchResults).toEqual([]);
+        expect(useSearchNavigationStore.getState().searchError).toContain('2001');
+        expect(useSearchNavigationStore.getState().isSearching).toBe(false);
+    });
+
+    it('does not transfer a completed provider failure to a different query or provider history entry', () => {
+        useSearchNavigationStore.setState({ searchQuery: 'failed', searchSourceTab: 'qq',
+            searchResults: [], searchError: 'QQ Music API error: code 2001' });
+        useSearchNavigationStore.getState().restoreSearch({ query: 'another', sourceTab: 'qq' });
+        expect(useSearchNavigationStore.getState().searchError).toBeNull();
+        expect(useSearchNavigationStore.getState().searchResults).toBeNull();
+        useSearchNavigationStore.setState({ searchQuery: 'failed', searchSourceTab: 'qq',
+            searchResults: [], searchError: 'QQ Music API error: code 2001' });
+        useSearchNavigationStore.getState().restoreSearch({ query: 'failed', sourceTab: 'netease' });
+        expect(useSearchNavigationStore.getState().searchError).toBeNull();
+        expect(useSearchNavigationStore.getState().searchResults).toBeNull();
+    });
+
+    it('does not hide a newer failed request behind the same query older successful cache', async () => {
+        cloudSearchMock.mockResolvedValueOnce({ result: {
+            songs: [{ id: 9, name: 'Old cached result', artists: [], album: { id: 1, name: 'Album' }, durationMs: 1000 }],
+            songCount: 1,
+        } } as any).mockRejectedValueOnce(new Error('Provider search error: code 2001'));
+        await useSearchNavigationStore.getState().submitSearch({ query: 'same', sourceTab: 'netease', deps });
+        await useSearchNavigationStore.getState().submitSearch({ query: 'same', sourceTab: 'netease', deps });
+        useSearchNavigationStore.getState().restoreSearch({ query: 'same', sourceTab: 'netease' });
+        expect(useSearchNavigationStore.getState().searchResults).toEqual([]);
+        expect(useSearchNavigationStore.getState().searchError).toContain('2001');
+    });
+
     it('searches Navidrome songs through the configured source adapter', async () => {
         getNavidromeConfigMock.mockReturnValue({ baseUrl: 'https://navi.test' } as any);
         navidromeSearchMock.mockResolvedValue({

@@ -1,4 +1,7 @@
 const { app, BrowserWindow, ipcMain, session, screen, dialog, shell, nativeImage, desktopCapturer, Menu, Tray, nativeTheme, powerSaveBlocker, safeStorage, protocol, crashReporter, net: electronNet } = require('electron');
+require('./debug/consolePipeGuard.cjs').installConsolePipeGuard({
+  onBrokenPipe: () => require('./debug/debugHost.cjs').runtimeLine('Console', 'Launcher output pipe closed; continuing with file diagnostics'),
+});
 const fs = require('fs');
 const http = require('http');
 const path = require('path');
@@ -1759,7 +1762,14 @@ installCrashHandlers({
 
 
 let mainWindow = null;
-require('./nativeAudio/service.cjs').registerNativeAudio({ app, ipcMain, isTrustedSender: isTrustedMainWindowContents });
+let spotifyRuntime = null;
+const nativeAudioRuntime = require('./nativeAudio/service.cjs').registerNativeAudio({ app, ipcMain, isTrustedSender: isTrustedMainWindowContents,
+  resolveLivePcmSource: url => spotifyRuntime?.lookupSoloistPcmSource(url) || null,
+  prepareSourceOutput: url => spotifyRuntime?.prepareSourceOutput?.(url) });
+if (process.env.FOLIA_SPOTIFY_PREVIEW === '1') {
+  spotifyRuntime = require('./spotify/localUiTrial.cjs').registerLocalUiTrial({ app, ipcMain, isTrustedSender: isTrustedMainWindowContents,
+    beforeLeaveProvider: () => nativeAudioRuntime.releaseProviderOutput() });
+}
 let modSystem = null;
 let remoteControlWindow = null;
 let appTray = null;
@@ -5071,6 +5081,10 @@ function createWindow(options = {}) {
       show: showImmediately && !deferShowForDesktopSizing,
       webPreferences: {
         preload: path.join(__dirname, 'preload.cjs'),
+        additionalArguments: [
+          ...(process.env.FOLIA_SPOTIFY_PREVIEW === '1' ? ['--folia-spotify-preview'] : []),
+          ...(process.env.FOLIA_PRIVATE_DIAGNOSTICS === '1' ? ['--folia-private-diagnostics'] : []),
+        ],
         nodeIntegration: false,
         contextIsolation: true,
         webSecurity: true, // Disable for local app
@@ -5559,6 +5573,13 @@ app.whenReady().then(async () => {
 // Set in before-quit so window-all-closed can tell an intentional shutdown apart from the main
 // window being destroyed externally (see the Windows wallpaper branch below).
 let isAppQuitting = false;
+// A rejected Spotify cleanup may arrive after the last window was destroyed.
+// Keep its recovery state visible instead of leaving only a background process.
+app.on('spotify-route-cleanup-failed', () => {
+  isAppQuitting = false;
+  if (!mainWindow || mainWindow.isDestroyed()) createWindow();
+  else focusMainWindow();
+});
 
 let isSwappingMainWindow = false;
 

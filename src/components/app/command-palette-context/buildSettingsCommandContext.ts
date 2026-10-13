@@ -19,6 +19,7 @@ import { useSettingsModalStore } from '../../../stores/useSettingsModalStore';
 import { useStageSettingsStore } from '../../../stores/useStageSettingsStore';
 import { useSleepTimerStore } from '../../../stores/useSleepTimerStore';
 import { useTypographySettingsStore } from '../../../stores/useTypographySettingsStore';
+import { spotifyPlaybackSetup } from '../../../services/onlineMusic/spotifyPlaybackSetup';
 import { useThemeQuickEditorStore } from '../../../stores/useThemeQuickEditorStore';
 import { usePlayerBottomBarLayoutStore } from '../../../stores/usePlayerBottomBarLayoutStore';
 import { PlayerState, type SongResult } from '../../../types';
@@ -169,12 +170,13 @@ export const buildSettingsCommandContext = (
         }),
         toggleNativeAudioIntegerDirect: () => withNativeAudioComponent(() => {
             const current = useAudioSettingsStore.getState();
-            setPlayerState(PlayerState.PAUSED);
             current.handleSetNativeAudioProcessingMode(
                 current.nativeAudioProcessingMode === 'integer-direct' ? 'compatibility' : 'integer-direct',
             );
         }),
         voiceInputPauseSupported: deps.voiceInputPauseSupported,
+        canRunSpotifyPlaybackSetup: spotifyPlaybackSetup.canRun,
+        runSpotifyPlaybackSetup: operation => spotifyPlaybackSetup.run({ operation }),
         modSystemEnabled: desktop.modSystemEnabled,
         toggleVoiceInputPause: () => desktop.handleToggleVoiceInputPause(
             !useDesktopSettingsStore.getState().voiceInputPauseEnabled,

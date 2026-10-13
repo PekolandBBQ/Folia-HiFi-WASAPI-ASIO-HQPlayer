@@ -128,7 +128,7 @@ describe('syncRemainingCollectionPages', () => {
         expect(onPage).toHaveBeenCalledTimes(1);
     });
 
-    it('stops on a repeated page when the total is unknown instead of looping', async () => {
+    it('reports an interrupted sync for a repeated page with unknown total', async () => {
         const fetchPage = vi.fn((offset: number) => Promise.resolve({
             items: [{ id: 'a' }, { id: 'b' }],
             hasMore: true,
@@ -142,7 +142,7 @@ describe('syncRemainingCollectionPages', () => {
             fetchPage,
         });
 
-        expect(result.status).toBe('complete');
+        expect(result).toMatchObject({ status: 'failed', error: { code: 'invalid-response' } });
         expect(fetchPage).toHaveBeenCalledTimes(1);
     });
 });

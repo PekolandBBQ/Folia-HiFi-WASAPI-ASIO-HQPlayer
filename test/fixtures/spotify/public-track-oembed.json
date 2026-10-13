@@ -1,0 +1,15 @@
+{
+  "requestedTrackId": "0m5ZpQtTjdoH4eXeygFRFZ",
+  "sourceUrl": "https://open.spotify.com/oembed?url=https%3A%2F%2Fopen.spotify.com%2Ftrack%2F0m5ZpQtTjdoH4eXeygFRFZ",
+  "publicFields": {
+    "title": "形",
+    "thumbnail_url": "https://image-cdn-fa.spotifycdn.com/image/ab67616d00001e02928b6af826fd96cb8bb49874",
+    "thumbnail_width": 300,
+    "thumbnail_height": 300,
+    "iframe_url": "https://open.spotify.com/embed/track/0m5ZpQtTjdoH4eXeygFRFZ?utm_source=oembed",
+    "provider_name": "Spotify",
+    "provider_url": "https://spotify.com",
+    "type": "rich"
+  },
+  "sourceDocumentation": "https://developer.spotify.com/documentation/embeds/reference/oembed"
+}

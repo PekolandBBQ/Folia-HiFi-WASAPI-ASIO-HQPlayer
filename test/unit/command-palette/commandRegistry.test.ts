@@ -117,6 +117,8 @@ const createContext = (overrides: CommandPaletteContextOverrides = {}): CommandP
             toggleAlwaysShowTrackSwitchButtons: vi.fn(),
             toggleAutoPlayOnLaunch: vi.fn(),
             toggleNativeAudioIntegerDirect: vi.fn(),
+            canRunSpotifyPlaybackSetup: vi.fn(() => false),
+            runSpotifyPlaybackSetup: vi.fn(async () => true),
             toggleNativeAudioAutoFallback: vi.fn(),
             toggleNativeAudioSignalPath: vi.fn(),
             toggleTranscodeFallback: vi.fn(),
@@ -1095,5 +1097,28 @@ describe('lattice poster tint command', () => {
         expect(match.command.id).toBe('lattice-poster-tint');
         expect(match.command.requiresInput).toBe(true);
         expect(match.command.surface).toBe(latticePosterTintSurface);
+    });
+});
+
+describe('Spotify playback setup direct commands', () => {
+    const actions = [
+        ['spotify-playback-start', 'start'], ['spotify-playback-stop', 'stop'], ['spotify-cable-probe', 'probe'],
+    ] as const;
+    it.each(actions)('%s uses the shared gate and directly dispatches %s', (id, operation) => {
+        const command = COMMAND_PALETTE_COMMANDS.find(value => value.id === id)!;
+        const canRunSpotifyPlaybackSetup = vi.fn(() => true);
+        const runSpotifyPlaybackSetup = vi.fn(() => new Promise<boolean>(() => {}));
+        const context = createContext({ settings: { canRunSpotifyPlaybackSetup, runSpotifyPlaybackSetup } });
+        expect(command.isAvailable?.(context)).toBe(true);
+        expect(command.execute('', context)).toBe(true); // A pending download must not lock out Stop.
+        expect(runSpotifyPlaybackSetup).toHaveBeenCalledWith(operation);
+        expect(context.settings.openSettings).not.toHaveBeenCalled();
+        expect(command.executeShortcut).toBeUndefined();
+        expect(command.platform).toEqual(['win']);
+        canRunSpotifyPlaybackSetup.mockReturnValue(false);
+        expect(command.isAvailable?.(context)).toBe(false);
+        expect(command.execute('', context)).toBe(false);
+        expect(runSpotifyPlaybackSetup).toHaveBeenCalledOnce();
+        expect(command.isAvailable?.()).toBe(false);
     });
 });

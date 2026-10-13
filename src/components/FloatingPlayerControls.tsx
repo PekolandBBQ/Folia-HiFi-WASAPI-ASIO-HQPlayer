@@ -6,6 +6,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { Play, Pause } from 'lucide-react';
 import { MotionValue } from 'framer-motion';
 import ProgressBar from './ProgressBar';
+import { PLAYER_PROGRESS_FRAME_CLASS, playerProgressGlass, playerProgressTrackColor } from './floating-player/playerProgressAppearance';
 import { PlayerState, LyricData, Theme } from '../types';
 import LyricsTimelineModal from './modal/LyricsTimelineModal';
 import TrackTitleNavigator from './floating-player/TrackTitleNavigator';
@@ -123,9 +124,9 @@ const FloatingPlayerControls: React.FC<FloatingPlayerControlsProps> = ({
 }) => {
     const { t } = useTranslation();
     // const isDaylight = theme?.name === 'Daylight Default'; // Deprecated, passed as prop
-    const glassBgExpanded = isDaylight ? 'bg-white/60 border border-white/20 shadow-xl' : 'bg-black/40 border border-white/5';
-    const glassBgCollapsed = isDaylight ? 'bg-white/40 border border-white/20 shadow-lg hover:bg-white/50' : 'bg-black/20 border border-white/5 hover:bg-black/30';
-    const trackColor = isDaylight ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.1)';
+    const glassBgExpanded = playerProgressGlass(isDaylight, true);
+    const glassBgCollapsed = playerProgressGlass(isDaylight);
+    const trackColor = playerProgressTrackColor(isDaylight);
     // Button bg logic
     const buttonBg = isDaylight ? { backgroundColor: primaryColor, color: 'var(--bg-color)' } : { backgroundColor: primaryColor, color: 'var(--bg-color)' }; // Keep primary for play button, looks good
 
@@ -286,11 +287,13 @@ const FloatingPlayerControls: React.FC<FloatingPlayerControlsProps> = ({
     }, []);
 
     const handleMouseEnter = (event: React.MouseEvent) => {
-        if (isHovered || signalPathOpenRef.current || (event.target as Element).closest('[data-signal-path]')) return;
+        // A pointer returning during the grace period owns the existing expansion.
+        // Cancel the old collapse before the already-hovered guard can return.
         if (collapseTimeoutRef.current !== null) {
             window.clearTimeout(collapseTimeoutRef.current);
             collapseTimeoutRef.current = null;
         }
+        if (isHovered || signalPathOpenRef.current || (event.target as Element).closest('[data-signal-path]')) return;
 
         if (expandTimeoutRef.current !== null) {
             return;
@@ -386,12 +389,12 @@ const FloatingPlayerControls: React.FC<FloatingPlayerControlsProps> = ({
                         onPointerUp={handlePositionDragEnd}
                         onPointerCancel={handlePositionDragEnd}
                         style={{ touchAction: isPositioning ? 'none' : undefined }}
-                        className={`rounded-full relative ${showSignalPath ? 'border border-transparent' : `backdrop-blur-xl shadow-2xl overflow-hidden transition-colors duration-300 ${showExpanded ? glassBgExpanded : glassBgCollapsed}`}
+                        className={`rounded-full relative ${showSignalPath ? 'border border-transparent' : `${PLAYER_PROGRESS_FRAME_CLASS} overflow-hidden ${showExpanded ? glassBgExpanded : glassBgCollapsed}`}
                             ${isPositioning ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'}
                             ${showExpanded ? 'p-3 w-full' : `px-4 py-2 ${COLLAPSED_WIDTH_CLASS}`}`}
                     >
                         {/* A sibling glass layer avoids trapping the disclosure inside a backdrop-filter root. */}
-                        {showSignalPath && <div aria-hidden="true" className={`absolute inset-0 rounded-full pointer-events-none backdrop-blur-xl shadow-2xl transition-colors duration-300 ${showExpanded ? glassBgExpanded : glassBgCollapsed}`} />}
+                        {showSignalPath && <div aria-hidden="true" className={`absolute inset-0 rounded-full pointer-events-none ${PLAYER_PROGRESS_FRAME_CLASS} ${showExpanded ? glassBgExpanded : glassBgCollapsed}`} />}
                         {/* Keep the signal capsule attached to the animated control frame. */}
                         {showSignalPath && !isHidden && !isPositioning && <SignalPath anchored retracted={isHovered} onOpenChange={handleSignalPathOpen} />}
                         <motion.div

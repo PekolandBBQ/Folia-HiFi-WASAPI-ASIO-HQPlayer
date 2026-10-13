@@ -5,6 +5,8 @@ import { getPlaybackSourceRef } from '../../utils/appPlaybackGuards';
 import { neteaseProvider } from './neteaseProvider';
 import { kugouProvider } from './kugouProvider';
 import { qqProvider } from './qqProvider';
+import { spotifyProvider } from './spotifyProvider';
+import { spotifyAvailable } from './spotifyTransport';
 
 // src/services/onlineMusic/providerRegistry.ts
 
@@ -80,3 +82,5 @@ export const requireOnlineMusicProviderForSong = (song: SongResult): OnlineMusic
 registerOnlineMusicProvider(neteaseProvider);
 registerOnlineMusicProvider(kugouProvider);
 registerOnlineMusicProvider(qqProvider);
+// Unfinished integration is restricted to the explicitly enabled local preview runtime.
+if (spotifyAvailable()) registerOnlineMusicProvider(spotifyProvider);

@@ -60,13 +60,15 @@ async function main() {
             const player = find('currentSong'), settings = find('nativeAudioBackend'), hqp = find('dspDefaults'), loading = stores.find(store => 'owner' in store.getState() && 'startedAt' in store.getState());
             if (!player || !settings) throw new Error('Cannot inspect packaged playback stores');
             const omni = values.find(value => typeof value?.searchProviderSongs === 'function');
+            if (!omni || !(await omni.getLoginStatus(provider))?.id)
+                throw new Error('Playback test blocked: a valid signed-in provider account is required');
             const original = { backend: settings.getState().nativeAudioBackend, deviceId: settings.getState().nativeAudioDeviceId,
                 volume: settings.getState().volume, muted: settings.getState().isMuted, gain: hqp?.getState().gainDb, defaults: hqp?.getState().dspDefaults };
             player.setState({ playerState: 'PAUSED', audioSrc: null, currentSong: null });
             settings.setState({ nativeAudioBackend: 'browser', nativeAudioDeviceId: '', volume: 0.03, isMuted: false, showAudioSignalPath: true });
             hqp?.setState({ gainDb: -35, dspDefaults: null });
             const events = []; const off = window.electron.nativeAudio.onEvent(event => events.push(event));
-            window.__hqpRegression = { player, settings, hqp, loading, original, events, off, tracks: [] };
+            window.__hqpRegression = { player, settings, hqp, loading, original, events, off, tracks: [], loginVerified: true, omni };
             const searches = []; window.__hqpRegression.searches = searches;
             for (const query of provider === 'qq' ? ['HIMEHINA', '许嵩', '纯音乐'] : ['HIMEHINA']) {
                 const found = await omni.searchProviderSongs(provider, query, { limit: 8, offset: 0 });
@@ -231,9 +233,11 @@ async function main() {
             result.phases.push({ label: 'hqplayer-after-' + backend, checkpoint: resumePoint, state: restored });
             console.log('PASS', 'hqplayer-after-' + backend, resumePoint, restored.position);
         }
+        result.loginAfter = await page.evaluate(async provider => Boolean((await window.__hqpRegression.omni.getLoginStatus(provider))?.id), provider);
+        assert.ok(result.loginAfter, 'Playback test blocked: login could not be verified after playback');
         result.status = 'PASS';
     } catch (error) {
-        result.status = 'FAIL'; result.error = error.message;
+        result.status = error.message.startsWith('Playback test blocked:') ? 'BLOCKED_LOGIN' : 'FAIL'; result.error = error.message;
         if (page && process.env.FOLIA_CAPTURE_FAILED_SOURCE === 'true') {
             // Keep only this run's session-owned staged input for local diagnosis, never release it.
             const captured = await app.evaluate(async ({ app }, startedAt) => {

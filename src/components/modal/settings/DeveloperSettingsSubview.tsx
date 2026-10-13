@@ -16,6 +16,8 @@ import {
     type DebugLogMode,
 } from '../../../services/debug/debugModule';
 import ConsoleLogPanel from '../../shared/ConsoleLogPanel';
+import PrivateDiagnosticsSection from './PrivateDiagnosticsSection';
+import { getPrivateDiagnosticsApi } from '../../../services/debug/privateDiagnostics';
 
 // src/components/modal/settings/DeveloperSettingsSubview.tsx
 // The debug module's switches: what is recorded, how its file opens, and where it lands.
@@ -116,7 +118,7 @@ const FileRow: React.FC<{
     );
 };
 
-const DeveloperSettingsSubview: React.FC<DeveloperSettingsSubviewProps> = ({
+const OrdinaryDeveloperSettingsSubview: React.FC<DeveloperSettingsSubviewProps> = ({
     isDaylight,
     settingsCardClass,
     theme,
@@ -284,6 +286,12 @@ const DeveloperSettingsSubview: React.FC<DeveloperSettingsSubviewProps> = ({
             </div>
         </div>
     );
+};
+
+const DeveloperSettingsSubview: React.FC<DeveloperSettingsSubviewProps> = props => {
+    const api = getPrivateDiagnosticsApi();
+    return api ? <PrivateDiagnosticsSection api={api} isDaylight={props.isDaylight} settingsCardClass={props.settingsCardClass} />
+        : <OrdinaryDeveloperSettingsSubview {...props} />;
 };
 
 export default DeveloperSettingsSubview;

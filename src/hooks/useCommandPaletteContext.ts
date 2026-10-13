@@ -33,6 +33,7 @@ import { useVisualizerSettingsStore } from '../stores/useVisualizerSettingsStore
 import { useLyricSegmentationStore } from '../stores/useLyricSegmentationStore';
 import { useLatticeSettingsStore } from '../stores/useLatticeSettingsStore';
 import type { LyricSegmentationActions } from '../components/app/playback/createLyricSegmentationActions';
+import { useSpotifyPlaybackSetup } from './useSpotifyPlaybackSetup';
 
 // src/hooks/useCommandPaletteContext.ts
 // Assembles the command palette's namespaced context.
@@ -130,6 +131,11 @@ export const useCommandPaletteContext = (
         nativeAudioProcessingMode: state.nativeAudioProcessingMode,
         showAudioSignalPath: state.showAudioSignalPath,
     })));
+    const spotifySetupSignals = useSpotifyPlaybackSetup(useShallow(state => ({
+        status: state.status,
+        busy: state.busy,
+        operation: state.operation,
+    })));
     const visualizerSignals = useVisualizerSettingsStore(useShallow(state => ({
         visualizerMode: state.visualizerMode,
         visualizerBackgroundMode: state.visualizerBackgroundMode,
@@ -199,7 +205,7 @@ export const useCommandPaletteContext = (
         ...valueDeps,
         ambient,
         settingsSignals, chromeSignals, desktopSignals, automixSignals,
-        sleepTimerSignals, latticeSignals, audioSignals, visualizerSignals,
+        sleepTimerSignals, latticeSignals, audioSignals, visualizerSignals, spotifySetupSignals,
         lyricStaffPolicy, lyricStaffAbsorbMode, personalFmSelection, view, commandFilter, gridSurface, canAddCurrentSongToPlaylist,
         lyricSegmentationRecord, lyricSegmentationActions, latticeFocusAction,
     ]);

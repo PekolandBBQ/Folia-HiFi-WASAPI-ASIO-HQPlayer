@@ -11,6 +11,7 @@ import { useAudioSettingsStore } from '../../../stores/useAudioSettingsStore';
 import { useHQPlayerSettingsStore } from '../../../stores/useHQPlayerSettingsStore';
 import HQPlayerDspEditor from '../../audio/HQPlayerDspEditor';
 import SettingsSwitch from '../../shared/SettingsSwitch';
+import HQPlayerSpotifyExperimentSettings from '../../audio/HQPlayerSpotifyExperimentSettings';
 
 // src/components/modal/settings/HQPlayerSettingsSection.tsx — external player setup, separate from the native helper.
 export default function HQPlayerSettingsSection({ className }: { className: string }) {
@@ -48,6 +49,7 @@ export default function HQPlayerSettingsSection({ className }: { className: stri
             <p className="my-3 text-xs opacity-70">{t('hqPlayer.description')}</p>
             <HQPlayerComponentSetting status={configuration} active={backend === 'hqplayer'} onChange={status => { setConfiguration(status); setAvailable(status.available); }} />
             <HQPlayerLaunchSetting />
+            <HQPlayerSpotifyExperimentSettings />
             {available && <div role="group" aria-label={t('hqpDsp.defaultsTitle')} className="my-4 border-t border-current/15 pt-4"><h3 className="text-sm font-semibold">{t('hqpDsp.defaultsTitle')}</h3><HQPlayerDspEditor defaults /></div>}
             {!available && configuration.component?.available !== false && <p role="status" className="my-3 text-sm">{t('hqPlayer.installRequired')}</p>}
             <p className="my-3 text-xs opacity-70">{t('hqPlayer.controlHint')}</p>

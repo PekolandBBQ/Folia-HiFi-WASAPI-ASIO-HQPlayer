@@ -4,6 +4,7 @@ import type { MediaId, OnlineProviderId, ProviderCollection, ProviderUser } from
 // src/stores/useOnlineProviderAccountStore.ts
 
 export interface OnlineProviderAccountState {
+    connectionRevision?: number;
     status: 'unknown' | 'authenticated' | 'anonymous' | 'error';
     user: ProviderUser | null;
     collections: ProviderCollection[];
@@ -119,6 +120,8 @@ export const useOnlineProviderAccountStore = create<OnlineProviderAccountStore>(
             ...state.accounts,
             [providerId]: {
                 ...emptyAccount(),
+                ...(state.accounts[providerId]?.connectionRevision !== undefined
+                    ? { connectionRevision: state.accounts[providerId].connectionRevision } : {}),
                 status: 'anonymous',
                 hydration: 'ready',
                 freshness: 'fresh',

@@ -1,13 +1,16 @@
 import type { ReplayGainInfo, SongResult } from '../../types';
+import type { AudioQualityPreference } from '../../types/onlineMusic';
+import { isSessionBoundAudio } from './audioPolicy';
 import type { MigrationResult } from '../../utils/lyrics/renderHints';
 import { getCachedAudioBlob, hasCachedAudio, saveAudioBlob } from '../audioCache';
 import { getCachedCoverUrl, hasCachedCover, saveCoverBlob } from '../coverCache';
 import { getFromCache, saveToCache } from '../db';
-import { getLegacySongResourceCacheKeys, getSongResourceCacheKey, type SongResourceKind } from './resourceKeys';
+import { getLegacySongResourceCacheKeys, getSongResourceCacheKey, getSongAudioCacheKey, type SongResourceKind } from './resourceKeys';
 
 // src/services/onlineMusic/resourceCache.ts
 
 const identityMigration = <T>(value: T): MigrationResult<T> => ({ value, changed: false });
+const audioQualities: AudioQualityPreference[] = ['hires', 'lossless', 'high', 'standard'];
 
 // Reads legacy NetEase entries once and writes them back under the provider-aware key.
 export const getSongCacheWithLegacyMigration = async <T>(
@@ -33,10 +36,13 @@ export const getSongCacheWithLegacyMigration = async <T>(
     return null;
 };
 
-export const getCachedSongAudioBlob = async (song: SongResult): Promise<Blob | null> => {
-    const cacheKey = getSongResourceCacheKey('audio', song);
+export const getCachedSongAudioBlob = async (song: SongResult, quality?: AudioQualityPreference): Promise<Blob | null> => {
+    if (isSessionBoundAudio(song)) return null;
+    const cacheKey = getSongAudioCacheKey(song, quality);
     const current = await getCachedAudioBlob(cacheKey);
     if (current) return current;
+    // Unlabelled historical bytes cannot satisfy an explicitly requested quality.
+    if (quality) return null;
 
     for (const legacyKey of getLegacySongResourceCacheKeys('audio', song)) {
         const legacy = await getCachedAudioBlob(legacyKey);
@@ -44,15 +50,28 @@ export const getCachedSongAudioBlob = async (song: SongResult): Promise<Blob | n
         await saveAudioBlob(cacheKey, legacy);
         return legacy;
     }
+    // Analysis has no playback quality requirement and may reuse any available encoding.
+    // Keep explicit playback reads above strict, and avoid copying variants into an unlabelled key.
+    for (const availableQuality of audioQualities) {
+        const variant = getSongAudioCacheKey(song, availableQuality);
+        if (!await hasCachedAudio(variant)) continue;
+        const blob = await getCachedAudioBlob(variant);
+        if (blob) return blob;
+    }
     return null;
 };
 
-export const hasCachedSongAudio = async (song: SongResult): Promise<boolean> => {
-    const cacheKey = getSongResourceCacheKey('audio', song);
+export const hasCachedSongAudio = async (song: SongResult, quality?: AudioQualityPreference): Promise<boolean> => {
+    if (isSessionBoundAudio(song)) return false;
+    const cacheKey = getSongAudioCacheKey(song, quality);
     if (await hasCachedAudio(cacheKey)) return true;
+    if (quality) return false;
 
     for (const legacyKey of getLegacySongResourceCacheKeys('audio', song)) {
         if (await hasCachedAudio(legacyKey)) return true;
+    }
+    for (const availableQuality of audioQualities) {
+        if (await hasCachedAudio(getSongAudioCacheKey(song, availableQuality))) return true;
     }
     return false;
 };

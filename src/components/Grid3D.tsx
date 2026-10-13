@@ -27,6 +27,8 @@ import OnlineProviderSwitcher from './app/home/OnlineProviderSwitcher';
 import OnlineProviderConnectPanel from './app/home/OnlineProviderConnectPanel';
 import OnlineProviderAccountlessPanel from './app/home/OnlineProviderAccountlessPanel';
 import OnlineProviderLoginModal from './app/home/OnlineProviderLoginModal';
+import SpotifyConnectionModal from './app/home/SpotifyConnectionModal';
+import { useSpotifyConnection } from '../hooks/useSpotifyConnection';
 import { buildQrLoginDiagnosticsProps } from './app/home/buildQrLoginDiagnosticsProps';
 import { canSwitchToProviderDirectly, resolveOnlineProviderAccountView } from './app/home/onlineProviderAccountView';
 import type { MediaId, OmniProviderCapabilities, ProviderAccountSummary, ProviderCollection, ProviderUser } from '../types/onlineMusic';
@@ -45,6 +47,7 @@ import { countRender } from '../dev/renderCount';
 const LOGIN_COPY_BY_PROVIDER: Record<string, { title: string; note: string }> = {
     kugou: { title: 'home.loginTitleKugou', note: 'home.loginNoteKugou' },
     qq: { title: 'home.loginTitleQq', note: 'home.loginNoteQq' },
+    spotify: { title: 'home.loginTitleSpotify', note: 'home.loginNoteSpotify' },
 };
 const NETEASE_LOGIN_COPY = { title: 'home.loginTitle', note: 'home.loginNote' };
 
@@ -345,10 +348,21 @@ export const Grid3D: React.FC<Grid3DProps> = (props) => {
         },
     });
 
+    const spotifyConnection = useSpotifyConnection(async isCurrent => {
+        if (!onlineProviderPlatform) { if (isCurrent()) onRefreshUser(); return isCurrent(); }
+        const outcome = await onlineProviderPlatform.completeLogin('spotify', isCurrent);
+        return outcome !== 'refresh-failed' && outcome !== 'cancelled';
+    });
+
     const initLogin = async (providerId = activeProviderId) => {
         const summary = onlineProviderPlatform?.providers.find(provider => provider.providerId === providerId);
         if (summary && !summary.availability.configured) return;
         const attemptId = ++loginAttemptIdRef.current;
+        if (providerId === 'spotify') {
+            stopQrLogin(); setShowLoginModal(false); spotifyConnection.begin();
+            return;
+        }
+        spotifyConnection.close();
         // 等待远端能力发现，并把同一份结果同时用于流程分支与弹窗，避免异步结果让两者错位。
         const methods = await omni.resolveQrLoginMethods(providerId);
         if (attemptId !== loginAttemptIdRef.current) return;
@@ -363,7 +377,10 @@ export const Grid3D: React.FC<Grid3DProps> = (props) => {
 
     // Shared by the switcher and the connect panel: switch now when there is nothing to sign in to.
     const selectProvider = (provider: ProviderAccountSummary) => {
-        if (canSwitchToProviderDirectly(provider)) {
+        if (provider.providerId === 'spotify') {
+            void initLogin('spotify');
+        } else if (canSwitchToProviderDirectly(provider)) {
+            spotifyConnection.close();
             void onlineProviderPlatform?.switchProvider(provider.providerId);
         } else {
             void initLogin(provider.providerId);
@@ -997,14 +1014,17 @@ export const Grid3D: React.FC<Grid3DProps> = (props) => {
 
             {/* Login Modal */}
             <AnimatePresence>
+                {spotifyConnection.open && <SpotifyConnectionModal connection={spotifyConnection} daylight={isDaylight} />}
                 {showLoginModal && (
                     <OnlineProviderLoginModal
+                        glass={loginProviderId === 'spotify'} daylight={isDaylight}
+                        browserAuthorization={loginProviderId === 'spotify' ? t('home.spotifyBrowserAuthorization') : undefined}
                         title={t((LOGIN_COPY_BY_PROVIDER[loginProviderId] || NETEASE_LOGIN_COPY).title)}
                         note={t((LOGIN_COPY_BY_PROVIDER[loginProviderId] || NETEASE_LOGIN_COPY).note)}
                         qrCodeImg={qrCodeImg}
-                        statusText={qrStatusText}
+                        statusText={loginProviderId === 'spotify' && ['idle', 'loading', 'waiting', 'scanned'].includes(qrState) ? '' : qrStatusText}
                         state={qrState}
-                        retryLabel={t('home.retryQr')}
+                        retryLabel={t(loginProviderId === 'spotify' ? 'home.spotifyRetryAuthorization' : 'home.retryQr')}
                         closeLabel={t('home.closeLogin')}
                         loginMethods={loginMethodOptions.length > 0
                             ? {
@@ -1046,6 +1066,7 @@ export const Grid3D: React.FC<Grid3DProps> = (props) => {
                         // 刷新时保留已选的登录方式，否则用户会被踢回步骤一。
                         onRetry={() => void startQrLogin(loginProviderId, selectedLoginMethodId ?? undefined)}
                         onClose={() => {
+                            loginAttemptIdRef.current++;
                             setShowLoginModal(false);
                             stopQrLogin();
                         }}

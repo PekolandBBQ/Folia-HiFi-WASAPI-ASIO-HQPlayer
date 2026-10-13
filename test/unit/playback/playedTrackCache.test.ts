@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SongResult } from '../../../src/types';
+import { rememberAudioSourceQuality } from '../../../src/services/onlineMusic/audioSourceQuality';
 
 const hasCachedSongAudio = vi.fn<(song: SongResult) => Promise<boolean>>();
 const hasCachedSongCover = vi.fn<(song: SongResult) => Promise<boolean>>();
@@ -39,6 +40,7 @@ describe('cachePlayedTrackAssets', () => {
     } as unknown as SongResult;
 
     beforeEach(() => {
+        vi.unstubAllGlobals();
         vi.clearAllMocks();
         hasCachedSongAudio.mockResolvedValue(false);
         hasCachedSongCover.mockResolvedValue(false);
@@ -54,6 +56,18 @@ describe('cachePlayedTrackAssets', () => {
         expect(written).toEqual({ audio: true, cover: true });
         expect(saveAudioBlob).toHaveBeenCalledTimes(1);
         expect(saveToCache).toHaveBeenCalledTimes(1);
+    });
+    it('saves under the actual source tier rather than whichever preference is now selected', async () => {
+        const url = 'https://cdn.example/resolved-standard.mp3';
+        rememberAudioSourceQuality(onlineSong, { url, fetchedAt: Date.now(), quality: 'standard' });
+        await cachePlayedTrackAssets(onlineSong, url);
+        expect(saveAudioBlob).toHaveBeenCalledWith('audio_online:netease:1:quality:standard', expect.any(Blob));
+    });
+    it('keeps unknown-quality bytes unlabelled even when a higher tier was requested', async () => {
+        const url = 'https://cdn.example/unknown-tier.mp3';
+        rememberAudioSourceQuality(onlineSong, { url, fetchedAt: Date.now(), requestedQuality: 'hires' });
+        await cachePlayedTrackAssets(onlineSong, url);
+        expect(saveAudioBlob).toHaveBeenCalledWith('audio_online:netease:1', expect.any(Blob));
     });
 
     // The P15 case: the cover was pruned while the audio survived, and the cover has to come back
@@ -115,5 +129,25 @@ describe('cachePlayedTrackAssets', () => {
         expect(written).toEqual({ audio: false, cover: false });
         expect(saveAudioBlob).not.toHaveBeenCalled();
         expect(saveToCache).not.toHaveBeenCalled();
+    });
+    it('saves the already downloaded native original instead of refetching the remote song', async () => {
+        hasCachedSongCover.mockResolvedValue(true);
+        const url = `http://127.0.0.1:43820/${'a'.repeat(48)}.wav`, request = vi.fn(async () => ({ url }));
+        vi.stubGlobal('window', { electron: { nativeAudio: { supported: true, request } } });
+        expect(await cachePlayedTrackAssets(onlineSong, 'https://cdn.example/audio.mp3')).toEqual({ audio: true, cover: false });
+        expect(request).toHaveBeenCalledWith({ action: 'cached-source', url: 'https://cdn.example/audio.mp3', trackKey: 'online:netease:1' });
+        expect(fetch).toHaveBeenCalledExactlyOnceWith(url); expect(saveAudioBlob).toHaveBeenCalledOnce();
+    });
+    it('falls back after an expired native handle and never persistently caches a Spotify session source', async () => {
+        hasCachedSongCover.mockResolvedValue(true);
+        const local = `http://127.0.0.1:43820/${'a'.repeat(48)}.wav`, request = vi.fn(async () => ({ url: local }));
+        vi.stubGlobal('window', { electron: { nativeAudio: { supported: true, request } } });
+        vi.stubGlobal('fetch', vi.fn(async url => url === local ? new Response('', { status: 404 }) : new Response('audio')));
+        await cachePlayedTrackAssets(onlineSong, 'https://cdn.example/audio.mp3');
+        expect(fetch).toHaveBeenCalledTimes(2); expect(saveAudioBlob).toHaveBeenCalledOnce();
+        vi.clearAllMocks();
+        const spotify = { ...onlineSong, sourceRef: { kind: 'online', providerId: 'spotify', mediaId: '1', providerData: { sessionBoundAudio: true } } } as SongResult;
+        expect(await cachePlayedTrackAssets(spotify, 'http://127.0.0.1/spotify')).toEqual({ audio: false, cover: false });
+        expect(fetch).not.toHaveBeenCalled(); expect(request).not.toHaveBeenCalled(); expect(saveAudioBlob).not.toHaveBeenCalled();
     });
 });

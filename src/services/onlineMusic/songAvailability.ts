@@ -2,6 +2,7 @@ import type { SongResult } from '../../types';
 import type { ProviderSongAvailability, ProviderSongReplacement } from '../../types/onlineMusic';
 import { getOnlineMusicProviderForSong } from './providerRegistry';
 import { getPlaybackSourceRef } from '../../utils/appPlaybackGuards';
+import i18n from '../../i18n/config';
 
 // src/services/onlineMusic/songAvailability.ts
 
@@ -25,7 +26,8 @@ export const getSongUnavailableLabel = (
     fallbackLabel: string,
 ): string => {
     if (!song) return fallbackLabel;
-    return getSongAvailability(song).label || fallbackLabel;
+    const availability = getSongAvailability(song);
+    return availability.label || (availability.labelKey ? i18n.t(availability.labelKey) : fallbackLabel);
 };
 
 export const getSongReplacement = async (

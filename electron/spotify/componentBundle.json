@@ -1,0 +1,29 @@
+{
+  "schema": 1,
+  "version": "0.1.0-preview.2",
+  "platform": "win32-x64",
+  "spicetify": {
+    "version": "2.45.3",
+    "url": "https://github.com/spicetify/cli/releases/download/v2.45.3/spicetify-2.45.3-windows-x64.zip",
+    "sha256": "5d641d4db9caa3891b6a7cc2eb239667af9bb40252a8b413856f9be1e09ff5c1",
+    "entry": "spicetify.exe",
+    "entrySha256": "c26b9d6a3686d4b50f7fc532b4d4ac092035328b06ee4246876879cac8dfa120",
+    "wrapperSha256": "4182d2c4cbd9a0ef5bc33df5772cbb420ff55b806e42ff38445160d2c1b6a73c"
+  },
+  "cable": {
+    "version": "3.3.1.7",
+    "package": "Pack45",
+    "url": "https://download.vb-audio.com/Download_CABLE/VBCABLE_Driver_Pack45.zip",
+    "sha256": "b950e39f01af1d04ea623c8f6d8eb9b6ea5c477c637295fabf20631c85116bfb",
+    "entry": "VBCABLE_Setup_x64.exe"
+  },
+  "route": {
+    "version": "0.19.0-dev.25",
+    "pairedCaptureRequired": true,
+    "sha256": "18ee1cc8d3a0df26e05bff86511b71cae1fbe757b27dbb57f5958a42e4673e14"
+  },
+  "capture": {
+    "version": "0.1.5-capture.9",
+    "sha256": "6f01bebefb54d767a32aa87469c9a13294b2a6c9b6e595276ca89e5e90e2f73a"
+  }
+}

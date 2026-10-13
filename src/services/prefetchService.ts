@@ -7,6 +7,7 @@
 
 import { ReplayGainInfo, SongResult, LyricData, OnlineLyricsState, type LyricProviderSource } from '../types';
 import { migrateLyricDataRenderHints } from '../utils/lyrics/renderHints';
+import { isSessionBoundAudio } from './onlineMusic/audioPolicy';
 import { isPureMusicLyricText } from '../utils/lyrics/pureMusic';
 import { autoMatchBestLyric } from '../utils/lyrics/autoMatchBestLyric';
 import { loadOnlineLyricsState, markOnlineLyricsPureMusic, resolveOnlineLyrics, saveOnlineLyricsState } from '../utils/onlineLyricsState';
@@ -129,7 +130,8 @@ export const getPrefetchedData = (song: SongResult, requiredQuality?: AudioQuali
     }
 
     // 'CACHED_IN_DB' is not a URL. It says the bytes are already in the media cache, so it has no
-    // expiry to run out and no quality to match against - `audioUrlQuality` stays null for one.
+    // expiry to run out. New entries retain a verified quality; legacy null-quality sentinels
+    // cannot satisfy an explicit quality and are rechecked against the quality-aware cache.
     // Both checks below fired on it anyway (null never equals the required quality), and each one
     // ANSWERED by nulling the sentinel. So the first read of a media-cached track threw away the
     // fact that it was cached, and the next prefetch pass rediscovered it from scratch - which is
@@ -146,7 +148,7 @@ export const getPrefetchedData = (song: SongResult, requiredQuality?: AudioQuali
     }
 
     // Check if quality matches (if requiredQuality is specified)
-    if (hasUrl && requiredQuality && cached.audioUrlQuality !== requiredQuality) {
+    if (cached.audioUrl && requiredQuality && cached.audioUrlQuality !== requiredQuality) {
         console.log(`[Prefetch] Quality mismatch for song ${songId}: cached=${cached.audioUrlQuality}, required=${requiredQuality}`);
         // Don't use cached URL, but keep other data (lyrics, cover)
         cached.audioUrl = null;
@@ -212,15 +214,16 @@ const prefetchSong = async (
     };
 
     // Prefetch audio URL (if not cached or expired)
-    if (!data.audioUrl) {
+    if (!data.audioUrl && !isSessionBoundAudio(song)) {
         try {
-            const audioExists = await hasCachedSongAudio(song);
+            const audioExists = await hasCachedSongAudio(song, audioQuality);
             if (audioExists) {
                 console.log(`[Prefetch] Audio already cached for: ${song.name}`);
                 data.audioUrl = 'CACHED_IN_DB';
+                data.audioUrlQuality = audioQuality;
                 data.audioUrlFetchedAt = Date.now();
             } else if (!signal.aborted) {
-                const audioSource = await omni.getAudioSource(song, audioQuality);
+                const audioSource = await omni.getAudioSource(song, audioQuality, { signal });
                 const url = toSafePlaybackUrl(audioSource?.url) ?? null;
                 if (url) {
                     data.audioUrl = url;

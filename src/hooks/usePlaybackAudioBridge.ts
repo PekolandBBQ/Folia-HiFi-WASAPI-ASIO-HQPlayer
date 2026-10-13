@@ -1,3 +1,8 @@
+import { preparePlaybackSourceCommit } from '../services/playbackSourceCommit';
+import { playbackSourceRequestRevision } from '../services/playbackSourceRequest';
+import { createOnlinePlaybackFailureStatus } from '../components/app/playback/onlinePlaybackFailure';
+import { OnlineProviderError } from '../types/onlineMusic';
+import { isPassivePlaybackSource } from '../services/playbackSourceIntent';
 import { useCallback, useEffect, useLayoutEffect, useRef } from 'react';
 import { isNativeAudioElement } from '../services/nativeAudio/NativeAudioTransport';
 import type { MutableRefObject, RefObject } from 'react';
@@ -263,6 +268,10 @@ export function usePlaybackAudioBridge({
             return;
         }
 
+        if (audioSrc && isPassivePlaybackSource(audioSrc) && isNativeAudioElement(audioElement)) {
+            previousAudioSrcRef.current = audioSrc;
+            return;
+        }
         if (audioSrc && previousAudioSrcRef.current && previousAudioSrcRef.current !== audioSrc) {
             audioElement.pause();
             audioElement.load();
@@ -323,14 +332,40 @@ export function usePlaybackAudioBridge({
                 }
 
                 syncOutputGain(getTargetPlaybackVolume(), 0);
-                const playPromise = audioRef.current.play();
+                const requestedAudio = audioRef.current, requestedSource = audioSrc;
+                const requestedRevision = playbackSourceRequestRevision();
+                const ownsAutoplay = () => audioRef.current === requestedAudio
+                    && usePlaybackStore.getState().audioSrc === requestedSource
+                    && playbackSourceRequestRevision() === requestedRevision;
+                const selectedSong = usePlaybackStore.getState().currentSong;
+                let sourceCommitted = !selectedSong;
+                const playPromise = (async () => {
+                    if (selectedSong) await preparePlaybackSourceCommit(selectedSong, { source: requestedSource, isCurrent: ownsAutoplay });
+                    sourceCommitted = true;
+                    if (!ownsAutoplay()) throw new DOMException('Request cancelled', 'AbortError');
+                    await requestedAudio.play();
+                })();
                 if (playPromise !== undefined) {
                     playPromise
                         .then(() => {
+                            if (!ownsAutoplay()) return;
                             setPlayerState(PlayerState.PLAYING);
                             setupAudioAnalyzer();
                         })
                         .catch(error => {
+                            if (!ownsAutoplay()) return;
+                            if (!sourceCommitted) {
+                                if (error?.name !== 'AbortError') {
+                                    setStatusMsg(createOnlinePlaybackFailureStatus(error, t));
+                                    setPlayerState(PlayerState.PAUSED);
+                                }
+                                return;
+                            }
+                            if (error instanceof OnlineProviderError && error.providerId === 'spotify') {
+                                setStatusMsg(createOnlinePlaybackFailureStatus(error, t));
+                                setPlayerState(PlayerState.PAUSED);
+                                return;
+                            }
                             if (audioRef.current && !audioRef.current.paused && !audioRef.current.ended) {
                                 setPlayerState(PlayerState.PLAYING);
                                 return;

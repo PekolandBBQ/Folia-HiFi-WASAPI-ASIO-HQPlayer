@@ -1,7 +1,11 @@
 import type { Dispatch, MutableRefObject, RefObject, SetStateAction } from 'react';
 import { applyOnlineAudioSourceMetadata, loadOnlineSongAudioSource } from '../../../services/onlinePlayback';
-import type { SongResult } from '../../../types';
+import { PlayerState, type SongResult } from '../../../types';
 import type { AudioQualityPreference } from '../../../types/onlineMusic';
+import { OnlineProviderError } from '../../../types/onlineMusic';
+import { isOnlinePlaybackCancellation } from './onlinePlaybackFailure';
+import { isSessionBoundAudio } from '../../../services/onlineMusic/audioPolicy';
+import { beginPlaybackSourceRequest, cancelPlaybackSourceRequest, finishPlaybackSourceRequest } from '../../../services/playbackSourceRequest';
 import {
     getPlaybackSongKey,
     isLocalPlaybackSong,
@@ -10,7 +14,7 @@ import {
     isStagePlaybackSong,
     replacePlaybackSongInQueue,
 } from '../../../utils/appPlaybackGuards';
-import { setAudioSrc, setCurrentSong, setPlayQueue } from '../../../stores/usePlaybackStore';
+import { setAudioSrc, setCurrentSong, setPlayerState, setPlayQueue, usePlaybackStore } from '../../../stores/usePlaybackStore';
 
 // src/components/app/playback/createOnlineRecoveryController.ts
 
@@ -76,7 +80,10 @@ export const createOnlineRecoveryController = ({
             return false;
         }
 
-        if (!audioSrc || audioSrc.startsWith('blob:')) {
+        // Paused restoration intentionally leaves session-bound audio unprepared.
+        // This predicate is spent by explicit resume, before calling an empty deck's play().
+        if (!audioSrc) return isSessionBoundAudio(currentSong);
+        if (audioSrc.startsWith('blob:')) {
             return false;
         }
 
@@ -92,16 +99,50 @@ export const createOnlineRecoveryController = ({
         failedSrc,
         resumeAt,
         autoplay,
+        shouldAutoplay,
     }: {
         failedSrc?: string | null;
         resumeAt?: number;
         autoplay: boolean;
+        shouldAutoplay?: () => boolean;
     }): Promise<boolean> => {
         const song = currentSong;
+        const isSpotify = song?.sourceRef?.kind === 'online' && song.sourceRef.providerId === 'spotify';
         const audioElement = audioRef.current;
 
         if (!song || !audioElement || isLocalPlaybackSong(song) || isNavidromePlaybackSong(song) || isStagePlaybackSong(song)) {
             return false;
+        }
+
+        if (currentSongRef.current !== getPlaybackSongKey(song)) throw new DOMException('Playback request superseded', 'AbortError');
+        const sessionBoundAudio = isSessionBoundAudio(song);
+        if (sessionBoundAudio) {
+            const playback = usePlaybackStore.getState();
+            if (!playback.currentSong || getPlaybackSongKey(playback.currentSong) !== getPlaybackSongKey(song)
+                || failedSrc && playback.audioSrc !== failedSrc) {
+                throw new DOMException('Playback source superseded', 'AbortError');
+            }
+        }
+
+        // The element error event and its play() rejection can ask together.
+        // Join the current attempt before the guard for an already completed source.
+        if (onlinePlaybackRecoveryRef.current) {
+            return onlinePlaybackRecoveryRef.current;
+        }
+
+        // A failed paused handoff only discards its matching session URL. The song and
+        // checkpoint stay selected; the next explicit Play prepares a fresh source.
+        if (sessionBoundAudio && !autoplay) {
+            if (!failedSrc || !audioElement.error) return false;
+            cancelPlaybackSourceRequest();
+            const position = pendingResumeTimeRef.current ?? resumeAt ?? audioElement.currentTime;
+            pendingResumeTimeRef.current = Number.isFinite(position) ? Math.max(0, position) : 0;
+            shouldAutoPlayRef.current = false;
+            lastAudioRecoverySourceRef.current = null;
+            currentOnlineAudioUrlFetchedAtRef.current = null;
+            setPlayerState(PlayerState.PAUSED);
+            setAudioSrc(null);
+            return true;
         }
 
         const normalizedFailedSrc = getOnlineRecoveryKey(failedSrc || audioElement.currentSrc || audioSrc || null);
@@ -109,18 +150,21 @@ export const createOnlineRecoveryController = ({
             return false;
         }
 
-        if (onlinePlaybackRecoveryRef.current) {
-            return onlinePlaybackRecoveryRef.current;
-        }
-
-        const recoveryTask = (async () => {
+        let recoveryTask: Promise<boolean> | null = null;
+        const sourceRequest = beginPlaybackSourceRequest(song, () => {
+            shouldAutoPlayRef.current = false;
+            if (onlinePlaybackRecoveryRef.current === recoveryTask) onlinePlaybackRecoveryRef.current = null;
+        });
+        recoveryTask = (async () => {
             if (normalizedFailedSrc) {
                 lastAudioRecoverySourceRef.current = normalizedFailedSrc;
             }
 
             try {
-                const audioResult = await loadOnlineSongAudioSource(song, audioQuality, null);
+                const audioResult = await loadOnlineSongAudioSource(song, audioQuality, null, sourceRequest.signal);
+                if (sourceRequest.signal.aborted) throw new DOMException('Playback request cancelled', 'AbortError');
                 if (currentSongRef.current !== getPlaybackSongKey(song) || !audioRef.current) {
+                    if (isSpotify) throw new DOMException('Playback request superseded', 'AbortError');
                     return false;
                 }
 
@@ -152,18 +196,33 @@ export const createOnlineRecoveryController = ({
                     );
                 }
 
-                pendingResumeTimeRef.current = Math.max(0, resumeAt ?? audioRef.current.currentTime ?? 0);
-                shouldAutoPlayRef.current = autoplay;
+                // A paused handoff has no prepared deck, so its currentTime is still zero.
+                // Keep the saved resume position until this first explicit Play creates audio.
+                const deferredPosition = !audioSrc && isSessionBoundAudio(song) ? pendingResumeTimeRef.current : null;
+                pendingResumeTimeRef.current = Math.max(0, deferredPosition ?? resumeAt ?? audioRef.current.currentTime ?? 0);
+                // Source recovery must follow the latest transport intent after its await.
+                shouldAutoPlayRef.current = autoplay && (shouldAutoplay?.() ?? true);
                 currentOnlineAudioUrlFetchedAtRef.current = audioResult.audioSrc.startsWith('blob:')
                     ? null
                     : Date.now();
                 setAudioSrc(audioResult.audioSrc);
                 return true;
             } catch (error) {
+                if (isSpotify && (currentSongRef.current !== getPlaybackSongKey(song) || !audioRef.current)) {
+                    throw new DOMException('Playback request superseded', 'AbortError');
+                }
+                if (isOnlinePlaybackCancellation(error)) throw error;
+                // Connection failures need the same user action as initial playback, not a track skip.
+                if (error instanceof OnlineProviderError && error.providerId === 'spotify') {
+                    lastAudioRecoverySourceRef.current = null;
+                    shouldAutoPlayRef.current = false;
+                    throw error;
+                }
                 console.error('[App] Failed to recover online playback source', error);
                 return false;
             } finally {
-                onlinePlaybackRecoveryRef.current = null;
+                finishPlaybackSourceRequest(sourceRequest);
+                if (onlinePlaybackRecoveryRef.current === recoveryTask) onlinePlaybackRecoveryRef.current = null;
             }
         })();
 

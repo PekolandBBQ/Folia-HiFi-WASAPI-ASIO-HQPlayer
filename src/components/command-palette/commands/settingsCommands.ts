@@ -16,12 +16,41 @@ import { reduceMotionSurface } from '../surfaces/reduceMotionSurface';
 import { openCurrentPagePonder } from '../../../services/ponder/pagePonderTarget';
 import { toggleHQPlayerOutput, toggleHQPlayerRememberGain, chooseHQPlayerPath } from '../../../services/nativeAudio/hqplayerSettings';
 import { isNativeAudioSupported } from '../../../services/nativeAudio/capabilities';
+import { omni } from '../../../services/onlineMusic/omni';
+import type { ProviderPlaybackSetupAction } from '../../../types/onlineMusic';
 
 // src/components/command-palette/commands/settingsCommands.ts
 // Commands in the `settings` group: settings subviews, app toggles, theme, sync, and desktop-only switches.
 
+const spotifySetupCommand = (id: string, operation: ProviderPlaybackSetupAction, title: string, description: string, keywords: string[]) => defineCommand({
+    id, group: 'settings', title, description, keywords, platform: ['win'],
+    isAvailable: context => context?.settings.canRunSpotifyPlaybackSetup(operation) ?? false,
+    execute: (_input, context) => {
+        if (!context.settings.canRunSpotifyPlaybackSetup(operation)) return false;
+        // Dispatch into the shared setup session without locking the palette
+        // during a download: the listener must be able to reopen it and Stop.
+        void context.settings.runSpotifyPlaybackSetup(operation).catch(() => {
+            context.shared.setStatusMsg({ type: 'error', text: context.shared.t('spotifyPlayback.failed', 'Connection did not complete.') });
+        });
+        return true;
+    },
+});
+
 export const settingsCommands: CommandPaletteCommand[] = [
+    createSettingsAnchorCommand('settings-live-pcm-prebuffer', 'Spotify PCM prebuffer', 'Adjust the shared 25–1000 ms target for the next native stream',
+        ['spotify pcm', 'prebuffer', '预缓冲'], 'nativeAudioOutput',
+        { platform: ['win'], isAvailable: isNativeAudioSupported }),
+    createSettingsAnchorCommand('settings-spotify', 'Spotify connection', 'Configure a Spotify application and local callback',
+        ['spotify', 'client id', 'Spotify连接', '回调地址', 'spfy'], 'spotifyConnection',
+        { platform: ['electron'], isAvailable: () => omni.hasProviderConnectionSettings('spotify') }),
+    spotifySetupCommand('spotify-playback-start', 'start', 'Connect Spotify playback', 'Verify the saved desktop and 44.1 kHz cable route', ['vb cable', 'audio capture', '声卡采集']),
+    spotifySetupCommand('spotify-playback-stop', 'stop', 'Stop Spotify playback connection', 'Stop the current capture connection or cancel verification', ['vb cable', 'capture disconnect', '断开采集']),
+    spotifySetupCommand('spotify-cable-probe', 'probe', 'Check Spotify audio route', 'Inspect the selected cable endpoints and actual audio format', ['vb cable', 'sample rate', '采样率检测']),
     createSettingsAnchorCommand('settings-hqplayer-component', 'HQPlayer component', 'Manage the independent HQPlayer component version', ['hqplayer', 'component', 'HQPlayer组件'], 'hqPlayerOutput', { platform: ['win'], isAvailable: isNativeAudioSupported }),
+    // The unverified audio path requires its visible warning and manual checkbox; the command only opens its controls.
+    defineCommand(createSettingsAnchorCommand('settings-hqplayer-spotify-experiment', 'Spotify HQPlayer experiment', 'Review the noise warning and tune the next live PCM preparation',
+        ['spotify experiment', 'startup delay', 'HQPlayer实验', '播放延迟', '实验音频'], 'hqPlayerOutput',
+        { platform: ['win'], isAvailable: isNativeAudioSupported })),
     createToggleCommand('hqplayer-silent-launch-toggle', 'settings', 'Launch HQPlayer in background', 'Toggle silent background startup',
         ['hqplayer', 'background', '静默启动'], () => { const s = useHQPlayerSettingsStore.getState(); s.setSilentLaunch(!s.silentLaunch); },
         { platform: ['win'], isAvailable: isNativeAudioSupported }),

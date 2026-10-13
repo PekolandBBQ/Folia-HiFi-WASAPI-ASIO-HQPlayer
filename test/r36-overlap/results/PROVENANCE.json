@@ -1,0 +1,17 @@
+{
+  "patch": "test/r36-overlap/overlap.patch",
+  "patchSha256": "2abf01fa51734becc1aa502b0c846535b08bb14e4171a3c96661bceba6b5b945",
+  "files": {
+    "electron/spotify/cableAudioPreparation.cjs": "0e4198459d6f0194c6d147f6cefd430e6a2337c98a41241d34829e8759949bdf",
+    "electron/spotify/cableSetup.cjs": "a284e85009666db52c20be3d11e412ce7615f69cb877c439cfc6f2b838abf0cd",
+    "electron/spotify/cableService.cjs": "c96a9738adba7e9f3f441209bf9c46b273c7356030199d11d1c0b01430f99642",
+    "electron/spotify/desktopPlaybackControl.cjs": "e3a023bdeb9891768474a85b5fe3788fa98b1fcd94158f03fdf6766bf5d45cf4",
+    "electron/spotify/sessionVault.cjs": "1d0d91a51830ddf2b202d49b17abe7172cb2baac25c90512b1dafb61761db9c0",
+    "electron/spotify/desktopPlaybackApi.cjs": "27f06c3fab5b08bd53ba1802e67bf9178c90323606649b0cc52dfdb60dae9336",
+    "electron/spotify/desktopPlaybackFacts.cjs": "f071325e1116c23187eb6f4f871126d2420a7267cb32089ad72fdef7df02284b"
+  },
+  "metadataDependency": {
+    "electron/spotify/officialTrackMetadata.cjs": "b3eef2625eea99ec7fa374a7bca2a874d8ef7be3d97148cd922717ad0811c37b",
+    "electron/spotify/officialTrackSnapshot.cjs": "e0966406acd478e3f9f650d3c8705ca52c06dc85f5d3ef7cdbe99f24b20064ca"
+  }
+}

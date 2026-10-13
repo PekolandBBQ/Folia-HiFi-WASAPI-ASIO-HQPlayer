@@ -167,7 +167,8 @@ const getEntrySize = (entry: StoredCacheEntry): number => {
 };
 
 const matchesCategory = (key: string, category: CacheCategory): boolean => {
-  if (category === 'playlist') return key === 'user_playlists' || key.startsWith('playlist_') || (key.startsWith('online_provider_') && key.includes('_playlist'));
+  if (category === 'playlist') return key === 'user_playlists' || key.startsWith('playlist_')
+    || (key.startsWith('online_provider_') && (key.includes('_playlist') || key.endsWith('_user_home_snapshot')));
   if (category === 'lyrics') return key.startsWith('lyric_');
   if (category === 'cover') return key.startsWith('cover_');
   // Automix's measurement of a track: tempo, bar line, silence edges, loudness. Its own category
@@ -190,6 +191,7 @@ export const getBrowserCacheUsage = async (): Promise<number> => {
 
 export const getBrowserCacheUsageByCategory = async () => {
   const usage = { playlist: 0, lyrics: 0, cover: 0, media: 0, analysis: 0, mediaCount: 0 };
+  const audioSongs = new Set<string>();
   const entries = (await Promise.all(CACHE_TABLE_NAMES.map(name => getTable(name).toArray()))).flat();
   entries.forEach(entry => {
     const size = getEntrySize(entry);
@@ -199,9 +201,10 @@ export const getBrowserCacheUsageByCategory = async () => {
     else if (matchesCategory(entry.key, 'analysis')) usage.analysis += size;
     else if (matchesCategory(entry.key, 'media')) {
       usage.media += size;
-      if (entry.key.startsWith('audio_')) usage.mediaCount += 1;
+      if (entry.key.startsWith('audio_')) audioSongs.add(entry.key.replace(/:quality:(?:standard|high|lossless|hires)$/, ''));
     }
   });
+  usage.mediaCount = audioSongs.size;
   return usage;
 };
 

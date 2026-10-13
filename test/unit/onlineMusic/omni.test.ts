@@ -55,6 +55,12 @@ afterEach(() => {
 });
 
 describe('omni routing', () => {
+    it('treats unsupported lyrics as absent without failing playback or claiming instrumental audio', async () => {
+        const getLyrics = vi.fn();
+        registerOnlineMusicProvider({ ...provider(providerId, undefined), lyrics: { getLyrics } });
+        await expect(omni.getLyrics(song(providerId))).resolves.toEqual({ lyrics: null, isPureMusic: false });
+        expect(getLyrics).not.toHaveBeenCalled();
+    });
     it('falls back from a persisted provider missing in the current build', () => {
         useOnlineProviderAccountStore.getState().setActiveProviderId('bodian');
 
@@ -240,6 +246,49 @@ describe('omni routing', () => {
             playlist,
             { providerId, id: 'cloud', name: 'Cloud', type: 'cloud' },
         ]);
+    });
+
+    it('refreshes all 1050 playlists without caching a fresh 1000-item prefix', async () => {
+        const playlists: ProviderCollection[] = Array.from({ length: 1050 }, (_, index) => ({
+            providerId, id: String(index), type: 'playlist', name: `Playlist ${index}`,
+        }));
+        const getUserPlaylists = vi.fn(async (_id, limit, offset) => ({
+            items: playlists.slice(offset, offset + limit), total: playlists.length,
+            nextOffset: Math.min(offset + limit, playlists.length), hasMore: offset + limit < playlists.length,
+        }));
+        registerOnlineMusicProvider({ ...provider(providerId, undefined), library: { getUserPlaylists } });
+        useOnlineProviderAccountStore.getState().updateAccount(providerId, { user: { id: 'user', nickname: 'User' }, collections: [] });
+
+        await expect(omni.refreshProviderPlaylists(providerId)).resolves.toHaveLength(1050);
+        expect(getUserPlaylists).toHaveBeenLastCalledWith('user', 50, 1000);
+        expect(useOnlineProviderAccountStore.getState().accounts[providerId]).toMatchObject({ freshness: 'fresh' });
+        expect(useOnlineProviderAccountStore.getState().accounts[providerId]?.collections).toHaveLength(1050);
+    });
+
+    it('replaces an incoming real liked playlist without duplicating its preserved library entry', async () => {
+        const liked: ProviderCollection = { providerId, id: 'liked', type: 'playlist', name: 'Liked', isLiked: true, trackCount: 1 };
+        const updated = { ...liked, trackCount: 2 };
+        registerOnlineMusicProvider({ ...provider(providerId, undefined), library: {
+            getUserPlaylists: async () => ({ items: [updated], nextOffset: 1, hasMore: false }),
+        } });
+        useOnlineProviderAccountStore.getState().updateAccount(providerId, {
+            user: { id: 'user', nickname: 'User' }, collections: [liked],
+        });
+        await omni.refreshProviderPlaylists(providerId);
+        expect(useOnlineProviderAccountStore.getState().accounts[providerId].collections).toEqual([updated]);
+    });
+
+    it('keeps the previous library when a continuation stops advancing', async () => {
+        const previous: ProviderCollection = { providerId, id: 'previous', type: 'playlist', name: 'Previous' };
+        registerOnlineMusicProvider({ ...provider(providerId, undefined), library: {
+            getUserPlaylists: async () => ({ items: [], nextOffset: 0, hasMore: true }),
+        } });
+        useOnlineProviderAccountStore.getState().updateAccount(providerId, { user: { id: 'user', nickname: 'User' }, collections: [previous] });
+        vi.mocked(saveProviderAccountSnapshot).mockClear();
+
+        await expect(omni.refreshProviderPlaylists(providerId)).rejects.toThrow();
+        expect(saveProviderAccountSnapshot).not.toHaveBeenCalled();
+        expect(useOnlineProviderAccountStore.getState().accounts[providerId]).toMatchObject({ freshness: 'error', collections: [previous] });
     });
 
     it('toggles a song through its owning provider and updates only that provider cache', async () => {

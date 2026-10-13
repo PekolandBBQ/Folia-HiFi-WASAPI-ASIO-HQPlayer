@@ -2,11 +2,17 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Dispatch, MutableRefObject, RefObject, SetStateAction } from 'react';
 import type { MotionValue } from 'framer-motion';
 import { restorePlaybackSourceForSong } from '../components/app/playback/restorePlaybackSource';
+import { isSessionBoundAudio } from '../services/onlineMusic/audioPolicy';
+import { markPassivePlaybackSource } from '../services/playbackSourceIntent';
+import { preparePlaybackSourceCommit } from '../services/playbackSourceCommit';
+import { createOnlinePlaybackFailureStatus, isOnlinePlaybackCancellation } from '../components/app/playback/onlinePlaybackFailure';
+import i18n from '../i18n/config';
+import { cancelPlaybackSourceRequest, playbackSourceRequestRevision } from '../services/playbackSourceRequest';
 import { PlayerState } from '../types';
 import type { LyricData, SongResult, StageSource, StageStatus, StatusMessage } from '../types';
 import type { AudioQualityPreference, MediaId } from '../types/onlineMusic';
 import type { ThemeCacheSongKey } from '../services/themeCache';
-import { isStagePlaybackSong } from '../utils/appPlaybackGuards';
+import { isSamePlaybackSong, isStagePlaybackSong } from '../utils/appPlaybackGuards';
 import type {
     PlaybackSnapshot,
     StageLyricsClockState,
@@ -37,7 +43,7 @@ const withUntransformedLyrics = <Snapshot extends PlaybackSnapshot | null>(snaps
 };
 
 type SetState<T> = Dispatch<SetStateAction<T>>;
-export type WindowPlaybackHandoffRestoreStatus = 'checking' | 'none' | 'restored';
+export type WindowPlaybackHandoffRestoreStatus = 'checking' | 'none' | 'restored' | 'superseded';
 
 type UseElectronWindowPlaybackHandoffParams = {
 
@@ -154,7 +160,7 @@ export function useElectronWindowPlaybackHandoff({
     const consumeHandoffPromiseRef = useRef<Promise<WindowPlaybackHandoff | null> | null>(null);
     const hasCompletedRestoreCheckRef = useRef(false);
     const isRestoringHandoffRef = useRef(false);
-    const restoreWindowPlaybackHandoffRef = useRef<((handoff: WindowPlaybackHandoff) => Promise<boolean>) | null>(null);
+    const restoreWindowPlaybackHandoffRef = useRef<((handoff: WindowPlaybackHandoff, signal?: AbortSignal) => Promise<boolean>) | null>(null);
 
     const captureWindowPlaybackHandoff = useCallback((): WindowPlaybackHandoff => {
         const activePlayback = withUntransformedLyrics(buildPlaybackSnapshot({
@@ -230,7 +236,11 @@ export function useElectronWindowPlaybackHandoff({
         transparentPlayerBackground,
     ]);
 
-    const restoreMainPlaybackSnapshot = useCallback(async (snapshot: PlaybackSnapshot | null) => {
+    const restoreMainPlaybackSnapshot = useCallback(async (snapshot: PlaybackSnapshot | null, signal?: AbortSignal) => {
+        if (signal?.aborted) return;
+        // Old cancellation must settle before the replacement snapshot arms autoplay.
+        cancelPlaybackSourceRequest();
+        const sourceRevision = playbackSourceRequestRevision();
         mainPlaybackSnapshotRef.current = snapshot;
         if (!snapshot?.currentSong) {
             pendingResumeTimeRef.current = null;
@@ -269,13 +279,28 @@ export function useElectronWindowPlaybackHandoff({
         setDuration(snapshot.duration);
 
         if (isStagePlaybackSong(snapshot.currentSong)) {
-            if (snapshot.audioSrc && !snapshot.audioSrc.startsWith('blob:')) {
-                setAudioSrc(snapshot.audioSrc);
+            const source = snapshot.audioSrc;
+            const isCurrent = () => !signal?.aborted
+                && playbackSourceRequestRevision() === sourceRevision
+                && isSamePlaybackSong(usePlaybackStore.getState().currentSong, snapshot.currentSong);
+            if (source && !source.startsWith('blob:') && isCurrent()) {
+                try {
+                    if (snapshot.playerState === PlayerState.PLAYING) {
+                        await preparePlaybackSourceCommit(snapshot.currentSong, { signal, isCurrent, source });
+                    } else markPassivePlaybackSource(source);
+                    if (isCurrent()) setAudioSrc(source);
+                } catch (error) {
+                    if (isCurrent() && !isOnlinePlaybackCancellation(error)) {
+                        shouldAutoPlayRef.current = false;
+                        setPlayerState(PlayerState.PAUSED);
+                        setStatusMsg(createOnlinePlaybackFailureStatus(error, i18n.t));
+                    }
+                }
             }
             return;
         }
 
-        const restored = await restorePlaybackSourceForSong(snapshot.currentSong, {
+        await restorePlaybackSourceForSong(snapshot.currentSong, {
             audioQuality,
             userId,
             blobUrlRef,
@@ -285,14 +310,21 @@ export function useElectronWindowPlaybackHandoff({
             restoreCachedThemeForSong,
             persistLastPlaybackCache,
             queue: restoredQueue,
+            allowSessionBoundPlayback: snapshot.playerState === PlayerState.PLAYING,
+            activatePlayback: snapshot.playerState === PlayerState.PLAYING,
+            signal,
+            isCurrent: () => !signal?.aborted
+                && !!snapshot.currentSong
+                && (isSessionBoundAudio(snapshot.currentSong) || playbackSourceRequestRevision() === sourceRevision)
+                && isSamePlaybackSong(usePlaybackStore.getState().currentSong, snapshot.currentSong),
+            onCancel: () => { shouldAutoPlayRef.current = false; },
         }).catch((error) => {
             console.warn('[Electron] Failed to restore window playback handoff source', error);
             return false;
         });
 
-        if (!restored && snapshot.audioSrc && !snapshot.audioSrc.startsWith('blob:')) {
-            setAudioSrc(snapshot.audioSrc);
-        }
+        // A failed restore has no verified source. Reusing the snapshot URL here
+        // would bypass its cancellation, provider-release and passive-load guards.
     }, [
         audioQuality,
         blobUrlRef,
@@ -318,8 +350,8 @@ export function useElectronWindowPlaybackHandoff({
         userId,
     ]);
 
-    const restoreWindowPlaybackHandoff = useCallback(async (handoff: WindowPlaybackHandoff) => {
-        if (!handoff || handoff.version !== 1) {
+    const restoreWindowPlaybackHandoff = useCallback(async (handoff: WindowPlaybackHandoff, signal?: AbortSignal) => {
+        if (signal?.aborted || !handoff || handoff.version !== 1) {
             return false;
         }
 
@@ -336,7 +368,7 @@ export function useElectronWindowPlaybackHandoff({
         }
 
         setActivePlaybackContext('main');
-        await restoreMainPlaybackSnapshot(handoff.mainPlayback ?? handoff.activePlayback);
+        await restoreMainPlaybackSnapshot(handoff.mainPlayback ?? handoff.activePlayback, signal);
         return true;
     }, [
         mainPlaybackSnapshotRef,
@@ -383,6 +415,8 @@ export function useElectronWindowPlaybackHandoff({
         }
 
         isRestoringHandoffRef.current = true;
+        const lifetime = new AbortController();
+        const sourceRevision = playbackSourceRequestRevision();
 
         if (!consumeHandoffPromiseRef.current) {
             consumeHandoffPromiseRef.current = window.electron.consumeWindowPlaybackHandoff();
@@ -391,6 +425,15 @@ export function useElectronWindowPlaybackHandoff({
         const consumeHandoff = async () => {
             try {
                 const handoff = await consumeHandoffPromiseRef.current;
+                if (lifetime.signal.aborted) return;
+                if (playbackSourceRequestRevision() !== sourceRevision) {
+                    // A newer Play/Pause owns the window, including before it has a source.
+                    // Do not fall back to startup restoration and overwrite that intent.
+                    hasCompletedRestoreCheckRef.current = true;
+                    isRestoringHandoffRef.current = false;
+                    setRestoreStatus('superseded');
+                    return;
+                }
 
                 if (!handoff) {
                     hasCompletedRestoreCheckRef.current = true;
@@ -399,11 +442,13 @@ export function useElectronWindowPlaybackHandoff({
                     return;
                 }
 
-                const restored = await restoreWindowPlaybackHandoffRef.current?.(handoff) ?? false;
+                const restored = await restoreWindowPlaybackHandoffRef.current?.(handoff, lifetime.signal) ?? false;
+                if (lifetime.signal.aborted) return;
                 hasCompletedRestoreCheckRef.current = true;
                 isRestoringHandoffRef.current = false;
                 setRestoreStatus(restored ? 'restored' : 'none');
             } catch (error) {
+                if (lifetime.signal.aborted) return;
                 console.warn('[Electron] Failed to consume window playback handoff', error);
                 hasCompletedRestoreCheckRef.current = true;
                 isRestoringHandoffRef.current = false;
@@ -412,6 +457,7 @@ export function useElectronWindowPlaybackHandoff({
         };
 
         void consumeHandoff();
+        return () => { lifetime.abort(); isRestoringHandoffRef.current = false; };
     }, [isElectronWindow]);
 
     // Stable identity: both are invoked from events, and their churn reached buildPlayerPanelModel.

@@ -1,9 +1,11 @@
 import type { SongResult } from '../../types';
 import { getPlaybackSongKey, getPlaybackSourceRef } from '../../utils/appPlaybackGuards';
 import { saveAudioBlob } from '../audioCache';
+import { isSessionBoundAudio } from '../onlineMusic/audioPolicy';
+import { getAudioSourceQuality } from '../onlineMusic/audioSourceQuality';
 import { getFromCache, saveToCache } from '../db';
 import { getCachedSongAudioBlob } from '../onlineMusic/resourceCache';
-import { getSongResourceCacheKey } from '../onlineMusic/resourceKeys';
+import { getSongResourceCacheKey, getSongAudioCacheKey } from '../onlineMusic/resourceKeys';
 import { getPlaybackAnalysisKey, getPlaybackRepresentation } from '../playbackRecovery/representationRegistry';
 import { analyseTrackOffThread, melSpectrogramOffThread } from './analysisOffThread';
 import { analyseBeatGrid, canRunBeatThis } from './beatThis';
@@ -227,7 +229,8 @@ const readBytes = async (
             return { skipped: 'the playback representation could not be read' };
         }
     }
-    const cached = await getCachedSongAudioBlob(song);
+    const quality = audioUrl ? getAudioSourceQuality(song, audioUrl) : undefined;
+    const cached = await getCachedSongAudioBlob(song, quality);
     if (cached) return { bytes: await cached.arrayBuffer(), partial: false };
 
     if (!audioUrl) return { skipped: 'not cached yet and no URL to read it from' };
@@ -247,10 +250,10 @@ const readBytes = async (
         }
 
         const blob = await (await fetch(audioUrl)).blob();
-        if (!isLocal) {
+        if (!isLocal && !isSessionBoundAudio(song)) {
             // The same write the audio bridge would have done after playback. Fetching once and
             // feeding both is the whole reason a full read is allowed here at all.
-            await saveAudioBlob(getSongResourceCacheKey('audio', song), blob);
+            await saveAudioBlob(getSongAudioCacheKey(song, quality), blob);
         }
         return { bytes: await blob.arrayBuffer(), partial: false };
     } catch (error) {

@@ -1,0 +1,11 @@
+# Spotify HTTP header timing
+
+Adds one optional `elapsedMs` to existing `spotify.http` events on the active VB-CABLE path. The production clock is `node:perf_hooks.performance.now()`. Measurement starts at dispatch and ends when fetch returns response headers, before body drain, JSON parsing, or player-state confirmation. Authorization and cooldown waits are excluded. This is request header latency, not total preparation time.
+
+The schema permits only integers from 0 through 60000. Invalid/out-of-range elapsed fields are omitted; no value is clamped into a misleading measurement. Requests without response headers (network failure, timeout, cancelled pending request) do not manufacture an HTTP result or timing. Existing HTTP error statuses still report elapsed time and retain the same error. No new request, identity, URL, token, response body or error message is introduced. Catalog browsing and archived Soloist paths are unchanged and may continue to emit events without elapsedMs.
+
+`http-header-timing.patch` has four production-file hunks. Apply it last to the final composition; do not replace another author's entire source/API file. `candidate/` and `base/` are isolated review copies only. `manifest.json` records exact inputs and output hashes. `http-timing.test.cjs` loads isolated candidate source under production module identities without overwriting the measured application.
+
+25 focused tests pass (`http-timing.log`): schema bounds and hostile inputs; no getter invocation/private data; GET/PUT204/PUT200 header timing; auth/body exclusions; HTTP401/403/404/429/500 error preservation; no-header failure/cancellation; disabled diagnostics; actual cable metadata and warm-cache no-extra-event behavior. The production clock is replaced only inside this deterministic test loader. The already-completed full playback measurements remain separate, unchanged artifacts.
+
+Rebased onto the final overlap source/API that defer credential refresh until after exact old restoration. The same four hunks apply cleanly; 25 focused tests pass with matching controller/facts/vault dependency source in the isolated test loader. Companion dependencies are not part of this diagnostic patch.

@@ -6,7 +6,7 @@ import { canResolveSongCatalogRef } from '../../services/onlineMusic/catalogRefs
 import { resolveGridTrackAlbumTargetId } from './gridTrackNavigation';
 import { CARD_TITLE_ATTR } from './gridMorphContract';
 import {
-    formatCardDuration,
+    formatGridTrackDuration,
     PolaroidCardActions,
     PolaroidCardArtists,
     PolaroidCardCover,
@@ -223,7 +223,7 @@ export const PolaroidCard = React.memo<PolaroidCardProps>(
                                             {item.rawTrack.album?.name || ''}
                                         </span>
                                         <span className="text-[9px] opacity-55 font-mono">
-                                            {formatCardDuration(item.rawTrack.durationMs)}
+                                            {formatGridTrackDuration(item.rawTrack)}
                                         </span>
                                     </>
                                 )}
@@ -308,7 +308,7 @@ export const PolaroidCard = React.memo<PolaroidCardProps>(
                                         {item.rawTrack.album?.name || ''}
                                     </span>
                                     <span className="text-[9px] opacity-35 font-mono">
-                                        {formatCardDuration(item.rawTrack.durationMs)}
+                                        {formatGridTrackDuration(item.rawTrack)}
                                     </span>
                                 </>
                             )}

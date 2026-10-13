@@ -15,12 +15,12 @@ export type OnlineProviderPlatformState = {
     switchProvider: (providerId: OnlineProviderId) => Promise<boolean>;
     refreshProvider: (providerId: OnlineProviderId) => Promise<unknown>;
     logoutProvider: (providerId: OnlineProviderId) => Promise<void>;
-    completeLogin: (providerId: OnlineProviderId) => Promise<ProviderLoginOutcome>;
+    completeLogin: (providerId: OnlineProviderId, isCurrent?: () => boolean) => Promise<ProviderLoginOutcome>;
 };
 
 // 扫码确认之后的结果。activation-declined 是用户拒绝切过去，登录本身是成功的；
 // 只有 refresh-failed 才是「扫码确认了却没拿到登录态」。
-export type ProviderLoginOutcome = 'completed' | 'refresh-failed' | 'activation-declined';
+export type ProviderLoginOutcome = 'completed' | 'refresh-failed' | 'activation-declined' | 'cancelled';
 
 type ProviderSwitchTransaction = {
     currentProviderId: OnlineProviderId;
@@ -28,6 +28,7 @@ type ProviderSwitchTransaction = {
     prepare?: (currentProviderId: OnlineProviderId, nextProviderId: OnlineProviderId) => Promise<boolean>;
     commit: (providerId: OnlineProviderId) => void;
     refresh?: () => Promise<unknown>;
+    isCurrent?: () => boolean;
 };
 
 type ProviderLoginTransaction = {
@@ -35,6 +36,7 @@ type ProviderLoginTransaction = {
     loginProviderId: OnlineProviderId;
     refresh: () => Promise<unknown>;
     activate: () => Promise<boolean>;
+    isCurrent?: () => boolean;
 };
 
 // Refreshes the authenticated account before optionally activating its provider.
@@ -43,8 +45,10 @@ export const completeOnlineProviderLoginTransaction = async ({
     loginProviderId,
     refresh,
     activate,
+    isCurrent = () => true,
 }: ProviderLoginTransaction): Promise<ProviderLoginOutcome> => {
     const refreshed = await refresh();
+    if (!isCurrent()) return 'cancelled';
     if (refreshed === false) return 'refresh-failed';
     if (loginProviderId === currentProviderId) return 'completed';
     return await activate() ? 'completed' : 'activation-declined';
@@ -57,9 +61,12 @@ export const switchOnlineProviderTransaction = async ({
     prepare,
     commit,
     refresh,
+    isCurrent = () => true,
 }: ProviderSwitchTransaction): Promise<boolean> => {
+    if (!isCurrent()) return false;
     if (nextProviderId === currentProviderId) return true;
     if (prepare && !await prepare(currentProviderId, nextProviderId)) return false;
+    if (!isCurrent()) return false;
     omni.invalidateActiveRequests();
     commit(nextProviderId);
     await refresh?.();
@@ -106,13 +113,15 @@ export const useOnlineProviderPlatform = (
         commit: setActiveProviderId,
         refresh: refreshers[providerId],
     }), [activeProviderId, prepareSwitch, refreshers, setActiveProviderId]);
-    const completeLogin = useCallback((providerId: OnlineProviderId) => completeOnlineProviderLoginTransaction({
+    const completeLogin = useCallback((providerId: OnlineProviderId, isCurrent?: () => boolean) => completeOnlineProviderLoginTransaction({
         currentProviderId: activeProviderId,
         loginProviderId: providerId,
+        isCurrent,
         refresh: async () => await refreshers[providerId]?.(),
         activate: () => switchOnlineProviderTransaction({
             currentProviderId: activeProviderId,
             nextProviderId: providerId,
+            isCurrent,
             prepare: prepareSwitch,
             commit: setActiveProviderId,
         }),

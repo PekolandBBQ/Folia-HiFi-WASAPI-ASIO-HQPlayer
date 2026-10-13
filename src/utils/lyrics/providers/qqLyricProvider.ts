@@ -90,7 +90,8 @@ function detectIsQrc(content: string): boolean {
 /**
  * Searches songs on QQ Music.
  */
-export async function searchQQLyrics(keyword: string, page = 1, pageSize = 20): Promise<SongResult[]> {
+export async function searchQQLyrics(keyword: string, page = 1, pageSize = 20,
+  options: { throwOnError?: boolean } = {}): Promise<SongResult[]> {
   const safeKeyword = keyword.trim();
   if (!safeKeyword) return [];
 
@@ -138,10 +139,16 @@ export async function searchQQLyrics(keyword: string, page = 1, pageSize = 20): 
         },
         durationMs: (info.interval || 0) * 1000,
         qqMid: info.mid,
+        // Search also feeds playback. Keep the file identity; song MID and media MID may differ.
+        sourceRef: { kind: 'online' as const, providerId: 'qq', mediaId: String(info.mid || info.id || ''),
+          providerData: { songId: Number(info.id || 0), songMid: String(info.mid || ''),
+            mediaMid: String(info.file?.media_mid || ''), albumMid: String(albumMid || '') } },
       };
     });
   } catch (error) {
     console.error('[QQMusic] Search failed:', error);
+    // Lyric matching may fall through to another source; catalog search must expose a failed request.
+    if (options.throwOnError) throw error;
     return [];
   }
 }

@@ -94,6 +94,15 @@ describe('a window whose bytes are not cached yet', () => {
         expect(getCachedAudioBlob).toHaveBeenCalledTimes(1);
     });
 
+    it('wakes when a quality-specific encoding arrives for the waiting track', async () => {
+        const song = songNamed('quality-1');
+        setWantedStems([stemWindowKey(song, 'tail')]);
+        await ensureStems(request(song));
+        expect(getCachedAudioBlob).toHaveBeenCalledTimes(1);
+        announce(`${cacheKeyOf(song)}:quality:lossless`);
+        await vi.waitFor(() => expect(getCachedAudioBlob).toHaveBeenCalledTimes(2));
+    });
+
     it('stops waiting once the pair it belongs to is no longer the one coming', async () => {
         const song = songNamed('3');
         setWantedStems([stemWindowKey(song, 'tail')]);

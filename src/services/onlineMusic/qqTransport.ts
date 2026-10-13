@@ -8,13 +8,14 @@ export const QQ_OPERATIONS = [
     'login_channels',
     'user_detail', 'user_playlist', 'user_albums', 'user_liked_songs', 'user_playlist_detail',
     'music_play', 'song_list_detail', 'song_info',
-    'album_info', 'artist_albums', 'artist_songs',
+    'album_info', 'artist_albums', 'artist_songs', 'search_songs',
 ] as const;
 
 export type QqOperation = typeof QQ_OPERATIONS[number];
 export type QqParams = Record<string, string | number | boolean | undefined>;
 
 const ENDPOINTS: Record<QqOperation, string> = {
+    search_songs: '/user/search',
     login_qr_key: '/login/qr/key',
     login_qr_create: '/login/qr/create',
     login_qr_check: '/login/qr/check',
@@ -109,6 +110,8 @@ const tokenFromCookieString = (cookie: string): string => {
 const isSameOriginBase = (base: string): boolean => base.startsWith('/');
 
 export const hasQqSession = (): boolean => Boolean(getWebSessionCookie());
+
+export const canUseEmbeddedQqSearch = (): boolean => Boolean(getElectronQqPortReader());
 
 export const clearQqSession = (): void => removeProviderSessionValue('qq', 'cookie');
 
@@ -233,6 +236,15 @@ export const requestQq = async <T = unknown>(operation: QqOperation, params: QqP
     const response = await fetch(`${base}${endpoint.path}?${query}`, { credentials, headers });
     if (!response.ok) {
         const failure = await readJsonBody(response);
+        if (operation === 'search_songs' && failure?.code === 'QQ_SEARCH_UPSTREAM_REJECTED'
+            && Number.isSafeInteger(failure.upstreamCode)) {
+            throw new OnlineProviderError(
+                'invalid-response',
+                `QQMusicApi search_songs was rejected upstream (code ${failure.upstreamCode})`,
+                'qq',
+                failure,
+            );
+        }
         // A missing, expired, rejected, or non-persisted backend session is surfaced uniformly as 401.
         if (response.status === 401) {
             clearQqSession();

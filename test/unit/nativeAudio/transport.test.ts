@@ -59,6 +59,20 @@ describe('native transport', () => {
         expect(transport.paused).toBe(false); expect(transport.currentTime).toBeCloseTo(7, 1);
         expect(play).toHaveBeenCalledOnce(); expect(playing).toHaveBeenCalledOnce();
     });
+    it('lets an applied HQPlayer settings checkpoint replace an in-flight seek without freezing later state ticks', async () => {
+        const { transport, request, event, state, send } = fixture('hqplayer');
+        const original = request.getMockImplementation()!;
+        let cancelSeek!: (error: Error) => void;
+        request.mockImplementation(async args => args.action === 'seek'
+            ? new Promise((_resolve, reject) => { cancelSeek = reject; }) : original(args));
+        transport.setSource('blob:hqplayer'); await transport.play(); transport.currentTime = 5;
+        await vi.waitFor(() => expect(request).toHaveBeenCalledWith(expect.objectContaining({ action: 'seek', position: 5 })));
+        event({ event: 'resume', session: state().session, state: { ...state(), position: 7, playing: true } });
+        cancelSeek(Object.assign(new Error('DSP restarted the source'), { code: 'CANCELLED' })); await flush();
+        send({ position: 8, playing: true });
+        expect(transport.seeking).toBe(false); expect(transport.currentTime).toBeGreaterThanOrEqual(8);
+        expect(transport.error).toBeNull();
+    });
     it('keeps the HQPlayer clock linear between its one-second position steps', async () => {
         let now = 0;
         const clock = vi.spyOn(performance, 'now').mockImplementation(() => now);
@@ -154,6 +168,13 @@ describe('native transport', () => {
         expect(transport.paused).toBe(true);
         const paused = transport.currentTime; await flush(); expect(transport.currentTime).toBe(paused);
     });
+    it('retains the Desktop play-before-seek sequence for whole-file HQPlayer playback', async () => {
+        const { transport, request } = fixture('hqplayer');
+        transport.setSource('blob:whole-file'); await transport.resumeFrom(7, true);
+        expect(request.mock.calls.map(([args]) => args.action).filter(action => action === 'play' || action === 'seek'))
+            .toEqual(['play', 'seek']);
+        expect(transport.paused).toBe(false); expect(transport.currentTime).toBeGreaterThanOrEqual(7);
+    });
     it('does not emit pause for an already-paused load and erase the existing autoplay intent', async () => {
         const { transport } = fixture(); const paused = vi.fn(); transport.addEventListener('pause', paused);
         transport.setSource('blob:local'); transport.pause(); await flush();
@@ -206,4 +227,19 @@ describe('native transport', () => {
         event({ event: 'error', session: state().session, errorCode: 'DEVICE_UNAVAILABLE' });
         expect(transport.paused).toBe(true); expect(transport.error?.nativeCode).toBe('DEVICE_UNAVAILABLE');
     });
+});
+
+it('private native failure observations contain only the bounded code, operation and numeric reference', async () => {
+    const record = vi.fn();
+    vi.stubGlobal('window', { electron: { privatePreview: true, privateDiagnostics: { record } } });
+    try {
+        const { transport } = fixture();
+        mocks.load.mockRejectedValueOnce(Object.assign(new Error('C:\\PRIVATE_PATH?token=PRIVATE_SECRET'), { code: 'DEVICE_UNAVAILABLE' }));
+        transport.setSource('https://private.invalid/audio?token=PRIVATE_SECRET'); await flush();
+        expect(transport.error?.nativeCode).toBe('DEVICE_UNAVAILABLE');
+        expect(record).toHaveBeenCalledWith({ event: 'renderer.native-error', fields: {
+            operation: 'begin', errorCode: 'DEVICE_UNAVAILABLE', sessionRef: expect.any(Number),
+        } });
+        expect(JSON.stringify(record.mock.calls)).not.toMatch(/PRIVATE_|https:|source|deviceId/);
+    } finally { vi.unstubAllGlobals(); }
 });

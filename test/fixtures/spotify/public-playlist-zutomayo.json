@@ -1,0 +1,219 @@
+{
+  "sourceUrl": "https://open.spotify.com/embed/playlist/5ZAFjUGN7Wsip8May2qDuq",
+  "fetchedAt": "2026-10-08T03:07:00.513071+00:00",
+  "sanitization": "Only public entity identity, title, artwork, and track metadata; all other fields omitted. No explicit total was present.",
+  "nextData": {
+    "props": {
+      "pageProps": {
+        "state": {
+          "data": {
+            "entity": {
+              "id": "5ZAFjUGN7Wsip8May2qDuq",
+              "uri": "spotify:playlist:5ZAFjUGN7Wsip8May2qDuq",
+              "type": "playlist",
+              "name": "ZUTOMAYO INTENSE II \"ZA・ZOMBIE CRAB LABO\" 06.06HONG KONG",
+              "title": "ZUTOMAYO INTENSE II \"ZA・ZOMBIE CRAB LABO\" 06.06HONG KONG",
+              "subtitle": "黒那岐丸",
+              "isPlayable": true,
+              "coverArt": {
+                "sources": [
+                  {
+                    "height": null,
+                    "width": null,
+                    "url": "https://image-cdn-ak.spotifycdn.com/image/ab67706c0000da8486fe5281aedfe38313329df3"
+                  }
+                ]
+              },
+              "trackList": [
+                {
+                  "uri": "spotify:track:0m5ZpQtTjdoH4eXeygFRFZ",
+                  "title": "形",
+                  "subtitle": "ZUTOMAYO",
+                  "duration": 200100,
+                  "entityType": "track",
+                  "isPlayable": true
+                },
+                {
+                  "uri": "spotify:track:5fwdrcQy6kzrVR0JzU2pn1",
+                  "title": "勘ぐれい",
+                  "subtitle": "ZUTOMAYO",
+                  "duration": 249773,
+                  "entityType": "track",
+                  "isPlayable": true
+                },
+                {
+                  "uri": "spotify:track:7hwdt85Qp4phkWWf5Clclv",
+                  "title": "低血ボルト",
+                  "subtitle": "ZUTOMAYO",
+                  "duration": 214466,
+                  "entityType": "track",
+                  "isPlayable": true
+                },
+                {
+                  "uri": "spotify:track:1XeOqgzh2fZhmgxnmyiIJ8",
+                  "title": "残機",
+                  "subtitle": "ZUTOMAYO",
+                  "duration": 230066,
+                  "entityType": "track",
+                  "isPlayable": true
+                },
+                {
+                  "uri": "spotify:track:3fPilEQed9XCVEMHqvXsmg",
+                  "title": "シェードの埃は延長",
+                  "subtitle": "ZUTOMAYO",
+                  "duration": 232000,
+                  "entityType": "track",
+                  "isPlayable": true
+                },
+                {
+                  "uri": "spotify:track:4JIoEoe3IOylXFXuWbM3Gj",
+                  "title": "蟹しゃぶふぁんく",
+                  "subtitle": "ZUTOMAYO",
+                  "duration": 114988,
+                  "entityType": "track",
+                  "isPlayable": true
+                },
+                {
+                  "uri": "spotify:track:4M0rktmlJVIcIWUlOtPntQ",
+                  "title": "奥底に眠るルーツ",
+                  "subtitle": "ZUTOMAYO",
+                  "duration": 263840,
+                  "entityType": "track",
+                  "isPlayable": true
+                },
+                {
+                  "uri": "spotify:track:3I7nntPbM5cFnq08f9PCxM",
+                  "title": "クリームで会いにいけますか",
+                  "subtitle": "ZUTOMAYO",
+                  "duration": 234000,
+                  "entityType": "track",
+                  "isPlayable": true
+                },
+                {
+                  "uri": "spotify:track:4PGTB8V2YpxLDOrVtacgLr",
+                  "title": "彷徨い酔い温度",
+                  "subtitle": "ZUTOMAYO",
+                  "duration": 292840,
+                  "entityType": "track",
+                  "isPlayable": true
+                },
+                {
+                  "uri": "spotify:track:1BtLaNoJo4zXGaYRLjvACo",
+                  "title": "不法侵入",
+                  "subtitle": "ZUTOMAYO",
+                  "duration": 260066,
+                  "entityType": "track",
+                  "isPlayable": true
+                },
+                {
+                  "uri": "spotify:track:00ZFRM6dcLP5RAL8EBFlOh",
+                  "title": "よもすがら",
+                  "subtitle": "ZUTOMAYO",
+                  "duration": 213533,
+                  "entityType": "track",
+                  "isPlayable": true
+                },
+                {
+                  "uri": "spotify:track:2DwHI6gIvTHXNGmqDWGriw",
+                  "title": "秒針を噛む",
+                  "subtitle": "ZUTOMAYO",
+                  "duration": 259053,
+                  "entityType": "track",
+                  "isPlayable": true
+                },
+                {
+                  "uri": "spotify:track:6k90ibcH1z8Mx9684nfuLW",
+                  "title": "お勉強しといてよ",
+                  "subtitle": "ZUTOMAYO",
+                  "duration": 280720,
+                  "entityType": "track",
+                  "isPlayable": true
+                },
+                {
+                  "uri": "spotify:track:1YfXeoQ39zL9IWHOTrL8bg",
+                  "title": "海馬成長痛",
+                  "subtitle": "ZUTOMAYO",
+                  "duration": 189533,
+                  "entityType": "track",
+                  "isPlayable": true
+                },
+                {
+                  "uri": "spotify:track:07stSkmg0Aa0fh33c0JQJi",
+                  "title": "TAIDADA",
+                  "subtitle": "ZUTOMAYO",
+                  "duration": 226026,
+                  "entityType": "track",
+                  "isPlayable": true
+                },
+                {
+                  "uri": "spotify:track:45FNvj1vGpkRH8sXMb48rH",
+                  "title": "アンチモン",
+                  "subtitle": "ZUTOMAYO",
+                  "duration": 187966,
+                  "entityType": "track",
+                  "isPlayable": true
+                },
+                {
+                  "uri": "spotify:track:3FYWuYpw0KUTn1fP523jvx",
+                  "title": "またね幻",
+                  "subtitle": "ZUTOMAYO",
+                  "duration": 242453,
+                  "entityType": "track",
+                  "isPlayable": true
+                },
+                {
+                  "uri": "spotify:track:4ReCD8wyqRUxjqg6qOhC8u",
+                  "title": "マイノリティ脈絡",
+                  "subtitle": "ZUTOMAYO",
+                  "duration": 300160,
+                  "entityType": "track",
+                  "isPlayable": true
+                },
+                {
+                  "uri": "spotify:track:2VIK6jaaKghS4QPHr6sAkv",
+                  "title": "あいつら全員同窓会",
+                  "subtitle": "ZUTOMAYO",
+                  "duration": 254506,
+                  "entityType": "track",
+                  "isPlayable": true
+                },
+                {
+                  "uri": "spotify:track:0yNQwwEmuMnLz5WekZzo1j",
+                  "title": "間人間",
+                  "subtitle": "ZUTOMAYO",
+                  "duration": 244966,
+                  "entityType": "track",
+                  "isPlayable": true
+                },
+                {
+                  "uri": "spotify:track:5oACPbDeeL3fgWDyngag4p",
+                  "title": "正義",
+                  "subtitle": "ZUTOMAYO",
+                  "duration": 271000,
+                  "entityType": "track",
+                  "isPlayable": true
+                },
+                {
+                  "uri": "spotify:track:2FsxGw2SnW3Y3gCPzmdkHB",
+                  "title": "脳裏上のクラッカー",
+                  "subtitle": "ZUTOMAYO",
+                  "duration": 267466,
+                  "entityType": "track",
+                  "isPlayable": true
+                },
+                {
+                  "uri": "spotify:track:0da1IJi7awMHj2O4ZzGFWj",
+                  "title": "メディアノーチェ",
+                  "subtitle": "ZUTOMAYO",
+                  "duration": 229600,
+                  "entityType": "track",
+                  "isPlayable": true
+                }
+              ]
+            }
+          }
+        }
+      }
+    }
+  }
+}

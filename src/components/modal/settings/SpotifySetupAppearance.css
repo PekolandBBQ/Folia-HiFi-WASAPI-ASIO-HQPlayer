@@ -1,0 +1,144 @@
+/* Spotify setup uses Folia's theme palette and the player's shared glass surface.
+   These classes are confined to the wizard and its shared cable settings fields. */
+.spotify-setup-button,
+.spotify-cable-select,
+.spotify-setup-surface,
+.spotify-connection-step {
+    color: var(--text-primary, #e4e4e7);
+    background-color: color-mix(in srgb, var(--text-primary, #e4e4e7) 5%, transparent);
+    border-color: color-mix(in srgb, var(--text-primary, #e4e4e7) 20%, transparent);
+}
+
+.spotify-setup-button:not(:disabled):hover,
+.spotify-setup-close:hover {
+    background-color: color-mix(in srgb, var(--text-primary, #e4e4e7) 10%, transparent);
+}
+
+.spotify-setup-button:disabled,
+.spotify-cable-select:disabled {
+    opacity: 0.55;
+    cursor: default;
+}
+
+.spotify-setup-button:focus-visible,
+.spotify-cable-select:focus-visible,
+.spotify-setup-close:focus-visible,
+.spotify-cable-fields input:focus-visible,
+.spotify-cable-fields a:focus-visible {
+    outline: 2px solid var(--text-accent, var(--text-primary, #e4e4e7));
+    outline-offset: 3px;
+}
+
+/* Native popup rows need an opaque surface paired with their inherited text.
+   No custom :checked/:hover, disabled text, keyboard or focus behavior is added. */
+.spotify-cable-select option {
+    background-color: var(--bg-color, #09090b);
+}
+
+.spotify-cable-select option:not(:disabled) {
+    color: var(--text-primary, #e4e4e7);
+}
+
+.spotify-cable-fields input[type='checkbox'] {
+    accent-color: var(--text-accent, var(--text-primary, #e4e4e7));
+}
+
+.spotify-setup-hint,
+.spotify-setup-close,
+.spotify-connection-step {
+    color: var(--text-secondary, var(--text-primary, #e4e4e7));
+}
+
+.spotify-connection-step-current {
+    color: var(--text-primary, #e4e4e7);
+    background-color: color-mix(in srgb, var(--text-accent, var(--text-primary, #e4e4e7)) 12%, transparent);
+    border-color: color-mix(in srgb, var(--text-accent, var(--text-primary, #e4e4e7)) 45%, transparent);
+}
+
+.spotify-connection-panel [role='alert'] {
+    color: var(--text-primary, #e4e4e7);
+    background-color: color-mix(in srgb, var(--text-primary, #e4e4e7) 8%, transparent);
+    border: 1px solid color-mix(in srgb, var(--text-primary, #e4e4e7) 30%, transparent);
+    border-radius: 0.75rem;
+    padding: 0.75rem;
+}
+
+/* The wizard owns the viewport, not the transformed/blurred home grid. */
+.spotify-connection-overlay {
+    position: fixed;
+    inset: 0;
+    height: 100dvh;
+    z-index: 2200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+    box-sizing: border-box;
+    overflow: hidden;
+    isolation: isolate;
+    pointer-events: auto;
+}
+
+.spotify-connection-panel {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    max-height: calc(100vh - 32px);
+    max-height: min(calc(100dvh - 32px), 100%);
+    overflow: hidden;
+    background-color: color-mix(in srgb, var(--bg-color, #09090b) 94%, transparent);
+}
+
+.spotify-connection-header,
+.spotify-connection-footer {
+    flex: 0 0 auto;
+    padding: 20px 24px;
+}
+
+.spotify-connection-header {
+    position: relative;
+    border-bottom: 1px solid color-mix(in srgb, var(--text-primary, #e4e4e7) 12%, transparent);
+}
+
+.spotify-connection-progress {
+    margin-bottom: 16px;
+}
+
+.spotify-connection-content {
+    min-height: 0;
+    flex: 1 1 auto;
+    overflow-y: auto;
+    overflow-x: hidden;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+    padding: 20px 24px;
+}
+
+.spotify-connection-footer {
+    border-top: 1px solid color-mix(in srgb, var(--text-primary, #e4e4e7) 12%, transparent);
+}
+
+@media (max-height: 560px) {
+    .spotify-connection-header,
+    .spotify-connection-footer,
+    .spotify-connection-content { padding: 12px 20px; }
+    .spotify-connection-progress { margin-bottom: 12px; }
+
+}
+
+/* At very short supported windows, keep close/actions visible and all explanations in the body scroller. */
+@media (max-height: 360px) {
+    .spotify-connection-header,
+    .spotify-connection-footer { padding: 8px 16px; }
+    .spotify-connection-content { padding: 8px 16px; }
+    .spotify-connection-header .spotify-setup-close { top: 4px; right: 8px; }
+}
+@media (max-height: 200px) {
+    .spotify-connection-overlay { padding: 4px; }
+    .spotify-connection-panel { max-height: calc(100dvh - 8px); }
+    .spotify-connection-header,
+    .spotify-connection-footer { padding: 6px 12px; }
+    .spotify-connection-header h3 { font-size: 14px; line-height: 20px; }
+    .spotify-connection-footer .spotify-setup-button { padding-top: 4px; padding-bottom: 4px; line-height: 16px; }
+    .spotify-connection-content { padding: 0 12px; }
+}

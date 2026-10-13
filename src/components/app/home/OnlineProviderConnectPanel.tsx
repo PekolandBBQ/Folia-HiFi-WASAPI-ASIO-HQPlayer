@@ -44,7 +44,7 @@ const OnlineProviderConnectPanel = ({
           * flex-wrap 保留，窗口真的窄下去仍然照常换行。
           */}
         <div className="flex flex-wrap items-center justify-center gap-3.5 max-w-3xl w-full pt-2">
-            {providers.map(provider => {
+            {providers.filter(provider => provider.availability.reason !== 'runtime-unavailable').map(provider => {
                 const configured = provider.availability.configured;
                 const isPrimaryProvider = provider.providerId === 'netease';
                 const badge = providerBadge(provider);

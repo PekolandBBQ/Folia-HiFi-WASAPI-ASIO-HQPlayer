@@ -1,0 +1,352 @@
+{
+  "sourceDocumentation": "https://developer.spotify.com/documentation/embeds/reference/oembed",
+  "sourcePlaylistUrl": "https://open.spotify.com/playlist/5ZAFjUGN7Wsip8May2qDuq",
+  "observedDate": "2026-10-08",
+  "tracks": [
+    {
+      "requestedTrackId": "0m5ZpQtTjdoH4eXeygFRFZ",
+      "sourceUrl": "https://open.spotify.com/oembed?url=https%3A%2F%2Fopen.spotify.com%2Ftrack%2F0m5ZpQtTjdoH4eXeygFRFZ",
+      "publicFields": {
+        "provider_name": "Spotify",
+        "provider_url": "https://spotify.com",
+        "type": "rich",
+        "thumbnail_url": "https://image-cdn-fa.spotifycdn.com/image/ab67616d00001e02928b6af826fd96cb8bb49874",
+        "thumbnail_width": 300,
+        "thumbnail_height": 300,
+        "iframe_url": "https://open.spotify.com/embed/track/0m5ZpQtTjdoH4eXeygFRFZ?utm_source=oembed",
+        "title": "形"
+      },
+      "observedCloudRequestElapsedMs": 5562
+    },
+    {
+      "requestedTrackId": "5fwdrcQy6kzrVR0JzU2pn1",
+      "sourceUrl": "https://open.spotify.com/oembed?url=https%3A%2F%2Fopen.spotify.com%2Ftrack%2F5fwdrcQy6kzrVR0JzU2pn1",
+      "publicFields": {
+        "provider_name": "Spotify",
+        "provider_url": "https://spotify.com",
+        "type": "rich",
+        "thumbnail_url": "https://image-cdn-fa.spotifycdn.com/image/ab67616d00001e02bf8acf7fdb674825915b846b",
+        "thumbnail_width": 300,
+        "thumbnail_height": 300,
+        "iframe_url": "https://open.spotify.com/embed/track/5fwdrcQy6kzrVR0JzU2pn1?utm_source=oembed",
+        "title": "勘ぐれい"
+      },
+      "observedCloudRequestElapsedMs": 5598
+    },
+    {
+      "requestedTrackId": "7hwdt85Qp4phkWWf5Clclv",
+      "sourceUrl": "https://open.spotify.com/oembed?url=https%3A%2F%2Fopen.spotify.com%2Ftrack%2F7hwdt85Qp4phkWWf5Clclv",
+      "publicFields": {
+        "provider_name": "Spotify",
+        "provider_url": "https://spotify.com",
+        "type": "rich",
+        "thumbnail_url": "https://image-cdn-fa.spotifycdn.com/image/ab67616d00001e02338c12acf4301fedeb96d1d1",
+        "thumbnail_width": 300,
+        "thumbnail_height": 300,
+        "iframe_url": "https://open.spotify.com/embed/track/7hwdt85Qp4phkWWf5Clclv?utm_source=oembed",
+        "title": "低血ボルト"
+      },
+      "observedCloudRequestElapsedMs": 5886
+    },
+    {
+      "requestedTrackId": "1XeOqgzh2fZhmgxnmyiIJ8",
+      "sourceUrl": "https://open.spotify.com/oembed?url=https%3A%2F%2Fopen.spotify.com%2Ftrack%2F1XeOqgzh2fZhmgxnmyiIJ8",
+      "publicFields": {
+        "provider_name": "Spotify",
+        "provider_url": "https://spotify.com",
+        "type": "rich",
+        "thumbnail_url": "https://image-cdn-fa.spotifycdn.com/image/ab67616d00001e02cc23f581f239e59cea2afc7b",
+        "thumbnail_width": 300,
+        "thumbnail_height": 300,
+        "iframe_url": "https://open.spotify.com/embed/track/1XeOqgzh2fZhmgxnmyiIJ8?utm_source=oembed",
+        "title": "残機"
+      },
+      "observedCloudRequestElapsedMs": 5659
+    },
+    {
+      "requestedTrackId": "3fPilEQed9XCVEMHqvXsmg",
+      "sourceUrl": "https://open.spotify.com/oembed?url=https%3A%2F%2Fopen.spotify.com%2Ftrack%2F3fPilEQed9XCVEMHqvXsmg",
+      "publicFields": {
+        "provider_name": "Spotify",
+        "provider_url": "https://spotify.com",
+        "type": "rich",
+        "thumbnail_url": "https://image-cdn-fa.spotifycdn.com/image/ab67616d00001e02f19c840ea5e92d95ac361d41",
+        "thumbnail_width": 300,
+        "thumbnail_height": 300,
+        "iframe_url": "https://open.spotify.com/embed/track/3fPilEQed9XCVEMHqvXsmg?utm_source=oembed",
+        "title": "シェードの埃は延長"
+      },
+      "observedCloudRequestElapsedMs": 4041
+    },
+    {
+      "requestedTrackId": "4JIoEoe3IOylXFXuWbM3Gj",
+      "sourceUrl": "https://open.spotify.com/oembed?url=https%3A%2F%2Fopen.spotify.com%2Ftrack%2F4JIoEoe3IOylXFXuWbM3Gj",
+      "publicFields": {
+        "provider_name": "Spotify",
+        "provider_url": "https://spotify.com",
+        "type": "rich",
+        "thumbnail_url": "https://image-cdn-ak.spotifycdn.com/image/ab67616d00001e02eaf6bafdfa2f04bb67b3e8da",
+        "thumbnail_width": 300,
+        "thumbnail_height": 300,
+        "iframe_url": "https://open.spotify.com/embed/track/4JIoEoe3IOylXFXuWbM3Gj?utm_source=oembed",
+        "title": "蟹しゃぶふぁんく"
+      },
+      "observedCloudRequestElapsedMs": 4128
+    },
+    {
+      "requestedTrackId": "4M0rktmlJVIcIWUlOtPntQ",
+      "sourceUrl": "https://open.spotify.com/oembed?url=https%3A%2F%2Fopen.spotify.com%2Ftrack%2F4M0rktmlJVIcIWUlOtPntQ",
+      "publicFields": {
+        "provider_name": "Spotify",
+        "provider_url": "https://spotify.com",
+        "type": "rich",
+        "thumbnail_url": "https://image-cdn-fa.spotifycdn.com/image/ab67616d00001e0245e670c7e25b4d0c1891d283",
+        "thumbnail_width": 300,
+        "thumbnail_height": 300,
+        "iframe_url": "https://open.spotify.com/embed/track/4M0rktmlJVIcIWUlOtPntQ?utm_source=oembed",
+        "title": "奥底に眠るルーツ"
+      },
+      "observedCloudRequestElapsedMs": 3955
+    },
+    {
+      "requestedTrackId": "3I7nntPbM5cFnq08f9PCxM",
+      "sourceUrl": "https://open.spotify.com/oembed?url=https%3A%2F%2Fopen.spotify.com%2Ftrack%2F3I7nntPbM5cFnq08f9PCxM",
+      "publicFields": {
+        "provider_name": "Spotify",
+        "provider_url": "https://spotify.com",
+        "type": "rich",
+        "thumbnail_url": "https://image-cdn-fa.spotifycdn.com/image/ab67616d00001e0202c78d9ba39511af73f92e17",
+        "thumbnail_width": 300,
+        "thumbnail_height": 300,
+        "iframe_url": "https://open.spotify.com/embed/track/3I7nntPbM5cFnq08f9PCxM?utm_source=oembed",
+        "title": "クリームで会いにいけますか"
+      },
+      "observedCloudRequestElapsedMs": 3736
+    },
+    {
+      "requestedTrackId": "4PGTB8V2YpxLDOrVtacgLr",
+      "sourceUrl": "https://open.spotify.com/oembed?url=https%3A%2F%2Fopen.spotify.com%2Ftrack%2F4PGTB8V2YpxLDOrVtacgLr",
+      "publicFields": {
+        "provider_name": "Spotify",
+        "provider_url": "https://spotify.com",
+        "type": "rich",
+        "thumbnail_url": "https://image-cdn-fa.spotifycdn.com/image/ab67616d00001e023366e2e8c1bc35c76267b5c8",
+        "thumbnail_width": 300,
+        "thumbnail_height": 300,
+        "iframe_url": "https://open.spotify.com/embed/track/4PGTB8V2YpxLDOrVtacgLr?utm_source=oembed",
+        "title": "彷徨い酔い温度"
+      },
+      "observedCloudRequestElapsedMs": 3296
+    },
+    {
+      "requestedTrackId": "1BtLaNoJo4zXGaYRLjvACo",
+      "sourceUrl": "https://open.spotify.com/oembed?url=https%3A%2F%2Fopen.spotify.com%2Ftrack%2F1BtLaNoJo4zXGaYRLjvACo",
+      "publicFields": {
+        "provider_name": "Spotify",
+        "provider_url": "https://spotify.com",
+        "type": "rich",
+        "thumbnail_url": "https://image-cdn-fa.spotifycdn.com/image/ab67616d00001e02ede04ec21adab89bf47b1648",
+        "thumbnail_width": 300,
+        "thumbnail_height": 300,
+        "iframe_url": "https://open.spotify.com/embed/track/1BtLaNoJo4zXGaYRLjvACo?utm_source=oembed",
+        "title": "不法侵入"
+      },
+      "observedCloudRequestElapsedMs": 3429
+    },
+    {
+      "requestedTrackId": "00ZFRM6dcLP5RAL8EBFlOh",
+      "sourceUrl": "https://open.spotify.com/oembed?url=https%3A%2F%2Fopen.spotify.com%2Ftrack%2F00ZFRM6dcLP5RAL8EBFlOh",
+      "publicFields": {
+        "provider_name": "Spotify",
+        "provider_url": "https://spotify.com",
+        "type": "rich",
+        "thumbnail_url": "https://image-cdn-ak.spotifycdn.com/image/ab67616d00001e02eaf6bafdfa2f04bb67b3e8da",
+        "thumbnail_width": 300,
+        "thumbnail_height": 300,
+        "iframe_url": "https://open.spotify.com/embed/track/00ZFRM6dcLP5RAL8EBFlOh?utm_source=oembed",
+        "title": "よもすがら"
+      },
+      "observedCloudRequestElapsedMs": 3390
+    },
+    {
+      "requestedTrackId": "2DwHI6gIvTHXNGmqDWGriw",
+      "sourceUrl": "https://open.spotify.com/oembed?url=https%3A%2F%2Fopen.spotify.com%2Ftrack%2F2DwHI6gIvTHXNGmqDWGriw",
+      "publicFields": {
+        "provider_name": "Spotify",
+        "provider_url": "https://spotify.com",
+        "type": "rich",
+        "thumbnail_url": "https://image-cdn-fa.spotifycdn.com/image/ab67616d00001e02a54b3641379ac0586197c498",
+        "thumbnail_width": 300,
+        "thumbnail_height": 300,
+        "iframe_url": "https://open.spotify.com/embed/track/2DwHI6gIvTHXNGmqDWGriw?utm_source=oembed",
+        "title": "秒針を噛む"
+      },
+      "observedCloudRequestElapsedMs": 3171
+    },
+    {
+      "requestedTrackId": "6k90ibcH1z8Mx9684nfuLW",
+      "sourceUrl": "https://open.spotify.com/oembed?url=https%3A%2F%2Fopen.spotify.com%2Ftrack%2F6k90ibcH1z8Mx9684nfuLW",
+      "publicFields": {
+        "provider_name": "Spotify",
+        "provider_url": "https://spotify.com",
+        "type": "rich",
+        "thumbnail_url": "https://image-cdn-fa.spotifycdn.com/image/ab67616d00001e02217c565f5a8aecb74b5035f9",
+        "thumbnail_width": 300,
+        "thumbnail_height": 300,
+        "iframe_url": "https://open.spotify.com/embed/track/6k90ibcH1z8Mx9684nfuLW?utm_source=oembed",
+        "title": "お勉強しといてよ"
+      },
+      "observedCloudRequestElapsedMs": 3609
+    },
+    {
+      "requestedTrackId": "1YfXeoQ39zL9IWHOTrL8bg",
+      "sourceUrl": "https://open.spotify.com/oembed?url=https%3A%2F%2Fopen.spotify.com%2Ftrack%2F1YfXeoQ39zL9IWHOTrL8bg",
+      "publicFields": {
+        "provider_name": "Spotify",
+        "provider_url": "https://spotify.com",
+        "type": "rich",
+        "thumbnail_url": "https://image-cdn-fa.spotifycdn.com/image/ab67616d00001e029a840c78ba075f7d36ed1ed5",
+        "thumbnail_width": 300,
+        "thumbnail_height": 300,
+        "iframe_url": "https://open.spotify.com/embed/track/1YfXeoQ39zL9IWHOTrL8bg?utm_source=oembed",
+        "title": "海馬成長痛"
+      },
+      "observedCloudRequestElapsedMs": 3601
+    },
+    {
+      "requestedTrackId": "07stSkmg0Aa0fh33c0JQJi",
+      "sourceUrl": "https://open.spotify.com/oembed?url=https%3A%2F%2Fopen.spotify.com%2Ftrack%2F07stSkmg0Aa0fh33c0JQJi",
+      "publicFields": {
+        "provider_name": "Spotify",
+        "provider_url": "https://spotify.com",
+        "type": "rich",
+        "thumbnail_url": "https://image-cdn-ak.spotifycdn.com/image/ab67616d00001e0239840417e3c8610b7b8aed44",
+        "thumbnail_width": 300,
+        "thumbnail_height": 300,
+        "iframe_url": "https://open.spotify.com/embed/track/07stSkmg0Aa0fh33c0JQJi?utm_source=oembed",
+        "title": "TAIDADA"
+      },
+      "observedCloudRequestElapsedMs": 3538
+    },
+    {
+      "requestedTrackId": "45FNvj1vGpkRH8sXMb48rH",
+      "sourceUrl": "https://open.spotify.com/oembed?url=https%3A%2F%2Fopen.spotify.com%2Ftrack%2F45FNvj1vGpkRH8sXMb48rH",
+      "publicFields": {
+        "provider_name": "Spotify",
+        "provider_url": "https://spotify.com",
+        "type": "rich",
+        "thumbnail_url": "https://image-cdn-ak.spotifycdn.com/image/ab67616d00001e02eaf6bafdfa2f04bb67b3e8da",
+        "thumbnail_width": 300,
+        "thumbnail_height": 300,
+        "iframe_url": "https://open.spotify.com/embed/track/45FNvj1vGpkRH8sXMb48rH?utm_source=oembed",
+        "title": "アンチモン"
+      },
+      "observedCloudRequestElapsedMs": 3474
+    },
+    {
+      "requestedTrackId": "3FYWuYpw0KUTn1fP523jvx",
+      "sourceUrl": "https://open.spotify.com/oembed?url=https%3A%2F%2Fopen.spotify.com%2Ftrack%2F3FYWuYpw0KUTn1fP523jvx",
+      "publicFields": {
+        "provider_name": "Spotify",
+        "provider_url": "https://spotify.com",
+        "type": "rich",
+        "thumbnail_url": "https://image-cdn-ak.spotifycdn.com/image/ab67616d00001e023366e2e8c1bc35c76267b5c8",
+        "thumbnail_width": 300,
+        "thumbnail_height": 300,
+        "iframe_url": "https://open.spotify.com/embed/track/3FYWuYpw0KUTn1fP523jvx?utm_source=oembed",
+        "title": "またね幻"
+      },
+      "observedCloudRequestElapsedMs": 4638
+    },
+    {
+      "requestedTrackId": "4ReCD8wyqRUxjqg6qOhC8u",
+      "sourceUrl": "https://open.spotify.com/oembed?url=https%3A%2F%2Fopen.spotify.com%2Ftrack%2F4ReCD8wyqRUxjqg6qOhC8u",
+      "publicFields": {
+        "provider_name": "Spotify",
+        "provider_url": "https://spotify.com",
+        "type": "rich",
+        "thumbnail_url": "https://image-cdn-ak.spotifycdn.com/image/ab67616d00001e023366e2e8c1bc35c76267b5c8",
+        "thumbnail_width": 300,
+        "thumbnail_height": 300,
+        "iframe_url": "https://open.spotify.com/embed/track/4ReCD8wyqRUxjqg6qOhC8u?utm_source=oembed",
+        "title": "マイノリティ脈絡"
+      },
+      "observedCloudRequestElapsedMs": 4457
+    },
+    {
+      "requestedTrackId": "2VIK6jaaKghS4QPHr6sAkv",
+      "sourceUrl": "https://open.spotify.com/oembed?url=https%3A%2F%2Fopen.spotify.com%2Ftrack%2F2VIK6jaaKghS4QPHr6sAkv",
+      "publicFields": {
+        "provider_name": "Spotify",
+        "provider_url": "https://spotify.com",
+        "type": "rich",
+        "thumbnail_url": "https://image-cdn-fa.spotifycdn.com/image/ab67616d00001e02f2358d74de95c2de78d9a7d4",
+        "thumbnail_width": 300,
+        "thumbnail_height": 300,
+        "iframe_url": "https://open.spotify.com/embed/track/2VIK6jaaKghS4QPHr6sAkv?utm_source=oembed",
+        "title": "あいつら全員同窓会"
+      },
+      "observedCloudRequestElapsedMs": 4679
+    },
+    {
+      "requestedTrackId": "0yNQwwEmuMnLz5WekZzo1j",
+      "sourceUrl": "https://open.spotify.com/oembed?url=https%3A%2F%2Fopen.spotify.com%2Ftrack%2F0yNQwwEmuMnLz5WekZzo1j",
+      "publicFields": {
+        "provider_name": "Spotify",
+        "provider_url": "https://spotify.com",
+        "type": "rich",
+        "thumbnail_url": "https://image-cdn-fa.spotifycdn.com/image/ab67616d00001e02eaf6bafdfa2f04bb67b3e8da",
+        "thumbnail_width": 300,
+        "thumbnail_height": 300,
+        "iframe_url": "https://open.spotify.com/embed/track/0yNQwwEmuMnLz5WekZzo1j?utm_source=oembed",
+        "title": "間人間"
+      },
+      "observedCloudRequestElapsedMs": 4812
+    },
+    {
+      "requestedTrackId": "5oACPbDeeL3fgWDyngag4p",
+      "sourceUrl": "https://open.spotify.com/oembed?url=https%3A%2F%2Fopen.spotify.com%2Ftrack%2F5oACPbDeeL3fgWDyngag4p",
+      "publicFields": {
+        "provider_name": "Spotify",
+        "provider_url": "https://spotify.com",
+        "type": "rich",
+        "thumbnail_url": "https://image-cdn-fa.spotifycdn.com/image/ab67616d00001e02bb4cdf9c71eb7ec2ef8806e3",
+        "thumbnail_width": 300,
+        "thumbnail_height": 300,
+        "iframe_url": "https://open.spotify.com/embed/track/5oACPbDeeL3fgWDyngag4p?utm_source=oembed",
+        "title": "正義"
+      },
+      "observedCloudRequestElapsedMs": 3488
+    },
+    {
+      "requestedTrackId": "2FsxGw2SnW3Y3gCPzmdkHB",
+      "sourceUrl": "https://open.spotify.com/oembed?url=https%3A%2F%2Fopen.spotify.com%2Ftrack%2F2FsxGw2SnW3Y3gCPzmdkHB",
+      "publicFields": {
+        "provider_name": "Spotify",
+        "provider_url": "https://spotify.com",
+        "type": "rich",
+        "thumbnail_url": "https://image-cdn-fa.spotifycdn.com/image/ab67616d00001e02d08b659bf91e13b638305b07",
+        "thumbnail_width": 300,
+        "thumbnail_height": 300,
+        "iframe_url": "https://open.spotify.com/embed/track/2FsxGw2SnW3Y3gCPzmdkHB?utm_source=oembed",
+        "title": "脳裏上のクラッカー"
+      },
+      "observedCloudRequestElapsedMs": 3123
+    },
+    {
+      "requestedTrackId": "0da1IJi7awMHj2O4ZzGFWj",
+      "sourceUrl": "https://open.spotify.com/oembed?url=https%3A%2F%2Fopen.spotify.com%2Ftrack%2F0da1IJi7awMHj2O4ZzGFWj",
+      "publicFields": {
+        "provider_name": "Spotify",
+        "provider_url": "https://spotify.com",
+        "type": "rich",
+        "thumbnail_url": "https://image-cdn-ak.spotifycdn.com/image/ab67616d00001e02f981f950fe16a050d5829e5b",
+        "thumbnail_width": 300,
+        "thumbnail_height": 300,
+        "iframe_url": "https://open.spotify.com/embed/track/0da1IJi7awMHj2O4ZzGFWj?utm_source=oembed",
+        "title": "メディアノーチェ"
+      },
+      "observedCloudRequestElapsedMs": 3231
+    }
+  ]
+}

@@ -1,6 +1,40 @@
 const { contextBridge, ipcRenderer, webUtils } = require('electron');
 
 contextBridge.exposeInMainWorld('electron', {
+    // Only the dedicated private entry supplies this exact flag to the main frame.
+    // Every request is independently checked against the local renderer origin in the main process.
+    ...(process.isMainFrame === true && process.argv.includes('--folia-private-diagnostics') ? {
+      privatePreview: true,
+      privateDiagnostics: {
+        status: () => ipcRenderer.invoke('private-preview-diagnostics:request', { action: 'status' }),
+        armPauseResponseInspection: () => ipcRenderer.invoke('private-preview-diagnostics:request', { action: 'armPauseResponseInspection' }),
+        openFolder: () => ipcRenderer.invoke('private-preview-diagnostics:request', { action: 'openFolder' }),
+        export: () => ipcRenderer.invoke('private-preview-diagnostics:request', { action: 'export' }),
+        record: record => {
+          void ipcRenderer.invoke('private-preview-diagnostics:request', {
+            action: 'record', event: record?.event, fields: record?.fields,
+          }).catch(() => {});
+        },
+      },
+    } : {}),
+    ...(process.argv.includes('--folia-spotify-preview') ? { spotify: {
+      request: input => ipcRenderer.invoke('spotify:request', input),
+      browserPcm: input => ipcRenderer.invoke('spotify:browser-pcm', input),
+      onSetupRequired: listener => {
+        const handler=()=>listener(); ipcRenderer.on('spotify:setup-required',handler);
+        return ()=>ipcRenderer.removeListener('spotify:setup-required',handler);
+      },
+      onExternalSelection: listener => {
+        const handler=(_event,value)=>listener(value);
+        ipcRenderer.on('spotify:external-selection',handler);
+        return ()=>ipcRenderer.removeListener('spotify:external-selection',handler);
+      },
+      onProgress: listener => {
+        const handler = (_event, value) => listener(value);
+        ipcRenderer.on('spotify:progress', handler);
+        return () => ipcRenderer.removeListener('spotify:progress', handler);
+      },
+    } } : {}),
     nativeAudio: {
       supported: process.platform === 'win32' && process.arch === 'x64',
       request: async request => {

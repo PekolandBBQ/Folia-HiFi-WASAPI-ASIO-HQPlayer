@@ -15,6 +15,9 @@ import { PlayerState } from '../../src/types';
 import type { PlayerControlSlotActionId } from '../../src/components/floating-player/playerControlSlotActions';
 import { GridListSearchButton } from '../../src/components/shared/GridListSearchButton';
 import OnlineProviderSwitcher from '../../src/components/app/home/OnlineProviderSwitcher';
+import PlaybackLoadProgress from '../../src/components/audio/PlaybackLoadProgress';
+import NowPlayingToast from '../../src/components/app/overlays/NowPlayingToast';
+import { beginPlaybackLoad, updatePlaybackLoad, endPlaybackLoad } from '../../src/stores/usePlaybackLoadStore';
 import type { ProbeDefinition } from './definition';
 // dev/probes/playerBottomBar.probe.tsx
 
@@ -26,7 +29,9 @@ const currentTime = motionValue(42);
  * 2. 拖动写 MotionValue 后，胶囊是否由 bottom 真正位移且不触发 React 重渲染
  * 探针把 liveOffset 的当前值镜像到 data 属性上，好让用例断言它。
  */
-const PlayerBottomBarProbe = ({ audioDetails = false, daylight = false }: { audioDetails?: boolean; daylight?: boolean } = {}) => {
+const PlayerBottomBarProbe = ({ audioDetails = false, daylight = false, loadingAppearance = false, background }: {
+    audioDetails?: boolean; daylight?: boolean; loadingAppearance?: boolean; background?: 'light' | 'dark';
+} = {}) => {
     React.useEffect(() => {
         if (!audioDetails) return;
         useThemeSettingsStore.setState({ isDaylight: daylight });
@@ -34,6 +39,12 @@ const PlayerBottomBarProbe = ({ audioDetails = false, daylight = false }: { audi
         usePlaybackStore.setState({ audioSrc: 'probe://audio', currentSong: { id: 'probe', name: 'Probe Song', artists: [], album: { id: 'probe', name: '' }, durationMs: 200000 } });
         publishSignalPath({ session: 'drawer-probe', backend: 'hqplayer', deviceId: 'hqplayer-local', position: 42, duration: 200, playing: true, ended: false, sampleRate: 96000, channels: 2, latency: 0 });
     }, [audioDetails, daylight]);
+    React.useEffect(() => {
+        if (!loadingAppearance) return;
+        beginPlaybackLoad('appearance-probe', 'download');
+        updatePlaybackLoad('appearance-probe', { stage: 'download', loaded: 1048576, total: 4194304 });
+        return () => endPlaybackLoad('appearance-probe');
+    }, [loadingAppearance]);
     const isPositioning = usePlayerBottomBarLayoutStore(state => state.isPositioning);
     const startPositioning = usePlayerBottomBarLayoutStore(state => state.startPositioning);
     const [committedOffset, setCommittedOffset] = useState(PLAYER_BOTTOM_BAR_BASE_OFFSET_PX);
@@ -56,7 +67,8 @@ const PlayerBottomBarProbe = ({ audioDetails = false, daylight = false }: { audi
 
     return (
         <div
-            className="relative h-screen bg-zinc-900"
+            className={`relative h-screen ${(background ? background === 'light' : daylight) ? 'bg-zinc-200' : 'bg-zinc-900'}`}
+            style={audioDetails ? { '--text-primary': daylight ? '#1c1917' : '#f4f4f5', '--text-secondary': daylight ? '#44403c' : '#d4d4d8' } as React.CSSProperties : undefined}
             data-probe-positioning={isPositioning ? 'on' : 'off'}
             data-probe-offset={offsetMirror}
             data-probe-committed={committedOffset}
@@ -129,6 +141,10 @@ const PlayerBottomBarProbe = ({ audioDetails = false, daylight = false }: { audi
                 }}
                 onCommitBottomBarOffset={setCommittedOffset}
             />
+            {loadingAppearance && <>
+                <PlaybackLoadProgress />
+                <NowPlayingToast song={{ title: '正在切换的歌曲', artist: '测试歌手', coverUrl: null }} trackKey="appearance-toast" isDaylight={daylight} mode="always" />
+            </>}
 
             {/* 详情页右下操作按钮也消费同一抬升量。 */}
             <GridListSearchButton

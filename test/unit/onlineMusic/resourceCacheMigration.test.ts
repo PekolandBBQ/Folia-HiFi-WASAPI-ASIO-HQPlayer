@@ -32,7 +32,31 @@ const legacyNeteaseSong: SongResult = {
 };
 
 describe('provider-aware resource cache migration', () => {
-    beforeEach(() => vi.clearAllMocks());
+    beforeEach(() => {
+        vi.resetAllMocks();
+        vi.mocked(hasCachedAudio).mockResolvedValue(false);
+        vi.mocked(getCachedAudioBlob).mockResolvedValue(null);
+    });
+    it('lets analysis reuse a quality variant without relabelling it as generic audio', async () => {
+        const blob = new Blob(['high']);
+        const key = 'audio_online:netease:42:quality:high';
+        vi.mocked(hasCachedAudio).mockImplementation(async candidate => candidate === key);
+        vi.mocked(getCachedAudioBlob).mockImplementation(async candidate => candidate === key ? blob : null);
+        await expect(getCachedSongAudioBlob(legacyNeteaseSong)).resolves.toBe(blob);
+        await expect(hasCachedSongAudio(legacyNeteaseSong)).resolves.toBe(true);
+        expect(saveAudioBlob).not.toHaveBeenCalled();
+        await expect(getCachedSongAudioBlob(legacyNeteaseSong, 'lossless')).resolves.toBeNull();
+    });
+    it('does not reuse legacy or lower-quality bytes for an explicitly requested tier', async () => {
+        const blob = new Blob(['standard']);
+        vi.mocked(getCachedAudioBlob).mockImplementation(async key => key === 'audio_online:netease:42:quality:high' ? null : blob);
+        vi.mocked(hasCachedAudio).mockImplementation(async key => key !== 'audio_online:netease:42:quality:high');
+        await expect(getCachedSongAudioBlob(legacyNeteaseSong, 'high')).resolves.toBeNull();
+        await expect(hasCachedSongAudio(legacyNeteaseSong, 'high')).resolves.toBe(false);
+        expect(getCachedAudioBlob).toHaveBeenCalledTimes(1);
+        expect(hasCachedAudio).toHaveBeenCalledTimes(1);
+        await expect(getCachedSongAudioBlob(legacyNeteaseSong, 'standard')).resolves.toBe(blob);
+    });
 
     it('reads an old lyric key and writes the provider-aware key', async () => {
         const lyric = { lines: [{ fullText: 'legacy' }] };

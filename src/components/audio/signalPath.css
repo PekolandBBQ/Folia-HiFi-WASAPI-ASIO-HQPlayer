@@ -15,5 +15,5 @@
 
 /* The drawer moves below the capsule lip without changing lyric layout. */
 .audio-signal-drawer { transition: translate 260ms cubic-bezier(.22,1,.36,1), opacity 180ms ease; }
-.audio-signal-drawer[data-retracted="true"] { translate: 0 32px; opacity: 0; pointer-events: none; }
+.audio-signal-drawer[data-retracted="true"] { translate: -50% 32px; opacity: 0; pointer-events: none; }
 html[data-reduce-motion~="uiMicroMotion"] .audio-signal-drawer { transition-duration: 0ms; }

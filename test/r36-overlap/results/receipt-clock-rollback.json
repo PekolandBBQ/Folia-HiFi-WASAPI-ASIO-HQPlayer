@@ -1,0 +1,168 @@
+{
+  "name": "receipt-clock-rollback",
+  "passed": true,
+  "requests": [
+    {
+      "operation": "devices",
+      "method": "GET",
+      "url": "/v1/me/player/devices",
+      "at": 1791607939150,
+      "startedMs": 11696.440509,
+      "delayActualMs": 1.1228890000002139,
+      "finishedMs": 11697.658862,
+      "elapsedMs": 1.2183530000002065
+    },
+    {
+      "operation": "devices",
+      "method": "GET",
+      "url": "/v1/me/player/devices",
+      "at": 1791607939152,
+      "startedMs": 11698.812601,
+      "delayActualMs": 1.1444360000004963,
+      "finishedMs": 11700.046337,
+      "elapsedMs": 1.2337360000001354
+    },
+    {
+      "operation": "state",
+      "method": "GET",
+      "url": "/v1/me/player",
+      "at": 1791607939155,
+      "startedMs": 11701.895715,
+      "delayActualMs": 1.1077139999997598,
+      "finishedMs": 11703.107375,
+      "elapsedMs": 1.2116599999990285
+    },
+    {
+      "operation": "select",
+      "method": "PUT",
+      "url": "/v1/me/player/play?device_id=local-fake-desktop",
+      "at": 1791607939158,
+      "startedMs": 11704.548147,
+      "delayActualMs": 1.1031280000006518,
+      "finishedMs": 11705.73454,
+      "elapsedMs": 1.1863929999999527
+    },
+    {
+      "operation": "state",
+      "method": "GET",
+      "url": "/v1/me/player",
+      "at": 1791607939160,
+      "startedMs": 11706.384759,
+      "delayActualMs": 1.1117729999987205,
+      "finishedMs": 11707.594673,
+      "elapsedMs": 1.2099139999991166
+    },
+    {
+      "operation": "state",
+      "method": "GET",
+      "url": "/v1/me/player",
+      "at": 1791607939163,
+      "startedMs": 11709.614089,
+      "delayActualMs": 1.1024619999989227,
+      "finishedMs": 11710.930787,
+      "elapsedMs": 1.3166979999987234
+    },
+    {
+      "operation": "pause",
+      "method": "PUT",
+      "url": "/v1/me/player/pause?device_id=local-fake-desktop",
+      "at": 1791607939166,
+      "startedMs": 11712.880033,
+      "delayActualMs": 1.1020960000005289,
+      "finishedMs": 11714.056473,
+      "elapsedMs": 1.1764400000010937
+    },
+    {
+      "operation": "state",
+      "method": "GET",
+      "url": "/v1/me/player",
+      "at": 1791607939169,
+      "startedMs": 11715.723067,
+      "delayActualMs": 1.1104259999992792,
+      "finishedMs": 11716.939344,
+      "elapsedMs": 1.2162769999995362
+    },
+    {
+      "operation": "seek",
+      "method": "PUT",
+      "url": "/v1/me/player/seek?device_id=local-fake-desktop&position_ms=0",
+      "at": 1791607939173,
+      "startedMs": 11719.20542,
+      "delayActualMs": 1.128881000000547,
+      "finishedMs": 11720.402985,
+      "elapsedMs": 1.1975650000003952
+    },
+    {
+      "operation": "state",
+      "method": "GET",
+      "url": "/v1/me/player",
+      "at": 1791607939180,
+      "startedMs": 11726.516085,
+      "delayActualMs": 1.13553900000079,
+      "finishedMs": 11727.872104,
+      "elapsedMs": 1.3560190000007424
+    }
+  ],
+  "events": [
+    "http:devices",
+    "http:devices",
+    "http:state",
+    "http:select",
+    "http:state",
+    "http:state",
+    "http:pause",
+    "http:state",
+    "http:seek",
+    "http:state"
+  ],
+  "native": [],
+  "jsArtifacts": [
+    {
+      "file": "/workspace/scratch/d96e392874a5/folia-r36-performance/integrated/application/electron/spotify/cableAudioPreparation.cjs",
+      "bytes": 39905,
+      "sha256": "391d7ca290dae17cc38969939c1b1ac91ab83bb014f501e9e8cc933446af00a4"
+    },
+    {
+      "file": "/workspace/scratch/d96e392874a5/folia-r36-performance/integrated/application/electron/spotify/desktopPlaybackControl.cjs",
+      "bytes": 54698,
+      "sha256": "aa7fe78d5b9a8dab00ed3b4be0698fc183a8b577c09fa9988d98553a949412bc"
+    },
+    {
+      "file": "/workspace/scratch/d96e392874a5/folia-r36-performance/integrated/application/electron/spotify/ownedRouteAudio.cjs",
+      "bytes": 5546,
+      "sha256": "1a1b634ac433f9b79b71a814507000c0f5e52ecb99678c3a368f51f5af77b1bb"
+    },
+    {
+      "file": "/workspace/scratch/d96e392874a5/folia-r36-performance/integrated/application/electron/spotify/ownedRouteLifecycle.cjs",
+      "bytes": 21228,
+      "sha256": "6a705f3d2a8e5902f00ca5ffb1e40b5846e59d1ac11aaf95c22884e84dc7d214"
+    },
+    {
+      "file": "/workspace/scratch/d96e392874a5/folia-r36-performance/integrated/application/electron/spotify/ownedRouteHost.cjs",
+      "bytes": 21537,
+      "sha256": "a25d51e039533a8d48d6cea29e671f03930f04874a1ab17fe18dd6c2d29e2bac"
+    },
+    {
+      "file": "/workspace/scratch/d96e392874a5/folia-r36-performance/integrated/application/electron/spotify/ownedRouteProtocol.cjs",
+      "bytes": 12158,
+      "sha256": "1f2d358d3ee2139db4528d2e18fcdedfaebfa1f59dfd68921641f5870c0684a6"
+    }
+  ],
+  "nativeArtifacts": [
+    {
+      "file": "/workspace/scratch/d96e392874a5/folia-rebuild-r34/source-lifecycle/final-test-snapshot/native/OwnedRoute.HeldPause.Tests.dll",
+      "bytes": 49664,
+      "sha256": "f2b673ab466bdc86cf1ed75a282942a251053fef52a1f2ff21aed40289898af0"
+    },
+    {
+      "file": "/workspace/scratch/d96e392874a5/folia-rebuild-r34/source-lifecycle/final-test-snapshot/native/folia-route-service.dll",
+      "bytes": 113664,
+      "sha256": "c2f7d8774e887fcb84ded634d5fc55a720f44f311e7468208c9b49f972f5efe6"
+    },
+    {
+      "file": "/workspace/scratch/d96e392874a5/folia-rebuild-r34/source-lifecycle/final-test-snapshot/native/OwnedRoute.Core.dll",
+      "bytes": 46080,
+      "sha256": "7c6761f3f5e17ba079325bbc7a7a30b6275dee04abdc60ba7e56e9a90428bbdb"
+    }
+  ]
+}

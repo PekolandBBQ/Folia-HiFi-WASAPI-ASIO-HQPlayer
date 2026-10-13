@@ -46,6 +46,8 @@ import { createLyricsSetter } from './components/app/playback/createLyricsSetter
 import { createLyricSegmentationActions } from './components/app/playback/createLyricSegmentationActions';
 import { useLyricWordSegmentation } from './hooks/useLyricWordSegmentation';
 import { createOnlineRecoveryController } from './components/app/playback/createOnlineRecoveryController';
+import { cancelPlaybackSourceRequest } from './services/playbackSourceRequest';
+import { createOnlinePlaybackFailureStatus, isOnlinePlaybackCancellation } from './components/app/playback/onlinePlaybackFailure';
 import { persistPlaybackCache } from './components/app/playback/persistPlaybackCache';
 import { useAppOverlaysModel } from './components/app/overlays/useAppOverlaysModel';
 import { resolveNextUpTrack } from './components/app/overlays/now-playing-toast/resolveNextUpTrack';
@@ -60,7 +62,8 @@ import { Album, Artist, LyricData, Theme, PlayerState, SongResult, ReplayGainMod
 import type { LocalSong } from './types';
 import { getLocalSongArrayBuffer, getFileFromLocalSong } from './services/localMusicService';
 import PlaybackDeck from './components/app/playback/PlaybackDeck';
-import { isNativeAudioElement, reloadRecoveredNativeSource } from './services/nativeAudio/NativeAudioTransport';
+import { isNativeAudioElement } from './services/nativeAudio/NativeAudioTransport';
+import { reloadRecoveredSource } from './services/playbackRecovery/reloadRecoveredSource';
 import type { MediaId, OnlineProviderId, ProviderCollection } from './types/onlineMusic';
 import { resolveSongCatalogRef } from './services/onlineMusic/catalogRefs';
 import { omni } from './services/onlineMusic/omni';
@@ -71,6 +74,7 @@ import { useAppNavigation } from './hooks/useAppNavigation';
 import { useNeteaseLibrary } from './hooks/useNeteaseLibrary';
 import { useKugouLibrary } from './hooks/useKugouLibrary';
 import { useQqLibrary } from './hooks/useQqLibrary';
+import { useSpotifyLibrary } from './hooks/useSpotifyLibrary';
 import { useOnlineProviderPlatform } from './hooks/useOnlineProviderPlatform';
 import { useAppPreferences } from './hooks/useAppPreferences';
 import { useElectronPlaybackBridge } from './hooks/useElectronPlaybackBridge';
@@ -347,12 +351,13 @@ export default function App() {
         currentOnlineAudioUrlFetchedAtRef,
     } = usePlaybackRuntimeRefs();
     const nativeAudioBackend = useAudioSettingsStore(state => state.nativeAudioBackend);
+    const nativeAudioOutputRevision = useAudioSettingsStore(state => state.nativeAudioOutputRevision);
     const nativeAudioDeviceId = useAudioSettingsStore(state => state.nativeAudioDeviceId);
     const nativeAudioProcessingMode = useAudioSettingsStore(state => state.nativeAudioProcessingMode);
     const nativePlayback = Boolean(window.electron?.nativeAudio?.supported && nativeAudioBackend !== 'browser'
         && currentSong && !isStagePlaybackSong(currentSong));
     const handleNativeFailure = useNativeAudioRecovery(audioRef, nativePlayback);
-    useOutputPlaybackHandoff(audioRef, nativeAudioBackend, nativeAudioDeviceId, audioSrc, pendingResumeTimeRef, shouldAutoPlay);
+    const hasPendingOutputHandoff = useOutputPlaybackHandoff(audioRef, nativeAudioBackend, nativeAudioDeviceId, audioSrc, pendingResumeTimeRef, shouldAutoPlay, nativeAudioOutputRevision);
     // The automix decks are set up much further down, but a few reset paths declared above here
     // need to be able to stop a transition, and queue navigation needs the track being SHOWN. A ref
     // keeps both reachable without reordering them; it is reassigned on every render, so the
@@ -600,6 +605,8 @@ export default function App() {
         onlineAudioUrlRefreshBufferMs: ONLINE_AUDIO_URL_REFRESH_BUFFER_MS,
     }), [audioQuality, audioSrc, audioRef, blobUrlRef, currentOnlineAudioUrlFetchedAtRef, currentSong, currentSongRef, lastAudioRecoverySourceRef, onlinePlaybackRecoveryRef, pendingResumeTimeRef, persistLastPlaybackCache, playQueue, setAudioSrc, setCurrentSong, setPlayQueue, shouldAutoPlay]);
 
+    useEffect(() => () => cancelPlaybackSourceRequest(), []);
+
     const getCoverUrl = useMemo(
         () => createCoverUrlResolver(cachedCoverUrl, currentSong),
         [cachedCoverUrl, currentSong],
@@ -747,16 +754,19 @@ export default function App() {
         refresh: refreshQqLibrary,
         logout: logoutQqLibrary,
     } = useQqLibrary();
+    const { refresh: refreshSpotifyLibrary, logout: logoutSpotifyLibrary } = useSpotifyLibrary();
     const onlineProviderRefreshers = useMemo(() => ({
         netease: refreshUserData,
         kugou: refreshKugouLibrary,
         qq: refreshQqLibrary,
-    }), [refreshKugouLibrary, refreshQqLibrary, refreshUserData]);
+        spotify: refreshSpotifyLibrary,
+    }), [refreshKugouLibrary, refreshQqLibrary, refreshSpotifyLibrary, refreshUserData]);
     const onlineProviderLogouts = useMemo(() => ({
         netease: handleLogout,
         kugou: logoutKugouLibrary,
         qq: logoutQqLibrary,
-    }), [handleLogout, logoutKugouLibrary, logoutQqLibrary]);
+        spotify: logoutSpotifyLibrary,
+    }), [handleLogout, logoutKugouLibrary, logoutQqLibrary, logoutSpotifyLibrary]);
 
     const prepareOnlineProviderSwitch = useCallback((_currentProviderId: OnlineProviderId, nextProviderId: OnlineProviderId): Promise<boolean> => {
         return new Promise<boolean>((resolve) => {
@@ -2027,7 +2037,8 @@ export default function App() {
      * the live song, queue-mode and blend state.
      */
     seekDuringTransitionRef.current = (time: number) => {
-        const tailElement = cancelBlendToDisplayedTrack(true);
+        const resume = !playbackFade.isFadingOut() && usePlaybackStore.getState().playerState !== PlayerState.PAUSED;
+        const tailElement = cancelBlendToDisplayedTrack(resume);
         if (!tailElement) return false;
         const seekTarget = Math.max(0, time);
         tailElement.currentTime = seekTarget;
@@ -2054,22 +2065,12 @@ export default function App() {
         return true;
     };
     const seekMainAudio = useCallback((time: number) => {
-        // A seek is a statement that playback should go on, same as it is on a paused track. If a
-        // pause is still fading out, take it back (the audio never stopped) so the pending pause
-        // cannot land after the seek.
-        const resumedFromFade = playbackFade.cancelPendingPause();
-        if (resumedFromFade) {
-            setPlayerState(PlayerState.PLAYING);
-        }
+        // Seeking changes position without replacing the latest play/pause intent or pending pause.
         if (seekDuringTransitionRef.current(time)) {
             return;
         }
         if (audioRef.current) {
             audioRef.current.currentTime = time;
-            if (audioRef.current.paused) {
-                void audioRef.current.play();
-                setPlayerState(PlayerState.PLAYING);
-            }
             void publishStagePlayerPlaybackUpdate();
         }
     }, [publishStagePlayerPlaybackUpdate]);
@@ -2405,6 +2406,8 @@ export default function App() {
             nativeBackend={nativePlayback ? nativeAudioBackend : 'browser'}
             nativeDeviceId={nativeAudioDeviceId}
             nativeProcessingMode={nativeAudioProcessingMode}
+            outputRevision={nativeAudioOutputRevision}
+            initialPosition={automix.activeDeck === deck && hasPendingOutputHandoff() ? pendingResumeTimeRef.current ?? undefined : undefined}
             getLocalFile={async () => {
                 if (!isLocalPlaybackSong(currentSong)) return null;
                 const local = localSongs.find(song => song.id === currentSong.localRef.songId);
@@ -2566,6 +2569,10 @@ export default function App() {
                     void handleNextTrack({ allowStopOnMissing: true, shouldNavigateToPlayer: false });
                 }
             }}
+            onDurationChange={(e) => {
+                const element = e.currentTarget;
+                if (automix.isActiveDeck(element) && Number.isFinite(element.duration) && element.duration > 0) setDuration(element.duration);
+            }}
             onLoadedMetadata={(e) => {
                 const audioElement = e.currentTarget;
                 if (!automix.isActiveDeck(audioElement)) return;
@@ -2582,7 +2589,9 @@ export default function App() {
                         ? Math.max(audioElement.duration - 0.25, 0)
                         : pendingResumeTime;
                     const nextTime = Math.min(pendingResumeTime, safeDuration);
-                    audioElement.currentTime = nextTime;
+                    // Output handoff owns its one seek/play transaction. Setting native currentTime
+                    // here as well resets the PCM producer while its volume/play controls start.
+                    if (!hasPendingOutputHandoff()) audioElement.currentTime = nextTime;
                     currentTime.set(nextTime);
                     pendingResumeTimeRef.current = null;
                     return;
@@ -2662,7 +2671,7 @@ export default function App() {
                         if (!recovered) {
                             skipAfterPlaybackFailure();
                         } else if (audioRef.current === audioElement) {
-                            reloadRecoveredNativeSource(audioElement, usePlaybackStore.getState().audioSrc, () => {
+                            reloadRecoveredSource(audioElement, usePlaybackStore.getState().audioSrc, () => {
                                 // With an unchanged URL the autoplay effect does not rerun. Preserve later user pauses.
                                 if (audioRef.current !== audioElement || !shouldAutoPlay.current) return;
                                 shouldAutoPlay.current = false;
@@ -2671,7 +2680,14 @@ export default function App() {
                                 });
                             });
                         }
-                    })();
+                    })().catch(error => {
+                        if (isOnlinePlaybackCancellation(error)) return;
+                        const activeSong = usePlaybackStore.getState().currentSong;
+                        if (!activeSong || !currentSong || getPlaybackSongKey(activeSong) !== getPlaybackSongKey(currentSong)) return;
+                        shouldAutoPlay.current = false;
+                        setStatusMsg(createOnlinePlaybackFailureStatus(error, t));
+                        setPlayerState(PlayerState.PAUSED);
+                    });
                     return;
                 }
 

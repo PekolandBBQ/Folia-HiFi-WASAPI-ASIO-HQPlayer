@@ -36,3 +36,14 @@ it('ignores late progress and completion from superseded sessions', () => {
     expect(usePlaybackLoadStore.getState().progress?.stage).toBe('decode');
     endPlaybackLoad('new'); expect(usePlaybackLoadStore.getState().progress).toBeNull();
 });
+
+it('retires completed owners and rejects old operation stages for the same owner', () => {
+    beginPlaybackLoad('operation', 'source');
+    updatePlaybackLoad('operation', { stage: 'connect', preparationRevision: 3 });
+    updatePlaybackLoad('operation', { stage: 'decode', preparationRevision: 2 });
+    updatePlaybackLoad('operation', { stage: 'source' });
+    expect(usePlaybackLoadStore.getState().progress).toMatchObject({ stage: 'connect', preparationRevision: 3 });
+    endPlaybackLoad('operation');
+    updatePlaybackLoad('operation', { stage: 'buffer', preparationRevision: 3 });
+    expect(usePlaybackLoadStore.getState().progress).toBeNull();
+});

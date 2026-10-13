@@ -1,4 +1,5 @@
 import { beginPlaybackLoad, updatePlaybackLoad, endPlaybackLoad } from '../stores/usePlaybackLoadStore';
+import { isSessionBoundAudio } from './onlineMusic/audioPolicy';
 import { LyricData, OnlineLyricsState, ReplayGainInfo, SongResult } from '../types';
 import { saveToCache } from './db';
 import { PrefetchedSongData, isUrlValid, updatePrefetchedAudioUrl } from './prefetchService';
@@ -8,6 +9,7 @@ import { loadOnlineLyricsState, markOnlineLyricsPureMusic, resolveOnlineLyrics, 
 import { autoMatchBestLyric } from '../utils/lyrics/autoMatchBestLyric';
 import { createSafeObjectUrl } from '../utils/blobGuards';
 import type { AudioQualityPreference, MediaId } from '../types/onlineMusic';
+import { OnlineProviderError } from '../types/onlineMusic';
 import { omni } from './onlineMusic/omni';
 import { getSongResourceCacheKey } from './onlineMusic/resourceKeys';
 import { getCachedSongAudioBlob, getCachedSongReplayGain, getSongCacheWithLegacyMigration } from './onlineMusic/resourceCache';
@@ -15,22 +17,28 @@ import { toSafePlaybackUrl } from '../utils/appPlaybackHelpers';
 import { getProviderSongMetadata } from './onlineMusic/songMetadata';
 import { useLyricSettingsStore } from '../stores/useLyricSettingsStore';
 import { saveLyricCacheSongMetadata } from './lyricExport/lyricCacheMetadata';
+import { useAudioSettingsStore } from '../stores/useAudioSettingsStore';
+import { rememberAudioSourceQuality } from './onlineMusic/audioSourceQuality';
 
 export async function loadOnlineSongAudioSource(
     song: SongResult,
     audioQuality: AudioQualityPreference,
-    prefetched: PrefetchedSongData | null
+    prefetched: PrefetchedSongData | null,
+    signal?: AbortSignal,
 ): Promise<
     | { kind: 'ok'; audioSrc: string; blobUrl?: string; replayGain?: ReplayGainInfo }
     | { kind: 'unavailable' }
 > {
     const progressOwner = crypto.randomUUID();
+    const isSpotify = song.sourceRef?.kind === 'online' && song.sourceRef.providerId === 'spotify';
     beginPlaybackLoad(progressOwner, 'cache');
     try {
-    const cachedAudioBlob = await getCachedSongAudioBlob(song);
+    const cachedAudioBlob = await getCachedSongAudioBlob(song, audioQuality);
     if (cachedAudioBlob) {
         const blobUrl = createSafeObjectUrl(cachedAudioBlob);
         if (blobUrl) {
+            // This read accepted the exact verified tier key; cache bytes still need header inspection for format.
+            rememberAudioSourceQuality(song, { url: blobUrl, fetchedAt: Date.now(), quality: audioQuality, requestedQuality: audioQuality });
             // Nothing on this path ever asks the provider again, so the stored gain is the only
             // one a cached track can have. Without it every cached track reaches the fader at 0dB.
             let replayGain = song.replayGain ?? prefetched?.replayGain;
@@ -42,7 +50,7 @@ export async function loadOnlineSongAudioSource(
         }
     }
 
-    if (prefetched?.audioUrl && prefetched.audioUrl !== 'CACHED_IN_DB' && isUrlValid(prefetched.audioUrlFetchedAt)) {
+    if (!isSessionBoundAudio(song) && prefetched?.audioUrl && prefetched.audioUrl !== 'CACHED_IN_DB' && isUrlValid(prefetched.audioUrlFetchedAt)) {
         return {
             kind: 'ok',
             audioSrc: prefetched.audioUrl,
@@ -53,18 +61,28 @@ export async function loadOnlineSongAudioSource(
     let source = null;
     try {
         updatePlaybackLoad(progressOwner, { stage: 'source' });
-        source = await omni.getAudioSource(song, audioQuality);
+        source = await omni.getAudioSource(song, audioQuality, { signal, streaming: useAudioSettingsStore.getState().nativeAudioBackend !== 'browser', onProgress: progress => updatePlaybackLoad(progressOwner, progress) });
     } catch (error) {
+        if (signal?.aborted) throw new DOMException('Request cancelled', 'AbortError');
+        // Only an explicit track verdict may enter Spotify's unavailable/skip path.
+        // Setup, authorization and transport failures must keep their actionable category.
+        if (isSpotify && !(error instanceof OnlineProviderError && error.code === 'not-playable')) {
+            if (error instanceof DOMException && error.name === 'AbortError') throw error;
+            throw error instanceof OnlineProviderError
+                ? error
+                : new OnlineProviderError('unavailable', 'Spotify: audio-source-failed', 'spotify');
+        }
         console.warn('[OnlinePlayback] Provider audio source is temporarily unavailable', error);
         return { kind: 'unavailable' };
     }
     const url = toSafePlaybackUrl(source?.url);
     if (!url) {
+        if (isSpotify) throw new OnlineProviderError('invalid-response', 'Spotify: audio-source-invalid', 'spotify');
         return { kind: 'unavailable' };
     }
 
     const replayGain = applyOnlineAudioSourceMetadata(song, source?.replayGain).replayGain;
-    updatePrefetchedAudioUrl(song, url, audioQuality, replayGain);
+    if (!isSessionBoundAudio(song)) updatePrefetchedAudioUrl(song, url, audioQuality, replayGain);
     return { kind: 'ok', audioSrc: url, replayGain };
     } finally { endPlaybackLoad(progressOwner); }
 }
@@ -102,6 +120,16 @@ export async function loadOnlineSongLyrics(
     const preferredCachedLyrics = resolveOnlineLyrics(onlineLyricsState, cachedLyrics);
     const hasAuthoritativeLyricsSelection = onlineLyricsState?.lyricsSource === 'imported'
         || Boolean(onlineLyricsState?.hasOnlineOverride);
+    if (song.sourceRef?.kind === 'online' && song.sourceRef.providerId === 'spotify' && !hasAuthoritativeLyricsSelection) {
+        // Old auto-match caches do not establish Spotify-native provenance. Fetch the
+        // owning provider, but release audio immediately instead of waiting on lyrics.
+        onDone();
+        const native = await omni.getLyrics(song, { userId });
+        if (!isCurrent()) return;
+        onPureMusicChange?.(native.isPureMusic);
+        onLyrics(native.lyrics);
+        return;
+    }
     if (preferredCachedLyrics && (hasAuthoritativeLyricsSelection || !initialSettingsLyricSettings.autoUseBestLyric)) {
         const cachedText = preferredCachedLyrics.lines.map(line => line.fullText).join('\n');
         onPureMusicChange?.(resolveOnlineLyricsPureMusic(onlineLyricsState, cachedText));

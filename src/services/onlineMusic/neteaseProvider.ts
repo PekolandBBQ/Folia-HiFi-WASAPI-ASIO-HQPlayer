@@ -13,11 +13,11 @@ import type {
 } from '../../types/onlineMusic';
 import { getPersonalFmRequestOptions } from '../../stores/usePersonalFmModeStore';
 import { parseNeteaseChorusRanges, processNeteaseLyrics } from '../../utils/lyrics/neteaseProcessing';
-import { toFiniteNumber } from '../../utils/replayGain';
 import { createProviderSongMetadata } from '../../utils/songMetadata';
 import { isSongMarkedUnavailable, neteaseApi } from '../netease';
-import { writeProviderSessionValue } from './providerStorage';
+import { readProviderSessionValue, writeProviderSessionValue } from './providerStorage';
 import { collectNeteaseLoginDiagnostics } from './neteaseLoginDiagnostics';
+import { normalizeNeteaseAudioSource } from './neteaseAudioSource';
 
 // src/services/onlineMusic/neteaseProvider.ts
 
@@ -279,16 +279,7 @@ export const neteaseProvider: OnlineMusicProvider = {
         },
         async getAudioSource(song, quality) {
             const response = await neteaseApi.getSongUrl(toNeteaseId(song.id), mapQuality(quality));
-            const raw = response?.data?.[0];
-            const rawUrl = raw?.url;
-            if (!rawUrl) return null;
-            const trackGain = toFiniteNumber(raw?.gain);
-            return {
-                url: String(rawUrl).replace(/^http:/, 'https:'),
-                fetchedAt: Date.now(),
-                quality,
-                ...(trackGain === undefined ? {} : { replayGain: { trackGain } }),
-            };
+            return normalizeNeteaseAudioSource(response?.data?.[0], quality);
         },
         getAvailability(song): ProviderSongAvailability {
             if (!isSongMarkedUnavailable(song)) return { state: 'playable' };
@@ -340,23 +331,48 @@ export const neteaseProvider: OnlineMusicProvider = {
     lyrics: { getLyrics, getChorusRanges: getNeteaseChorusRanges },
     auth: {
         async getLoginStatus() {
-            const loginResponse = await neteaseApi.getLoginStatus();
+            const session = { cookie: readProviderSessionValue('netease', 'cookie', ['netease_cookie']) };
+            const query = async (request: () => Promise<unknown>): Promise<any> => {
+                try { return await request(); }
+                catch (error) {
+                    if (readProviderSessionValue('netease', 'cookie', ['netease_cookie']) !== session.cookie) {
+                        throw new OnlineProviderError('unavailable', 'NetEase session changed during login verification', 'netease');
+                    }
+                    if (error instanceof OnlineProviderError) throw error;
+                    throw new OnlineProviderError('unavailable', 'NetEase login verification request failed', 'netease');
+                }
+            };
+            const assertCurrentSession = () => {
+                if (readProviderSessionValue('netease', 'cookie', ['netease_cookie']) !== session.cookie) {
+                    throw new OnlineProviderError('unavailable', 'NetEase session changed during login verification', 'netease');
+                }
+            };
+            const loginResponse = await query(() => neteaseApi.getLoginStatus(session));
+            assertCurrentSession();
             const loginProfile = loginResponse?.data?.profile;
-            const loginCode = Number(loginResponse?.code ?? loginResponse?.data?.code);
-            if (!loginProfile || [301, 401, 403].includes(loginCode)) return null;
+            const loginCodes = [loginResponse?.code, loginResponse?.data?.code].filter(code => code !== undefined).map(Number);
+            if (loginCodes.some(code => [301, 401, 403].includes(code))) return null;
+            if (!loginCodes.length || loginCodes.some(code => code !== 200) || !loginProfile) {
+                throw new OnlineProviderError('unavailable', 'NetEase login status could not be verified', 'netease');
+            }
 
-            const accountResponse = await neteaseApi.getUserAccount();
-            const accountCode = Number(accountResponse?.code ?? accountResponse?.data?.code);
+            const accountResponse = await query(() => neteaseApi.getUserAccount(session));
+            assertCurrentSession();
+            const accountCodes = [accountResponse?.code, accountResponse?.data?.code].filter(code => code !== undefined).map(Number);
             const accountProfile = accountResponse?.profile;
             const accountId = accountResponse?.account?.id ?? accountProfile?.userId;
             const loginId = loginProfile?.userId ?? loginProfile?.id;
-            if (!accountProfile || [301, 401, 403].includes(accountCode) || !accountId || !loginId || String(accountId) !== String(loginId)) {
-                return null;
+            if (accountCodes.some(code => [301, 401, 403].includes(code))) return null;
+            const validId = (id: unknown) => (typeof id === 'number' || typeof id === 'string')
+                && Number.isSafeInteger(Number(id)) && Number(id) > 0;
+            if (!accountCodes.length || accountCodes.some(code => code !== 200) || !accountProfile
+                || !validId(accountId) || !validId(loginId) || !validId(accountProfile.userId ?? accountProfile.id)) {
+                throw new OnlineProviderError('unavailable', 'NetEase account status could not be verified', 'netease');
             }
-
-            if (typeof loginResponse?.cookie === 'string' && loginResponse.cookie) {
-                writeProviderSessionValue('netease', 'cookie', loginResponse.cookie);
+            if (String(accountId) !== String(loginId) || String(accountProfile.userId ?? accountProfile.id) !== String(loginId)) {
+                throw new OnlineProviderError('unavailable', 'NetEase account identity changed during login verification', 'netease');
             }
+            // Status checks are read-only: a late reply must never replace a newer QR login cookie.
             return normalizeUser({ ...loginProfile, ...accountProfile });
         },
         async logout() { await neteaseApi.logout(); },

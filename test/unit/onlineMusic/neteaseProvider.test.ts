@@ -41,10 +41,12 @@ describe('neteaseProvider', () => {
     beforeEach(() => vi.clearAllMocks());
 
     it('maps semantic high quality to the NetEase exhigh value', async () => {
-        vi.mocked(neteaseApi.getSongUrl).mockResolvedValue({ data: [{ url: 'http://music.test/song.mp3' }] } as any);
+        vi.mocked(neteaseApi.getSongUrl).mockResolvedValue({ data: [{ url: 'http://music.test/song.mp3', level: 'exhigh' }] } as any);
         await expect(neteaseProvider.playback!.getAudioSource(song, 'high')).resolves.toMatchObject({
             url: 'https://music.test/song.mp3',
             quality: 'high',
+            requestedQuality: 'high',
+            providerLevel: 'exhigh',
         });
         expect(neteaseApi.getSongUrl).toHaveBeenCalledWith(42, 'exhigh');
     });

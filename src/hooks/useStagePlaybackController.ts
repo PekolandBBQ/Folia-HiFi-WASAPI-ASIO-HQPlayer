@@ -1,3 +1,4 @@
+import { markPassivePlaybackSource } from '../services/playbackSourceIntent';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Dispatch, MutableRefObject, RefObject, SetStateAction } from 'react';
 import type { MotionValue } from 'framer-motion';
@@ -215,6 +216,7 @@ export function useStagePlaybackController({
         setCurrentSong(snapshot?.currentSong ?? null);
         setLyrics(snapshot?.lyrics ?? null);
         setCachedCoverUrl(snapshot?.cachedCoverUrl ?? null);
+        if (snapshot?.audioSrc && snapshot.playerState !== PlayerState.PLAYING) markPassivePlaybackSource(snapshot.audioSrc);
         setAudioSrc(snapshot?.audioSrc ?? null);
         setPlayQueue(snapshot?.playQueue ?? []);
         setIsFmMode(snapshot?.isFmMode ?? false);
@@ -562,13 +564,15 @@ export function useStagePlaybackController({
         setCurrentSong(stageSong);
         setLyrics(parsedLyrics);
         setCachedCoverUrl(session.coverArtUrl || session.coverUrl || null);
+        const autoplay = options.playerState === PlayerState.PLAYING || (options.autoplay ?? true);
+        if (!autoplay) markPassivePlaybackSource(session.audioSrc);
         setAudioSrc(session.audioSrc);
         setPlayQueue([]);
         setIsFmMode(false);
         pendingResumeTimeRef.current = typeof options.resumeTime === 'number'
             ? Math.max(0, options.resumeTime)
             : null;
-        shouldAutoPlayRef.current = options.playerState === PlayerState.PLAYING || (options.autoplay ?? true);
+        shouldAutoPlayRef.current = autoplay;
         setPlayerState(options.playerState ?? PlayerState.IDLE);
         setCurrentLineIndex(-1);
         currentTime.set(typeof options.resumeTime === 'number' ? Math.max(0, options.resumeTime) : 0);

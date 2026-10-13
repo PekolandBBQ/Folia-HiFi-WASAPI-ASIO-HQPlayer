@@ -14,6 +14,7 @@ import { setStatusMessage as setStatusMsg } from '../stores/useStatusMessageStor
 import { setCurrentSong, setPlayQueue, usePlaybackStore } from '../stores/usePlaybackStore';
 import { useAudioSettingsStore } from '../stores/useAudioSettingsStore';
 import { omni } from '../services/onlineMusic/omni';
+import { cancelPlaybackSourceRequest, playbackSourceRequestRevision } from '../services/playbackSourceRequest';
 
 // src/hooks/useSessionRestoreController.ts
 
@@ -78,13 +79,17 @@ export function useSessionRestoreController({
             return;
         }
         hasInitializedRef.current = true;
+        const lifetime = new AbortController();
+        const sourceRevision = playbackSourceRequestRevision();
+        let finished = false;
 
         const restoreSession = async () => {
             const initialSong = usePlaybackStore.getState().currentSong;
             try {
                 let lastSong = await getFromCache<SongResult>('last_song');
                 let lastQueue = await getFromCache<SongResult[]>('last_queue');
-                if (usePlaybackStore.getState().currentSong !== initialSong) return;
+                if (lifetime.signal.aborted || playbackSourceRequestRevision() !== sourceRevision
+                    || usePlaybackStore.getState().currentSong !== initialSong) return;
 
                 if (lastSong) lastSong = normalizePlaybackSongSource(lastSong);
                 if (lastQueue) lastQueue = lastQueue.map(normalizePlaybackSongSource);
@@ -130,7 +135,8 @@ export function useSessionRestoreController({
                     await persistLastPlaybackCache(lastSong, lastQueue);
                 }
 
-                if (usePlaybackStore.getState().currentSong !== initialSong) return;
+                if (lifetime.signal.aborted || playbackSourceRequestRevision() !== sourceRevision
+                    || usePlaybackStore.getState().currentSong !== initialSong) return;
                 console.log('[Session] Restoring last song:', lastSong.name);
                 if (lastSong.sourceRef?.kind === 'online' && lastSong.sourceRef.providerId) {
                     const currentActiveProviderId = useOnlineProviderAccountStore.getState().activeProviderId;
@@ -139,12 +145,14 @@ export function useSessionRestoreController({
                         useOnlineProviderAccountStore.getState().setActiveProviderId(lastSong.sourceRef.providerId);
                     }
                 }
+                // Retire the old owner before arming this replacement's autoplay flag.
+                cancelPlaybackSourceRequest();
                 setCurrentSong(lastSong);
                 setPlayQueue(lastQueue && lastQueue.length > 0 ? lastQueue : [lastSong]);
                 const restoredKey = getPlaybackSongKey(lastSong);
                 const isCurrent = () => {
                     const current = usePlaybackStore.getState().currentSong;
-                    return Boolean(current && getPlaybackSongKey(current) === restoredKey);
+                    return !lifetime.signal.aborted && Boolean(current && getPlaybackSongKey(current) === restoredKey);
                 };
 
                 // Read at restore time rather than subscribed: this effect runs once, and the
@@ -168,6 +176,10 @@ export function useSessionRestoreController({
                         persistLastPlaybackCache,
                         queue: lastQueue || [lastSong],
                         isCurrent,
+                        allowSessionBoundPlayback: autoPlayOnLaunch,
+                        activatePlayback: autoPlayOnLaunch,
+                        signal: lifetime.signal,
+                        onCancel: () => { shouldAutoPlayRef.current = false; },
                     });
                 } catch (error) {
                     // No source ever landed, so the intent was never spent. Left standing it would
@@ -187,6 +199,10 @@ export function useSessionRestoreController({
             }
         };
 
-        void restoreSession();
+        void restoreSession().finally(() => { finished = true; });
+        return () => {
+            lifetime.abort();
+            if (!finished) hasInitializedRef.current = false;
+        };
     }, [canRestoreSession]);
 }

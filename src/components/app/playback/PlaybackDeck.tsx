@@ -1,8 +1,14 @@
+import { isPassivePlaybackSource } from '../../../services/playbackSourceIntent';
 import BrowserPlaybackDeck from './BrowserPlaybackDeck';
 import React, { useLayoutEffect, useRef } from 'react';
 import { useHQPlayerSettingsStore } from '../../../stores/useHQPlayerSettingsStore';
 import { NativeAudioTransport } from '../../../services/nativeAudio/NativeAudioTransport';
 import type { NativeAudioBackend, NativeAudioProcessingMode } from '../../../types/nativeAudio';
+import { isSpotifyLivePcm } from '../../../services/onlineMusic/spotifyCableSetup';
+import { SoloistBrowserTransport } from '../../../services/onlineMusic/SoloistBrowserTransport';
+import { usePlaybackStore } from '../../../stores/usePlaybackStore';
+import { shouldDeferOutputPreparation } from '../../../services/nativeAudio/outputHandoff';
+import { getAudioSourceMetadata } from '../../../services/onlineMusic/audioSourceQuality';
 
 // src/components/app/playback/PlaybackDeck.tsx — media-event compatibility at one explicit boundary.
 type Props = React.AudioHTMLAttributes<HTMLAudioElement> & {
@@ -10,12 +16,15 @@ type Props = React.AudioHTMLAttributes<HTMLAudioElement> & {
     nativeBackend: NativeAudioBackend;
     nativeDeviceId: string;
     nativeProcessingMode: NativeAudioProcessingMode;
+    initialPosition?: number;
+    outputRevision?: number;
     getLocalFile: () => Promise<File | null>;
 };
 const eventProps = {
     loadstart: 'onLoadStart', loadedmetadata: 'onLoadedMetadata', loadeddata: 'onLoadedData', canplay: 'onCanPlay',
     play: 'onPlay', playing: 'onPlaying', pause: 'onPause', timeupdate: 'onTimeUpdate',
     seeking: 'onSeeking', seeked: 'onSeeked', ended: 'onEnded', error: 'onError',
+    durationchange: 'onDurationChange', progress: 'onProgress', waiting: 'onWaiting',
 } as const;
 
 function NativeDeck(props: Props) {
@@ -28,11 +37,13 @@ function NativeDeck(props: Props) {
     const configuration = useRef('');
     useLayoutEffect(() => {
         const currentGeneration = ++generation.current;
-        const key = JSON.stringify([props.nativeBackend, props.nativeDeviceId, props.nativeProcessingMode]);
+        const key = JSON.stringify([props.nativeBackend, props.nativeDeviceId, props.nativeProcessingMode, props.outputRevision]);
         if (!transport.current || configuration.current !== key) {
-            transport.current?.dispose();
-            const created = new NativeAudioTransport(window.electron!.nativeAudio!, props.nativeBackend,
-                props.nativeDeviceId, props.nativeProcessingMode, () => latest.current.getLocalFile());
+            transport.current?.dispose('handoff');
+            const created = props.nativeBackend === 'browser'
+                ? new SoloistBrowserTransport({ browserPcm: input => window.electron!.spotify!.browserPcm!(input) })
+                : new NativeAudioTransport(window.electron!.nativeAudio!, props.nativeBackend,
+                    props.nativeDeviceId, props.nativeProcessingMode, () => latest.current.getLocalFile());
             const hq = useHQPlayerSettingsStore.getState();
             created.setHQPlayerGainSettings(hq.gainDb, hq.remember, hq.setGain);
             transport.current = created;
@@ -47,7 +58,7 @@ function NativeDeck(props: Props) {
         const audio = transport.current;
         props.register(audio.asMediaElement());
         audio.loop = Boolean(props.loop);
-        audio.setSource(props.src || '');
+        audio.setSource(props.src || '', props.initialPosition, (shouldDeferOutputPreparation(props.src || '') || isPassivePlaybackSource(props.src || '')));
         return () => {
             props.register(null);
             // StrictMode replays layout effects synchronously. Keep its in-flight play request;
@@ -58,11 +69,11 @@ function NativeDeck(props: Props) {
                 if (transport.current === audio) transport.current = null;
             });
         };
-    }, [props.register, props.nativeBackend, props.nativeDeviceId, props.nativeProcessingMode]);
+    }, [props.register, props.nativeBackend, props.nativeDeviceId, props.nativeProcessingMode, props.outputRevision]);
     useLayoutEffect(() => {
         if (!transport.current) return;
         transport.current.loop = Boolean(props.loop);
-        transport.current.setSource(props.src || '');
+        transport.current.setSource(props.src || '', props.initialPosition, (shouldDeferOutputPreparation(props.src || '') || isPassivePlaybackSource(props.src || '')));
     }, [props.src, props.loop]);
     useLayoutEffect(() => {
         transport.current?.setHQPlayerGainSettings(gainDb, remember, useHQPlayerSettingsStore.getState().setGain);
@@ -71,8 +82,12 @@ function NativeDeck(props: Props) {
 }
 
 export default function PlaybackDeck(props: Props) {
-    const { nativeBackend, nativeDeviceId, nativeProcessingMode, getLocalFile, register, ...audioProps } = props;
-    return nativeBackend !== 'browser'
+    const { nativeBackend, nativeDeviceId, nativeProcessingMode, initialPosition, outputRevision, getLocalFile, register, ...audioProps } = props;
+    const song = usePlaybackStore(state => state.currentSong);
+    const metadata = song && props.src ? getAudioSourceMetadata(song, props.src) : undefined;
+    const soloistBrowser = nativeBackend === 'browser' && song?.sourceRef?.kind === 'online' && song.sourceRef.providerId === 'spotify'
+        && isSpotifyLivePcm(metadata?.playbackTransport) && typeof window.electron?.spotify?.browserPcm === 'function';
+    return nativeBackend !== 'browser' || soloistBrowser
         ? <NativeDeck {...props} />
         : <BrowserPlaybackDeck {...audioProps} register={register} />;
 }

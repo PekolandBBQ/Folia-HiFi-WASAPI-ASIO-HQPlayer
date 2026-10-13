@@ -1,0 +1,18 @@
+{
+  "scope": "Cold establishColdIdentity block only. Apply this hunk atop overlap; do not copy controller wholesale.",
+  "baselineBuildRef": "ed26ba93e2cb5e587bfadc92b8239c1ad0d1b49a7b47549d925702935adf202f",
+  "frozenFiles": {
+    "electron/spotify/desktopPlaybackControl.cjs": "bb915b6cbcaa4d1e296855fbab3d78e91e53bbb9e34b7dfd0425c4b0a91fa0f1",
+    "docs/r36-cold-paused-inspection.patch": "5f414f2bab1df38d2cd3e8561a9d5e47d48c6a7c0791d6349dbce74457c1bea6"
+  },
+  "verification": {
+    "newProductionControlTests": 12,
+    "compoundResearchTests": 3,
+    "existingJsLoopbackAndCSharpTests": 26,
+    "existingPureProductCompositionTests": 105,
+    "existingPureObserverTests": 50,
+    "Windows_COM_hardware": false
+  },
+  "networkCountChange": 0,
+  "potentialSaving": "One redundant full native Context.Discover when paused same-Context inspection handoff stays within five seconds; no Windows milliseconds measured."
+}

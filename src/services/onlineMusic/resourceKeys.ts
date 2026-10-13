@@ -1,9 +1,13 @@
 import type { SongResult } from '../../types';
+import type { AudioQualityPreference } from '../../types/onlineMusic';
 import { getPlaybackSongKey, getPlaybackSourceRef } from '../../utils/appPlaybackGuards';
 
 // src/services/onlineMusic/resourceKeys.ts
 
 export type SongResourceKind = 'audio' | 'lyric' | 'cover' | 'theme' | 'replayGain';
+
+export const getSongAudioCacheKey = (song: SongResult, quality?: AudioQualityPreference): string =>
+    `${getSongResourceCacheKey('audio', song)}${quality ? `:quality:${quality}` : ''}`;
 
 export const getSongResourceCacheKey = (kind: SongResourceKind, song: SongResult): string => {
     const sourceRef = getPlaybackSourceRef(song);

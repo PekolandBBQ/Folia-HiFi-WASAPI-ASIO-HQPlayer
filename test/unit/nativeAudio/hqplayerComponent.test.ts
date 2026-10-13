@@ -20,9 +20,9 @@ async function fixture() {
     const app = { isPackaged: false, getPath: () => root };
     const verifyStaged = vi.fn(async () => {});
     const manager = createHQPlayerComponentManager({ app, catalogPath, verifyStaged });
-    async function publish(version: string, badEntry = false) {
+    async function publish(version: string, badEntry = false, extra: Record<string, Uint8Array> = {}) {
         const entry = Buffer.from(`// version ${version}`), name = path.join(root, `${version}.zip`);
-        const archive = zipSync({ 'hqplayer-component.cjs': entry, 'component.json': Buffer.from(JSON.stringify({ id: 'hqplayer', version, protocolMajor: 1, entry: 'hqplayer-component.cjs' })) });
+        const archive = zipSync({ ...extra, 'hqplayer-component.cjs': entry, 'component.json': Buffer.from(JSON.stringify({ id: 'hqplayer', version, protocolMajor: 1, entry: 'hqplayer-component.cjs' })) });
         await fs.writeFile(name, archive);
         releases.unshift({ version, protocolMajor: 1, platform: 'win32-x64', sha256: sha(archive), entrySha256: badEntry ? '0'.repeat(64) : sha(entry), localPath: name });
         await fs.writeFile(catalogPath, JSON.stringify({ schema: 1, releases }));
@@ -66,6 +66,18 @@ it('never uses a contributor/local artifact in an ordinary packaged application'
 it('cannot install HQPlayer bytes into the WASAPI/ASIO component slot', async () => {
     const f = await fixture(); await f.publish('0.1.0');
     await expect(createComponentManager({ app: f.app, catalogPath: f.catalogPath }).install()).rejects.toThrow('archive path');
+});
+it('accepts only the named window helper pair and keeps the active version after an unrelated DLL', async () => {
+    const f = await fixture();
+    await f.publish('0.1.4-preview.2', false, {
+        'folia-hqplayer-launch.exe': Buffer.from('fixture-only-launcher'),
+        'folia-hqplayer-window.dll': Buffer.from('fixture-only-guard'),
+        'Detours-LICENSE.txt': Buffer.from('fixture-only-license'),
+    });
+    expect(await f.manager.install()).toMatchObject({ available: true, version: '0.1.4-preview.2' });
+    await f.publish('0.1.4-preview.3', false, { 'unrelated.dll': Buffer.from('unapproved') });
+    await expect(f.manager.install()).rejects.toThrow('Unexpected component archive path');
+    expect(await f.manager.status()).toMatchObject({ available: true, version: '0.1.4-preview.2', busy: false });
 });
 it('does not launch a worker when absent and refuses a mismatched protocol', async () => {
     const manager = { status: vi.fn(async () => ({ available: false, installed: false, installable: false })) };

@@ -14,6 +14,8 @@ import type { MediaId } from './onlineMusic';
 
 // Shared playback-specific types extracted from App.tsx.
 export type PlaybackNavigationOptions = {
+    /** Explicitly accepted Spotify desktop handoff, in seconds. */
+    initialPosition?: number;
     shouldNavigateToPlayer?: boolean;
     unavailableSkipCount?: number;
     unifiedQueue?: SongResult[];
@@ -48,7 +50,7 @@ export type UnavailableReplacementRequest = {
     options: PlaybackNavigationOptions;
 };
 
-export type SkipPromptMessageKey = 'status.songUnavailablePrompt' | 'status.playbackErrorPrompt';
+export type SkipPromptMessageKey = 'status.songUnavailablePrompt' | 'status.playbackErrorPrompt' | 'spotifyPlaybackErrors.notPlayablePrompt';
 
 export type PlaybackSnapshot = {
     currentSong: SongResult | null;

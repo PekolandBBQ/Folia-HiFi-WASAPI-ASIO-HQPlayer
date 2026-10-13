@@ -25,6 +25,39 @@ describe('QQ Music Web transport', () => {
         vi.unstubAllEnvs();
     });
 
+    it('routes embedded search using only the existing opaque session token', async () => {
+        storage.set('online_provider:qq:cookie', CONFIRMED_COOKIE);
+        vi.stubGlobal('window', { electron: { getQqPort: async () => 45123 } });
+        const fetchMock = vi.fn().mockResolvedValue(Response.json({ code: 200, data: { songs: [] } }));
+        vi.stubGlobal('fetch', fetchMock);
+        const { requestQq, canUseEmbeddedQqSearch } = await import('@/services/onlineMusic/qqTransport');
+        expect(canUseEmbeddedQqSearch()).toBe(true);
+        await requestQq('search_songs', { query: '幻听', limit: 30, page: 1 });
+        const target = new URL(fetchMock.mock.calls[0][0]);
+        expect(target.pathname).toBe('/user/search');
+        expect(target.searchParams.get('cookie')).toBe(CONFIRMED_COOKIE);
+        expect(target.searchParams.get('authst')).toBeNull();
+        expect(target.searchParams.get('sign')).toBeNull();
+        expect(target.searchParams.get('query')).toBe('幻听');
+    });
+
+    it('preserves safe upstream 2001 search evidence without clearing a valid session', async () => {
+        storage.set('online_provider:qq:cookie', CONFIRMED_COOKIE);
+        vi.stubGlobal('fetch', vi.fn().mockResolvedValue(Response.json({ code: 'QQ_SEARCH_UPSTREAM_REJECTED', upstreamCode: 2001 }, { status: 502 })));
+        const { requestQq, hasQqSession } = await import('@/services/onlineMusic/qqTransport');
+        await expect(requestQq('search_songs', { query: '幻听' })).rejects.toMatchObject({ code: 'invalid-response', message: expect.stringContaining('2001') });
+        expect(hasQqSession()).toBe(true);
+    });
+
+    it('keeps search 401 and 404 distinct for auth and capability handling', async () => {
+        storage.set('online_provider:qq:cookie', CONFIRMED_COOKIE);
+        vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(Response.json({ code: 'QQ_SEARCH_AUTH_REQUIRED' }, { status: 401 })).mockResolvedValueOnce(Response.json({}, { status: 404 })));
+        const { requestQq, hasQqSession } = await import('@/services/onlineMusic/qqTransport');
+        await expect(requestQq('search_songs', { query: '幻听' })).rejects.toMatchObject({ code: 'auth-required' });
+        expect(hasQqSession()).toBe(false);
+        await expect(requestQq('search_songs', { query: '幻听' })).rejects.toMatchObject({ code: 'unsupported' });
+    });
+
     it('reports unavailable when VITE_QQ_API_BASE is not configured', async () => {
         vi.stubEnv('VITE_QQ_API_BASE', '');
         const fetchMock = vi.fn();

@@ -1,4 +1,5 @@
-import { useCallback } from 'react';
+import { preparePlaybackSourceCommit } from '../services/playbackSourceCommit';
+import { useCallback, useEffect, useRef } from 'react';
 import type { Dispatch, MutableRefObject, RefObject, SetStateAction } from 'react';
 import { PlayerState } from '../types';
 import { setStatusMessage as setStatusMsg } from '../stores/useStatusMessageStore';
@@ -9,6 +10,8 @@ import { currentTime } from '../stores/motionSignals';
 import { isNativeAudioElement } from '../services/nativeAudio/NativeAudioTransport';
 import { markProgrammaticPause, playbackFade, type PlaybackFadeSettleReason } from '../services/playbackFade';
 import { getPlaybackSongKey } from '../utils/appPlaybackGuards';
+import { createOnlinePlaybackFailureStatus, isOnlinePlaybackCancellation } from '../components/app/playback/onlinePlaybackFailure';
+import { cancelPlaybackSourceRequest } from '../services/playbackSourceRequest';
 
 // src/hooks/usePlaybackTransportController.ts
 
@@ -31,6 +34,7 @@ type UsePlaybackTransportControllerParams = {
         failedSrc?: string | null;
         resumeAt?: number;
         autoplay: boolean;
+        shouldAutoplay?: () => boolean;
     }) => Promise<boolean>;
     getSyntheticStageLyricsTime: () => number;
     syncStageLyricsClock: (timeSec: number, endTimeSec: number, nextPlayerState: PlayerState, startTimeSec?: number) => void;
@@ -70,11 +74,20 @@ export function usePlaybackTransportController({
     const activePlaybackContext = usePlaybackStore(state => state.activePlaybackContext);
     const audioSrc = usePlaybackStore(state => state.audioSrc);
     const duration = usePlaybackStore(state => state.duration);
+    const transportRevision = useRef(0);
+    const wantsPlayback = useRef(false);
+    useEffect(() => () => {
+        transportRevision.current++;
+        wantsPlayback.current = false;
+    }, []);
 
     const resumePlayback = useCallback(async () => {
         if (isNowPlayingStageActive) {
             return;
         }
+
+        const revision = ++transportRevision.current;
+        wantsPlayback.current = true;
 
         if (activePlaybackContext === 'stage' && stageActiveEntryKind === 'lyrics' && !audioSrc) {
             const currentSyntheticTime = getSyntheticStageLyricsTime();
@@ -97,24 +110,46 @@ export function usePlaybackTransportController({
             return;
         }
 
-        if (!audioRef.current) {
-            return;
-        }
+        const audio = audioRef.current;
+        if (!audio) return;
+        // Bind every async continuation to this element, source and latest user intent.
+        const source = usePlaybackStore.getState().audioSrc;
+        const isSameSource = () => audioRef.current === audio && usePlaybackStore.getState().audioSrc === source;
+        const isCurrent = () => revision === transportRevision.current && isSameSource();
+        const shouldAutoplay = () => wantsPlayback.current && isSameSource();
 
+        const selectedSong = usePlaybackStore.getState().currentSong;
+        if (selectedSong) {
+            try { await preparePlaybackSourceCommit(selectedSong, { isCurrent, source }); }
+            catch (error) {
+                if (!isCurrent() || isOnlinePlaybackCancellation(error)) return;
+                setStatusMsg(createOnlinePlaybackFailureStatus(error, t));
+                setPlayerState(PlayerState.PAUSED);
+                return;
+            }
+        }
+        if (!isCurrent()) return;
         setupAudioAnalyzer();
         if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
-            await audioContextRef.current.resume();
+            try { await audioContextRef.current.resume(); }
+            catch (error) { if (!isCurrent()) return; throw error; }
         }
+        if (!isCurrent()) return;
 
         syncOutputGain(getTargetPlaybackVolume(), 0);
         if (shouldRefreshCurrentOnlineAudioSource()) {
-            const refreshed = await recoverOnlinePlaybackSource({
-                failedSrc: audioRef.current.currentSrc || audioSrc,
-                resumeAt: audioRef.current.currentTime,
-                autoplay: true,
-            });
-
-            if (refreshed) {
+            try {
+                const refreshed = await recoverOnlinePlaybackSource({
+                    failedSrc: audio.currentSrc || audioSrc,
+                    resumeAt: audio.currentTime,
+                    autoplay: true,
+                    shouldAutoplay,
+                });
+                if (!isCurrent() || refreshed) return;
+            } catch (error) {
+                if (!isCurrent() || isOnlinePlaybackCancellation(error)) return;
+                setStatusMsg(createOnlinePlaybackFailureStatus(error, t));
+                setPlayerState(PlayerState.PAUSED);
                 return;
             }
         }
@@ -122,36 +157,40 @@ export function usePlaybackTransportController({
         // Silent first, ramped up once play() has really started. Null when the fade is off or
         // there is no Web Audio graph, and the two calls below are then no-ops. Only for an element
         // that is actually stopped: pressing play on one that is already sounding must not dip it.
-        const fadeToken = !isNativeAudioElement(audioRef.current) && (audioRef.current.paused || audioRef.current.ended)
+        const fadeToken = !isNativeAudioElement(audio) && (audio.paused || audio.ended)
             ? playbackFade.prepareFadeIn()
             : null;
-        const requestedAudio = audioRef.current;
-        if (!requestedAudio) return;
+        const requestedAudio = audio;
         try {
             await requestedAudio.play();
-            if (isNativeAudioElement(requestedAudio) && audioRef.current !== requestedAudio) return;
+            if (!isCurrent()) { playbackFade.abortFadeIn(fadeToken); return; }
             playbackFade.runFadeIn(fadeToken);
             setPlayerState(PlayerState.PLAYING);
         } catch (error) {
             playbackFade.abortFadeIn(fadeToken);
-            if (isNativeAudioElement(requestedAudio) && audioRef.current !== requestedAudio) return;
+            if (!isCurrent()) return;
             if (isNativeAudioElement(requestedAudio) && error instanceof Error && error.name === 'AbortError') return;
             if (isNativeAudioElement(requestedAudio)) {
                 // The native error event already supplies the device/decoder-specific message.
                 setPlayerState(PlayerState.PAUSED);
                 return;
             }
-            const recovered = await recoverOnlinePlaybackSource({
-                failedSrc: audioRef.current.currentSrc || audioSrc,
-                resumeAt: audioRef.current.currentTime,
-                autoplay: true,
-            });
-
-            if (recovered) {
+            try {
+                const recovered = await recoverOnlinePlaybackSource({
+                    failedSrc: audio.currentSrc || audioSrc,
+                    resumeAt: audio.currentTime,
+                    autoplay: true,
+                    shouldAutoplay,
+                });
+                if (!isCurrent() || recovered) return;
+            } catch (recoveryError) {
+                if (!isCurrent() || isOnlinePlaybackCancellation(recoveryError)) return;
+                setStatusMsg(createOnlinePlaybackFailureStatus(recoveryError, t));
+                setPlayerState(PlayerState.PAUSED);
                 return;
             }
 
-            if (!audioRef.current.paused && !audioRef.current.ended) {
+            if (!audio.paused && !audio.ended) {
                 setPlayerState(PlayerState.PLAYING);
                 return;
             }
@@ -172,6 +211,11 @@ export function usePlaybackTransportController({
         if (isNowPlayingStageActive) {
             return;
         }
+
+        transportRevision.current++;
+        wantsPlayback.current = false;
+        // Pause is an explicit change of intent even while an empty deck is still preparing.
+        cancelPlaybackSourceRequest();
 
         if (activePlaybackContext === 'stage' && stageActiveEntryKind === 'lyrics' && !audioSrc) {
             const currentSyntheticTime = getSyntheticStageLyricsTime();

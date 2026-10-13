@@ -16,7 +16,7 @@ import { toSafePlaybackUrl } from '../../utils/appPlaybackHelpers';
 import { fetchQQLyrics, searchQQLyrics } from '../../utils/lyrics/providers/qqLyricProvider';
 import { writeProviderSessionValue } from './providerStorage';
 import { normalizeQqCollection, normalizeQqSong, normalizeQqUser } from './qqNormalize';
-import { clearQqSession, getQqTransportAvailability, hasQqSession, requestQq } from './qqTransport';
+import { canUseEmbeddedQqSearch, clearQqSession, getQqTransportAvailability, hasQqSession, requestQq } from './qqTransport';
 
 // src/services/onlineMusic/qqProvider.ts
 
@@ -26,8 +26,29 @@ const errorFields = (error: unknown) => ({
 });
 
 const searchSongs = async (query: string, limit: number, offset: number) => {
-    // Reuses the QQ search that already backs lyric matching; only the provider contract is new.
-    const results = await searchQQLyrics(query, Math.floor(offset / Math.max(1, limit)) + 1, limit);
+    const page = Math.floor(offset / Math.max(1, limit)) + 1;
+    // The embedded host resolves its existing opaque session and keeps QQ credentials in main.
+    // Web/external deployments retain their existing public catalog implementation.
+    if (canUseEmbeddedQqSearch() && hasQqSession()) {
+        try {
+            const response = await requestQq<any>('search_songs', { query, limit, page });
+            if (response?.code !== 200 || !Array.isArray(response?.data?.songs)) {
+                throw new OnlineProviderError('invalid-response', 'QQMusicApi returned an invalid search_songs body', 'qq');
+            }
+            const items = response.data.songs.map(normalizeQqSong);
+            return {
+                items,
+                hasMore: typeof response.data.hasMore === 'boolean' ? response.data.hasMore : items.length === limit,
+                nextOffset: offset + items.length,
+                ...(Number.isSafeInteger(response.data.total) && response.data.total >= 0 ? { total: response.data.total } : {}),
+            };
+        } catch (error) {
+            // A genuinely older backend has no route. Auth, transport and upstream rejections
+            // must retain their failure and must never trigger an anonymous search fallback.
+            if (!(error instanceof OnlineProviderError) || error.code !== 'unsupported') throw error;
+        }
+    }
+    const results = await searchQQLyrics(query, page, limit, { throwOnError: true });
     const items = results.map(normalizeQqSong);
     return { items, hasMore: items.length === limit, nextOffset: offset + items.length };
 };
@@ -300,6 +321,10 @@ const getAudioSource = async (song: SongResult, quality: AudioQualityPreference)
                     url,
                     fetchedAt: Date.now(),
                     quality: candidate.resolvedQuality,
+                    requestedQuality: quality,
+                    // The successful backend tier is known; its original encoded format
+                    // remains unknown until the actual audio header is inspected.
+                    providerLevel: candidate.apiQuality,
                 };
             }
             if (entry) {

@@ -1,3 +1,6 @@
+import { preparePlaybackSourceCommit } from '../services/playbackSourceCommit';
+import { beginPlaybackSourceRequest, finishPlaybackSourceRequest } from '../services/playbackSourceRequest';
+import { createOnlinePlaybackFailureStatus, isOnlinePlaybackCancellation } from '../components/app/playback/onlinePlaybackFailure';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Dispatch, MutableRefObject, SetStateAction } from 'react';
 import type { MotionValue } from 'framer-motion';
@@ -517,9 +520,12 @@ export function useLibraryPlaybackController({
 
     const onPlayLocalSong = useCallback(async (localSong: LocalSong, queue: LocalSong[] = [], options: PlaybackNavigationOptions = {}) => {
         interruptStagePlaybackForMainTransition();
+        const sourceRequest = beginPlaybackSourceRequest();
 
         const blobUrl = await getAudioFromLocalSong(localSong);
+        if (sourceRequest.signal.aborted) { if (blobUrl) retireBlobUrl(blobUrl); return; }
         if (!blobUrl) {
+            finishPlaybackSourceRequest(sourceRequest);
             setStatusMsg({ type: 'error', text: t('status.localFileAccessError') || '' });
             return;
         }
@@ -532,6 +538,15 @@ export function useLibraryPlaybackController({
             buildLocalSourceRevision(preparedLocalSong),
         );
         const playbackUrl = recoveredRepresentation?.url ?? blobUrl;
+        try {
+            await preparePlaybackSourceCommit(initialMeta.unifiedSong, { signal: sourceRequest.signal, source: playbackUrl });
+        } catch (error) {
+            retireBlobUrl(blobUrl);
+            finishPlaybackSourceRequest(sourceRequest);
+            if (!isOnlinePlaybackCancellation(error)) setStatusMsg(createOnlinePlaybackFailureStatus(error, t));
+            return;
+        }
+        finishPlaybackSourceRequest(sourceRequest);
 
         // Handed over, not revoked here: a blend is still playing the song this replaces on the
         // other deck, and a revoked URL is a deck that can no longer be seeked. See `retireBlobUrl`.
@@ -655,6 +670,7 @@ export function useLibraryPlaybackController({
             return;
         }
 
+        const sourceRequest = beginPlaybackSourceRequest();
         setIsLyricsLoading(true);
 
         try {
@@ -825,6 +841,8 @@ export function useLibraryPlaybackController({
                 buildNavidromeSourceRevision(unifiedSong, streamUrl),
             );
 
+            await preparePlaybackSourceCommit(unifiedSong, { signal: sourceRequest.signal, source: recoveredRepresentation?.url ?? streamUrl });
+            finishPlaybackSourceRequest(sourceRequest);
             shouldAutoPlayRef.current = true;
             currentSongRef.current = unifiedSongKey;
             setLyrics(nextLyrics);
@@ -852,6 +870,13 @@ export function useLibraryPlaybackController({
                 console.warn('Theme load error', error);
             });
         } catch (error) {
+            finishPlaybackSourceRequest(sourceRequest);
+            if (isOnlinePlaybackCancellation(error)) return;
+            if (error instanceof Error && error.message === 'Spotify: automatic-route-restore-unconfirmed') {
+                setStatusMsg(createOnlinePlaybackFailureStatus(error, t));
+                setIsLyricsLoading(false);
+                return;
+            }
             console.error('[App] Failed to play Navidrome song:', error);
             setStatusMsg({ type: 'error', text: t('status.playbackFailed')});
             setIsLyricsLoading(false);
@@ -1024,15 +1049,17 @@ export function useLibraryPlaybackController({
         }
 
         const previousState = await loadOnlineLyricsState(currentSong);
+        const useSpotifyOriginal = source === 'online' && currentSong.sourceRef?.kind === 'online'
+            && currentSong.sourceRef.providerId === 'spotify';
         const nextState: OnlineLyricsState = {
             lyricsSource: source,
             importedLyrics: previousState?.importedLyrics ?? null,
             importedLyricsName: previousState?.importedLyricsName ?? null,
-            hasOnlineOverride: previousState?.hasOnlineOverride ?? false,
+            hasOnlineOverride: useSpotifyOriginal ? false : previousState?.hasOnlineOverride ?? false,
             onlineOverrideLyrics: previousState?.onlineOverrideLyrics ?? null,
             matchedSongId: previousState?.matchedSongId,
             matchedIsPureMusic: previousState?.matchedIsPureMusic,
-            matchedLyricsSource: previousState?.matchedLyricsSource,
+            matchedLyricsSource: useSpotifyOriginal ? undefined : previousState?.matchedLyricsSource,
             matchedLyricsProviderPlatform: previousState?.matchedLyricsProviderPlatform,
         };
 
@@ -1041,9 +1068,15 @@ export function useLibraryPlaybackController({
         }
 
         try {
+            // Explicitly selecting Spotify's own lyrics must bypass a prior cross-provider
+            // cache; keep the stored override payload instead of deleting user content.
+            const spotifyOriginal = useSpotifyOriginal ? await omni.getLyrics(currentSong, { userId }) : null;
+            if (useSpotifyOriginal && !isSamePlaybackSong(usePlaybackStore.getState().currentSong, currentSong)) return;
+            if (spotifyOriginal) nextState.matchedIsPureMusic = spotifyOriginal.isPureMusic;
             await saveOnlineLyricsState(currentSong, nextState);
-            const baseLyrics = await loadBaseOnlineLyrics(currentSong, lyrics);
+            const baseLyrics = useSpotifyOriginal ? spotifyOriginal!.lyrics : await loadBaseOnlineLyrics(currentSong, lyrics);
             const nextLyrics = resolveOnlineLyrics(nextState, baseLyrics);
+            if (useSpotifyOriginal && !isSamePlaybackSong(usePlaybackStore.getState().currentSong, currentSong)) return;
             const updatedSong = { ...currentSong, onlineLyricsState: nextState };
             setCurrentSong(prev => isSamePlaybackSong(prev, currentSong) ? updatedSong : prev);
             setLyrics(nextLyrics);
@@ -1054,7 +1087,7 @@ export function useLibraryPlaybackController({
             console.error('Failed to switch online lyrics source', error);
             setStatusMsg({ type: 'error', text: 'Failed to save lyrics source' });
         }
-    }, [currentSong, loadBaseOnlineLyrics, lyrics, persistLastPlaybackCache, playQueue, setCurrentLineIndex, setCurrentSong, setLyrics, setStatusMsg]);
+    }, [currentSong, loadBaseOnlineLyrics, lyrics, persistLastPlaybackCache, playQueue, setCurrentLineIndex, setCurrentSong, setLyrics, setStatusMsg, userId]);
 
     const handleOnlineLyricMatchComplete = useCallback(async () => {
         setShowOnlineLyricMatchModal(false);

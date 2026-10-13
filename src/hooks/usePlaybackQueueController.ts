@@ -1,7 +1,10 @@
+import { preparePlaybackSourceCommit } from '../services/playbackSourceCommit';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Dispatch, MutableRefObject, SetStateAction } from 'react';
 import type { MotionValue } from 'framer-motion';
 import { applyOnlineAudioSourceMetadata, loadOnlineSongAudioSource, loadOnlineSongLyrics } from '../services/onlinePlayback';
+import { beginPlaybackSourceRequest } from '../services/playbackSourceRequest';
+import { useAccountPlaybackCleanup } from './useAccountPlaybackCleanup';
 import { getSongReplacement, isSongUnavailable } from '../services/onlineMusic/songAvailability';
 import { getSongResourceCacheKey } from '../services/onlineMusic/resourceKeys';
 import { omni } from '../services/onlineMusic/omni';
@@ -12,7 +15,7 @@ import type { ThemeCacheSongKey } from '../services/themeCache';
 import { loadOnlineLyricsState } from '../utils/onlineLyricsState';
 import { PlayerState, type StagePlayerQueueDiffOp, type StagePlayerQueueRequest, type StagePlayerSnapshot } from '../types';
 import type { LocalSong, QueueAddBehavior, SongResult, StatusMessage, UnifiedSong } from '../types';
-import type { AudioQualityPreference, MediaId } from '../types/onlineMusic';
+import { OnlineProviderError, type AudioQualityPreference, type MediaId } from '../types/onlineMusic';
 import type { NextTrackOptions, PlaybackNavigationOptions, SkipPromptMessageKey, UnavailableReplacementRequest } from '../types/appPlayback';
 import type { NavidromeSong } from '../types/navidrome';
 import {
@@ -39,7 +42,9 @@ import { useAudioSettingsStore } from '../stores/useAudioSettingsStore';
 import { useSearchNavigationStore } from '../stores/useSearchNavigationStore';
 import { showLatticeFmNotice, usePlaybackEntryViewStore } from '../stores/usePlaybackEntryViewStore';
 import { useStableActionSurface } from './useStableCallbacks';
+import { useSpotifyDesktopHandoff } from './useSpotifyDesktopHandoff';
 import { hasBeforePlayHook, runBeforePlayHook } from '../services/hostExtensionHooks';
+import { createOnlinePlaybackFailureStatus, getOnlineUnavailableTextKeys, isOnlinePlaybackCancellation } from '../components/app/playback/onlinePlaybackFailure';
 
 // src/hooks/usePlaybackQueueController.ts
 
@@ -176,6 +181,10 @@ export function usePlaybackQueueController({
     // in App.tsx only because everything about playback used to be.
     /** Rising id that lets a newer load invalidate an in-flight older one. */
     const playbackRequestIdRef = useRef(0);
+    const sourceRequestRef = useRef<AbortController | null>(null);
+    const pendingSourceSongRef = useRef<SongResult | null>(null);
+    useAccountPlaybackCleanup({ pendingSongRef: pendingSourceSongRef, sourceRequestRef, playbackRequestIdRef, audioRef, shouldAutoPlayRef });
+    useEffect(() => () => sourceRequestRef.current?.abort(), []);
     /** Rising id per playSong call: a newer call supersedes an older one still awaiting `beforePlay`. */
     const playSongCallIdRef = useRef(0);
     const pendingUnavailableSkipTimerRef = useRef<number | null>(null);
@@ -368,7 +377,7 @@ export function usePlaybackQueueController({
             const replacement = await getSongReplacement(song);
 
             if (!replacement || !replacement.song || isSongUnavailable(replacement.song)) {
-                setStatusMsg({ type: 'error', text: t('status.songUnavailable') });
+                setStatusMsg({ type: 'error', text: t(getOnlineUnavailableTextKeys(song).message) });
                 return true;
             }
 
@@ -484,6 +493,13 @@ export function usePlaybackQueueController({
         }
 
         const playbackRequestId = ++playbackRequestIdRef.current;
+        sourceRequestRef.current?.abort();
+        const sourceRequest = beginPlaybackSourceRequest(undefined, () => {
+            if (playbackRequestIdRef.current !== playbackRequestId) return;
+            shouldAutoPlayRef.current = false;
+            setIsLyricsLoading(false);
+        }); sourceRequestRef.current = sourceRequest;
+        pendingSourceSongRef.current = song;
         const isLatestPlaybackRequest = () => playbackRequestIdRef.current === playbackRequestId;
         const isLocal = isLocalPlaybackSong(song);
         const isNavidrome = isNavidromePlaybackSong(song);
@@ -550,7 +566,7 @@ export function usePlaybackQueueController({
         );
         const hasCachedAudioBlob = hasImmediatePrefetchedAudio
             ? null
-            : await hasCachedSongAudio(song);
+            : await hasCachedSongAudio(song, audioQuality);
 
         if (!isLatestPlaybackRequest()) return;
 
@@ -559,8 +575,8 @@ export function usePlaybackQueueController({
         }
 
         try {
-            preloadedOnlineAudioResult = await loadOnlineSongAudioSource(song, audioQuality, prefetched);
-            if (!isLatestPlaybackRequest()) {
+            preloadedOnlineAudioResult = await loadOnlineSongAudioSource(song, audioQuality, prefetched, sourceRequest.signal);
+            if (!isLatestPlaybackRequest() || sourceRequest.signal.aborted) {
                 if (preloadedOnlineAudioResult.kind === 'ok' && preloadedOnlineAudioResult.blobUrl) {
                     URL.revokeObjectURL(preloadedOnlineAudioResult.blobUrl);
                 }
@@ -574,7 +590,7 @@ export function usePlaybackQueueController({
                 setIsLyricsLoading(false);
 
                 if (canSkip && nextSong) {
-                    showTimedSkipPrompt('status.songUnavailablePrompt', () => {
+                    showTimedSkipPrompt(getOnlineUnavailableTextKeys(song).prompt, () => {
                         if (playbackRequestIdRef.current !== playbackRequestId) return;
                         void playSong(nextSong, newQueue, isFmCall, {
                             ...deferredPlayOptions,
@@ -582,13 +598,23 @@ export function usePlaybackQueueController({
                         });
                     });
                 } else {
-                    setStatusMsg({ type: 'error', text: t('status.songUnavailable') });
+                    setStatusMsg({ type: 'error', text: t(getOnlineUnavailableTextKeys(song).message) });
                 }
                 return;
             }
         } catch (error) {
+            if (!isLatestPlaybackRequest() || sourceRequest.signal.aborted || isOnlinePlaybackCancellation(error)) return;
             console.error('[App] Failed to fetch song URL:', error);
-            setStatusMsg({ type: 'error', text: t('status.playbackError') });
+            if (error instanceof OnlineProviderError && error.providerId === 'spotify') {
+                // A failed song choice stops its old deck; the provider route remains held.
+                shouldAutoPlayRef.current = false;
+                audioRef.current?.pause();
+                audioRef.current?.removeAttribute('src');
+                audioRef.current?.load();
+                setAudioSrc(null);
+                setPlayerState(PlayerState.IDLE);
+            }
+            setStatusMsg(createOnlinePlaybackFailureStatus(error, t));
             setIsLyricsLoading(false);
             return;
         }
@@ -600,11 +626,22 @@ export function usePlaybackQueueController({
             : song;
         const resolvedQueue = replacePlaybackSongInQueue(newQueue, resolvedSong);
         currentSongRef.current = songKey;
-        pendingResumeTimeRef.current = null;
+        pendingResumeTimeRef.current = Number.isFinite(options.initialPosition) ? Math.max(0, options.initialPosition!) : null;
         lastAudioRecoverySourceRef.current = null;
         currentOnlineAudioUrlFetchedAtRef.current = null;
 
         const onlineLyricsState = await loadOnlineLyricsState(song);
+        if (!isLatestPlaybackRequest() || sourceRequest.signal.aborted) return;
+
+        try {
+            await preparePlaybackSourceCommit(song, { signal: sourceRequest.signal, isCurrent: isLatestPlaybackRequest, source: preloadedOnlineAudioResult?.kind === 'ok' ? preloadedOnlineAudioResult.audioSrc : null });
+        } catch (error) {
+            if (!isLatestPlaybackRequest() || sourceRequest.signal.aborted || isOnlinePlaybackCancellation(error)) return;
+            setStatusMsg(createOnlinePlaybackFailureStatus(error, t));
+            shouldAutoPlayRef.current = false;
+            setIsLyricsLoading(false);
+            return;
+        }
 
         setLyrics(null);
         setCurrentLineIndex(-1);
@@ -633,7 +670,7 @@ export function usePlaybackQueueController({
         setPlayerState(PlayerState.IDLE);
 
         const cachedCoverUrl = await getCachedSongCoverUrl(song);
-        if (currentSongRef.current !== songKey) return;
+        if (!isLatestPlaybackRequest() || sourceRequest.signal.aborted || currentSongRef.current !== songKey) return;
         if (cachedCoverUrl) {
             setCachedCoverUrl(cachedCoverUrl);
         } else if (prefetched?.coverUrl) {
@@ -826,7 +863,7 @@ export function usePlaybackQueueController({
 
         try {
             if (!replacementSong || String(replacementSong.id) !== String(replacementSongId) || isSongUnavailable(replacementSong)) {
-                setStatusMsg({ type: 'error', text: t('status.songUnavailable') });
+                setStatusMsg({ type: 'error', text: t(getOnlineUnavailableTextKeys(originalSong).message) });
                 return;
             }
 
@@ -1310,6 +1347,7 @@ export function usePlaybackQueueController({
     // Wrapped so the callbacks this hook hands back keep one identity for the app's lifetime. They
     // are all invoked from events or effects, and their churn was what kept every build*Model memo
     // in App.tsx from ever holding - see useStableCallbacks.ts.
+    useSpotifyDesktopHandoff(playSong, shouldAutoPlayRef);
     return useStableActionSurface({
         pendingUnavailableReplacement,
         setPendingUnavailableReplacement,

@@ -1,0 +1,31 @@
+{
+  "scope": "VB-CABLE existing Spotify HTTP diagnostics only; no additional requests or response body logging.",
+  "elapsedMs": "Rounded monotonic milliseconds from fetch dispatch until returned response headers. Auth, cooldown, response-body drain/JSON parse and post-write state confirmation excluded. No headers means no invented status or timing. Integer0..60000 only; out-of-range fields omitted, not clamped.",
+  "files": {
+    "electron/spotify/desktopPlaybackApi.cjs": {
+      "baseSha256": "27f06c3fab5b08bd53ba1802e67bf9178c90323606649b0cc52dfdb60dae9336",
+      "candidateSha256": "da84c264f96ac7a1b63188dd51105dfb4539a562f1e4e8759d6b32c1dee42bcb"
+    },
+    "electron/spotify/cableAudioPreparation.cjs": {
+      "baseSha256": "0e4198459d6f0194c6d147f6cefd430e6a2337c98a41241d34829e8759949bdf",
+      "candidateSha256": "391d7ca290dae17cc38969939c1b1ac91ab83bb014f501e9e8cc933446af00a4"
+    },
+    "electron/spotify/requestDiagnostics.cjs": {
+      "baseSha256": "729f48a9e1ab1b2badf37f2c4b3bd35c835c7ce8bcd7d847b5ab620351427bb1",
+      "candidateSha256": "be872fcf8b6904fb7188f9ad40ce3b3a5914a2c8a51d6c9e58eee59afd955ff2"
+    },
+    "electron/debug/privatePreviewDiagnosticSchema.cjs": {
+      "baseSha256": "07dde318047b9211a82ae347440571444b3183051168d4ad428de2fbb57266f1",
+      "candidateSha256": "3935947bde7b7cd79f95c9446e40297e9f02c1a39e6265e90f6929d464ad65fd"
+    }
+  },
+  "patchSha256": "dae48d24e50a2412b4db0a197d1a8b72ed559c19e4471fe3fe788867e79a79bb",
+  "testCommand": "node --test test/r36-measurement/diagnostics/http-timing.test.cjs",
+  "testsPassed": 25,
+  "rebasedOn": "Final allowRefresh:false overlap source/API freeze; companion dependencies used only in tests.",
+  "testDependencyHashes": {
+    "electron/spotify/desktopPlaybackControl.cjs": "e3a023bdeb9891768474a85b5fe3788fa98b1fcd94158f03fdf6766bf5d45cf4",
+    "electron/spotify/desktopPlaybackFacts.cjs": "f071325e1116c23187eb6f4f871126d2420a7267cb32089ad72fdef7df02284b",
+    "electron/spotify/sessionVault.cjs": "b19ce9869d58877d77fde3a84e3acdd0d76060ab9ecc872614494a1dd7bd5fae"
+  }
+}

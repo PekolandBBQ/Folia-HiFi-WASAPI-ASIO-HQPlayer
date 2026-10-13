@@ -214,15 +214,18 @@ export const useSearchNavigationStore = create<SearchNavigationState>((set, get)
     }),
     restoreSearch: ({ query, sourceTab, returnView = 'home' }) => set(state => {
         const cached = state.searchCache[getSearchCacheKey(query, sourceTab)];
+        // Completing a failed request still opens its history entry. Keep that current
+        // failure visible instead of replacing it with an empty overlay or an older success.
+        const currentFailure = state.searchQuery === query && state.searchSourceTab === sourceTab && state.searchError !== null;
         return {
             searchQuery: query,
             searchSourceTab: sourceTab,
             searchReturnView: returnView,
-            searchResults: cached?.results ?? null,
-            offset: cached?.offset ?? 0,
-            hasMore: cached?.hasMore ?? false,
-            scrollTop: cached?.scrollTop ?? 0,
-            searchError: null,
+            searchResults: currentFailure ? state.searchResults : cached?.results ?? null,
+            offset: currentFailure ? state.offset : cached?.offset ?? 0,
+            hasMore: currentFailure ? state.hasMore : cached?.hasMore ?? false,
+            scrollTop: currentFailure ? state.scrollTop : cached?.scrollTop ?? 0,
+            searchError: currentFailure ? state.searchError : null,
             isSearching: false,
             isLoadingMore: false,
             isSearchOpen: true,

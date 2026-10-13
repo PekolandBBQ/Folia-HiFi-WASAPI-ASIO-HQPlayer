@@ -65,6 +65,9 @@ describe('command palette registry contract', () => {
             'sync-now',
             'desktop-toggle-lyric-api',
             'theme-generate-current',
+            'spotify-playback-start',
+            'spotify-playback-stop',
+            'spotify-cable-probe',
         ];
 
         const leaked = COMMAND_PALETTE_COMMANDS

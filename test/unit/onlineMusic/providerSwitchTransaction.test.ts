@@ -32,6 +32,20 @@ describe('online provider switch transaction', () => {
 });
 
 describe('online provider login transaction', () => {
+    it('does not activate a dismissed connection after its account refresh settles', async () => {
+        let current = true;
+        const activate = vi.fn().mockResolvedValue(true);
+        expect(await completeOnlineProviderLoginTransaction({ currentProviderId: 'netease', loginProviderId: 'spotify',
+            refresh: async () => { current = false; return true; }, activate, isCurrent: () => current })).toBe('cancelled');
+        expect(activate).not.toHaveBeenCalled();
+    });
+    it('does not commit a superseded switch after asynchronous preparation', async () => {
+        let current = true;
+        const commit = vi.fn();
+        expect(await switchOnlineProviderTransaction({ currentProviderId: 'netease', nextProviderId: 'spotify', commit,
+            prepare: async () => { current = false; return true; }, isCurrent: () => current })).toBe(false);
+        expect(commit).not.toHaveBeenCalled();
+    });
     it('refreshes the current provider after QR confirmation without activating it again', async () => {
         const refresh = vi.fn().mockResolvedValue(true);
         const activate = vi.fn().mockResolvedValue(true);

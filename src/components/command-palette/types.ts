@@ -15,6 +15,7 @@ import type { AudioEqualizerModeId } from '../../utils/audioEqualizer';
 import type { ThemeGenerationSource } from '../../services/themePreferences';
 import type { TransitionMode } from '../../services/automix/transitionStrategy';
 import type { PersonalFmSelection } from '../../services/onlineMusic/fmModes';
+import type { ProviderPlaybackSetupAction } from '../../types/onlineMusic';
 import type { QueueBatchAction, QueueFacetKind } from './queueQuery';
 import type { CommandPlatform } from './availability';
 import type { CommandPaletteSurface } from './surfaces/types';
@@ -261,6 +262,8 @@ export type CommandPaletteSettingsContext = {
     toggleNativeAudioAutoFallback: () => void;
     toggleNativeAudioSignalPath: () => void;
     toggleNativeAudioIntegerDirect: () => void;
+    canRunSpotifyPlaybackSetup: (operation: ProviderPlaybackSetupAction) => boolean;
+    runSpotifyPlaybackSetup: (operation: ProviderPlaybackSetupAction) => Promise<boolean>;
     voiceInputPauseSupported: boolean;
     /** Lab switch for the experimental mod system; gates the `mods` command. */
     modSystemEnabled: boolean;

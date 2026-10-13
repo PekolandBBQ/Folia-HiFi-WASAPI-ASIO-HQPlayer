@@ -22,3 +22,9 @@ it('rejects arbitrary inputs before invoking PowerShell', async () => {
     await expect(hqplayerWindow('invalid', { exec })).rejects.toMatchObject({ code: 'INVALID_REQUEST' });
     expect(exec).not.toHaveBeenCalled();
 });
+it('rejects malformed observed state and does not expose command output in its public error', async () => {
+    const exec = vi.fn().mockResolvedValueOnce({ stdout: '{"running":true,"visible":"false","controllable":true}' })
+        .mockRejectedValueOnce(new Error('private command output'));
+    await expect(hqplayerWindow(undefined, { exec })).rejects.toMatchObject({ code: 'HQPLAYER_CONTROL_UNAVAILABLE' });
+    await expect(hqplayerWindow(true, { exec })).rejects.toMatchObject({ code: 'HQPLAYER_CONTROL_UNAVAILABLE', message: 'Cannot control HQPlayer window' });
+});

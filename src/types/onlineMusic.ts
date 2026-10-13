@@ -73,26 +73,62 @@ export interface ProviderAccountSummary {
     lastUpdatedAt?: number;
 }
 
-export interface ProviderPage<T> {
+/** Metadata provenance and coverage are separate from playback availability. */
+export interface ProviderMetadataStatus {
+    metadataSource?: 'spotify-api' | 'spotify-public-embed';
+    sourceUrl?: string;
+    metadataCompleteness?: 'complete' | 'partial' | 'unknown';
+    loadedCount?: number;
+}
+
+export interface ProviderPage<T> extends ProviderMetadataStatus {
     items: T[];
     total?: number;
     hasMore: boolean;
     nextOffset: number;
+    /** Playlist occurrences are ordered rows; the same recording may appear more than once. */
+    preserveDuplicates?: boolean;
+}
+
+export interface AudioSourceRequestOptions {
+    signal?: AbortSignal;
+    /** Native outputs may consume a growing source when the provider supports it. */
+    streaming?: boolean;
+    onProgress?: (progress: { stage: 'spotifyLaunch' | 'cache' | 'connect' | 'download' | 'decode' | 'validate'; loaded?: number; total?: number; unit?: 'bytes' | 'milliseconds' | 'items' }) => void;
 }
 
 export interface ProviderAudioSource {
     url: string;
     fetchedAt: number;
     expiresAt?: number;
-    quality: AudioQualityPreference;
+    /** Actual tier reported by the provider. Absent means the returned tier is unknown. */
+    quality?: AudioQualityPreference;
+    requestedQuality?: AudioQualityPreference;
+    /** Provider vocabulary retained even when no corresponding Folia tier exists. */
+    providerLevel?: string;
+    /** Explicit source metadata only; never inferred from the requested tier or filename. */
+    sourceFormat?: {
+        codec?: string;
+        sampleRate?: number;
+        bitsPerSample?: number;
+        bitrate?: number;
+    };
+    /** Describes a generated transport container, independently of the original encoding. */
+    preparedAudio?: { representation: string; sampleRate?: number; channels?: number; bitDepth?: number };
+    /** Selects a controlled PCM transport; generated PCM alone is not sufficient. */
+    playbackTransport?: 'soloist-pcm' | 'cable-pcm';
+    streaming?: boolean;
     replayGain?: ReplayGainInfo;
 }
+export type ProviderAudioMetadata = Pick<ProviderAudioSource, 'quality' | 'requestedQuality' | 'providerLevel' | 'sourceFormat' | 'preparedAudio' | 'playbackTransport'>;
 
 export type ProviderSongAvailabilityState = 'playable' | 'unavailable' | 'unknown';
 
 export interface ProviderSongAvailability {
     state: ProviderSongAvailabilityState;
     label?: string;
+    /** A localized availability label when the provider cannot establish catalog removal. */
+    labelKey?: string;
 }
 
 export interface ProviderSongReplacement {
@@ -153,7 +189,7 @@ export interface ProviderHistoryEntry {
     providerData?: Record<string, JsonValue>;
 }
 
-export interface ProviderCollection {
+export interface ProviderCollection extends ProviderMetadataStatus {
     providerId: OnlineProviderId;
     id: MediaId;
     name: string;
@@ -191,6 +227,7 @@ export type QrLoginFailureKind =
     | 'account-refresh-failed';
 
 export type ProviderErrorCode =
+    | 'setup-required'
     | 'auth-required'
     | 'unsupported'
     // 集合设为不公开，当前这条读取路径没资格读它。与 `unsupported`（这个后端或 provider 没有这项能力）
@@ -219,7 +256,8 @@ export interface OnlineSearchProvider {
 
 export interface OnlinePlaybackProvider {
     getSongDetail(id: MediaId): Promise<UnifiedSong | null>;
-    getAudioSource(song: SongResult, quality: AudioQualityPreference): Promise<ProviderAudioSource | null>;
+    getAudioSource(song: SongResult, quality: AudioQualityPreference, options?: AudioSourceRequestOptions): Promise<ProviderAudioSource | null>;
+    leaveSource?(options?: { signal?: AbortSignal; isCurrent?: () => boolean }): Promise<void>;
     getAvailability?(song: SongResult): ProviderSongAvailability;
     getReplacement?(song: SongResult): Promise<ProviderSongReplacement | null>;
 }
@@ -336,6 +374,31 @@ export interface OnlineMutationProvider {
     subscribeAlbum?(id: MediaId, subscribed: boolean): Promise<void>;
 }
 
+export type ProviderConnectionSettings = { mode: 'shared' | 'custom'; clientId: string; redirectUri: string; readOnly?: boolean };
+export type ProviderCableSelection = { connectDeviceId: string; captureDeviceId: string; renderDeviceId: string;
+    internal44100Confirmed: boolean; spotifyOnlyConfirmed: boolean; defaultsConfirmed: boolean };
+export type ProviderPlaybackSetupStatus = {
+    // Optional legacy fields permit reading old diagnostics without activating the retired receiver.
+    backend?: 'vb-cable'; hasKey?: boolean;
+    state: 'unsupported' | 'driver-missing' | 'spotify-missing' | 'selection-required' | 'routing-required'
+        | 'format-mismatch' | 'stopped' | 'probing' | 'starting' | 'ready' | 'failed' | 'unconfigured' | 'pairing-required';
+    driverInstalled?: boolean; driverBundled?: boolean; driverInstallerAvailable?: boolean; spotifyRunning?: boolean;
+    selection?: ProviderCableSelection;
+    coldRecovery?: { required: boolean; recoverable: boolean; deviceId?: string; originalVolume?: number;
+        archived?: boolean; unresolvedHistorical?: boolean; sourceControlUnconfirmed?: boolean };
+    automaticRoute?: { enabled?: boolean; supported: boolean; productionQualified: boolean; eligible: boolean; sourceOutputDefaultRequired: boolean;
+        trialAvailable?: boolean; trialAuthorized?: boolean };
+    devices?: { spotify: Array<{ id: string | null; name: string; type: string; isActive: boolean; restricted: boolean; selectable: boolean }>;
+        capture: Array<{ id: string; name: string }>; render: Array<{ id: string; name: string }> };
+    probe?: { captureSampleRate?: number; renderMixSampleRate?: number; captureMixSampleRate?: number; channels?: number;
+        routeVerified: boolean; defaultRenderIsCable?: boolean; otherWriterCount?: number;
+        temporaryFormatLeaseEligible?: boolean; temporaryFormatLease?: boolean; formatLeaseApplied?: boolean };
+    code?: string;
+};
+export type ProviderPlaybackSetupAction = 'checkColdRecovery' | 'devices' | 'probe' | 'openDriver' | 'openSoundSettings' | 'openCablePanel' | 'start' | 'stop';
+export type ProviderPlaybackSetupRequest = { operation: 'status' | ProviderPlaybackSetupAction | 'saveSelection'; selection?: ProviderCableSelection }
+    | { operation: 'saveKey' | 'keyPage'; keyValue?: string };
+
 export interface OnlineMusicProvider {
     id: OnlineProviderId;
     displayName: string;
@@ -352,6 +415,11 @@ export interface OnlineMusicProvider {
     playbackReports?: OnlinePlaybackReportProvider;
     lyrics?: OnlineLyricsProvider;
     auth?: OnlineAuthProvider;
+    connection?: {
+        getSettings(): Promise<ProviderConnectionSettings>;
+        setSettings(settings: ProviderConnectionSettings): Promise<{ settings: ProviderConnectionSettings; changed: boolean }>;
+    };
+    playbackSetup?: { request(input: ProviderPlaybackSetupRequest, options?: AudioSourceRequestOptions): Promise<ProviderPlaybackSetupStatus> };
     library?: OnlineLibraryProvider;
     catalog?: OnlineCatalogProvider;
     recommendations?: OnlineRecommendationProvider;

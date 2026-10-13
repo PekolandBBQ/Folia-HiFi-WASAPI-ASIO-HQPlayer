@@ -50,6 +50,8 @@ const OnlineLyricsTab: React.FC<OnlineLyricsTabProps> = ({
     const activeSource = onlineLyricsState?.lyricsSource === 'imported' && hasImportedLyrics ? 'imported' : 'online';
 
     const onlineSourceLabel = useMemo(() => {
+        if (!onlineLyricsState?.matchedLyricsSource && song.sourceRef?.kind === 'online'
+            && song.sourceRef.providerId === 'spotify') return 'Spotify';
         return getLyricProviderLabel(
             onlineLyricsState?.matchedLyricsSource ?? getSongNativeLyricProviderSource(song),
             onlineLyricsState?.matchedLyricsProviderPlatform,
@@ -95,6 +97,12 @@ const OnlineLyricsTab: React.FC<OnlineLyricsTabProps> = ({
                 onChangeMode={onChangeReplayGainMode}
                 isDaylight={isDaylight}
             />
+            {song.sourceRef?.kind === 'online' && song.sourceRef.providerId === 'spotify' && (
+                <button onClick={() => onChangeLyricsSource('online')}
+                    className={`px-3 py-2 rounded-lg text-xs transition-colors ${tabContainerBg} ${inactiveTextColor}`}>
+                    Spotify 自带歌词
+                </button>
+            )}
 
             <div className="space-y-2">
                 <div className="flex items-center justify-between">

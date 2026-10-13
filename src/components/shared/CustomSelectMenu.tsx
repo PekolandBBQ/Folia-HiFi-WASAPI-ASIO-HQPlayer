@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { Check } from 'lucide-react';
 import { List, type RowComponentProps } from 'react-window';
+import { useReducedMotionFor } from '../../hooks/useReducedMotionFor';
 
 // CustomSelectMenu.tsx
 // Renders the viewport-anchored option menu used by CustomSelect.
@@ -149,6 +150,7 @@ export const CustomSelectMenu: React.FC<CustomSelectMenuProps> = ({
     borderColor,
     onSelect,
 }) => {
+    const reduced = useReducedMotionFor('uiMicroMotion');
     const isVirtualized = options.length >= VIRTUALIZE_THRESHOLD;
 
     const rowProps = useMemo(() => ({
@@ -182,7 +184,7 @@ export const CustomSelectMenu: React.FC<CustomSelectMenuProps> = ({
                 y: position.placement === 'top' ? 8 : -8,
                 scale: 0.96,
             }}
-            transition={{ duration: 0.15, ease: 'easeOut' }}
+            transition={{ duration: reduced ? 0 : 0.15, ease: 'easeOut' }}
             className={`fixed z-[200] rounded-xl border shadow-xl overscroll-contain backdrop-blur-md custom-scrollbar${isVirtualized ? '' : ' overflow-y-auto'}`}
             data-wheel-scroll-region
             role="listbox"

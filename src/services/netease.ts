@@ -1,6 +1,6 @@
 import { NeteaseUser, NeteasePlaylist, NoCopyrightRecommendation, SongPrivilege, SongResult } from "../types";
 import { readProviderSessionValue, removeProviderSessionValue, writeProviderSessionValue } from './onlineMusic/providerStorage';
-import type { PersonalFmRequestOptions } from '../types/onlineMusic';
+import { OnlineProviderError, type PersonalFmRequestOptions } from '../types/onlineMusic';
 
 type UnavailableSongReplacement = {
   replacementSong: SongResult;
@@ -92,12 +92,20 @@ const getApiBase = async () => {
   throw new Error("Failed to access environment variables for API base. Please configure VITE_NETEASE_API_BASE.");
 };
 
-const fetchWithCreds = async (endpoint: string, options: RequestInit = {}) => {
+export type NeteaseSessionRequest = { cookie: string | null; signal?: AbortSignal };
+
+const fetchWithCreds = async (endpoint: string, options: RequestInit = {}, session?: NeteaseSessionRequest) => {
+  // Bind the request before any await so an old logout/status cannot use a newer QR session.
+  const storedCookie = session ? session.cookie : readProviderSessionValue('netease', 'cookie', ['netease_cookie']);
+  const signal = session?.signal ?? options.signal;
+  signal?.throwIfAborted();
   const base = await getApiBase();
+  signal?.throwIfAborted();
   const url = `${base}${endpoint}`;
   // Ensure we send credentials to persist session (cookies)
   const defaultOptions: RequestInit = {
     ...options,
+    signal,
     mode: 'cors',
   };
 
@@ -116,8 +124,6 @@ const fetchWithCreds = async (endpoint: string, options: RequestInit = {}) => {
 
   // Note: For Vercel hosted APIs, we rely on the `cookie` query param if cross-site cookies are blocked,
   // or `credentials: 'include'` if the server allows it. 
-
-  const storedCookie = readProviderSessionValue('netease', 'cookie', ['netease_cookie']);
 
   let cookieToUse = storedCookie;
 
@@ -151,6 +157,8 @@ const fetchWithCreds = async (endpoint: string, options: RequestInit = {}) => {
   }
 
   const res = await fetch(finalUrl, { ...defaultOptions, credentials: 'include' });
+  if (res.status >= 500) throw new OnlineProviderError('unavailable', 'NetEase service temporarily unavailable', 'netease');
+  if (res.status === 401 || res.status === 403) throw new OnlineProviderError('auth-required', 'NetEase rejected authentication', 'netease');
   const data = await res.json();
 
   if (!storedCookie && cookieToUse && (data?.code === 301 || data?.code === 401 || data?.code === 403)) {
@@ -557,8 +565,8 @@ export const neteaseApi = {
     return fetchWithCreds(`/login/qr/check?key=${key}`);
   },
 
-  getLoginStatus: async () => {
-    const res = await fetchWithCreds(`/login/status`);
+  getLoginStatus: async (session?: NeteaseSessionRequest) => {
+    const res = await fetchWithCreds(`/login/status`, {}, session);
     if (res.data?.profile) {
       res.data.profile.avatarUrl = toHttps(res.data.profile.avatarUrl);
       res.data.profile.backgroundUrl = toHttps(res.data.profile.backgroundUrl);
@@ -566,8 +574,8 @@ export const neteaseApi = {
     return res;
   },
 
-  getUserAccount: async () => {
-    const res = await fetchWithCreds(`/user/account`);
+  getUserAccount: async (session?: NeteaseSessionRequest) => {
+    const res = await fetchWithCreds(`/user/account`, {}, session);
     if (res.profile) {
       res.profile.avatarUrl = toHttps(res.profile.avatarUrl);
       res.profile.backgroundUrl = toHttps(res.profile.backgroundUrl);

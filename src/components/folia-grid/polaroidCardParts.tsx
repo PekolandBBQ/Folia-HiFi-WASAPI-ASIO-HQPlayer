@@ -5,6 +5,7 @@ import type { SongResult, UnifiedSong } from '../../types';
 import { getSizedCoverUrl } from '../../utils/coverUrl';
 import { canResolveSongCatalogRef } from '../../services/onlineMusic/catalogRefs';
 import { resolveGridTrackArtistTargetId } from './gridTrackNavigation';
+import SpotifyPublicArtwork from './SpotifyPublicArtwork';
 
 // src/components/folia-grid/polaroidCardParts.tsx
 // The pieces both PolaroidCard layouts share: the cover image with its spinner placeholder, the
@@ -33,6 +34,12 @@ export const formatCardDuration = (durationMs?: number): string => {
     return minutes + ':' + (seconds < 10 ? '0' : '') + seconds;
 };
 
+// Missing public metadata duration is distinct from a known zero-length recording.
+export const formatGridTrackDuration = (track: Pick<SongResult, 'durationMs' | 'sourceRef'>): string => (
+    track.sourceRef?.kind === 'online' && track.sourceRef.providerData?.durationKnown === false
+        ? '--:--' : formatCardDuration(track.durationMs)
+);
+
 /**
  * Cover artwork plus the placeholder it crossfades out of. The placeholder is the image's next
  * sibling on purpose: the load handlers reach it through `nextElementSibling`, so an image decoded
@@ -43,6 +50,10 @@ export const PolaroidCardCover: React.FC<{
     isUnavailable: boolean;
     spinnerSize?: number;
 }> = ({ item, isUnavailable, spinnerSize = 48 }) => {
+    const sourceRef = item.rawTrack?.sourceRef;
+    if (sourceRef?.kind === 'online' && sourceRef.providerId === 'spotify' && sourceRef.providerData?.metadataSource === 'spotify-public-embed') {
+        return <SpotifyPublicArtwork source={item.coverUrl} title={typeof item.name === 'string' ? item.name : ''} unavailable={isUnavailable} size={spinnerSize} />;
+    }
     if (!item.coverUrl) {
         return (
             <div className="absolute inset-0 bg-zinc-300/40 dark:bg-zinc-700/40 flex items-center justify-center">

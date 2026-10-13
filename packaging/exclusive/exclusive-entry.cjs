@@ -4,11 +4,17 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 const { unzipSync } = require('fflate');
 const { prepareProfile } = require('./profile.cjs');
+const { HQPLAYER_ARCHIVE_FILE } = require('./hqplayer/archiveContract.cjs');
 
 // packaging/exclusive/exclusive-entry.cjs — fork-only distribution with an isolated profile and pinned offline components.
 const resources = path.join(process.resourcesPath, 'exclusive-native-audio');
 const approved = require('./exclusive-approved.json');
 const release = require('./release.json');
+// A local validation package can reuse an isolated test profile without touching the stable profile.
+if (release.wrapperLocalValidation && process.env.FOLIA_VALIDATION_PROFILE) {
+    release.profile = process.env.FOLIA_VALIDATION_PROFILE;
+    release.legacyProfile = release.profile + ' Legacy';
+}
 let profile;
 try {
     profile = prepareProfile(app.getPath('appData'), release.profile, release.legacyProfile);
@@ -21,6 +27,12 @@ app.setName(release.productName);
 app.setPath('userData', profile);
 process.env.ELECTRON_DEV = 'false';
 process.env.NODE_ENV = 'production';
+if (release.spotifyBackend === 'wrapper') process.env.FOLIA_SPOTIFY_PREVIEW = '1';
+if (release.wrapperPreview || release.wrapperLocalValidation) {
+    const logFile = path.join(profile, 'wrapper-validation.jsonl');
+    global.__foliaTrialLog = (kind, data) => fs.appendFileSync(logFile, JSON.stringify({ at: Date.now(), kind, data }) + '\n');
+    require('./debug/privatePreviewDiagnosticBus.cjs').installPreviewDiagnosticSink({ enabled: () => true, record: global.__foliaTrialLog });
+}
 
 const catalog = { schema: 1, releases: approved.releases.map(r => ({ ...r, localPath: path.join(resources, r.archive) })) };
 const catalogPath = path.join(profile, 'exclusive-component-catalog.json');
@@ -77,7 +89,7 @@ if ((!fs.existsSync(path.join(hqpDirectory, 'active.json')) || bundledUpgrade) &
     const destination = path.join(hqpDirectory, `${approved.version}-${approved.sha256.slice(0, 12)}`);
     fs.mkdirSync(destination, { recursive: true });
     for (const [name, data] of Object.entries(files)) {
-        if (!/^(hqplayer-component\.cjs|component\.json|LICENSE\.txt|NOTICE\.txt)$/.test(name)) throw new Error('Unexpected HQPlayer archive entry');
+        if (!HQPLAYER_ARCHIVE_FILE.test(name)) throw new Error('Unexpected HQPlayer archive entry');
         fs.writeFileSync(path.join(destination, name), data);
     }
     if (bundledUpgrade) fs.writeFileSync(path.join(hqpDirectory, 'previous.json'), JSON.stringify(previousHqp));
