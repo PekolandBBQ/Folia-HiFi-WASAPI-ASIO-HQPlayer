@@ -6,8 +6,7 @@
 
 [下载 Windows x64 正式版](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/releases/tag/folia-hifi-v0.7.12-r4) · [使用说明](docs/exclusive/USAGE.md) · [本次更新说明](docs/exclusive/releases/0.7.12-r4.md) · [验证结果](docs/exclusive/VALIDATION.md) · [反馈问题](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/issues)
 
-**Spotify 适用平台：Windows 10（1803 或更新）/ Windows 11 x64。r4 在用户系统上自动选择可用的应用音频路由接口，不再限定 10.0.28000；无需用户安装编译工具或自行构建。** 完成一键安装、配置后正常点歌即可。当前本机为 28000、Microsoft Store 版；其他 Windows 的接口选择有代码测试，尚无那些系统的完整实播结果。全新 Windows 上的 Spicetify 首次安装仍待验证，已有组件和备份继续复用。
-
+**Spotify 适用平台：Windows 10（1803 或更新）/ Windows 11 x64。自动选择可用的应用音频路由接口
 ## 我追加了哪些功能
 
 | 功能 | 实际体验 |
