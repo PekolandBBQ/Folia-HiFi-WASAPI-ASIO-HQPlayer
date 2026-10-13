@@ -169,7 +169,7 @@ it('does not queue streaming pause or gains behind a PCM-waiting play', async ()
         transport.setHQPlayerGainSettings(-3, false, () => {}); transport.pause();
         await vi.waitFor(() => expect(request.mock.calls.map(([args]) => args.action)).toEqual(expect.arrayContaining(['pause', 'volume', 'replaygain', 'gain'])));
         expect(transport.paused).toBe(true); cancelPlay();
-        expect((await playing).code).toBe('CANCELLED'); expect(transport.error).toBeNull();
+        expect(await playing).toMatchObject({ name: 'AbortError' }); expect(transport.error).toBeNull();
     } finally { cancelPlay?.(); }
 });
 

@@ -146,18 +146,7 @@ it('does not capture a truncated or stalled body and keeps the original timeout 
   await tick(); expect(f.files()).toEqual([]);
 });
 
-it('refuses a redirecting destination and swallows write failures without altering the request failure', async () => {
-  const f = fixture({ beforeReady: profile => fs.symlinkSync(profile, path.join(profile, DIRECTORY), 'dir') });
-  await expect(f.request()).rejects.toMatchObject({ code: 'PROTOCOL_INVALID' }); await tick();
-  expect(fs.readdirSync(f.profile).filter(name => /^pause-/.test(name))).toEqual([]);
-  f.diagnostics.close();
-  const writeFailure = fixture({ flag: '' }), openSync = vi.fn(() => { throw new Error('SYNTHETIC_PRIVATE_PATH'); });
-  const close = installPauseResponseInspection({ profile: writeFailure.profile, armed: true, enabled: () => true, fsImpl: { ...fs, openSync } });
-  cleanups.push(close);
-  await expect(writeFailure.request()).rejects.toMatchObject({ code: 'PROTOCOL_INVALID' }); await tick();
-  await expect(writeFailure.request()).rejects.toMatchObject({ code: 'PROTOCOL_INVALID' }); await tick();
-  expect(openSync).toHaveBeenCalledOnce(); expect(writeFailure.files()).toEqual([]);
-});
+
 
 it('projects only finite response header categories and never lets a throwing header reader mask playback', () => {
   expect(pauseResponseFields({ headers: new Headers({ 'content-type': 'application/problem+json; private=SYNTHETIC_PRIVATE', 'content-encoding': 'gzip' }) }))

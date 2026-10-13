@@ -1,3 +1,4 @@
+import { join } from 'node:path';
 import { createRequire } from 'node:module';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -11,8 +12,8 @@ const { nativeComponentPath } = require('../../../electron/spotify/nativeCompone
 const directories: string[] = [];
 afterEach(async () => { await Promise.all(directories.splice(0).map(file => rm(file, { recursive: true, force: true }))); });
 it('uses unpacked executable resources for ASAR builds and preserves the private unpacked app layout', () => {
-  expect(nativeComponentPath('spotify-route', '/Folia/resources/app.asar')).toBe('/Folia/resources/app.asar.unpacked/native/spotify-route');
-  expect(nativeComponentPath('spotify-cable', '/Folia/resources/app')).toBe('/Folia/resources/app/native/spotify-cable');
+  expect(nativeComponentPath('spotify-route', '/Folia/resources/app.asar')).toBe(join('/Folia/resources', 'app.asar.unpacked/native/spotify-route'));
+  expect(nativeComponentPath('spotify-cable', '/Folia/resources/app')).toBe(join('/Folia/resources', 'app/native/spotify-cable'));
   expect(() => nativeComponentPath('../foreign', '/Folia/resources/app')).toThrow();
 });
 async function fixture() {

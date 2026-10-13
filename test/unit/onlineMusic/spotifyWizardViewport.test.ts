@@ -36,12 +36,12 @@ it('portals outside the transformed home host and keeps title/footer outside the
     expect(container.querySelector('[role=dialog]')).toBeNull();
     expect(overlay.getAttribute('data-folia-keyboard-window')).toBe('true');
     const panel = overlay.querySelector('.spotify-connection-panel')!;
-    expect([...panel.children].map(child => child.tagName)).toEqual(['HEADER', 'DIV', 'FOOTER']);
+    expect([...panel.children].map(child => child.tagName)).toEqual(['HEADER', 'DIV']);
     const scroll = panel.querySelector('.spotify-connection-content')!;
     expect(scroll.querySelector('[aria-label="home.closeLogin"]')).toBeNull();
-    expect(scroll.textContent).toContain('spotifyCable.intro');
+    expect(scroll.querySelector('[aria-label="Spotify 组件安装向导"]')).not.toBeNull();
     expect(panel.querySelector('header [aria-label="home.closeLogin"]')).not.toBeNull();
-    expect(panel.querySelector('footer')?.textContent).toContain('spotifyConnection.finish');
+    expect(panel.querySelector('footer')).toBeNull();
     expect(value.finish).not.toHaveBeenCalled();
 });
 

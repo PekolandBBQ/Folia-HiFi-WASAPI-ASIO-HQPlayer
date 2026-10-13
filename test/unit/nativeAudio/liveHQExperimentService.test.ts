@@ -22,7 +22,8 @@ async function fixture({ streamFailure = null as string | null, failedAfterReady
     const directory = await mkdtemp(path.join(os.tmpdir(), 'folia-experiment-ipc-'));
     const app = Object.assign(new EventEmitter(), { getPath: () => directory });
     const sender = { mainFrame: {}, isDestroyed: () => false, send: vi.fn() };
-    const source = { sampleRate: 44100, channels: 2, durationMs: 120000, openReadable: vi.fn(() => { throw new Error('Must not open a real reader'); }) };
+    const source = { sampleRate: 44100, channels: 2, durationMs: 120000, pause: vi.fn(async () => {}), stop: vi.fn(async () => {}),
+        openReadable: vi.fn(() => { throw new Error('Must not open a real reader'); }) };
     const url = 'http://127.0.0.1:30000/main-owned-pcm';
     const hqplayer = { prepare: vi.fn(async () => {}), checkExisting: vi.fn(async () => {}), setSilent: vi.fn(),
         supportsStreaming: vi.fn(async (options: any) => {

@@ -1,3 +1,4 @@
+import { join } from 'node:path';
 // @vitest-environment jsdom
 import React, { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
@@ -65,7 +66,7 @@ const mount = async () => {
 function fixture(options: { endpoints?: any[]; saved?: ProviderCableSelection; enabled?: boolean; configuration?: any } = {}) {
     const endpoints = options.endpoints || [capture, line16, speaker, ...unrecognized];
     const calls: any[] = [], diagnostics: any[] = [], files = new Map<string, string>();
-    const filename = '/synthetic-profile/spotify/cable-setup.json';
+    const filename = join('/synthetic-profile/spotify', 'cable-setup.json');
     if (options.saved) files.set(filename, JSON.stringify({ schema: 1, enabled: options.enabled === true, selection: options.saved }));
     const child: any = new EventEmitter(); child.stdout = new PassThrough(); child.stderr = new PassThrough();
     child.kill = vi.fn(() => { child.emit('exit', 0, null); return true; });

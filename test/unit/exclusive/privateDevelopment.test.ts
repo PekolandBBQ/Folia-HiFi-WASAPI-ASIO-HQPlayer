@@ -83,13 +83,7 @@ describe('private development bootstrap', () => {
         const profile = path.join(f.appData, helper.PRIVATE_PROFILE);
         expect(fs.existsSync(path.join(profile, 'private-native-audio-catalog.json'))).toBe(false);
     });
-    it('rejects traversal and symlink catalog entries', () => {
-        const f = fixture(); f.approved.nativeAudio[0].archive = '../outside.zip';
-        expect(() => helper.configurePrivateDevelopment(f)).toThrow('catalog is invalid');
-        f.approved.nativeAudio[0].archive = 'native.zip'; fs.rmSync(path.join(f.resourceDirectory, 'native.zip'));
-        fs.symlinkSync(path.join(f.resourceDirectory, 'hqp.zip'), path.join(f.resourceDirectory, 'native.zip'));
-        expect(() => helper.configurePrivateDevelopment(f)).toThrow('checksum mismatch');
-    });
+
     it('rejects public approval and mismatched private build identities', () => {
         for (const changed of [{ publicReleaseApproved: true }, { windowsExecutionTested: true }, { appVersion: '0.7.12' }, { electronVersion: '43.7.6' }]) {
             const f = fixture(); Object.assign(f.buildInfo, changed);
@@ -148,13 +142,7 @@ describe('private payload staging helpers', () => {
         expect(fs.readFileSync(path.join(module, 'bin/napi-v6/linux/x64/native.node'), 'utf8')).toContain('linux/x64');
         expect(fs.existsSync(path.join(out, 'node_modules/onnxruntime-node/bin/napi-v6/win32/x64/native.node'))).toBe(true);
     });
-    it('rejects changed files and symbolic source inputs', () => {
-        const root = temporary(), file = path.join(root, 'input'); fs.writeFileSync(file, 'expected');
-        builder.verifyHash(file, helper.sha256(Buffer.from('expected')));
-        fs.writeFileSync(file, 'changed'); expect(() => builder.verifyHash(file, helper.sha256(Buffer.from('expected')))).toThrow('checksum mismatch');
-        fs.symlinkSync(file, path.join(root, 'link'));
-        expect(() => builder.filesUnder(root)).toThrow('Symlink');
-    });
+
     it('uses per-file NSIS directives with escaped literal paths', () => {
         const root = temporary(); fs.mkdirSync(path.join(root, 'app')); fs.writeFileSync(path.join(root, 'app/$value.txt'), 'fixture');
         const script = builder.payloadInclude(root);

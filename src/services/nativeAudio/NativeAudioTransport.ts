@@ -268,11 +268,13 @@ export class NativeAudioTransport extends EventTarget {
         }).catch(error => this.fail(error, 'pause'));
     }
     private command(action: string, values: { position?: number; volume?: number; gain?: number; gainDb?: number } = {}) {
-        const session = this.session, revision = this.revision, intent = this.intent;
+        const session = this.session, revision = this.revision, intent = this.intent, playbackIntent = this.playbackIntent;
         // Only an explicit Play/Seek may carry the next target. Moving the slider has no IPC side effects.
         const prebuffer = ['play', 'seek'].includes(action)
             ? { livePcmPrebufferMs: normalizeLivePcmPrebufferMs(useAudioSettingsStore.getState().livePcmPrebufferMs) } : {};
-        const replacedControl = () => action === 'pause' && revision !== this.revision
+        // A seek changes position, not the user's pause intent. Only a newer
+        // play/pause intent or session may retire a pending pause.
+        const replacedControl = () => action === 'pause' && playbackIntent !== this.playbackIntent
             || action === 'play' && (intent !== this.intent || revision !== this.revision);
         const execute = async () => {
             await this.loading;

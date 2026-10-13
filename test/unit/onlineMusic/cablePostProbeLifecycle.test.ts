@@ -1,3 +1,4 @@
+import { join } from 'node:path';
 import { afterEach, expect, it, vi } from 'vitest';
 import { createRequire } from 'node:module';
 import { EventEmitter } from 'node:events';
@@ -105,7 +106,7 @@ function fixture() {
   return { setup, audio, control, commands, sockets, diagnostics, captureDiagnostics, io,
     request: (operation: string) => setup.request({ action: 'playbackSetup', operation, ...(operation === 'saveSelection' ? { selection } : {}) }),
     count: (action: string) => commands.filter(value => value.action === action).length,
-    saved: () => JSON.parse(files.get('/profile/spotify/cable-setup.json')!),
+    saved: () => JSON.parse(files.get(join('/profile/spotify', 'cable-setup.json'))!),
     leaseHeld: () => leaseHeld, changeRoute: (issue: string) => { routeIssue = issue; } };
 }
 

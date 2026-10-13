@@ -8,7 +8,7 @@ import { audioFixture, requestId, trackId, oldTrack, tick } from './ownedRouteFi
 
 // test/unit/onlineMusic/spicetifySource.integration.test.ts: actual shared control/audio/route/service, synthetic desktop authority and native boundaries.
 const require = createRequire(import.meta.url);
-const { createSharedRouteHarness } = require('../../../../test/fixtures/sharedRouteHarness.cjs');
+const { createSharedRouteHarness } = require('../../fixtures/sharedRouteHarness.cjs');
 const { createCableSpotifyService } = require('../../../electron/spotify/cableService.cjs');
 const { registerSpicetify } = require('../../../electron/spotify/spicetifyRegistration.cjs');
 const { assembleSourceService, bindSourceControl } = require('../../../electron/spotify/spicetify/runtime/createSpicetifyService.cjs');

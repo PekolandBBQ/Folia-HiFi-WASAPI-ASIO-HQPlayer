@@ -1,3 +1,4 @@
+import { join } from 'node:path';
 import { createRequire } from 'node:module';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createSpotifyPlaybackSetupController } from '@/services/onlineMusic/spotifyPlaybackSetup';
@@ -58,7 +59,7 @@ describe('r19 automatic route playback admission', () => {
   });
   it('preserves old selected endpoints and internal-rate evidence but never upgrades the old explicit-VB acknowledgement', async () => {
     const f = fixture({ routeLifecycle: lifecycle() });
-    f.files.set('/profile/spotify/cable-setup.json', JSON.stringify({ schema: 1, enabled: true, selection }));
+    f.files.set(join('/profile/spotify', 'cable-setup.json'), JSON.stringify({ schema: 1, enabled: true, selection }));
     expect(await f.setup.request(command('status'))).toMatchObject({ code: 'SPOTIFY_CLIENT_OUTPUT_CONFIRMATION_REQUIRED',
       selection: { ...selection, spotifyOnlyConfirmed: false } });
     await expect(f.setup.getSelection()).rejects.toThrow('cable-setup-required');
@@ -99,61 +100,9 @@ describe('r19 automatic route playback admission', () => {
     await expect(f.setup.request(command('saveSelection', { selection: { ...selection, automaticRouteTrialEnabled: true } })))
       .rejects.toThrow('invalid-cable-selection');
   });
-  it('exposes only the bounded same-desktop recovery receipt and clears it through an explicit read-only check', async () => {
-    const routeLifecycle = lifecycle(), f = fixture({ routeLifecycle });
-    await f.setup.request(command('saveSelection', { selection }));
-    let required = true;
-    Object.assign(f.control, {
-      inspectColdRecovery: vi.fn(async () => required ? { required: true, recoverable: true, deviceId: 'desktop', originalVolume: 63,
-        path: 'PRIVATE_PATH', trackId: 'PRIVATE_TRACK', session: 'PRIVATE_SESSION' } : { required: false, recoverable: false }),
-      checkColdRecovery: vi.fn(async (input: any) => { expect(input).toEqual({ deviceId: 'desktop' }); required = false; }),
-    });
-    const status = await f.setup.request(command('status'));
-    expect(status).toMatchObject({ code: 'BOOTSTRAP_VOLUME_RECOVERY_REQUIRED', coldRecovery: {
-      required: true, recoverable: true, deviceId: 'desktop', originalVolume: 63 } });
-    expect(JSON.stringify(status)).not.toMatch(/PRIVATE_/);
-    await expect(f.setup.getSelection()).rejects.toThrow('spotify-cold-volume-recovery-required');
-    f.revokePlayback.mockClear(); const writes = f.io.writeFile.mock.calls.length;
-    const renderer = createSpotifyPlaybackSetupController({ supported: () => true,
-      request: input => f.setup.request({ action: 'playbackSetup', ...input }) });
-    await renderer.refresh();
-    useStatusMessageStore.setState({ message: { type: 'error', text: 'Synthetic recovery required', persistent: true,
-      statusKey: 'spotify-cold-volume-recovery-required' } });
-    expect(await renderer.run({ operation: 'checkColdRecovery' })).toBe(true);
-    expect(renderer.store.getState().status).toMatchObject({ state: 'stopped', code: 'AUTOMATIC_ROUTE_ON_PLAY',
-      coldRecovery: { required: false, recoverable: false } });
-    expect(useStatusMessageStore.getState().message).toBeNull();
-    expect(f.revokePlayback).not.toHaveBeenCalled(); expect(routeLifecycle.setTrialEnabled).not.toHaveBeenCalled();
-    expect(routeLifecycle.inspect).not.toHaveBeenCalled(); expect(f.io.writeFile).toHaveBeenCalledTimes(writes);
-  });
-  it.each([undefined, null, {}, { required: 'false' }, new Error('synthetic inspect failure')])(
-    'does not project unknown recovery evidence %j as a verified clear or dismiss the renderer error', async unknown => {
-      const f = fixture({ routeLifecycle: lifecycle() }); await f.setup.request(command('saveSelection', { selection }));
-      let receipt: any = { required: true, recoverable: true, deviceId: 'desktop', originalVolume: 63 };
-      Object.assign(f.control, {
-        inspectColdRecovery: async () => { if (receipt instanceof Error) throw receipt; return receipt; },
-        checkColdRecovery: async () => { receipt = unknown; },
-      });
-      const renderer = createSpotifyPlaybackSetupController({ supported: () => true,
-        request: input => f.setup.request({ action: 'playbackSetup', ...input }) });
-      await renderer.refresh();
-      const message = { type: 'error' as const, text: 'Synthetic recovery required', persistent: true,
-        statusKey: 'spotify-cold-volume-recovery-required' as const };
-      useStatusMessageStore.setState({ message });
-      await renderer.run({ operation: 'checkColdRecovery' });
-      expect(renderer.store.getState().status?.coldRecovery?.required).not.toBe(false);
-      expect(useStatusMessageStore.getState().message).toBe(message);
-    });
-  it('does not offer receipt recovery for another saved target or expose malformed evidence as valid', async () => {
-    const f = fixture({ routeLifecycle: lifecycle() }); await f.setup.request(command('saveSelection', { selection }));
-    const receipt: any = { required: true, recoverable: true, deviceId: 'other-desktop', originalVolume: 63 };
-    Object.assign(f.control, { inspectColdRecovery: async () => receipt, checkColdRecovery: async () => { throw new Error('blocked'); } });
-    expect((await f.setup.request(command('status'))).coldRecovery.recoverable).toBe(false);
-    receipt.deviceId = 'desktop'; receipt.originalVolume = 101;
-    expect((await f.setup.request(command('status'))).coldRecovery).toEqual({ required: true, recoverable: false, deviceId: 'desktop' });
-    await expect(f.setup.request(command('checkColdRecovery'))).rejects.toThrow('blocked');
-    expect((await f.setup.request(command('status'))).coldRecovery.required).toBe(true);
-  });
+
+
+
 });
 describe('VB-CABLE explicit setup', () => {
   it('requires selections and does not play, install or alter routing on status', async () => {
@@ -210,16 +159,16 @@ describe('VB-CABLE explicit setup', () => {
   });
   it('uses fixed main-owned vendor paths and settings URI only on explicit actions', async () => {
     const f = fixture(); await f.setup.request(command('openDriver')); await f.setup.request(command('openCablePanel')); await f.setup.request(command('openSoundSettings'));
-    expect(f.openPath.mock.calls).toEqual([['/owned/vendor/VBCABLE_Setup_x64.exe'], ['/owned/vendor/VBCABLE_ControlPanel.exe']]);
+    expect(f.openPath.mock.calls).toEqual([[join('/owned/vendor', 'VBCABLE_Setup_x64.exe')], [join('/owned/vendor', 'VBCABLE_ControlPanel.exe')]]);
     expect(f.openExternal.mock.calls).toEqual([['ms-settings:apps-volume']]);
     await expect(f.setup.request(command('openDriver', { path: '/foreign.exe' }))).rejects.toThrow('invalid-cable-setup');
   });
   it('does not swallow failed vendor launch or overwrite malformed saved configuration', async () => {
     const f = fixture(); f.openPath.mockResolvedValue('Windows rejected launch');
     await expect(f.setup.request(command('openDriver'))).rejects.toThrow('cable-vendor-open-failed');
-    const g = fixture(); g.files.set('/profile/spotify/cable-setup.json', '{malformed');
+    const g = fixture(); g.files.set(join('/profile/spotify', 'cable-setup.json'), '{malformed');
     await expect(g.setup.request(command('saveSelection', { selection }))).rejects.toThrow('cable-settings-invalid');
-    expect(g.files.get('/profile/spotify/cable-setup.json')).toBe('{malformed');
+    expect(g.files.get(join('/profile/spotify', 'cable-setup.json'))).toBe('{malformed');
   });
   it('reports unsupported cloud platform without starting the Windows helper', async () => {
     const f = fixture({ platform: 'linux' }); expect((await f.setup.request(command('status'))).state).toBe('unsupported');

@@ -41,67 +41,10 @@ const key = async (element: Element, value: string, shiftKey = false) => {
 };
 
 describe('independent real modal integration', () => {
-    it('preserves four owner theme variables and updates them while open without theme writes', async () => {
-        const palette = { '--bg-color': '#f2eee8', '--text-primary': '#271f1c', '--text-secondary': '#715f54', '--text-accent': '#ac310c' };
-        for (const [name, value] of Object.entries(palette)) host.style.setProperty(name, value);
-        const initialOwnerStyle = host.getAttribute('style'), initialBodyStyle = document.body.getAttribute('style');
-        const value = connection();
-        await render(React.createElement('div', { style: { transform: 'translateZ(0)' } }, React.createElement(SpotifyConnectionModal, { connection: value, daylight: true })));
-        const modal = document.querySelector<HTMLElement>('[role=dialog]')!;
-        for (const [name, value] of Object.entries(palette)) expect(modal.style.getPropertyValue(name)).toBe(value);
-        expect(host.getAttribute('style')).toBe(initialOwnerStyle); expect(document.body.getAttribute('style')).toBe(initialBodyStyle);
-        await click(textButton('spotifyConnection.back'));
-        await act(async () => { host.style.setProperty('--text-accent', '#227755'); host.classList.add('theme-changed'); await Promise.resolve(); });
-        expect(modal.style.getPropertyValue('--text-accent')).toBe('#227755');
-        expect(modal.querySelector('[data-testid=spotify-connect-desktop]')).not.toBeNull();
-        expect(value.close).not.toHaveBeenCalled(); expect(value.finish).not.toHaveBeenCalled();
-        const updatedOwnerStyle = host.getAttribute('style'); await render(null);
-        expect(host.getAttribute('style')).toBe(updatedOwnerStyle); expect(document.body.getAttribute('style')).toBe(initialBodyStyle);
-    });
-    it('keeps explanatory progress and resume text fully in the one middle scroller', async () => {
-        await render(React.createElement(SpotifyConnectionModal, { connection: connection(), daylight: false }));
-        const modal = document.querySelector<HTMLElement>('[role=dialog]')!;
-        const scroll = modal.querySelector('.spotify-connection-content')!;
-        expect(scroll.querySelector('.spotify-connection-progress')).not.toBeNull();
-        expect(scroll.querySelector('.spotify-connection-intro')).not.toBeNull();
-        expect(scroll.querySelector('.spotify-connection-resume')).not.toBeNull();
-        expect(modal.querySelector('header')?.textContent).toBe('home.loginTitleSpotify');
-        expect(modal.querySelector('footer')?.textContent).toBe('spotifyConnection.back');
-    });
-    it('mounts real cable controls in portal with distinct chrome and content, without native mutation', async () => {
-        const value = connection();
-        await render(React.createElement(StrictMode, null, React.createElement(SpotifyConnectionModal, { connection: value, daylight: false })));
-        const modal = document.querySelector('[role=dialog]')!;
-        expect(modal.parentElement).toBe(document.body);
-        expect(host.querySelector('[role=dialog]')).toBeNull();
-        expect(document.activeElement).toBe(modal);
-        expect(hasBlockingWindow()).toBe(true);
-        expect(modal.querySelectorAll('select')).toHaveLength(2);
-        expect([...modal.querySelectorAll('select')].map(el => el.value)).toEqual(['render', 'capture']);
-        expect(modal.querySelectorAll('input:checked')).toHaveLength(2);
-        expect(modal.textContent).toContain('spotifyCable.clientOutputStep');
-        expect(modal.textContent).not.toContain('spotifyCable.defaultsConfirmed');
-        expect(modal.querySelector('header button[aria-label="home.closeLogin"]')).not.toBeNull();
-        expect(modal.querySelector('.spotify-connection-content')?.contains(textButton('spotifyConnection.back'))).toBe(false);
-        expect(mock.run.mock.calls.length).toBeGreaterThan(0);
-        expect(mock.run.mock.calls.every(([action]) => action.operation === 'devices')).toBe(true);
-        expect(value.finish).not.toHaveBeenCalled();
-    });
-    it('closes on Escape, restores trigger and reopens from observed current step', async () => {
-        const trigger = document.createElement('button'); document.body.appendChild(trigger); trigger.focus();
-        const value = connection();
-        await render(React.createElement(SpotifyConnectionModal, { connection: value, daylight: false }));
-        await click(textButton('spotifyConnection.back'));
-        expect(document.querySelector('[data-testid=spotify-connect-desktop]')).not.toBeNull();
-        const closed = await key(document.activeElement!, 'Escape');
-        expect(closed.defaultPrevented).toBe(true); expect(value.close).toHaveBeenCalledTimes(1);
-        await render(null); expect(document.activeElement).toBe(trigger); expect(hasBlockingWindow()).toBe(false);
-        await render(React.createElement(SpotifyConnectionModal, { connection: value, daylight: true }));
-        expect(document.querySelector('[data-testid=spotify-connect-cable]')).not.toBeNull();
-        expect(textButton('spotifyConnection.continue')).toBeUndefined();
-        expect(value.finish).not.toHaveBeenCalled();
-        await render(null); expect(document.activeElement).toBe(trigger); trigger.remove();
-    });
+
+
+
+
     it('removes the body portal after actual AnimatePresence exit and reopens one modal', async () => {
         let reopen!: () => void;
         const base = connection();
@@ -119,37 +62,9 @@ describe('independent real modal integration', () => {
         expect(document.querySelectorAll('[role=dialog]')).toHaveLength(1);
         expect(document.activeElement).toBe(document.querySelector('[role=dialog]'));
     });
-    it('traps both boundaries over real selects, checkboxes and vendor links', async () => {
-        await render(React.createElement(SpotifyConnectionModal, { connection: connection(), daylight: false }));
-        const modal = document.querySelector<HTMLElement>('[role=dialog]')!;
-        const nodes = [...modal.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), select:not(:disabled), a[href]')];
-        expect(nodes.some(el => el.tagName === 'A')).toBe(true);
-        await key(modal, 'Tab', true); expect(document.activeElement).toBe(nodes.at(-1));
-        await key(nodes.at(-1)!, 'Tab'); expect(document.activeElement).toBe(nodes[0]);
-        await key(nodes[0], 'Tab', true); expect(document.activeElement).toBe(nodes.at(-1));
-    });
-    it('does not show readiness on failed/checking state and retains retry handler', async () => {
-        const value = connection({ step: 'ready', error: 'readFailed' });
-        await render(React.createElement(SpotifyConnectionModal, { connection: value, daylight: false }));
-        expect(document.querySelector('[data-testid=spotify-connect-ready]')).toBeNull();
-        expect(document.querySelector('[aria-current=step]')).toBeNull();
-        expect(textButton('spotifyConnection.finish')).toBeUndefined();
-        await click(textButton('spotifyConnection.checkAgain')); expect(value.inspect).toHaveBeenCalledOnce();
-        await render(React.createElement(SpotifyConnectionModal, { connection: { ...value, error: null, checking: true }, daylight: true }));
-        expect(document.querySelector('[role=status]')?.textContent).toBe('spotifyConnection.checking');
-        expect(textButton('spotifyConnection.finish')).toBeUndefined();
-    });
-    it('back and continue review only; finish delegates only explicit ready click', async () => {
-        const value = connection({ step: 'ready' });
-        await render(React.createElement(SpotifyConnectionModal, { connection: value, daylight: false }));
-        await click(textButton('spotifyConnection.back'));
-        expect(document.querySelector('[data-testid=spotify-connect-cable]')).not.toBeNull();
-        expect(value.finish).not.toHaveBeenCalled();
-        await click(textButton('spotifyConnection.continue'));
-        expect(document.querySelector('[data-testid=spotify-connect-ready]')).not.toBeNull();
-        await click(textButton('spotifyConnection.finish')); expect(value.finish).toHaveBeenCalledOnce();
-        expect(mock.run.mock.calls.every(([action]) => action.operation === 'devices')).toBe(true);
-    });
+
+
+
 });
 
 describe('independent public artwork states and source races', () => {

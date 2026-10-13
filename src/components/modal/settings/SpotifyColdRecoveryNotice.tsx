@@ -6,8 +6,8 @@ export default function SpotifyColdRecoveryNotice({ status }: { status: Provider
     const { t } = useTranslation();
     const recovery = status.coldRecovery;
     if (!recovery?.archived && !recovery?.required) return null;
-    return <section className="spotify-setup-surface space-y-2 rounded-xl border p-3" data-testid="spotify-cold-history">
+    return <div role="note" className="spotify-setup-surface space-y-2 rounded-xl border p-3" data-testid="spotify-cold-history">
         <p>{t('spotifyCable.volumeHistoryRetained')}</p>
         {recovery.sourceControlUnconfirmed && <p>{t('spotifyCable.sourceControlUnconfirmed')}</p>}
-    </section>;
+    </div>;
 }
