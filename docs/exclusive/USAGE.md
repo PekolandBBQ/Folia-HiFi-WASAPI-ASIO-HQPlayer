@@ -22,7 +22,7 @@
 
 ## Spotify 首次使用与播放
 
-当前路由仅允许 Windows x64、内核构建号 **10.0.28000**；可在 Windows“设置 → 系统 → 系统信息”核对。其他构建暂不能启用本次 Spotify 路由。官网桌面版与 Microsoft Store 版均有安装检测；本机实播为 Store 版。
+r4 支持在 Windows 10（1803 或更新）/ Windows 11 x64 上自动识别应用音频路由接口，不再要求内核构建号 28000。用户不需要安装 .NET SDK、Node、Visual Studio 或自行构建；下载安装 Folia 后按同一组件向导完成安装与配置即可。接口不存在时会显示明确说明，播放时继续核验 Spotify 的实际路由。官网桌面版与 Microsoft Store 版均有安装检测；本机实播为 Store 版。其他系统的完整实播结果仍待取得。
 
 1. 自行安装 Spotify，打开并登录账号。未安装时 Folia 只提示自行安装并提供下载入口。
 2. Folia 首页点击“连接 Spotify”。检测到两种安装时，明确选择要连接的版本。

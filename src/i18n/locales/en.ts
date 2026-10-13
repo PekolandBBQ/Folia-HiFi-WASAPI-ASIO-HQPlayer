@@ -32,6 +32,8 @@ export default {
   "select": "Choose a device…",
   "active": "active",
   "automaticTrialPlatform": "This private routing build is limited to Windows 10.0.28000 x64. It cannot route audio on this system.",
+  "automaticRuntimePlatform": "Spotify integration requires Windows 10 (1803 or later) or Windows 11 x64. This system or processor architecture is unsupported by this component.",
+  "automaticRuntimeUnavailable": "A usable per-app audio routing interface is unavailable. Check Windows audio services and try playing again. Folia has not changed any audio routes.",
   "automaticUnavailable": "Automatic routing is not qualified in this build. Playback stays blocked until the routing service and its recovery checks are available.",
   "sourceSessionRequired": "Folia could not verify the Spotify audio process. Keep the official desktop app open and signed in, then retry the track.",
   "sourceDefaultRequired": "Folia could not safely confirm Spotify’s original Windows app output route. Review the selected output and retry; safe explicit output choices can be preserved.",
@@ -2791,6 +2793,30 @@ export default {
     "noDescription": "No description available",
   },
   "releaseNotes": {
+        hifi0_7_12r4: {
+        "intro": "This revision removes the exact Windows build restriction and selects the available per-app audio routing interface at runtime.",
+        "spotifyCompatibility": {"title":"Automatic Windows adaptation","description":"Detect per-app routing interfaces on Windows 10 (1803+) and Windows 11 x64. No compiler is required; the component ships with Folia and checks local interfaces and original routes."},
+        "spotifyWrapper": {
+                "title": "Local Spotify playback",
+                "description": "Play through the Spotify desktop client and local capture, with Folia exclusive output, HQPlayer and integer mode."
+        },
+        "spotifySetup": {
+                "title": "Install and configure together",
+                "description": "Manage pinned Spicetify and VB-CABLE versions, detect desktop and Store Spotify, and guide restart and physical output setup."
+        },
+        "spotifyDesktop": {
+                "title": "Background start and desktop changes",
+                "description": "Start Spotify in the background. When its track changes, pause and ask whether to follow or hand playback back. Choose whether to close Folia-started Spotify on exit."
+        },
+        "spotifyLibrary": {
+                "title": "Artwork and original lyrics",
+                "description": "Liked Songs gains a nine-image cover. Spotify track lyrics are returned when available."
+        },
+        "spotifyCapture": {
+                "title": "Continue across short gaps",
+                "description": "Conceal known short capture gaps with equal-duration silence and record them. Larger faults still report failure."
+        }
+},
         hifi0_7_12r3: {
         "intro": "This fork release adds Spotify desktop integration, coordinated playback and short-gap tolerance, and fixes pause/seek concurrency.",
         "spotifyWrapper": {

@@ -32,6 +32,8 @@ export default {
   "select": "Pilih perangkat…",
   "active": "aktif",
   "automaticTrialPlatform": "Versi rute privat ini hanya untuk Windows 10.0.28000 x64. Perutean tidak tersedia pada sistem ini.",
+  "automaticRuntimePlatform": "Integrasi Spotify memerlukan Windows 10 (1803 atau lebih baru) atau Windows 11 x64. Sistem atau arsitektur ini tidak didukung komponen ini.",
+  "automaticRuntimeUnavailable": "Antarmuka perutean audio per aplikasi tidak tersedia. Periksa layanan audio Windows lalu coba putar lagi. Folia belum mengubah rute audio.",
   "automaticUnavailable": "Perutean otomatis belum memenuhi verifikasi pada versi ini. Pemutaran diblokir sampai layanan rute dan pemeriksaan pemulihannya tersedia.",
   "sourceSessionRequired": "Folia tidak dapat memverifikasi proses audio Spotify. Biarkan aplikasi desktop resmi terbuka dan masuk, lalu coba lagunya lagi.",
   "sourceDefaultRequired": "Folia tidak dapat memastikan keamanan rute output aplikasi Spotify semula di Windows. Periksa output terpilih lalu coba lagi; pilihan output eksplisit yang aman dapat dipertahankan.",
@@ -2686,6 +2688,30 @@ export default {
     "temperaPoolExportFailed": "Ekspor gagal"
   },
   "releaseNotes": {
+        hifi0_7_12r4: {
+        "intro": "Revisi ini menghapus batas build Windows tertentu dan memilih antarmuka perutean audio per aplikasi yang tersedia saat berjalan.",
+        "spotifyCompatibility": {"title":"Adaptasi Windows otomatis","description":"Deteksi antarmuka rute pada Windows 10 (1803+) dan Windows 11 x64. Tidak perlu kompilator; komponen disertakan dengan Folia dan memeriksa antarmuka serta rute asli di sistem lokal."},
+        "spotifyWrapper": {
+                "title": "Pemutaran Spotify lokal",
+                "description": "Putar melalui klien desktop Spotify dan tangkapan lokal dengan output eksklusif Folia, HQPlayer, dan mode integer."
+        },
+        "spotifySetup": {
+                "title": "Instal dan konfigurasi bersama",
+                "description": "Kelola versi Spicetify dan VB-CABLE yang ditetapkan, deteksi Spotify desktop dan Store, serta panduan mulai ulang dan perangkat output fisik."
+        },
+        "spotifyDesktop": {
+                "title": "Mulai di latar dan perubahan desktop",
+                "description": "Jalankan Spotify di latar. Saat lagu desktop berubah, jeda dan tanyakan apakah mengikuti atau mengembalikan pemutaran. Pilih penutupan Spotify yang dijalankan Folia saat keluar."
+        },
+        "spotifyLibrary": {
+                "title": "Sampul dan lirik asli",
+                "description": "Lagu yang disukai mendapat kolase sembilan gambar. Lirik lagu Spotify dikembalikan bila tersedia."
+        },
+        "spotifyCapture": {
+                "title": "Lanjutkan setelah celah singkat",
+                "description": "Isi celah tangkapan singkat yang diketahui dengan keheningan berdurasi sama dan catat kompensasi. Gangguan besar tetap dilaporkan."
+        }
+},
         hifi0_7_12r3: {
         "intro": "Rilis fork ini menambahkan integrasi desktop Spotify, koordinasi pemutaran dan toleransi jeda singkat, serta memperbaiki konkurensi jeda/seek.",
         "spotifyWrapper": {

@@ -2,11 +2,11 @@
 
 基于 [Folia](https://github.com/chthollyphile/folia-major) 的个人公益、非商业维护 fork，由 [PekolandBBQ](https://github.com/PekolandBBQ) 维护。保留原有歌词与音乐库体验，追加 Windows WASAPI/ASIO 独占输出、HQPlayer 连接、整数 PCM、音频链路，以及 **Spotify 桌面客户端接入**。
 
-当前正式修订为 **0.7.12 r3**，标签为 `folia-hifi-v0.7.12-r3`。应用版本继续与上游保持一致，为 **0.7.12**；修订号只用于区分本 fork 的发行件。原项目署名和许可证保留，专版独立维护。
+当前正式修订为 **0.7.12 r4**，标签为 `folia-hifi-v0.7.12-r4`。应用版本继续与上游保持一致，为 **0.7.12**；修订号只用于区分本 fork 的发行件。原项目署名和许可证保留，专版独立维护。
 
-[下载 Windows x64 正式版](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/releases/tag/folia-hifi-v0.7.12-r3) · [使用说明](docs/exclusive/USAGE.md) · [本次更新说明](docs/exclusive/releases/0.7.12-r3.md) · [验证结果](docs/exclusive/VALIDATION.md) · [反馈问题](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/issues)
+[下载 Windows x64 正式版](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/releases/tag/folia-hifi-v0.7.12-r4) · [使用说明](docs/exclusive/USAGE.md) · [本次更新说明](docs/exclusive/releases/0.7.12-r4.md) · [验证结果](docs/exclusive/VALIDATION.md) · [反馈问题](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/issues)
 
-**Spotify 当前适用范围：Windows x64，路由组件限定 Windows 内核构建号 10.0.28000。其他构建暂不能启用此 Spotify 路由。** 本次真实运行的是 Microsoft Store 版；官网桌面版安装检测有代码测试。其他构建与全新 Windows 上的完整 Spicetify 首次安装仍待验证，已安装组件继续复用。
+**Spotify 适用平台：Windows 10（1803 或更新）/ Windows 11 x64。r4 在用户系统上自动选择可用的应用音频路由接口，不再限定 10.0.28000；无需用户安装编译工具或自行构建。** 完成一键安装、配置后正常点歌即可。当前本机为 28000、Microsoft Store 版；其他 Windows 的接口选择有代码测试，尚无那些系统的完整实播结果。全新 Windows 上的 Spicetify 首次安装仍待验证，已有组件和备份继续复用。
 
 ## 我追加了哪些功能
 
@@ -23,7 +23,7 @@
 
 ## 下载与开始使用
 
-1. 从 [0.7.12 r3 Release](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/releases/tag/folia-hifi-v0.7.12-r3) 下载 **[EXE 安装版](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/releases/download/folia-hifi-v0.7.12-r3/Folia-HiFi-WASAPI-ASIO-HQPlayer-0.7.12-win-x64-Setup.exe)**，或 **[ZIP 免安装版](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/releases/download/folia-hifi-v0.7.12-r3/Folia-HiFi-WASAPI-ASIO-HQPlayer-0.7.12-win-x64.zip)**。ZIP 完整解压后运行其中的 EXE；更新前先退出旧版。
+1. 从 [0.7.12 r3 Release](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/releases/tag/folia-hifi-v0.7.12-r4) 下载 **[EXE 安装版](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/releases/download/folia-hifi-v0.7.12-r3/Folia-HiFi-WASAPI-ASIO-HQPlayer-0.7.12-win-x64-Setup.exe)**，或 **[ZIP 免安装版](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/releases/download/folia-hifi-v0.7.12-r3/Folia-HiFi-WASAPI-ASIO-HQPlayer-0.7.12-win-x64.zip)**。ZIP 完整解压后运行其中的 EXE；更新前先退出旧版。
 2. 两种方式共用 `%APPDATA%\Folia HiFi`。已有配置保留；旧 `FoliaExclusive` 仅在目标目录不存在时复制迁移，不合并或覆盖。
 3. 使用 Spotify 时，先自行安装官网桌面版或 Microsoft Store 版，启动并登录账号。在 Folia 点击“连接 Spotify”，按向导选择安装版本。
 4. 按顺序点击“① 一键安装”及“② 一键配置”。首次安装/重装 VB-CABLE 后按提示重启，再“重新检查”；Windows 默认输出应选实际扬声器或 DAC，不能选 CABLE Input / CABLE In 16ch。配置步骤按向导提示正常退出 Spotify，已有组件和备份继续沿用。
@@ -58,7 +58,7 @@ Spotify 内暂停、停止、切歌、Seek 和后端切换保留路由；暂停/
 
 源码、构建、验证与维护约束见 [MAINTAINING](docs/exclusive/MAINTAINING.md)。
 
-Folia-HiFi-WASAPI-ASIO-HQPlayer-Spotify is an independently maintained, personal noncommercial Windows x64 fork of Folia. It adds Spotify desktop integration, WASAPI/ASIO output, HQPlayer control, integer PCM and signal-path reporting. The current Spotify route is limited to Windows kernel build 10.0.28000. The application version remains 0.7.12; fork revision r3 uses a separate release tag.
+Folia-HiFi-WASAPI-ASIO-HQPlayer-Spotify is an independently maintained, personal noncommercial Windows x64 fork of Folia. It adds Spotify desktop integration, WASAPI/ASIO output, HQPlayer control, integer PCM and signal-path reporting. Revision r4 automatically selects the available per-app routing interface on Windows 10 (1803+) and Windows 11 x64; users do not need compilers or an exact kernel build. The application version remains 0.7.12; fork revision r4 uses a separate release tag.
 
 ---
 

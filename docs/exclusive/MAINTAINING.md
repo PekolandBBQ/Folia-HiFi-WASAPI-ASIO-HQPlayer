@@ -29,6 +29,8 @@ node packaging/exclusive/build.cjs
 
 Spotify 接入从本次开始采用用户指定标签 `folia-hifi-v0.7.12-r3`，后续修订沿用 `folia-` 前缀；旧 `hifi-v*` 标签保留。应用版本仍与上游保持一致。
 
+r4 的公开路由组件采用运行时 Windows 10/11 接口选择，不再携带单一 28000 内核准入，也无需设置 `FOLIA_LOCAL_ACCEPTANCE=true` 才能正式装配。`FOLIA_WRAPPER_NATIVE_ROOT` 指向固定 route26/capture9 自包含组件对；相应源码、重建步骤和实际测试范围随 Release 提供。构建机器的内核版本不决定用户的运行资格；用户不需要 SDK 或自行构建。
+
 ## 发布前检查
 
 ```powershell

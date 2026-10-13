@@ -32,6 +32,8 @@ export default {
   "select": "选择设备…",
   "active": "当前使用",
   "automaticTrialPlatform": "此私有路由版本仅适用于 Windows 10.0.28000 x64，当前系统不能启用。",
+  "automaticRuntimePlatform": "Spotify 接入需要 Windows 10（1803 或更新）或 Windows 11 x64。当前系统或处理器架构不受本组件支持。",
+  "automaticRuntimeUnavailable": "当前系统未提供可用的应用音频路由接口。请检查 Windows 音频服务后重新点歌；Folia 未修改音频路由。",
   "automaticUnavailable": "此版本的自动路由尚未通过验证。路由服务和恢复检查可用前，播放会保持阻止状态。",
   "sourceSessionRequired": "Folia 未能确认 Spotify 音频进程。请保持官方桌面客户端打开并登录，然后重新点歌。",
   "sourceDefaultRequired": "Folia 未能安全确认 Spotify 原有的 Windows 每应用输出路由。请检查所选输出后重试；安全的显式输出选择可以保留。",
@@ -2790,6 +2792,30 @@ export default {
     "noDescription": "暂无详细介绍",
   },
   "releaseNotes": {
+        hifi0_7_12r4: {
+        "intro": "本次修订移除 Spotify 接入的单一内核构建限制，改为在用户的 Windows 系统上自动选择音频路由接口。",
+        "spotifyCompatibility": {"title":"Windows 版本自动适配","description":"支持识别 Windows 10（1803 或更新）和 Windows 11 x64 的应用音频路由接口。无需安装编译工具，组件随 Folia 提供；实际接口和原路由仍在本机检查。"},
+        "spotifyWrapper": {
+                "title": "Spotify 本机播放",
+                "description": "通过 Spotify 桌面客户端与本机采集链路播放，接入 Folia 的独占输出、HQPlayer 和整数模式。"
+        },
+        "spotifySetup": {
+                "title": "一键安装与配置",
+                "description": "统一管理固定版本的 Spicetify 与 VB-CABLE，检测桌面版及商店版 Spotify，并引导重启和实际输出设备配置。"
+        },
+        "spotifyDesktop": {
+                "title": "后台启动与桌面协同",
+                "description": "可后台拉起 Spotify；桌面换歌后暂停并询问是否追随，也可交还 Spotify 播放。退出时选择是否关闭由 Folia 拉起的 Spotify。"
+        },
+        "spotifyLibrary": {
+                "title": "歌单封面与原歌词",
+                "description": "已点赞歌曲使用九宫格封面；有可用原歌词时回传 Spotify 歌曲歌词。"
+        },
+        "spotifyCapture": {
+                "title": "短缺口继续播放",
+                "description": "播放中的已知短缺口补入等长静音继续交付，记录补偿区间；较大异常仍提示失败。"
+        }
+},
         hifi0_7_12r3: {
         "intro": "本次正式修订加入 Spotify 接入、桌面协同与短缺口容错，并修复暂停与定位并发。",
         "spotifyWrapper": {

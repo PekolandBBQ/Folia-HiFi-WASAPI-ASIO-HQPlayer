@@ -5,7 +5,7 @@ const { createHash } = require('node:crypto');
 const { spawn } = require('node:child_process');
 const os = require('node:os');
 const { failure, qualified, CODES, physicalOwnerDiagnostic, operationFailureDiagnostic } = require('./ownedRouteProtocol.cjs');
-const { VALIDATION_PROFILE, trialArtifact, trialMachine } = require('./ownedRouteTrial.cjs');
+const { VALIDATION_PROFILE, COMPATIBILITY_PROFILE, runtimeArtifact, trialArtifact } = require('./ownedRouteTrial.cjs');
 const { publishPreviewDiagnostic } = require('../debug/privatePreviewDiagnosticBus.cjs');
 
 // electron/spotify/ownedRouteHost.cjs: one private, long-lived child; no CLI roundtrip or executable search fallback.
@@ -13,8 +13,8 @@ async function resolveOwnedRouteComponent(directory, io = fs, { allowTrial = fal
   try {
     const manifest = JSON.parse(await io.readFile(path.join(directory, 'component.json'), 'utf8'));
     if (manifest.schema !== 1 || manifest.protocolMajor !== 1 || manifest.executable !== 'folia-route-service.exe'
-      || manifest.version !== '0.19.0-dev.25' || !/^[a-f0-9]{64}$/.test(manifest.sha256 || '')) throw failure('ROUTE_COMPONENT_INVALID');
-    if (manifest.productionQualified !== true) {
+      || manifest.version !== '0.19.0-dev.26' || !/^[a-f0-9]{64}$/.test(manifest.sha256 || '')) throw failure('ROUTE_COMPONENT_INVALID');
+    if (manifest.productionQualified !== true && !runtimeArtifact(manifest)) {
       if (!trialArtifact(manifest)) throw failure('ROUTE_HELPER_UNQUALIFIED');
       if (!allowTrial) throw Object.assign(failure('ROUTE_TRIAL_OPT_IN_REQUIRED'), { trialAvailable: true, validationProfile: VALIDATION_PROFILE });
     }
@@ -305,7 +305,7 @@ function createOwnedRouteHost({ componentDirectory, platform = process.platform,
     if (starting) return starting;
     starting = (async () => {
       if (platform !== 'win32') throw failure('ROUTE_HELPER_UNAVAILABLE');
-      if (trialEnabled && !trialMachine({ platform, arch, release: systemRelease() })) throw failure('ROUTE_TRIAL_PLATFORM_MISMATCH');
+      if (arch !== 'x64') throw failure('APP_ROUTE_X64_REQUIRED');
       const executable = await resolveComponent(componentDirectory, undefined, { allowTrial: trialEnabled });
       if (closed) throw failure('ROUTE_HELPER_CLOSED');
       let child;
@@ -323,14 +323,19 @@ function createOwnedRouteHost({ componentDirectory, platform = process.platform,
       child.stdout.on('end', () => broken(record, 'ROUTE_HELPER_CLOSED'));
       child.stderr.on('data', () => {}); child.stderr.on('error', () => {});
       const hello = await send(record, 'hello', { protocolMajor: 1 });
-      if (!qualified(hello.capabilities, { allowTrial: trialEnabled })) { broken(record, 'ROUTE_HELPER_UNQUALIFIED'); throw failure('ROUTE_HELPER_UNQUALIFIED'); }
+      if (!qualified(hello.capabilities, { allowTrial: trialEnabled })) {
+        const code = hello.capabilities?.blockers?.find(value => CODES.has(value)) || 'ROUTE_HELPER_UNQUALIFIED';
+        broken(record, code); throw failure(code);
+      }
       record.capabilities = { supported: true, productionQualified: hello.capabilities.productionQualified === true,
         externalTrackHold: hello.capabilities.operations.includes('holdExternalSelection'),
         boundedPausedHoldObservation: hello.capabilities.boundedPausedHoldObservation === true,
         boundedPausedProofTransfer: hello.capabilities.boundedPausedProofTransfer === true,
         boundedSeekPark: hello.capabilities.boundedSeekPark === true,
         providerRouteLifetime: hello.capabilities.providerRouteLifetime === true,
-        ...(hello.capabilities.productionQualified !== true ? { trialAuthorized: true, validationProfile: VALIDATION_PROFILE } : {}) };
+        ...(hello.capabilities.runtimeCompatible === true ? { runtimeCompatible: true, compatibilityProfile: COMPATIBILITY_PROFILE,
+          windowsBuild: hello.capabilities.windowsBuild, routeInterfaceId: hello.capabilities.routeInterfaceId }
+          : hello.capabilities.productionQualified !== true ? { trialAuthorized: true, validationProfile: VALIDATION_PROFILE } : {}) };
       return record;
     })();
     return starting;

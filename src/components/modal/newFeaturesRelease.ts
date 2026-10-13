@@ -5,8 +5,9 @@ import type { LucideIcon } from 'lucide-react';
 type NewFeatureCard = { id: string; icon: LucideIcon; daylightIconClassName: string; darkIconClassName: string };
 type NewFeaturesRelease = { i18nKey: string; features: NewFeatureCard[] };
 export const NEW_FEATURES_RELEASE: NewFeaturesRelease = {
-    i18nKey: 'releaseNotes.hifi0_7_12r3',
+    i18nKey: 'releaseNotes.hifi0_7_12r4',
     features: [
+        { id: 'spotifyCompatibility', icon: Monitor, daylightIconClassName: 'text-indigo-600', darkIconClassName: 'text-indigo-400' },
         { id: 'spotifyWrapper', icon: Music2, daylightIconClassName: 'text-emerald-600', darkIconClassName: 'text-emerald-400' },
         { id: 'spotifySetup', icon: Cable, daylightIconClassName: 'text-cyan-600', darkIconClassName: 'text-cyan-400' },
         { id: 'spotifyDesktop', icon: Monitor, daylightIconClassName: 'text-sky-600', darkIconClassName: 'text-sky-400' },

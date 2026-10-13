@@ -16,6 +16,8 @@ const codeLabels: Record<string, string> = {
     ROUTE_HELPER_UNAVAILABLE: 'automaticUnavailable', ROUTE_HELPER_UNQUALIFIED: 'automaticUnavailable',
     ROUTE_COMPONENT_INVALID: 'automaticUnavailable', NATIVE_PRODUCT_ADAPTER_UNQUALIFIED: 'automaticUnavailable',
     ROUTE_TRIAL_PLATFORM_MISMATCH: 'automaticTrialPlatform',
+    APP_ROUTE_WINDOWS_UNSUPPORTED: 'automaticRuntimePlatform', APP_ROUTE_X64_REQUIRED: 'automaticRuntimePlatform',
+    APP_ROUTE_INTERFACE_UNAVAILABLE: 'automaticRuntimeUnavailable', APP_ROUTE_READ_UNAVAILABLE: 'automaticRuntimeUnavailable',
     ROUTE_SOURCE_DEFAULT_REQUIRED: 'sourceDefaultRequired', AUTOMATIC_ROUTE_ON_PLAY: 'automaticOnPlay',
     SOURCE_DEFAULT_POLICY_REQUIRED: 'sourceDefaultRequired', EXACT_SPOTIFY_AUDIO_PROCESS_UNPROVEN: 'sourceSessionRequired',
     SPOTIFY_AUDIO_PROCESS_AMBIGUOUS: 'routeUnverified',

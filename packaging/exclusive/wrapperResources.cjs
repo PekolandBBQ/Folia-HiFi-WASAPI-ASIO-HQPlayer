@@ -6,7 +6,8 @@ const bundle = require('../../electron/spotify/componentBundle.json');
 // Assemble only the pinned native pair. Spotify assets and user profiles never ship.
 async function prepareWrapperResources({ source, destination, preview = false, localValidation = false }) {
   const manifest = JSON.parse(await fs.readFile(path.join(source, 'spotify-route/component.json'), 'utf8'));
-  if (!preview && !localValidation && manifest.productionQualified !== true) throw Object.assign(Error('WRAPPER_NOT_RELEASE_QUALIFIED'), { code: 'WRAPPER_NOT_RELEASE_QUALIFIED' });
+  const runtimeAdaptation = require('../../electron/spotify/ownedRouteTrial.cjs').runtimeArtifact(manifest);
+  if (!preview && !localValidation && manifest.productionQualified !== true && !runtimeAdaptation) throw Object.assign(Error('WRAPPER_NOT_RELEASE_QUALIFIED'), { code: 'WRAPPER_NOT_RELEASE_QUALIFIED' });
   if (localValidation && (manifest.trialAuthorized !== true
     || manifest.validationProfile !== require('../../electron/spotify/ownedRouteTrial.cjs').VALIDATION_PROFILE
     || manifest.builtFor !== 'win-x64')) throw Error('WRAPPER_LOCAL_VALIDATION_PROFILE_MISMATCH');
@@ -25,7 +26,8 @@ async function prepareWrapperResources({ source, destination, preview = false, l
     entries.push({ name: files[i], bytes: contents[i].length, sha256: hash(contents[i]) });
   }
   const receipt = { schema: 1, bundleVersion: bundle.version, preview, localValidation,
-    productionQualified: manifest.productionQualified === true, validationProfile: manifest.validationProfile, entries };
+    productionQualified: manifest.productionQualified === true, runtimeAdaptation,
+    compatibilityProfile: manifest.compatibilityProfile, validationProfile: manifest.validationProfile, entries };
   await fs.writeFile(path.join(destination, 'assembly.json'), JSON.stringify(receipt, null, 2));
   return receipt;
 }

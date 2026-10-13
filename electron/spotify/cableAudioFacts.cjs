@@ -41,7 +41,8 @@ function publicError(error) {
   if (code === 'BOOTSTRAP_VOLUME_UNCONFIRMED') return spotifyError('unavailable', 'spotify-cold-volume-unconfirmed');
   if (code === 'BOOTSTRAP_VOLUME_RECOVERY_REQUIRED') return spotifyError('setup-required', 'spotify-cold-volume-recovery-required');
   if (code === 'BOOTSTRAP_IDENTITY_UNCONFIRMED') return spotifyError('unavailable', 'spotify-cold-identity-unconfirmed');
-  if (code === 'ROUTE_TRIAL_PLATFORM_MISMATCH') return spotifyError('unsupported', 'automatic-route-platform-unsupported');
+  if (['ROUTE_TRIAL_PLATFORM_MISMATCH', 'APP_ROUTE_WINDOWS_UNSUPPORTED', 'APP_ROUTE_X64_REQUIRED'].includes(code)) return spotifyError('unsupported', 'automatic-route-platform-unsupported');
+  if (['APP_ROUTE_INTERFACE_UNAVAILABLE', 'APP_ROUTE_READ_UNAVAILABLE'].includes(code)) return spotifyError('setup-required', 'automatic-route-unavailable');
   if (code === 'SPOTIFY_AUDIO_PROCESS_AMBIGUOUS') return spotifyError('setup-required', 'spotify-audio-process-ambiguous');
   if (code === 'EXACT_SPOTIFY_AUDIO_PROCESS_UNPROVEN') return spotifyError('setup-required', 'spotify-audio-process-unproven');
   if (ROUTE_CODES.has(code) && (code.startsWith('JOURNAL_') || code.startsWith('PRODUCT_JOURNAL_')))

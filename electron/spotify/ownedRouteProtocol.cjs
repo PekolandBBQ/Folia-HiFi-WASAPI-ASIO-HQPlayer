@@ -1,9 +1,10 @@
 'use strict';
 const { sessionId } = require('./cableCaptureProtocol.cjs');
-const { VALIDATION_PROFILE } = require('./ownedRouteTrial.cjs');
+const { VALIDATION_PROFILE, COMPATIBILITY_PROFILE } = require('./ownedRouteTrial.cjs');
 
 // electron/spotify/ownedRouteProtocol.cjs: narrow, fail-closed contract for the owned Windows routing service.
 const NATIVE_FAILURE_CODES = Object.freeze([
+  'APP_ROUTE_WINDOWS_UNSUPPORTED', 'APP_ROUTE_X64_REQUIRED', 'APP_ROUTE_INTERFACE_UNAVAILABLE', 'APP_ROUTE_READ_UNAVAILABLE',
   'ORIGINAL_POLICY_PROOF_REQUIRED', 'RECOVERY_ORIGINAL_BINDING_REQUIRED', 'WINDOWS_PRODUCT_JOURNAL_REQUIRED',
   'NATIVE_PRODUCT_ADAPTER_UNQUALIFIED', 'PRODUCT_DISCOVERY_UNQUALIFIED', 'EXACT_SPOTIFY_AUDIO_PROCESS_UNPROVEN',
   'SPOTIFY_AUDIO_PROCESS_AMBIGUOUS', 'SPOTIFY_DISCOVERY_TIMEOUT', 'COMPLETE_SPOTIFY_DISCOVERY_REQUIRED',
@@ -104,9 +105,11 @@ function operationFailureDiagnostic(value) {
 }
 function qualified(value, { allowTrial = false } = {}) {
   const admitted = value?.productionQualified === true && value.supported === true
+    || value?.runtimeCompatible === true && value.supported === true && value.canOperate === true
+      && value.implementationAvailable === true && value.compatibilityProfile === COMPATIBILITY_PROFILE
     || allowTrial && value?.productionQualified === false && value.trialAuthorized === true
       && value.validationProfile === VALIDATION_PROFILE && value.implementationAvailable === true && value.canOperate === true;
-  return value?.protocolMajor === 1 && value.componentVersion === '0.19.0-dev.25' && value.platform === 'win32-x64' && value.contract === 'folia-owned-route-v1'
+  return value?.protocolMajor === 1 && value.componentVersion === '0.19.0-dev.26' && value.platform === 'win32-x64' && value.contract === 'folia-owned-route-v1'
     && admitted
     && value.heldPausedAcquire === true && value.completeSessionProof === true
     && value.notificationCoherent === true && value.retainedJournalRecovery === true && value.intervalIsolation === true
