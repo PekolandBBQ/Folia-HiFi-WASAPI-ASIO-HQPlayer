@@ -20,7 +20,7 @@ async function fixture() {
     const appData = path.join(root, 'appdata'), profile = path.join(appData, 'FoliaEntryTest');
     const resourceRoot = path.join(root, 'resources'), bundled = path.join(resourceRoot, 'exclusive-native-audio');
     await fs.mkdir(bundled, { recursive: true }); await fs.mkdir(profile, { recursive: true });
-    const nativeReleases: any[] = [], legacyNativeReleases: any[] = [], hqpReleases: any[] = [];
+    const nativeReleases: any[] = [], legacyNativeReleases: any[] = [], hqpReleases: any[] = [], legacyHqpReleases: any[] = [];
     async function publishNative(version: string) {
         const archive = `native-${version}.zip`, files = {
             'folia-audio.exe': Buffer.from(`non-executed native fixture ${version}`),
@@ -73,7 +73,7 @@ async function fixture() {
             if (id === './profile.cjs') return require('../../../packaging/exclusive/profile.cjs');
             if (id === './exclusive-approved.json') return { releases: nativeReleases };
             if (id === './hqplayer-approved.json') return { releases: hqpReleases };
-            if (id === './release.json') return { version: '0.7.19', upstreamVersion: '0.7.19', productName: 'FoliaEntryTest', profile: 'FoliaEntryTest', legacyProfile: 'FoliaEntryLegacy', compatibleNativeReleases: legacyNativeReleases };
+            if (id === './release.json') return { version: '0.7.19', upstreamVersion: '0.7.19', productName: 'FoliaEntryTest', profile: 'FoliaEntryTest', legacyProfile: 'FoliaEntryLegacy', compatibleNativeReleases: legacyNativeReleases, compatibleHQPlayerReleases: legacyHqpReleases };
             if (id === './nativeAudio/componentManager.cjs') return nativeModule;
             if (id === './hqplayer/archiveContract.cjs') return require('../../../electron/hqplayer/archiveContract.cjs');
             if (id === './hqplayer/componentManager.cjs') return hqpModule;
@@ -87,12 +87,23 @@ async function fixture() {
     }
     await publishNative('0.1.1'); await publishNative('0.1.2');
     return { root, profile, hqpDirectory, publishHqp, seedHqp, execute, mainRequested, errorBox, verifyStaged, storeSet,
-        nativeDirectory, publishNative, seedNative, nativeReleases, legacyNativeReleases,
+        nativeDirectory, publishNative, seedNative, nativeReleases, legacyNativeReleases, hqpReleases, legacyHqpReleases,
         nativeManager: () => nativeModule.createComponentManager({ app }),
         manager: () => hqpModule.createHQPlayerComponentManager({ app, catalogPath: path.join(profile, 'hqplayer-component-catalog.json') }) };
 }
 
 describe('packaged exclusive entry with real approved ZIP artifacts', () => {
+    it('upgrades a legacy HQPlayer release absent from the bundled ZIP list and keeps rollback available', async () => {
+        const f = await fixture(), old = await f.publishHqp('0.1.3', {}, false); await f.seedHqp(old);
+        const previous = { archiveSha256: '3'.repeat(64), executableSha256: '4'.repeat(64) };
+        await fs.writeFile(path.join(f.hqpDirectory, 'previous.json'), JSON.stringify(previous));
+        const current = await f.publishHqp('0.1.4-preview.5'); f.hqpReleases.splice(1); f.legacyHqpReleases.push(old.release);
+        f.execute();
+        expect(await f.manager().status()).toMatchObject({ available: true, version: current.release.version, rollbackAvailable: true });
+        expect(JSON.parse(await fs.readFile(path.join(f.hqpDirectory, 'upgrade-receipts', `${old.release.sha256}.json`), 'utf8'))).toEqual({ active: pointer(old.release), previous });
+        expect(await fs.readFile(path.join(f.hqpDirectory, `${old.release.version}-${old.release.sha256.slice(0, 12)}`, 'hqplayer-component.cjs'))).toEqual(old.files['hqplayer-component.cjs']);
+        expect(await f.manager().rollback()).toMatchObject({ available: true, version: old.release.version });
+    });
     it('upgrades retained legacy native activation, preserves its files and supports rollback', async () => {
         const f = await fixture(), old = await f.publishNative('0.1.2'); await f.seedNative(old);
         const oldPrevious = { archiveSha256: '1'.repeat(64), executableSha256: '2'.repeat(64) };
