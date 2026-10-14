@@ -368,7 +368,7 @@ function registerNativeAudio({ app, ipcMain, isTrustedSender, helperFactory = cr
             return { canceled: false, ...await hqplayer.configure(selected) };
         }
         if (['component-install', 'component-uninstall', 'component-rollback'].includes(request?.action)) {
-            if (active || managingComponent) throw new Error('Switch to browser playback and wait for any component operation to finish');
+            if ((active && active.backend !== 'hqplayer') || managingComponent) throw new Error('Release WASAPI/ASIO playback and wait for any component operation to finish');
             managingComponent = true;
             try {
                 const retiring = helper; retiring?.dispose(); await retiring?.waitForExit?.();

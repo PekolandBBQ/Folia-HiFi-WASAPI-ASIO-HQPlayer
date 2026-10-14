@@ -41,6 +41,7 @@ export default function NativeAudioSettingsSection({ isDaylight, theme, classNam
     const refreshEpoch = useRef(0);
     const supported = isNativeAudioSupported();
     const controlsBusy = busy || !statusChecked;
+    const nativeOutputSelected = backend === 'asio' || backend === 'wasapi-exclusive';
     const refresh = async () => {
         if (!supported) return;
         const expected = ++refreshEpoch.current;
@@ -102,10 +103,10 @@ export default function NativeAudioSettingsSection({ isDaylight, theme, classNam
             </button>
         </div>
         <div className="mt-3 flex flex-wrap gap-2 text-xs">
-            <button type="button" disabled={controlsBusy || backend !== 'browser' || !component.installable}
+            <button type="button" disabled={controlsBusy || nativeOutputSelected || !component.installable}
                 className="rounded-lg border px-3 py-2 disabled:opacity-40"
                 onClick={() => void manage('component-install')}>{t('nativeAudio.installComponent')}</button>
-            {component.installed && <button type="button" disabled={controlsBusy || backend !== 'browser'}
+            {component.installed && <button type="button" disabled={controlsBusy || nativeOutputSelected}
                 className="rounded-lg border px-3 py-2 disabled:opacity-40"
                 onClick={() => void manage('component-uninstall')}>{t('nativeAudio.removeComponent')}</button>}
             {!statusChecked && <p role="status">{t('nativeAudio.componentChecking')}</p>}
@@ -180,7 +181,7 @@ export default function NativeAudioSettingsSection({ isDaylight, theme, classNam
                 {component.installable && <button type="button" disabled={controlsBusy}
                     className="rounded-xl border px-4 py-2 text-sm disabled:opacity-40"
                     onClick={() => {
-                        if (backend !== 'browser') { setPlayerState(PlayerState.PAUSED); apply('browser', ''); }
+                        if (nativeOutputSelected) { setPlayerState(PlayerState.PAUSED); apply('browser', ''); }
                         void manage('component-install');
                     }}>{t('nativeAudio.installComponent')}</button>}
             </div>

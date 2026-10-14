@@ -20,14 +20,15 @@ async function fixture() {
     const appData = path.join(root, 'appdata'), profile = path.join(appData, 'FoliaEntryTest');
     const resourceRoot = path.join(root, 'resources'), bundled = path.join(resourceRoot, 'exclusive-native-audio');
     await fs.mkdir(bundled, { recursive: true }); await fs.mkdir(profile, { recursive: true });
-    const nativeReleases: any[] = [], hqpReleases: any[] = [];
+    const nativeReleases: any[] = [], legacyNativeReleases: any[] = [], hqpReleases: any[] = [];
     async function publishNative(version: string) {
-        const archive = `native-${version}.zip`, bytes = zipSync({
+        const archive = `native-${version}.zip`, files = {
             'folia-audio.exe': Buffer.from(`non-executed native fixture ${version}`),
             'component.json': Buffer.from(JSON.stringify({ id: 'native-audio', version, protocolMajor: 1 })),
-        });
+        }, bytes = zipSync(files);
         await fs.writeFile(path.join(bundled, archive), bytes);
-        nativeReleases.unshift({ version, protocolMajor: 1, platform: 'win32-x64', archive, sha256: sha(bytes) });
+        const release = { version, protocolMajor: 1, platform: 'win32-x64', archive, sha256: sha(bytes), entrySha256: sha(files['folia-audio.exe']) };
+        nativeReleases.unshift(release); return { release, files };
     }
     async function publishHqp(version: string, extra: Record<string, Uint8Array> = {}, helpers = true) {
         const files: Record<string, Uint8Array> = {
@@ -57,6 +58,14 @@ async function fixture() {
     const appPaths: Record<string, string> = { appData, userData: profile };
     const app = { isPackaged: true, getPath: (name: string) => appPaths[name], setPath: (name: string, value: string) => { appPaths[name] = value; },
         setName: vi.fn(), exit: vi.fn() };
+    const nativeModule = { ...require('../../../electron/nativeAudio/componentManager.cjs') };
+    const nativeDirectory = path.join(profile, 'components', 'native-audio');
+    async function seedNative(value: { release: any; files: Record<string, Uint8Array> }, disabled = false) {
+        const directory = path.join(nativeDirectory, `${value.release.version}-${value.release.sha256.slice(0, 12)}`);
+        await fs.mkdir(directory, { recursive: true });
+        for (const [name, bytes] of Object.entries(value.files)) await fs.writeFile(path.join(directory, name), bytes);
+        await fs.writeFile(path.join(nativeDirectory, disabled ? 'inactive.json' : 'active.json'), JSON.stringify(pointer(value.release)));
+    }
     function execute() {
         const localRequire = (id: string) => {
             if (['node:fs', 'node:path', 'node:crypto', 'fflate'].includes(id)) return require(id);
@@ -64,8 +73,8 @@ async function fixture() {
             if (id === './profile.cjs') return require('../../../packaging/exclusive/profile.cjs');
             if (id === './exclusive-approved.json') return { releases: nativeReleases };
             if (id === './hqplayer-approved.json') return { releases: hqpReleases };
-            if (id === './release.json') return { version: '0.7.12', upstreamVersion: '0.7.12', productName: 'FoliaEntryTest', profile: 'FoliaEntryTest', legacyProfile: 'FoliaEntryLegacy' };
-            if (id === './nativeAudio/componentManager.cjs') return { createComponentManager: vi.fn() };
+            if (id === './release.json') return { version: '0.7.19', upstreamVersion: '0.7.19', productName: 'FoliaEntryTest', profile: 'FoliaEntryTest', legacyProfile: 'FoliaEntryLegacy', compatibleNativeReleases: legacyNativeReleases };
+            if (id === './nativeAudio/componentManager.cjs') return nativeModule;
             if (id === './hqplayer/archiveContract.cjs') return require('../../../electron/hqplayer/archiveContract.cjs');
             if (id === './hqplayer/componentManager.cjs') return hqpModule;
             if (id === 'electron-store') return class { set = storeSet; };
@@ -78,10 +87,38 @@ async function fixture() {
     }
     await publishNative('0.1.1'); await publishNative('0.1.2');
     return { root, profile, hqpDirectory, publishHqp, seedHqp, execute, mainRequested, errorBox, verifyStaged, storeSet,
+        nativeDirectory, publishNative, seedNative, nativeReleases, legacyNativeReleases,
+        nativeManager: () => nativeModule.createComponentManager({ app }),
         manager: () => hqpModule.createHQPlayerComponentManager({ app, catalogPath: path.join(profile, 'hqplayer-component-catalog.json') }) };
 }
 
 describe('packaged exclusive entry with real approved ZIP artifacts', () => {
+    it('upgrades retained legacy native activation, preserves its files and supports rollback', async () => {
+        const f = await fixture(), old = await f.publishNative('0.1.2'); await f.seedNative(old);
+        const oldPrevious = { archiveSha256: '1'.repeat(64), executableSha256: '2'.repeat(64) };
+        await fs.writeFile(path.join(f.nativeDirectory, 'previous.json'), JSON.stringify(oldPrevious));
+        const current = await f.publishNative('0.1.3-preview.2');
+        f.nativeReleases.splice(1); f.legacyNativeReleases.push(old.release);
+        await f.publishHqp('0.1.4-preview.5'); f.execute();
+        expect(await f.nativeManager().status()).toMatchObject({ available: true, version: current.release.version, rollbackAvailable: true });
+        expect(await fs.readFile(path.join(f.nativeDirectory, `${old.release.version}-${old.release.sha256.slice(0, 12)}`, 'folia-audio.exe'))).toEqual(old.files['folia-audio.exe']);
+        expect(JSON.parse(await fs.readFile(path.join(f.nativeDirectory, 'upgrade-receipts', `${old.release.sha256}.json`), 'utf8'))).toEqual({ active: pointer(old.release), previous: oldPrevious });
+        const receipt = await fs.stat(path.join(f.nativeDirectory, 'active.json'));
+        f.execute(); expect((await fs.stat(path.join(f.nativeDirectory, 'active.json'))).mtimeMs).toBe(receipt.mtimeMs);
+        expect(await f.nativeManager().rollback()).toMatchObject({ available: true, version: old.release.version });
+    });
+    it('respects explicitly disabled native components on a newer application', async () => {
+        const f = await fixture(), old = await f.publishNative('0.1.2'); await f.seedNative(old, true);
+        await f.publishNative('0.1.3-preview.2'); await f.publishHqp('0.1.4-preview.5'); f.execute();
+        expect(await f.nativeManager().status()).toMatchObject({ available: false, installed: false, installable: true });
+        expect(await fs.readFile(path.join(f.nativeDirectory, 'inactive.json'), 'utf8')).toBe(JSON.stringify(pointer(old.release)));
+        expect(syncFs.existsSync(path.join(f.nativeDirectory, 'active.json'))).toBe(false);
+    });
+    it('retains unknown native activation instead of downgrading it', async () => {
+        const f = await fixture(), newer = await f.publishNative('0.2.0'); await f.seedNative(newer);
+        f.nativeReleases.shift(); await f.publishHqp('0.1.4-preview.5'); f.execute();
+        expect(await fs.readFile(path.join(f.nativeDirectory, 'active.json'), 'utf8')).toBe(JSON.stringify(pointer(newer.release)));
+    });
     it('stages the seven-file helper package into an isolated profile on first startup', async () => {
         const f = await fixture(), current = await f.publishHqp('0.1.4-preview.3'); f.execute();
         const destination = path.join(f.hqpDirectory, `${current.release.version}-${current.release.sha256.slice(0, 12)}`);

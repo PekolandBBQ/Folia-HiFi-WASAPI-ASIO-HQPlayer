@@ -34,30 +34,58 @@ if (release.wrapperPreview || release.wrapperLocalValidation) {
     require('./debug/privatePreviewDiagnosticBus.cjs').installPreviewDiagnosticSink({ enabled: () => true, record: global.__foliaTrialLog });
 }
 
-const catalog = { schema: 1, releases: approved.releases.map(r => ({ ...r, localPath: path.join(resources, r.archive) })) };
+const catalog = { schema: 1, releases: [
+    ...approved.releases.map(r => ({ ...r, localPath: path.join(resources, r.archive) })),
+    ...(release.compatibleNativeReleases || []).filter(r => !approved.releases.some(item => item.sha256 === r.sha256)),
+] };
 const catalogPath = path.join(profile, 'exclusive-component-catalog.json');
 fs.writeFileSync(catalogPath, JSON.stringify(catalog));
 const directory = path.join(profile, 'components', 'native-audio');
 const hash = data => crypto.createHash('sha256').update(data).digest('hex');
 
-// Install the two reviewed offline artifacts on first launch, before Electron's ready event.
+// Stage bundled releases before changing activation; previously installed files remain recoverable.
 function stage(release) {
     const bytes = fs.readFileSync(release.localPath);
     if (hash(bytes) !== release.sha256) throw new Error('Exclusive component archive checksum mismatch');
     const files = unzipSync(bytes);
+    const info = JSON.parse(Buffer.from(files['component.json'] || []).toString('utf8'));
+    if (info.version !== release.version || info.protocolMajor !== 1 || !files['folia-audio.exe'])
+        throw new Error('Exclusive component protocol/version mismatch');
     const target = path.join(directory, `${release.version}-${release.sha256.slice(0,12)}`);
-    fs.mkdirSync(target, { recursive: true });
-    for (const [name, data] of Object.entries(files)) {
+    for (const name of Object.keys(files)) {
         if (!/^[a-zA-Z0-9_.-]+\.(exe|txt|json)$/.test(name) || name.includes('..')) throw new Error('Invalid bundled component entry');
-        fs.writeFileSync(path.join(target, name), data);
+    }
+    if (release.entrySha256 && hash(files['folia-audio.exe']) !== release.entrySha256) throw new Error('Exclusive component entry integrity failed');
+    if (fs.existsSync(target)) {
+        if (hash(fs.readFileSync(path.join(target, 'folia-audio.exe'))) !== hash(files['folia-audio.exe']))
+            throw new Error('Existing bundled component entry integrity failed');
+    } else {
+        const staging = fs.mkdtempSync(path.join(directory, '.bundled-'));
+        for (const [name, data] of Object.entries(files)) fs.writeFileSync(path.join(staging, name), data);
+        fs.renameSync(staging, target);
     }
     return { archiveSha256: release.sha256, executableSha256: hash(files['folia-audio.exe']) };
 }
-if (!fs.existsSync(path.join(directory, 'active.json')) && !fs.existsSync(path.join(directory, 'inactive.json'))) {
+let nativeActive = null;
+try { nativeActive = JSON.parse(fs.readFileSync(path.join(directory, 'active.json'), 'utf8')); }
+catch (error) { if (error.code !== 'ENOENT') throw error; }
+const nativeUpgrade = nativeActive && nativeActive.archiveSha256 !== catalog.releases[0].sha256
+    && catalog.releases.some(item => item.sha256 === nativeActive.archiveSha256);
+if ((!nativeActive || nativeUpgrade) && !fs.existsSync(path.join(directory, 'inactive.json'))) {
     fs.mkdirSync(directory, { recursive: true });
-    const previous = stage(catalog.releases.at(-1)), current = stage(catalog.releases[0]);
-    fs.writeFileSync(path.join(directory, 'previous.json'), JSON.stringify(previous));
-    fs.writeFileSync(path.join(directory, 'active.json'), JSON.stringify(current));
+    const current = stage(catalog.releases[0]);
+    if (nativeUpgrade) {
+        const receipts = path.join(directory, 'upgrade-receipts'); fs.mkdirSync(receipts, { recursive: true });
+        const retained = path.join(receipts, `${nativeActive.archiveSha256}.json`);
+        if (!fs.existsSync(retained)) fs.writeFileSync(retained, JSON.stringify({ active: nativeActive,
+            previous: fs.existsSync(path.join(directory, 'previous.json')) ? JSON.parse(fs.readFileSync(path.join(directory, 'previous.json'), 'utf8')) : null }));
+        fs.writeFileSync(path.join(directory, 'previous.json'), JSON.stringify(nativeActive));
+    } else {
+        const previous = approved.releases.at(-1);
+        if (previous.sha256 !== current.archiveSha256) fs.writeFileSync(path.join(directory, 'previous.json'), JSON.stringify(stage(catalog.releases.at(approved.releases.length - 1))));
+    }
+    fs.writeFileSync(path.join(directory, 'active.json.tmp'), JSON.stringify(current));
+    fs.renameSync(path.join(directory, 'active.json.tmp'), path.join(directory, 'active.json'));
 }
 // This fork entry accepts only the bundled catalog with immutable approved hashes.
 // It does not enable local archives or custom catalogs in ordinary packaged Folia.

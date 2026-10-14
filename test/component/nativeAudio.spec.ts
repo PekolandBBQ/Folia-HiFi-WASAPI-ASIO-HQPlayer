@@ -284,6 +284,16 @@ test('installation prompt reports failure, permits retry, and unlocks settings a
     await expect.poll(() => page.evaluate(() => localStorage.getItem('folia_native_audio_backend'))).toBe('asio');
 });
 
+test('allows native component updates while the separate HQPlayer output remains selected', async ({ mount, page }) => {
+    await page.addInitScript(() => localStorage.setItem('folia_native_audio_backend', 'hqplayer'));
+    await mount('nativeAudio');
+    const install = page.getByRole('button', { name: 'Install / update component', exact: true });
+    await expect(install).toBeEnabled(); await install.click();
+    await expect.poll(() => page.evaluate(() => (window as any).__nativeRequests.some((r: any) => r.action === 'component-install'))).toBe(true);
+    expect(await page.evaluate(() => localStorage.getItem('folia_native_audio_backend'))).toBe('hqplayer');
+    await expect(page.getByRole('button', { name: 'Disable component', exact: true })).toBeEnabled();
+});
+
 test('rechecks cached availability and explains when no approved install is available', async ({ mount, page }) => {
     await page.addInitScript(() => localStorage.setItem('folia_native_audio_backend', 'browser'));
     await mount('nativeAudio');
