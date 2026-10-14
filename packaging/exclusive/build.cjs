@@ -83,7 +83,7 @@ async function main() {
         beforePack: async () => {},
         afterPack: require(path.join(root, 'build/afterPack.cjs')).default,
         asarUnpack: ['electron/spotify/*.ps1', 'electron/analysis/htdemucs_runner.py', 'node_modules/@koromix/koffi-*/**/*.node'],
-        files: ['!dist/**/*', '!electron/**/*', '!shared/**/*', '!node_modules/@xmldom/**/*', 'package.json', 'build/miao.png', 'build/thumbar/*.png',
+        files: ['!dist/**/*', '!electron/**/*', '!shared/**/*', '!native/**/*', '!node_modules/@xmldom/**/*', 'package.json', 'build/miao.png', 'build/thumbar/*.png',
             ...['dist', 'electron', 'shared'].map(name => ({ from: path.join(codeRoot, name), to: name, filter: ['**/*'] })),
             { from: __dirname, to: 'electron', filter: ['exclusive-entry.cjs', 'profile.cjs'] },
             { from: staging, to: 'electron', filter: ['exclusive-approved.json', 'hqplayer-approved.json', 'release.json'] }],
