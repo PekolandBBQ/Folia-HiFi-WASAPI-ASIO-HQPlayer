@@ -1780,7 +1780,7 @@ let mainWindow = null;
 let spotifyRuntime = null;
 const nativeAudioRuntime = require('./nativeAudio/service.cjs').registerNativeAudio({ app, ipcMain, isTrustedSender: isTrustedMainWindowContents,
   resolveLivePcmSource: url => spotifyRuntime?.lookupSoloistPcmSource(url) || null,
-  prepareSourceOutput: url => spotifyRuntime?.prepareSourceOutput?.(url) });
+  prepareSourceOutput: (url, backend) => spotifyRuntime?.prepareSourceOutput?.(url, backend) });
 if (process.env.FOLIA_SPOTIFY_PREVIEW === '1') {
   spotifyRuntime = require('./spotify/localUiTrial.cjs').registerLocalUiTrial({ app, ipcMain, isTrustedSender: isTrustedMainWindowContents,
     beforeLeaveProvider: () => nativeAudioRuntime.releaseProviderOutput() });

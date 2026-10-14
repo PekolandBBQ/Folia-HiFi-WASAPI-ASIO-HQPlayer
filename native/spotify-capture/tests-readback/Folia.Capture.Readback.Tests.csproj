@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+  <ItemGroup><ProjectReference Include="../core/Folia.Capture.Core.csproj" /></ItemGroup>
+  <ItemGroup>
+    <Compile Include="../src/CaptureEngine.cs" Link="Production/CaptureEngine.cs" />
+    <Compile Include="../src/OwnedFormatLease.cs" Link="Production/OwnedFormatLease.cs" />
+    <Compile Include="../src/CaptureEvidence.cs" Link="Production/CaptureEvidence.cs" />
+    <Compile Include="../src/PausedBootstrap.cs" Link="Production/PausedBootstrap.cs" />
+    <Compile Include="../src/ControlInterfaceProbe.cs" Link="Production/ControlInterfaceProbe.cs" />
+  </ItemGroup>
+</Project>

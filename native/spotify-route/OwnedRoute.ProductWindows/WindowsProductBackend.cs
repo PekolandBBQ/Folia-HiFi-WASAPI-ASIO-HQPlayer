@@ -245,10 +245,10 @@ internal sealed class WindowsProductBackend : IProductRouteBackend, IDisposable
             BaseRenderEndpoint target;
             using (var audio = new AudioReadOnly()) target = RequirePair(selection, audio.Endpoints(2));
             defaults = ProductDefaultEndpoints.Read();
-            if (defaults.Take(2).Any(value => value is null || value == target.Id))
+            if (!ProcessCaptureRouting.Enabled && defaults.Take(2).Any(value => value is null || value == target.Id))
                 throw new RouteBlockedException("NON_BASE_DEFAULT_OUTPUT_REQUIRED");
             using (var audio = new AudioReadOnly())
-                foreach (var id in defaults.Take(2).Distinct())
+                foreach (var id in ProcessCaptureRouting.Enabled ? [] : defaults.Take(2).Distinct())
                 {
                     var endpoint = audio.Endpoint(id!);
                     if (endpoint.State != 1 || endpoint.Flow != 0 || endpoint.BaseIdentity.State != "unsupported")
@@ -317,7 +317,8 @@ internal sealed class WindowsProductBackend : IProductRouteBackend, IDisposable
             using var detailTiming = ColdTiming.Scope("route.VerifyOriginalPolicies");
             using var audio = new AudioReadOnly();
             return OriginalPolicySafety.Verify(originals, target, ProductDefaultEndpoints.Read(), audio.Endpoints(),
-                audio.EndpointForPolicy, PhysicalOriginalEndpointProbe.Read, originalBindings);
+                audio.EndpointForPolicy, PhysicalOriginalEndpointProbe.Read, originalBindings,
+                allowDefaultFollow: ProcessCaptureRouting.Enabled);
         }
         internal void VerifyPaused(OwnedPlaybackTarget expected)
         {
@@ -375,7 +376,8 @@ internal sealed class WindowsProductBackend : IProductRouteBackend, IDisposable
         {
             using var detailTiming = ColdTiming.Scope("route.VerifyDefaultsAndCommunications");
             var current = ProductDefaultEndpoints.ReadRenderPair();
-            using (var audio = new AudioReadOnly(readInterfaces:false)) ProductDefaultEndpoints.RequireSafeRenderPair(current, audio.EndpointIdentity);
+            if (!ProcessCaptureRouting.Enabled)
+                using (var audio = new AudioReadOnly(readInterfaces:false)) ProductDefaultEndpoints.RequireSafeRenderPair(current, audio.EndpointIdentity);
             VerifyRestorationEnvironment();
         }
         internal void VerifyRestorationEnvironment()

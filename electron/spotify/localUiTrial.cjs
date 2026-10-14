@@ -91,9 +91,9 @@ function createService({beforeLeaveProvider},local,log){
       log('ui-external-spotify-continued',{trackId:facts.trackId,positionMs:playing.positionMs,originalRouteRestored:true});
     }else log('ui-external-follow-declined',{trackId:facts.trackId,changedAgain:actual.uri!=='spotify:track:'+facts.trackId});
   };
-  const capture=require('./cableCaptureHost.cjs').createCableCaptureHost({helperPath:process.env.FOLIA_LOCAL_CAPTURE_HELPER || runtimePaths().capture,fastInitialEpoch:true,onDiagnostic:d=>log('capture',d),onControlDiagnostic:d=>log('capture-control',d)});
+  const capture=require('./cableCaptureHost.cjs').createCableCaptureHost({helperPath:process.env.FOLIA_LOCAL_CAPTURE_HELPER || runtimePaths().capture,fastInitialEpoch:true,requireProcessCapture:true,onDiagnostic:d=>log('capture',d),onControlDiagnostic:d=>log('capture-control',d)});
   const showOutputGuide=()=>{for(const w of require('electron').BrowserWindow.getAllWindows())if(!w.isDestroyed())w.webContents.send('spotify:setup-required');};
-  const host=require('./ownedRouteHost.cjs').createOwnedRouteHost({componentDirectory:process.env.FOLIA_LOCAL_ROUTE_COMPONENT || runtimePaths().route,onConfigurationRequired:showOutputGuide,onSourceControl:(i,o)=>control.routeSourceControl(i,o)});host.setTrialEnabled(true);
+  const host=require('./ownedRouteHost.cjs').createOwnedRouteHost({processCapture:true,componentDirectory:process.env.FOLIA_LOCAL_ROUTE_COMPONENT || runtimePaths().route,onConfigurationRequired:showOutputGuide,onSourceControl:(i,o)=>control.routeSourceControl(i,o)});host.setTrialEnabled(true);
   const request=host.request.bind(host);host.request=async(c,p)=>{try{return await request(c,p);}catch(e){log('route-request-failed',{command:c,code:e.code,failureCode:e.failureCode});throw e;}};
   const route=require('./ownedRouteLifecycle.cjs').createOwnedRouteLifecycle({host,onDiagnostic:d=>log('route',d)});
   const capability=route.availability();
@@ -105,6 +105,7 @@ function createService({beforeLeaveProvider},local,log){
     onExternalSelection:externalSelection,
     localSourceMetadata:async id=>{await refresh();const t=catalog.get(id);if(!t)throw Object.assign(Error('TRACK_NOT_CURRENT'),{code:'TRACK_NOT_CURRENT'});return {trackId:id,durationMs:t.durationMs};},
     fetcher:async()=>{throw Error('Official HTTP disabled');},getSelection:async()=>{
+
       const [sample,devices]=await Promise.all([source.sample(),capture.devices()]);
       const output=require('./systemOutputCheck.cjs').systemOutputCheck(devices);
       // Exact Spotify route inspection owns the decision; a missing global default alone is not a playback failure.
@@ -171,7 +172,7 @@ function createService({beforeLeaveProvider},local,log){
       }
       throw Error('Spotify: local-trial-operation-unavailable');
     },
-    async prepareSourceOutput(url){if(audio.lookup(url))return;await leave();await desktop.offerExit('source');},
+    async prepareSourceOutput(url,backend){if(audio.lookup(url)){return;}await leave();await desktop.offerExit('source');},
     lookupSoloistPcmSource:url=>audio.lookup(url),requestBrowserPcm:input=>browser.request(input),
     canRetryClose:()=>true,
     close(){if(closing)return closing;externalPrompt++;closing=(async()=>{await leave();await audio.clear();await route.releaseBeforeClose();await capture.close();route.captureHelperExited();await route.close();await control.dispose();await desktop.offerExit('quit');clearInterval(pausedObserver);bridge.close();log('quit-restoration-complete',{});})();closing.catch(()=>{closing=null;});return closing;},

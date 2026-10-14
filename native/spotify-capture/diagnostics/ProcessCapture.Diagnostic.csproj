@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net8.0-windows</TargetFramework><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable><NoWarn>CA1416</NoWarn></PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../src/ProcessLoopbackActivation.cs" Link="ProcessLoopbackActivation.cs" />
+    <ProjectReference Include="../core/Folia.Capture.Core.csproj" />
+    <Reference Include="NAudio.Core"><HintPath>../references/NAudio.Core.dll</HintPath></Reference>
+    <Reference Include="NAudio.Wasapi"><HintPath>../references/NAudio.Wasapi.dll</HintPath></Reference>
+  </ItemGroup>
+</Project>

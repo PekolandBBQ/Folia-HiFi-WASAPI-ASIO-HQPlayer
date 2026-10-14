@@ -29,6 +29,20 @@ test('component discovery errors remain visible independently of bridge readines
     await expect(page.getByRole('button', { name: '② 一键配置', exact: true })).toBeDisabled();
 });
 
+test('VB default output is informational and does not require another DAC for process capture', async ({ page, mount }) => {
+    await page.addInitScript(() => (window as any).spotifyConnectionProbe.patch({
+        running: true, connected: true, cli: true, wrapper: true, extension: true, ready: true,
+        driver: true, driverEndpointsReady: true, engine: true,
+        systemOutput: { state: 'cable', names: ['CABLE Input'] },
+    }));
+    await mount('spotifyAccount');
+    await page.getByRole('button', { name: 'Connect Spotify', exact: true }).click();
+    await expect(page.getByText('HQPlayer 或独占驱动占用唯一的 DAC 时，可继续播放，无需额外的 Windows 输出设备。其他程序的声音不会通过 Spotify 采集进入 Folia。')).toBeVisible();
+    await expect(page.getByRole('button', { name: '② 一键配置', exact: true })).toBeEnabled();
+    await expect(page.getByRole('button', { name: '完成并返回歌单', exact: true })).toBeEnabled();
+    await expect(page.getByText(/请选择实际扬声器或 DAC 后再继续/)).toHaveCount(0);
+});
+
 test.beforeEach(async ({ page }) => {
     await page.addInitScript(cable => {
         localStorage.setItem('active_online_provider_id', 'spotify');

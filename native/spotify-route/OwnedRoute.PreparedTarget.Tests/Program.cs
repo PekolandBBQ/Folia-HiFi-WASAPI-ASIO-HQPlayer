@@ -8,6 +8,15 @@ void Test(string name,Action action){action();count++;Console.WriteLine("PASS "+
 void Ok(ServiceReply r)=>Check(r.Ok,r.Code);
 ServiceReply Witness(Fixture f)=>f.Send("verifyPreparedTargetActive",new{selectedSourceUri=Fixture.Track});
 
+Test("interrupted selection parks without inventing target activity or changing original routes",()=>{
+ using var f=new Fixture();f.BeginPreparation();var writes=f.Writes;
+ f.Paused=true;f.PcmStopped=true;f.ResetReceipt();
+ var held=f.Send("suspendPaused",new{intervalEpoch=1});Ok(held);
+ Check(held.State=="pausedHeld"&&!held.Ready&&!held.IntervalArmed&&f.Writes==writes,"Recovery changed policy or admitted PCM");
+ Check(!f.Send("armCaptureInterval").Ok,"Recovery invented activity witness");
+ Ok(f.Send("release"));f.CheckOriginals();
+});
+
 Test("preparation cannot complete from a paused empty scan without prior target activity",()=>{
  using var f=new Fixture();f.BeginPreparation();f.AlterObservation=o=>o with{Sessions=[]};
  var r=f.Send("completePreparedSelection");Check(!r.Ok&&r.Code=="PREPARED_TARGET_ACTIVITY_REQUIRED"&&!r.Ready&&!r.IntervalArmed,"Unwitnessed preparation completed");

@@ -25,6 +25,15 @@ internal static class OriginalPolicySafetyTests
         OriginalPolicyBinding[] Verify(string?[] originals,EndpointInfo[]? endpoints=null,Func<EndpointInfo,OriginalEndpointEvidence>? probe=null,OriginalPolicyBinding[]? previous=null)=>
             OriginalPolicySafety.Verify(originals,target,defaults,endpoints??[endpoint,endpoint2],Map,probe??Safe,previous);
         Test("null roles resolve fresh physical defaults",()=>Require(Verify([null,null,"comm"]).All(value=>value.RawPolicy is null)));
+        Test("process capture preserves default policies while only DAC is unavailable",()=>
+        {
+            string?[] originals=[null,null,"comm"];
+            var saved=OriginalPolicySafety.Verify(originals,target,["base","base","base",null,null,null],[],Map,
+                _=>throw new Exception("No physical output is required for a null policy"),allowDefaultFollow:true);
+            OriginalPolicySafety.RequireRetained(saved,originals);
+            OriginalPolicySafety.VerifyRestoration(saved,originals,_=>throw new Exception("Null restoration must not pin a DAC"),Safe);
+            Require(saved.All(value=>value.RawPolicy is null && value.PhysicalIdentity==""));
+        });
         Test("mixed raw explicit and null values are never canonicalized",()=>
         {
             var result=Verify([raw,null,"comm"]);Require(result[0].RawPolicy==raw&&result[0].RawPolicy!=endpoint.PolicyValue&&result[1].RawPolicy is null);

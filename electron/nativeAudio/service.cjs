@@ -242,7 +242,7 @@ function registerNativeAudio({ app, ipcMain, isTrustedSender, helperFactory = cr
         assertCurrent(current);
         // A provider exit is distinct from stopping a deck. Resolve it before any
         // replacement output can acquire a device, including local/upload sources.
-        try { await prepareSourceOutput(request.url); }
+        try { await prepareSourceOutput(request.url, request.backend); }
         catch (error) { throw sourceLifecycleError(error); }
         assertCurrent(current);
         progress(current, current.backend === 'hqplayer' ? 'connect' : 'load');
@@ -648,8 +648,8 @@ function registerNativeAudio({ app, ipcMain, isTrustedSender, helperFactory = cr
             catch (error) {
                 // Output is proven stopped, but an invalid source may need the
                 // provider's final native recovery instead of another track hold.
-                if (!['SOURCE_UNAVAILABLE', 'SOURCE_EXPIRED', 'SOURCE_RESTORE_UNCONFIRMED', 'CANCELLED',
-                    'HELPER_RESTART_REQUIRED', 'FORMAT_LEASE_READBACK_MISMATCH'].includes(error?.code)
+                if ((!error?.sourceFailure && !['SOURCE_UNAVAILABLE', 'SOURCE_EXPIRED', 'SOURCE_RESTORE_UNCONFIRMED', 'CANCELLED',
+                    'HELPER_RESTART_REQUIRED', 'FORMAT_LEASE_READBACK_MISMATCH'].includes(error?.code))
                     || blockedRelease && !blockedRelease.outputReleased) throw error;
                 return { complete };
             }

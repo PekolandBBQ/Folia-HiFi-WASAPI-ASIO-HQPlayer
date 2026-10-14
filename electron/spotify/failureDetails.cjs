@@ -1,6 +1,7 @@
 'use strict';
 // Preserve bounded machine codes across IPC; messages explain the failed operation without exposing account data.
 const descriptions = {
+ PROCESS_CAPTURE_UNSUPPORTED: '当前 Windows 不支持 Spotify 进程专属采集，需要系统内部版本 20348 及以上；无需重装组件。',
  SPOTIFY_SETUP_STOP_FAILED: '配置前无法退出所选 Spotify，组件文件尚未修改。',
  SPOTIFY_SETUP_STOP_TIMEOUT: '已请求退出所选 Spotify，但进程或桥接连接未在 10 秒内结束，组件文件尚未修改。',
  ORIGINAL_ENDPOINT_UNSAFE: 'Spotify 的应用输出仍指向 VB-CABLE 或不可用设备，无法作为退出后的恢复目标；这与 Windows 默认输出是不同设置。',

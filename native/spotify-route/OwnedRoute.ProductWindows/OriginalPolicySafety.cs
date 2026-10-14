@@ -14,7 +14,7 @@ internal static class OriginalPolicySafety
     {
         if (bindings is not { Length: 2 } || originals.Length != 3 || bindings.Where((binding, index) =>
             binding.Role != (RenderRole)index || binding.RawPolicy != originals[index] ||
-            string.IsNullOrWhiteSpace(binding.EndpointId) || string.IsNullOrWhiteSpace(binding.PhysicalIdentity)).Any())
+            (binding.RawPolicy is not null && (string.IsNullOrWhiteSpace(binding.EndpointId) || string.IsNullOrWhiteSpace(binding.PhysicalIdentity)))).Any())
             throw new JournalUnavailableException("RECOVERY_ORIGINAL_BINDING_REQUIRED");
     }
     internal static void VerifyRestoration(OriginalPolicyBinding[] bindings, string?[] originals,
@@ -39,7 +39,7 @@ internal static class OriginalPolicySafety
     internal static OriginalPolicyBinding[] Verify(string?[] originals, BaseRenderEndpoint target,
         string?[] currentDefaults, EndpointInfo[] endpoints, Func<string, string?> mapPolicy,
         Func<EndpointInfo, OriginalEndpointEvidence> readPhysical,
-        OriginalPolicyBinding[]? previous = null)
+        OriginalPolicyBinding[]? previous = null, bool allowDefaultFollow = false)
     {
         if (originals.Length != 3 || currentDefaults.Length != 6 || originals.Any(value => value == ""))
             throw new RouteBlockedException("ORIGINAL_POLICY_VALUES_INVALID");
@@ -47,6 +47,13 @@ internal static class OriginalPolicySafety
         for (var role = 0; role < 2; role++)
         {
             var raw = originals[role];
+            if (allowDefaultFollow && raw is null)
+            {
+                // Null is a policy to follow Windows, not a physical endpoint.
+                // Preserve it exactly even while HQPlayer owns the only DAC.
+                result.Add(new((RenderRole)role, null, string.Empty, string.Empty));
+                continue;
+            }
             var id = raw is null ? currentDefaults[role] : mapPolicy(raw);
             if (string.IsNullOrWhiteSpace(id)) throw new RouteBlockedException("ORIGINAL_POLICY_ENDPOINT_UNRESOLVED");
             var matches = endpoints.Where(value => string.Equals(value.Id, id, StringComparison.OrdinalIgnoreCase)).ToArray();

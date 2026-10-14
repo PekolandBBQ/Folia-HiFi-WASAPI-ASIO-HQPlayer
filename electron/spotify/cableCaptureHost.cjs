@@ -15,7 +15,7 @@ const NATIVE_CAUSE_WAIT_MS = 250;
 const PIPE_FAILURES = new Set(['CAPTURE_PIPE_CLOSED', 'CAPTURE_PIPE_FAILED']);
 function createCableCaptureHost({ helperPath, platform = process.platform, spawnImpl = spawn,
   connectImpl = options => net.createConnection(options), requestTimeoutMs = 8000, pipeTimeoutMs = 8000, exitTimeoutMs = 2000,
-  onDiagnostic = () => {}, onControlDiagnostic = () => {}, fastInitialEpoch = false } = {}) {
+  onDiagnostic = () => {}, onControlDiagnostic = () => {}, fastInitialEpoch = false, requireProcessCapture = false } = {}) {
   if (platform !== 'win32') throw failure('CAPTURE_UNSUPPORTED_PLATFORM');
   if (typeof helperPath !== 'string' || !helperPath.toLowerCase().endsWith('.exe')
     || !path.isAbsolute(helperPath) && !path.win32.isAbsolute(helperPath) || /[\u0000\r\n]/.test(helperPath)
@@ -341,7 +341,8 @@ function createCableCaptureHost({ helperPath, platform = process.platform, spawn
         const capabilities = Array.isArray(value.capabilities) ? value.capabilities : [];
         const helloCompatible = value.protocolMajor === 1 && value.platform === 'win32-x64' && value.sampleRate === RATE
           && value.channels === 2 && value.bitDepth === 32 && value.sampleFormat === 's32le' && value.queueCapacityBytes === QUEUE_BYTES
-          && ['base-vb-cable-capture-v1', 's32le-pipe-v1', 'route-process-observation-v1', START_PROOF_CAPABILITY].every(name => capabilities.includes(name));
+          && ['base-vb-cable-capture-v1', 's32le-pipe-v1', 'route-process-observation-v1', START_PROOF_CAPABILITY].every(name => capabilities.includes(name))
+          && (!requireProcessCapture || capabilities.includes('windows-process-tree-loopback-v1'));
         controlDiagnostic('hello', { operation: 'hello', protocolMajor: value.protocolMajor, helperPlatform: value.platform,
           helloCompatible, baseCableCapability: capabilities.includes('base-vb-cable-capture-v1'),
           pcmPipeCapability: capabilities.includes('s32le-pipe-v1'), routeObservationCapability: capabilities.includes('route-process-observation-v1'),

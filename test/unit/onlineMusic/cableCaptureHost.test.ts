@@ -58,6 +58,7 @@ function fixture(options: any = {}) {
       if (request.action === 'hello') reply(request, { protocolMajor: 1, platform: 'win32-x64', sampleRate: 44100, channels: 2, bitDepth: 32,
         sampleFormat: 's32le', ...(options.seekCapability ? { componentVersion: '0.1.5-capture.7' } : {}), queueCapacityBytes: QUEUE_BYTES, bootstrapTimeoutMs: BOOTSTRAP_TIMEOUT_MS, bootstrapQueueCapacityBytes: BOOTSTRAP_QUEUE_BYTES,
         capabilities: ['base-vb-cable-capture-v1', 's32le-pipe-v1', 'route-process-observation-v1', 'post-start-route-proof-v1', 'temporary-format-lease-v1', 'active-silent-format-lease-v1', BOOTSTRAP_CAPABILITY,
+          ...(options.processCapability ? ['windows-process-tree-loopback-v1'] : []),
           ...(options.bootstrapCapability ? ['paused-source-bootstrap-v1'] : []),
           ...(options.seekCapability ? ['bounded-playing-seek-device-reuse-v1', 'unpublished-position-epoch-v1'] : [])] });
       else if (request.action === 'devices') reply(request, { endpoints: [] });
@@ -86,6 +87,7 @@ function fixture(options: any = {}) {
   });
   const host = (options.createHost || createCableCaptureHost)({ helperPath: 'C:\\Folia\\folia-capture.exe', platform: 'win32', spawnImpl, connectImpl,
     fastInitialEpoch: options.fastInitialEpoch === true,
+    requireProcessCapture: options.requireProcessCapture === true,
     requestTimeoutMs: options.requestTimeoutMs || 8000, pipeTimeoutMs: options.pipeTimeoutMs || 8000,
     exitTimeoutMs: options.exitTimeoutMs || 2000,
     onDiagnostic: (value: any) => diagnostics.push(value),
@@ -96,6 +98,15 @@ function fixture(options: any = {}) {
   }));
   return { host, child, calls, sockets, spawnImpl, connectImpl, reply, diagnostics, controlDiagnostics };
 }
+it('does not silently use endpoint mix capture when process capture is required', async () => {
+  const f = fixture({ requireProcessCapture: true });
+  await expect(f.host.devices()).rejects.toMatchObject({ code: 'CAPTURE_PROTOCOL_INVALID' });
+  expect(f.calls.some((call: any) => call.action === 'capture-open')).toBe(false);
+});
+it('accepts the process capture capability from the paired helper', async () => {
+  const f = fixture({ requireProcessCapture: true, processCapability: true });
+  await expect(f.host.devices()).resolves.toEqual({ endpoints: [] });
+});
 it('does no constructor I/O and spawns only the main-owned hidden helper with bounded JSONL control', async () => {
   const f = fixture(); expect(f.spawnImpl).not.toHaveBeenCalled();
   expect(await f.host.devices()).toEqual({ endpoints: [] });

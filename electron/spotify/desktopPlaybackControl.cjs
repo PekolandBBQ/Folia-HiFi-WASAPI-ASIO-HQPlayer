@@ -103,6 +103,7 @@ function createDesktopPlaybackControl({ onRevoke = () => {}, onFailureDiagnostic
       if (failureCode(error) === 'CANCELLED' && preserveCancelled?.() === true
         && !api.hasUnsettledWrites() && !record.mutationPending && !record.revoked
         && !record.controller.signal.aborted && current === record) throw fail('CANCELLED');
+      let parkedForCleanup = false;
       if (record.routeEngaged && record.onRouteParked && !record.revoked && !record.controller.signal.aborted) {
         try {
           const currentState = await read(record, { matchTrack: false });
@@ -110,11 +111,17 @@ function createDesktopPlaybackControl({ onRevoke = () => {}, onFailureDiagnostic
           const parked = await parkBeforeRoute(record, currentState);
           await settleAcknowledgedSelectionForRestore(record, currentState, parked);
           record.onRouteParked();
+          parkedForCleanup = true;
         } catch { error = Object.assign(fail('ROUTE_SOURCE_PAUSE_UNCONFIRMED'), { cause: fail(failureCode(error)) }); }
       }
       const code = failureCode(error);
-      revoke(record, code);
+      // The provider still needs this controller to retire capture and hold its
+      // existing route. Closing it here makes that cleanup fail with STALE_SESSION.
+      // The initiating operation still rejects; provider release closes it after hold.
+      if (!parkedForCleanup) revoke(record, code);
       const failure = fail(code);
+      for (const key of ['nativeCode', 'failureCode', 'stage'])
+        if (typeof error?.[key] === 'string') failure[key] = error[key];
       if (code === 'ROUTE_SOURCE_PAUSE_UNCONFIRMED' && error.cause) failure.cause = fail(failureCode(error.cause));
       throw failure;
     }

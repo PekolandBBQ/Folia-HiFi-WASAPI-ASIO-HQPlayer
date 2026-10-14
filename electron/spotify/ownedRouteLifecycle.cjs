@@ -300,7 +300,7 @@ function createOwnedRouteLifecycle({ host, heartbeatMs = 4000, onDiagnostic = ()
                 record.pausedProofTransferId = null; record.preparationStage = 'suspended'; return;
               }
               if (!record.safeToRestore || record.captureStage !== 'stopped' || !record.publicationClosed
-                || record.preparationStage !== 'completed') throw failure('ROUTE_PROOF_UNCONFIRMED');
+                || !['completed', 'authorized'].includes(record.preparationStage)) throw failure('ROUTE_PROOF_UNCONFIRMED');
               const capabilities = sourceObservation && await host.capabilities?.(); own(record);
               const reusePauseObservation = capabilities?.boundedPausedHoldObservation === true && sourceObservation?.isCurrent() === true;
               const value = await host.request('suspendPaused', { ...payload(record), intervalEpoch: record.intervalEpoch,

@@ -92,7 +92,7 @@ function createCableSpotifyService({ directory, safeStorage, fetcher, renderQr, 
       officialMetadata.clear(); setup.clear(); catalog.clear();
       await browser.clear(); await audio.invalidate(reason);
     },
-    async prepareSourceOutput(url) {
+    async prepareSourceOutput(url, backend) {
       if (closed) throw spotifyError('unavailable', 'runtime-closed');
       let identity = url, localhostAlias = false;
       if (typeof url === 'string' && /^https?:/i.test(url)) {
@@ -250,9 +250,9 @@ function registerCableSpotify({ app, ipcMain, isTrustedSender, createService = c
     });
   });
   return {
-    prepareSourceOutput(url) {
+    prepareSourceOutput(url, backend) {
       if (!runtime && !closing) return Promise.resolve();
-      return mutate(() => runtime?.prepareSourceOutput(url));
+      return mutate(() => runtime?.prepareSourceOutput(url, backend));
     },
     lookupSoloistPcmSource(url) { return closing ? null : runtime?.lookupSoloistPcmSource(url) || null; } };
 }

@@ -44,6 +44,23 @@ it('blocks unqualified routing before official prepare/select, capture or media 
   await expect(f.prepare()).rejects.toThrow('automatic-route-unavailable');
   expect(f.events).not.toContain('control:select'); expect(f.captureHost.open).not.toHaveBeenCalled(); expect(f.media.add).not.toHaveBeenCalled();
 });
+it('recovers target activation failure on the held route without restoring or reacquiring it', async () => {
+  const f = create(), native = f.host.request.getMockImplementation()!;
+  let refuse = true;
+  f.host.request.mockImplementation(async (command: string, payload: any) => {
+    if (command === 'verifyPreparedTargetActive' && refuse) {
+      refuse = false;
+      throw Object.assign(new Error('target not active'), { code: 'SPOTIFY_ACTIVE_SESSION_NOT_ON_TARGET' });
+    }
+    return native(command, payload);
+  });
+  await expect(f.prepare()).rejects.toThrow();
+  expect(f.state.is_playing).toBe(false);
+  await expect(f.prepare()).resolves.toHaveProperty('url');
+  expect(f.events.filter(value => value === 'route:acquire')).toHaveLength(1);
+  expect(f.events).not.toContain('route:release');
+  expect(f.events).not.toContain('control:volume');
+});
 it('rejects a cold Select whose state remains GET204 without route, capture, publication or volume writes', async () => {
   const f = create(), native = f.host.request.getMockImplementation()!;
   f.intercept(operation => operation === 'state' ? new Response(null, { status: 204 }) : undefined);

@@ -10,7 +10,7 @@ const require = createRequire(import.meta.url);
 const { createOwnedRouteHost, resolveOwnedRouteComponent } = require('../../../electron/spotify/ownedRouteHost.cjs');
 const { installPreviewDiagnosticSink } = require('../../../electron/debug/privatePreviewDiagnosticBus.cjs');
 const { physicalOwnerDiagnostic } = require('../../../electron/spotify/ownedRouteProtocol.cjs');
-const capabilities = { protocolMajor: 1, componentVersion: '0.19.0-dev.26', platform: 'win32-x64', contract: 'folia-owned-route-v1', supported: true,
+const capabilities = { protocolMajor: 1, componentVersion: '0.19.0-dev.27', platform: 'win32-x64', contract: 'folia-owned-route-v1', supported: true,
   productionQualified: true, heldPausedAcquire: true, completeSessionProof: true, notificationCoherent: true, retainedJournalRecovery: true,
   intervalIsolation: true, providerRouteLifetime: true, boundedSeekPark: true, boundedPausedProofTransfer: true, boundedPausedHoldObservation: true,
   indefiniteHeldPause: true, freshResumeInterval: true, ownedSilentRenderLease: true, preparedSelection: true, preparedTargetActivity: true,
@@ -31,12 +31,21 @@ function fixture(change: any = {}, exit: { code: number | null; signal?: string 
       if (input.command === 'close') queueMicrotask(() => child.emit('exit', exit.code, exit.signal));
     });
   }, final(done) { done(); queueMicrotask(() => child.emit('exit', exit.code, exit.signal)); } });
-  const spawnImpl = vi.fn(() => child), resolveComponent = vi.fn(async () => '/verified/folia-route-service.exe');
+  const spawnImpl = vi.fn((..._args: any[]) => child), resolveComponent = vi.fn(async () => '/verified/folia-route-service.exe');
   const host = createOwnedRouteHost({ componentDirectory: '/verified', platform: 'win32', spawnImpl, resolveComponent,
+    processCapture: options.processCapture === true,
     onSourceControl: options.onSourceControl, onConfigurationRequired: options.onConfigurationRequired, timeoutMs: options.timeoutMs || 50, exitTimeoutMs: 50,
     ...(options.systemRelease ? { systemRelease: options.systemRelease } : {}) });
   return { host, child, calls, spawnImpl, resolveComponent };
 }
+it('opts the owned child into process capture without changing the parent environment', async () => {
+  const previous = process.env.FOLIA_SPOTIFY_PROCESS_CAPTURE;
+  const f = fixture({}, { code: 0 }, { processCapture: true });
+  await f.host.capabilities();
+  expect(f.spawnImpl.mock.calls[0][2].env.FOLIA_SPOTIFY_PROCESS_CAPTURE).toBe('1');
+  expect(process.env.FOLIA_SPOTIFY_PROCESS_CAPTURE).toBe(previous);
+  await f.host.close();
+});
 it('opens configuration guidance for a changed default but still rejects the route request', async () => {
   const onConfigurationRequired = vi.fn();
   const f = fixture({}, { code: 0 }, { onConfigurationRequired,
@@ -59,7 +68,8 @@ it('uses one long-held child, string request IDs and serialized request/reply pa
   expect(await f.host.capabilities()).toMatchObject({ supported: true, productionQualified: true, providerRouteLifetime: true });
   await Promise.all([f.host.request('inspect', { renderDeviceId: 'r' }), f.host.request('inspect', { renderDeviceId: 'r' })]);
   expect(f.spawnImpl).toHaveBeenCalledOnce(); expect(f.spawnImpl).toHaveBeenCalledWith('/verified/folia-route-service.exe', [],
-    { windowsHide: true, shell: false, stdio: ['pipe', 'pipe', 'pipe'] });
+    expect.objectContaining({ windowsHide: true, shell: false, stdio: ['pipe', 'pipe', 'pipe'] }));
+  expect(f.spawnImpl.mock.calls[0][2].env.FOLIA_SPOTIFY_PROCESS_CAPTURE).toBe('0');
   expect(f.calls.map(value => value.command)).toEqual(['hello', 'inspect', 'inspect']);
   expect(f.calls.every(value => typeof value.id === 'string')).toBe(true); await f.host.close();
 });
@@ -169,7 +179,7 @@ it('physical-owner evidence ignores getters, unknown fields, invalid numbers and
   expect(getterCalls).toBe(0);
 });
 it('requires an exact qualified single-file component manifest and binary digest', async () => {
-  const bytes = Buffer.from('mock executable bytes'), manifest: any = { schema: 1, version: '0.19.0-dev.26', protocolMajor: 1,
+  const bytes = Buffer.from('mock executable bytes'), manifest: any = { schema: 1, version: '0.19.0-dev.27', protocolMajor: 1,
     executable: 'folia-route-service.exe', sha256: createHash('sha256').update(bytes).digest('hex'),
     distribution: 'self-contained-single-file', productionQualified: true, lengthBytes: bytes.length };
   const io = { readFile: vi.fn(async (file: string) => file.endsWith('.json') ? JSON.stringify(manifest) : bytes),
@@ -211,7 +221,7 @@ it('rejects unavailable native routing interfaces without sending policy command
 });
 it('accepts a pinned public runtime-adaptive manifest without a personal validation opt-in', async () => {
   const bytes = Buffer.from('public runtime adapter');
-  const manifest = { schema: 1, version: '0.19.0-dev.26', protocolMajor: 1, executable: 'folia-route-service.exe',
+  const manifest = { schema: 1, version: '0.19.0-dev.27', protocolMajor: 1, executable: 'folia-route-service.exe',
     sha256: createHash('sha256').update(bytes).digest('hex'), lengthBytes: bytes.length,
     distribution: 'self-contained-single-file', builtFor: 'win-x64', productionQualified: false,
     runtimeAdaptation: true, compatibilityProfile: 'folia-owned-route-runtime-abi-x64-v1' };
@@ -220,7 +230,7 @@ it('accepts a pinned public runtime-adaptive manifest without a personal validat
   expect(await resolveOwnedRouteComponent('/component', io)).toBe(path.join('/component', 'folia-route-service.exe'));
 });
 it('will not admit a trial manifest through a production or ad-hoc profile path', async () => {
-  const bytes = Buffer.from('fixed private build'), manifest: any = { schema: 1, version: '0.19.0-dev.26', protocolMajor: 1, executable: 'folia-route-service.exe',
+  const bytes = Buffer.from('fixed private build'), manifest: any = { schema: 1, version: '0.19.0-dev.27', protocolMajor: 1, executable: 'folia-route-service.exe',
     sha256: createHash('sha256').update(bytes).digest('hex'), lengthBytes: bytes.length, distribution: 'self-contained-single-file',
     productionQualified: false, trialAuthorized: true, validationProfile: 'folia-r19-owned-route-28000-x64-v1' };
   const io = { readFile: async (file: string) => file.endsWith('.json') ? JSON.stringify(manifest) : bytes,

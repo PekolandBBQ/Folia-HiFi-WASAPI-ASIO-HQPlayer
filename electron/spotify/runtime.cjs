@@ -56,11 +56,11 @@ function createSpotifyRuntime({ directory, createService, environment = process.
       await service?.request({ action: 'leaveProvider' });
       if (reconfigurePending) { await service?.close(); service = undefined; reconfigurePending = false; }
     },
-    async prepareSourceOutput(url) {
+    async prepareSourceOutput(url, backend) {
       await queue;
       if (closed) throw new Error('Spotify: runtime-closed');
       if (cleanupFailed) throw cleanupFailure;
-      await service?.prepareSourceOutput?.(url);
+      await service?.prepareSourceOutput?.(url, backend);
       if (reconfigurePending) { await service?.close(); service = undefined; reconfigurePending = false; }
     },
     lookupSoloistPcmSource(url) { return closed || cleanupFailed || reconfigurePending ? null : service?.lookupSoloistPcmSource?.(url) || null; },

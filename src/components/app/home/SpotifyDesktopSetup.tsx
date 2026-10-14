@@ -41,11 +41,11 @@ export default function SpotifyDesktopSetup({ onMode, onReady, finishing = false
         </ul>
         {status.issues?.map((issue, index) => <p role="alert" className="text-xs" key={index}>{issue.detail || `${issue.stage}: ${issue.nativeCode}`}</p>)}
         <p role="status" className="text-xs">音频链路：{status.playback?.state === 'failed' ? status.playback.detail || '最近播放失败，尚未获得具体组件错误。' : status.playback?.state === 'prepared' ? '音源准备已完成；不代表已确认实际出声。' : '尚未实播；组件和连接检查不代表音频输出通过。'}</p>
-        {status.systemOutput?.state !== 'ready' && <div role="alert" className="space-y-2 rounded-xl border p-3 text-xs">
-            <p>{status.systemOutput?.state === 'cable' ? 'Windows 默认输出当前是 VB-CABLE。请选择实际扬声器或 DAC 后再继续。' : '尚无法确认 Windows 默认输出，请检查已连接的扬声器或 DAC。'}</p>
+        {status.systemOutput?.state !== 'ready' && <div role="status" className="space-y-2 rounded-xl border p-3 text-xs">
+            <p>{status.systemOutput?.state === 'cable' ? 'Windows 默认输出当前是 VB-CABLE。Spotify 使用进程专属采集，不影响 Folia 已选择的 ASIO、WASAPI 或 HQPlayer 输出。' : '暂未取得 Windows 默认输出信息；Spotify 进程专属采集不依赖此检查。'}</p>
             {!!status.systemOutput?.names.length && <p>当前输出：{status.systemOutput.names.join('、')}</p>}
-            <p>打开系统声音设置，在“输出”中选择你平时使用的设备，不要选择 CABLE Input 或 CABLE In 16ch。完成后返回此处点击“重新检查”。Folia 内的播放后端设置不能代替这一步。</p>
-            <p>若 HQPlayer 或独占驱动运行时 DAC 暂时从 Windows 输出列表消失，请为 Windows 选择另一个可用的实际输出；HQPlayer 的 DAC 选择保持独立。没有其他输出时，请先退出占用设备的程序，再重新检查。</p>
+            <p>HQPlayer 或独占驱动占用唯一的 DAC 时，可继续播放，无需额外的 Windows 输出设备。其他程序的声音不会通过 Spotify 采集进入 Folia。</p>
+            <p>如需听到其他程序的声音，可在有其他实际设备时调整 Windows 输出；这不是 Spotify 播放的前置步骤。</p>
             <button className={button} disabled={busy} onClick={() => void run('open', { component: 'sound' })}>打开系统声音设置</button>
         </div>}
         {status.systemOutput?.state === 'ready' && <p className="text-xs">Windows 默认输出检查通过：{status.systemOutput.names.join('、')}</p>}

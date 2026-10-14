@@ -13,7 +13,7 @@ async function resolveOwnedRouteComponent(directory, io = fs, { allowTrial = fal
   try {
     const manifest = JSON.parse(await io.readFile(path.join(directory, 'component.json'), 'utf8'));
     if (manifest.schema !== 1 || manifest.protocolMajor !== 1 || manifest.executable !== 'folia-route-service.exe'
-      || manifest.version !== '0.19.0-dev.26' || !/^[a-f0-9]{64}$/.test(manifest.sha256 || '')) throw failure('ROUTE_COMPONENT_INVALID');
+      || manifest.version !== '0.19.0-dev.27' || !/^[a-f0-9]{64}$/.test(manifest.sha256 || '')) throw failure('ROUTE_COMPONENT_INVALID');
     if (manifest.productionQualified !== true && !runtimeArtifact(manifest)) {
       if (!trialArtifact(manifest)) throw failure('ROUTE_HELPER_UNQUALIFIED');
       if (!allowTrial) throw Object.assign(failure('ROUTE_TRIAL_OPT_IN_REQUIRED'), { trialAvailable: true, validationProfile: VALIDATION_PROFILE });
@@ -36,7 +36,7 @@ async function resolveOwnedRouteComponent(directory, io = fs, { allowTrial = fal
 }
 function createOwnedRouteHost({ componentDirectory, platform = process.platform, spawnImpl = spawn,
   resolveComponent = resolveOwnedRouteComponent, onSourceControl, onConfigurationRequired, timeoutMs, exitTimeoutMs = 5000,
-  arch = process.arch, systemRelease = () => os.release() } = {}) {
+  arch = process.arch, systemRelease = () => os.release(), processCapture = false } = {}) {
   let processRecord, starting, sequence = 0, closed = false, closing, requests = Promise.resolve(), trialEnabled = false;
   function broken(record, code) {
     if (record.dead) return;
@@ -311,7 +311,8 @@ function createOwnedRouteHost({ componentDirectory, platform = process.platform,
       const executable = await resolveComponent(componentDirectory, undefined, { allowTrial: trialEnabled });
       if (closed) throw failure('ROUTE_HELPER_CLOSED');
       let child;
-      try { child = spawnImpl(executable, [], { windowsHide: true, shell: false, stdio: ['pipe', 'pipe', 'pipe'] }); }
+      try { child = spawnImpl(executable, [], { windowsHide: true, shell: false, stdio: ['pipe', 'pipe', 'pipe'],
+        env: { ...process.env, FOLIA_SPOTIFY_PROCESS_CAPTURE: processCapture ? '1' : '0' } }); }
       catch { throw failure('ROUTE_HELPER_UNAVAILABLE'); }
       const record = { child, pending: new Map(), buffer: Buffer.alloc(0), dead: false, exited: false }; processRecord = record;
       child.on('exit', (code, signal) => {

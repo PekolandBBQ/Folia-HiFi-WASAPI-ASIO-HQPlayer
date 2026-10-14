@@ -38,7 +38,7 @@ internal sealed class ProductSessionObserver : ISessionObserver, IDisposable
         get
         {
             var leaseLive = silentLease is null || silentLeaseLive?.Invoke() == true;
-            var result = intervalArmed && leaseLive && feed.IntervalIsolated;
+            var result = intervalArmed && leaseLive && (ProcessCaptureRouting.Enabled || feed.IntervalIsolated);
             if (!result)
             {
                 var path = Environment.GetEnvironmentVariable("FOLIA_COLD_TIMING_LOG");
@@ -94,10 +94,10 @@ internal sealed class ProductSessionObserver : ISessionObserver, IDisposable
             row.SystemSoundsHResult == 1 && row.ProcessIdHResult == 0 &&
             row.ReportedProcessId != process.Identity.Pid && audioCandidates.Contains(row.ReportedProcessId)))
         { Rejected("another-spotify-audio-process", result, inventory); return result with { CompleteForProcess = false }; }
-        // System-sounds rows can be excluded from Spotify ownership, but they
-        // still write audible samples into Base. No foreign active row is exempt
-        // from the private capture isolation check.
-        lastCaptureEligible = !inventory.Any(row => row.EndpointId == render && row.State == AudioSessionState.Active &&
+        // Endpoint-mix capture must reject every foreign writer, including system
+        // sounds. Process capture excludes them in Windows and only retains the
+        // Spotify ownership and live format-keeper checks below.
+        lastCaptureEligible = ProcessCaptureRouting.Enabled || !inventory.Any(row => row.EndpointId == render && row.State == AudioSessionState.Active &&
             (row.SystemSoundsHResult != 1 || row.ProcessIdHResult != 0 || row.ReportedProcessId != process.Identity.Pid) &&
             silentLease?.Matches(row) != true);
         if (silentLease is { } lease)

@@ -440,13 +440,20 @@ public sealed class ProductRouteService : IDisposable
                     var suspendStarted = monotonic();
                     RequireLease(jsonElement); RequireHealthyJournal();
                     if (!backend.Capabilities.IndefiniteHeldPause) throw new RouteBlockedException("PAUSED_ROUTE_UNSUPPORTED");
-                    if ((!externalSelection && pausedHeld) || (!pausedHeld && !preparedSelectionCompleted) || preparedSelectionTarget is not null
+                    // An interrupted selection can be parked on the same journal.
+                    // It grants no target-activity witness; the next selection must prove activity again.
+                    var interruptedPreparation = text2 == "suspendPaused" && preparedSelectionTarget is not null
+                        && !preparedSelectionCompleted && !resumeAuthorized && !pausedHeld
+                        && lifetime.IntervalId is null && lifetime.IntervalGeneration == 0;
+                    if ((!externalSelection && pausedHeld) || (!pausedHeld && !preparedSelectionCompleted && !interruptedPreparation)
+                        || (preparedSelectionTarget is not null && !interruptedPreparation)
                         || PositiveInteger(jsonElement, "intervalEpoch") != intervalEpoch)
                         throw new RouteBlockedException("PAUSED_ROUTE_STATE_INVALID");
                     lifetime.ValidateApplyAuthority(); lifetime.ValidateOwnership(RequireRetention());
                     // Proof is freshly brokered and checked against native sessions;
                     // caller JSON cannot stand in for source pause or capture Stop ACK.
-                    var paused = playbackTarget.ForFreshRecovery() with { AllowPreviousPaused = false, PausedPreviousTrackUri = null };
+                    var paused = (interruptedPreparation ? preparedSelectionTarget! : playbackTarget).ForFreshRecovery()
+                        with { AllowPreviousPaused = false, PausedPreviousTrackUri = null };
                     if (externalSelection)
                     {
                         if (!backend.Capabilities.ProviderRouteLifetime || seekParked
@@ -506,6 +513,7 @@ public sealed class ProductRouteService : IDisposable
                     if (lifetime.IntervalId is not null || lifetime.IntervalGeneration != 0 || lifetime.IntervalIsolated)
                         throw new RouteBlockedException("CAPTURE_INTERVAL_NOT_STOPPED");
                     playbackTarget = paused; pausedHeld = true; preparedSelectionCompleted = false; lastContact = monotonic();
+                    if (interruptedPreparation) { preparedSelectionTarget = null; preparedTargetActivity = completedTargetActivity = null; }
                     if (externalSelection) { InvalidatePausedProofTransfer(); preparedTargetActivity = completedTargetActivity = null; }
                     if (boundedSeek)
                     {

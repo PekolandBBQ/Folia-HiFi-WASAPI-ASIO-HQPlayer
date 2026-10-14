@@ -181,6 +181,10 @@ function createCableAudioPreparation({ captureHost, control, vault, cooldown, ge
           } else await boundedCleanup(Promise.resolve().then(() => control.pause(record.session)));
         }
         if (record.automaticRouting && !completed) await holdRoutes(record);
+        // A failed playback attempt is not a permanent provider failure once
+        // native hold has confirmed the same lease paused with capture stopped.
+        if (record.sourceOwner === providerOwner && providerOwner?.route?.heldPaused === true)
+          providerOwner.failure = undefined;
         // The owner now retains the route alone. No late track/media callback may close it.
         record.preparationRoute = null; record.heldRoute = null; record.retiredReads.clear();
       } finally {

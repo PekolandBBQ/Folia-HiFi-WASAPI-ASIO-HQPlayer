@@ -118,9 +118,9 @@ function createLivePcmSession({ source, experiment, connectPipe = name => net.cr
             if (['FORMAT_LEASE_READBACK_MISMATCH', 'HELPER_RESTART_REQUIRED'].includes(error?.nativeCode)) throw sourceLifecycleError(error);
             // Preserve native output/driver errors. A named source-control failure
             // is diagnosed as a source failure, without returning private messages.
-            if (error?.code && errorCode(error) === error.code) throw error;
             if (EXPIRED_SOURCE_CODES.has(error?.code)) throw audioError('SOURCE_EXPIRED', `Live PCM source failed (${error.code})`);
             if (UNAVAILABLE_SOURCE_CODES.has(error?.code)) throw audioError('SOURCE_UNAVAILABLE', `Live PCM source failed (${error.code})`);
+            if (error?.code && errorCode(error) === error.code) throw error;
             if (['Spotify: session-changed', 'Spotify: external-playback-change'].includes(error?.message))
                 throw audioError('SOURCE_EXPIRED', 'Live PCM source session changed');
             if (error?.message === 'Spotify: request-cancelled') throw audioError('CANCELLED');
