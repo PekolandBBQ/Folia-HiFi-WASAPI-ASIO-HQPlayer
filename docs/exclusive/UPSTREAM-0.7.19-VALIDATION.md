@@ -61,6 +61,19 @@
 
 初始准备交接修正的真实 ASIO / 整数 / 输出矩阵仍待新构建完成后验证；跨音源仍待补齐。三秒与偶发 Seek 保持原观察，不做新性能通过判定。
 
+### 2026-10-14 16:39—17:00 新构建实播与退出
+
+- `7d13a997f8fc94d4faac8af61b189055a333944a` 包含初始准备意图修正，已加载这一提交的 renderer。该 SHA 的 PR Unit Tests、sync-server、Windows HiFi settings 与 Docker CI 均已确认通过；Cielo 自动发布按原流程跳过，没有发布新版本。
+- 真实实播 run `d3952708-decf-4ae6-81e1-8f6ea7558a8e`：从已点赞歌单“播放全部”冷拉起 Spotify，ASIO 输出首曲并自然进入 everscape。首曲权威采集终态 captured=delivered=9548973、队列 0、closed、cleanupConfirmed=true。
+- 播放中的 ASIO 从兼容模式切入整数模式，自动恢复位置 77.880159 → 77.885000 秒，playing=true，无手动再次 Play。音频链路实际显示“整数直通 / PCM32 integer direct”，引擎回报 s32le / 44.1 kHz / 32-bit / 2ch，持续非零 PCM；不据此宣称 Spotify 原始音源无损或全链路位完美。
+- ASIO → HQPlayer 自动续播位置 218.654853 → 218.664700 秒，随后自然播完 everscape 并进入第三首。HQPlayer → ASIO 自动续播位置 125.106667 → 125.113300 秒，离开 HQPlayer 后其进程结束并释放设备。ASIO → WASAPI 整数模式自动续播位置 175.275161 → 175.282300 秒，并自然进入下一首；各后端均有非零 PCM 与实际播放位置前进。上述切换均没有补按 Play，Spotify 路由持续保留。
+- 本轮 9 个权威采集终态均为 closed、cleanupConfirmed=true、capturedFrames=deliveredFrames、队列 0。正常退出的最后一段交付 4973157 帧；路由回读 exactOriginalRolesRestored=true、globalDefaultsWritten=false、observedDefaultsChanged=false。代理在“后台 Spotify”询问中选“同时退出 Spotify”，随后 Folia、Spotify 主客户端、HQPlayer 和音频 helper 均结束。
+- 冷拉起前客户端关闭时的 status/library unavailable 与 Spotify 实例变化记录保留；HQPlayer 退役过程中旧 pause 请求 CANCELLED 单独保留。此轮没有出现原生观察拒绝，但此前曲末 SESSION_OBSERVATION_UNTRUSTED 与恢复失败仍保留为未解释的历史失败，不以本轮通过抹去。
+- 在线平台面板明确显示网易云与 QQ 音乐未登录。当前独立候选的跨音源实播登录前提未满足，需用户登录；本地歌单待用户选择目录扫描。没有以匿名地址、页面缓存或模拟认证代替。
+- 初始准备期间切换的同一时序实机回归尚未完成；本轮已验证的是冷播放、自然切歌、整数模式及播放中后端接续。此前 41 项专项与 9524 项完整单测保持通过，不冒充同一时序实测。设置命令滚动定位仍保留待定位项。
+
+已重新打开同一正确候选供下一步账户登录和本地扫描使用，暂未开始新的音频输出。正式分支仍未合并，r4 标签与发行附件、原始配置及备份均保持原样。
+
 ## 合并门槛
 
 须补齐真实输出/恢复结果以及远端 CI。候选分支可用于 CI 和审查，正式 `codex/folia-exclusive` 在全部必要项通过前不合并。本轮源码同步不自动发布新安装包，也不替换 r4 Release。
