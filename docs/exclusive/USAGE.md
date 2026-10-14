@@ -32,7 +32,7 @@
 6. “启动并连接 Spotify”，就绪后点击“完成并返回歌单”。随后在 Folia 打开 Spotify 歌单并点歌；Spotify 未运行时可后台拉起，左下角显示启动准备。
 7. 选择 WASAPI、ASIO 或 HQPlayer 输出后直接播放。Spotify 与其他音源使用同一输出选择；整数模式是 WASAPI/ASIO 的 PCM 处理选项，HQPlayer 的 DAC 和 DSP 仍在 Desktop 中配置。Spotify PCM 预缓冲在原生音频设置中统一调整，WASAPI、ASIO 和 HQPlayer 共用。
 
-组件组合：Spicetify **2.45.3**、VB-CABLE **Pack45 / 3.3.1.7**、路由 **0.19.0-dev.26**、采集 **0.1.5-capture.9**、统一组件包 **0.1.0-preview.3**。主程序正式修订与内部组件版本各自标记；正式发布不改写组件验证事实。
+组件组合：Spicetify **2.45.3**、VB-CABLE **Pack45 / 3.3.1.7**、路由 **0.19.0-dev.26**、采集 **0.1.5-capture.9**、统一组件包 **0.1.0-preview.4**。主程序正式修订与内部组件版本各自标记；正式发布不改写组件验证事实。
 
 ### 桌面换歌、跨音源与退出
 
