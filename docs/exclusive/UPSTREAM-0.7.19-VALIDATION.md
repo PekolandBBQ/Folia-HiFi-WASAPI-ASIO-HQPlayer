@@ -45,7 +45,21 @@
 - 本轮 native 歌词日志为 `spotify-native` / 0 行；播放页已有歌词显示不足以证明本次 Spotify 自带歌词成功回传，仍按来源分别记录。
 - 另观察到 WASAPI 设置定位显示在 HQPlayer 内容处，手动滚动可找到实际原生控件；先保留为设置导航待定位项。尚未计 ASIO、整数、跨音源及修复后的后端矩阵通过。
 
-当前需先完成这轮实际环境的恢复。已请用户将 Spotify 应用输出回到原始“默认”，并退出 Spotify / HQPlayer；候选保持打开，待其回复后核查，再执行修复构建实播。没有重装、backup/apply、备份覆盖或正式分支合并。
+上述失败当时等待恢复。以下记录继续说明实际恢复及重测，没有重装、backup/apply、备份覆盖或正式分支合并。
+
+### 2026-10-14 16 时后恢复与重测
+
+- 用户指出可由代理操作后，代理从 Spotify 的“退出”菜单正常关闭客户端；HQPlayer 与候选 Folia 当时也已结束。进程结束没有被当作原路由恢复证明，旧失败 journal 原样保留。
+- `91921e42` 的单测、sync-server、Windows 界面和 Docker CI 均已确认通过；此提交的 renderer 已用于新实播，旧 renderer 分别保留，未替换 r4 发行件。
+- 新一轮冷拉起先失败于 `BOOTSTRAP_IDENTITY_UNCONFIRMED` / `ORIGINAL_ENDPOINT_UNSAFE`，尚未进入输出。Windows 音量合成器随后实际显示 Spotify 输出仍为 CABLE Input，而原始 journal 记录为默认。代理只把 Spotify 应用输出恢复为“默认”，未更改系统输出或音量；随后一次正常重试进入实播。
+- 修复后首次原生加载仅发送 begin / finish / play，未重复 Seek 0。WASAPI 持续非零输出；在 134.699977 秒请求 HQPlayer 后自动续播，恢复位置 134.709700 秒、playing=true，无额外手动 Play。前输出 `native-terminal` 正常关闭，captured=delivered=5968053，队列 0，清理确认。
+- HQPlayer 本轮自然完成 `ジャイアント・キラー・チューン` 和 everscape，并进入第三首；两个采集终态 captured=delivered 分别为 3611349、12096189，队列均 0，清理确认。本轮未重现早前曲末观察拒绝；早前失败仍保留，不称其完整原生原因已证明。
+- HQPlayer → ASIO 恰与第三首的初始准备重叠：交接捕获 position=0、playing=false，恢复后留在暂停，没有 ASIO 真实输出。本例不计作播放中自动续播通过。已定位为交接只读取尚未播放的 deck / IDLE 状态，忽略新曲目的未消耗自动播放意图。修正保留该意图，并用原生明确 Play/Pause 请求优先于自动播放；新源重置请求状态，退役保留旧请求事实。
+- 新增 4 项初始准备交接回归，覆盖自动播放、无自动播放、明确暂停优先和待完成 Play；相关元数据/传输/输出生命周期 41 项通过。类型检查通过。全量第六轮 9522 通过、2 个源码扫描用例超时、2 原有跳过；扫描组单独 9 项通过，停止并行运行后第七轮完整全量为 9524 通过、0 失败、2 原有跳过。没有改断言、移除用例或放宽超时。
+- 本轮最后正常退出，原生路由回读 `exactOriginalRolesRestored=true`、`globalDefaultsWritten=false`，然后“后台 Spotify”询问中选“同时退出 Spotify”；桥接断开，Folia、Spotify 主客户端和音频 helper 均结束。SpotifyLauncher 的系统启动器保留，不当作音频客户端仍运行。
+- 第三首的 Wrapper 回传已记录 `spotify-native`、39 行、`LINE_SYNCED`；这与前两首 native 0 行分别保留。不能把此前页面匹配歌词一概称为 Spotify 自带歌词。
+
+初始准备交接修正的真实 ASIO / 整数 / 输出矩阵仍待新构建完成后验证；跨音源仍待补齐。三秒与偶发 Seek 保持原观察，不做新性能通过判定。
 
 ## 合并门槛
 
