@@ -1,6 +1,6 @@
 import { afterEach, expect, it, vi } from 'vitest';
 import { beginPlaybackSourceRequest, cancelPlaybackSourceRequest, finishPlaybackSourceRequest,
-    playbackSourceRequestRevision } from '@/services/playbackSourceRequest';
+    playbackSourceRequestRevision, hasPendingPlaybackSourceRequest, waitForPlaybackSourceRequest } from '@/services/playbackSourceRequest';
 import { usePlaybackStore } from '@/stores/usePlaybackStore';
 import type { SongResult } from '@/types';
 
@@ -39,4 +39,26 @@ it('releases observers after completion without cancelling a successfully prepar
     finishPlaybackSourceRequest(request);
     usePlaybackStore.setState({ currentSong: null }); cancelPlaybackSourceRequest();
     expect(cancelled).not.toHaveBeenCalled(); expect(request.signal.aborted).toBe(false);
+});
+
+it('waits through a superseding selection and completes on the newest source', async () => {
+    beginPlaybackSourceRequest();
+    const settled = vi.fn();
+    const barrier = waitForPlaybackSourceRequest().then(settled);
+    const latest = beginPlaybackSourceRequest();
+    await Promise.resolve();
+    expect(settled).not.toHaveBeenCalled();
+    expect(hasPendingPlaybackSourceRequest()).toBe(true);
+    finishPlaybackSourceRequest(latest);
+    await barrier;
+    expect(settled).toHaveBeenCalledOnce();
+    expect(hasPendingPlaybackSourceRequest()).toBe(false);
+});
+
+it('releases a waiting output selection on explicit source cancellation', async () => {
+    beginPlaybackSourceRequest();
+    const barrier = waitForPlaybackSourceRequest();
+    cancelPlaybackSourceRequest();
+    await barrier;
+    expect(hasPendingPlaybackSourceRequest()).toBe(false);
 });

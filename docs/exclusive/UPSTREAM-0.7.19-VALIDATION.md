@@ -76,4 +76,17 @@
 
 ## 合并门槛
 
+### 2026-10-14 晚间补项
+
+用户已完成 QQ/网易云登录和本地扫描（2066 首）。为允许用户继续使用电脑，测试改用仓库 Electron/Playwright 框架驱动同一完整候选的真实界面，隐藏候选窗口、不注入系统鼠标键盘。未模拟 provider、队列或设备，也未更改 Spotify 音量；操作与检查记录保存在本机 evidence。没有另建虚拟桌面或宣称 Windows 输入已隔离。
+
+- Bravais 首页搜索原先仅调用导航，未执行搜索请求，QQ 显示空结果且无 `/user/search` 调用。修复复用现有搜索 store → Omni，先缓存结果再提交历史，在线平台取当前 provider、本地取本地目录。专项 19 项通过，界面专项 1 项通过，类型及 renderer 通过。新增 4 个单测后的完整第八轮 9528 通过、0 失败、2 原有跳过。
+- 实播 `4b625320-da8c-47d6-9f2e-9606b32cd104`：真实 Omni 认证确认 Spotify/QQ/网易云均已登录。先播放 Spotify，再 QQ 搜索“晴天”，`/user/search` HTTP/code 200、30 首；点击首个实际结果播放周杰伦《晴天》，真实播放地址请求成功，原生 WASAPI 输出 44.1 kHz / 32-bit、位置持续前进、歌词出现。浏览 QQ 时保留 Spotify 路由，开始 QQ 播放后 10:59:59.092Z 才回读恢复原路由。
+- 同一实播继续网易云搜索 Pekora 并播放首项（兎田ぺこら歌曲），原生 WASAPI 44.1 kHz / 32-bit、位置和歌词推进；回到 Spotify 后再从本地搜索播放《リテラチュア》，原生输出 96 kHz / 32-bit、位置前进。11:05:58.352Z 的本地换源路由回读通过。以上两个 Spotify 采集权威终态分别交付 1613619、4260942 帧，均 captured=delivered、queuedBytes=0、closed、cleanupConfirmed=true；这两个采集计数属于 Spotify，不借作 QQ/网易云/本地的采集帧证据。两次恢复均 exactOriginalRolesRestored=true、globalDefaultsWritten=false、observedDefaultsChanged=false。
+- 设置命令定位实机失败已确认：先滚动到原生设置后，前方 HQPlayer 异步状态/DSP 面板增高，使目标离开视口。初始请求现在通过离散 ResizeObserver 布局变化保持目标，用户 wheel/touch/pointer/key 任一接管立即取消；不逐帧更新 React 状态。两项新浏览器回归（展开保持、用户滚动优先）通过，设置单测 134 项通过，类型/renderer 通过；完整 Folia 加载后截图确认目标区域可见。
+- 实播 `3d7e7557-993d-48b3-ac38-66d6bf59e98c` 又暴露准备期间输出切换缺陷：Next 的新源尚未落地时，输出交接重开旧源并带入旧曲 70.26 秒，随后 CANCELLED 与连接不可用。失败记录保留。修复为输出设置等待当前来源解析完成或取消，再捕获 deck；队列在音源提交后释放等待，所有提前退出通过 finally 清理，不等待歌词和主题，也不强行跳进度或重建组件。来源/原生交接 44 项与队列/失败展示 158 项回归通过，类型及 renderer 通过。
+- 修复后的同一时序实播 `5180c8ac-f51e-4689-b09c-e586c0a8526e`：11:24:17.342Z Next；11:24:18.944Z 选择 ASIO；新源落地后捕获 position=0、playing=true，等待元数据并自动恢复 0.0103 秒。ASIO 持续非零 PCM，没有额外 Play，也没有重开旧曲 70.26 秒。正常退出的最后采集 captured=delivered=2524284、queuedBytes=0、closed、cleanupConfirmed=true；11:25:18.061Z 原路由恢复且全局默认未写入。旧段 499653 帧终态亦正常。
+- 启动时旧 Spotify 实例状态查询的 SPOTIFY_INSTANCE_CHANGED/unavailable 与刷新失败、显式 Next 退役旧请求的 CANCELLED 单独保留；本轮真实播放和新的来源/输出交接随后正常，不以此宣称日志无错误。此前 `3736eb23` 的 SESSION_OBSERVATION_UNTRUSTED/ROUTE_RESTORE_UNCONFIRMED 仍为未解释历史失败；三秒和偶发 Seek 保留观察，本轮不重新判定性能。
+- 用户明确要求不重测完全重复项。搜索修复后的全量第八轮已在该指示前执行；随后设置和并发修复仅跑受影响专项与必要实播，不重跑全套播放矩阵。最新提交仍须通过既有远端 CI 后再正式合并。保留已通过项目的实现与证据版本，不能把早期全量结果写成后续源码的再次全量结果。
+
 须补齐真实输出/恢复结果以及远端 CI。候选分支可用于 CI 和审查，正式 `codex/folia-exclusive` 在全部必要项通过前不合并。本轮源码同步不自动发布新安装包，也不替换 r4 Release。

@@ -222,7 +222,7 @@ test.describe('[bravais-only] home', () => {
         await page.evaluate(() => window.__homeProbe!.clearLog());
         await input.fill('blue train');
         await input.press('Enter');
-        await expect.poll(async () => (await calls(page, 'searchCommitted')).map(call => [call.text, call.key])).toEqual([['blue train', 'playlist']]);
+        await expect.poll(async () => (await calls(page, 'searchCommitted')).map(call => [call.text, call.key])).toEqual([['blue train', PROBE_PROVIDER_A]]);
         await expect(seam(page)).toHaveAttribute('data-bravais-seam', 'home');
 
         await seam(page).locator('[data-bravais-seam-action="search"]').click();

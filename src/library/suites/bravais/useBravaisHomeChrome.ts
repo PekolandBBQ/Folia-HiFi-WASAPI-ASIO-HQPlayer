@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { HomeViewTab } from '../../../types';
+import { useSearchNavigationStore, type SearchSource } from '../../../stores/useSearchNavigationStore';
 import type { LibraryHomeSurfaceProps } from '../../core/contracts/suite';
 import type { LibraryHomeTabKey, LibraryHomeTabView } from '../../core/contracts/homeModel';
 import type { BravaisSeamTab } from './bravaisLayer';
@@ -32,7 +32,7 @@ export type BravaisHomeChrome = {
 
 type ChromeProps = Pick<
     LibraryHomeSurfaceProps,
-    'onSearchCommitted' | 'onOpenLattice' | 'onBackToPlayer' | 'onOpenStagePlayer' | 'stageEnabled' | 'stageIsActive' | 'onOpenSettings'
+    'localSongs' | 'localLibraryCatalog' | 'onSearchCommitted' | 'onOpenLattice' | 'onBackToPlayer' | 'onOpenStagePlayer' | 'stageEnabled' | 'stageIsActive' | 'onOpenSettings'
 >;
 
 export const useBravaisHomeChrome = ({
@@ -41,6 +41,7 @@ export const useBravaisHomeChrome = ({
     selectTab,
     scanPercent,
     scanning,
+    searchSource,
     props,
 }: {
     tab: LibraryHomeTabKey;
@@ -48,12 +49,13 @@ export const useBravaisHomeChrome = ({
     selectTab: (key: LibraryHomeTabKey) => boolean;
     scanPercent: number;
     scanning: boolean;
+    searchSource: SearchSource;
     props: ChromeProps;
 }): BravaisHomeChrome => {
     const { t } = useTranslation();
     const searchOpen = useBravaisHomeUiStore(state => state.searchOpen);
-    const latest = useRef({ tab, tabs, selectTab, props });
-    latest.current = { tab, tabs, selectTab, props };
+    const latest = useRef({ tab, tabs, selectTab, props, searchSource });
+    latest.current = { tab, tabs, selectTab, props, searchSource };
 
     const onSelectTab = useCallback((key: string) => { latest.current.selectTab(key as LibraryHomeTabKey); }, []);
     const cycleTab = useCallback((delta: 1 | -1) => {
@@ -75,7 +77,20 @@ export const useBravaisHomeChrome = ({
         hint: t('libraryBravaisHome.searchHint'),
         submitLabel: t('libraryBravaisHome.searchSubmit'),
         closeLabel: t('libraryBravaisHome.searchClose'),
-        onSubmit: query => latest.current.props.onSearchCommitted(query, latest.current.tab as HomeViewTab),
+        // Like Grid, execute the search before committing its history entry; navigation only restores cached results.
+        onSubmit: async query => {
+            const { props: current, searchSource: sourceTab } = latest.current;
+            const didSearch = await useSearchNavigationStore.getState().submitSearch({
+                query,
+                sourceTab,
+                deps: {
+                    localSongs: current.localSongs,
+                    localLibraryCatalog: current.localLibraryCatalog,
+                    t: (key, fallback) => t(key, fallback ?? ''),
+                },
+            });
+            if (didSearch) current.onSearchCommitted(query.trim(), sourceTab);
+        },
     }), [t]);
 
     const searchTool = useMemo<BravaisHomeTool>(() => ({

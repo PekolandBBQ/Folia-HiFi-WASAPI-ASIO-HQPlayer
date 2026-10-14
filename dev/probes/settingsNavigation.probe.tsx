@@ -8,6 +8,7 @@ import type { SettingsAnchorId } from '../../src/components/modal/settings/navig
 import { buildSettingsNavGroups, type SettingsSectionId } from '../../src/components/modal/settings/navigation/settingsNavModel';
 import { useMediaQuery } from '../../src/hooks/useMediaQuery';
 import { useSettingsScrollSpy } from '../../src/hooks/useSettingsScrollSpy';
+import { useSettingsInitialAnchor } from '../../src/hooks/useSettingsInitialAnchor';
 import { DEFAULT_THEME } from '../../src/services/baseThemes';
 import type { ProbeDefinition } from './definition';
 // dev/probes/settingsNavigation.probe.tsx
@@ -62,13 +63,19 @@ const useDelayedMount = (frames: number): boolean => {
     return mounted;
 };
 
-const ProbeBody: React.FC = () => {
+const ProbeBody: React.FC<{ initialAnchor?: SettingsAnchorId; expandAfterMs?: number }> = ({ initialAnchor, expandAfterMs }) => {
     const store = useSettingsAnchorStore();
     const anchors = useSettingsAnchorList(store);
     const contentRef = useRef<HTMLDivElement>(null);
     const [activeSection, setActiveSection] = useState<SettingsSectionId>('appearance');
     const isWide = useMediaQuery('(min-width: 768px)');
     const showLate = useDelayedMount(4);
+    const [extraHeight, setExtraHeight] = useState(0);
+    useEffect(() => {
+        if (expandAfterMs === undefined) return;
+        const timer = setTimeout(() => setExtraHeight(600), expandAfterMs);
+        return () => clearTimeout(timer);
+    }, [expandAfterMs]);
 
     const groups = useMemo(() => buildSettingsNavGroups(fakeTranslate, { isElectron: true }).map(group => ({
         ...group,
@@ -89,6 +96,8 @@ const ProbeBody: React.FC = () => {
         enabled: isWide,
         reducedMotion: false,
     });
+    const request = useMemo(() => initialAnchor ? { id: initialAnchor, seq: 1 } : null, [initialAnchor]);
+    useSettingsInitialAnchor(request, anchors, scrollToAnchor, contentRef);
 
     useEffect(() => {
         if (contentRef.current) {
@@ -138,7 +147,7 @@ const ProbeBody: React.FC = () => {
                                         <SettingsSectionHeading icon={section.icon} label={section.label} />
                                         <div
                                             className="rounded-xl border border-white/10 bg-white/5"
-                                            style={{ height: section.height }}
+                                            style={{ height: section.height + (section.id === 'lyricsRenderer' ? extraHeight : 0) }}
                                         />
                                     </SettingsAnchor>
                                     {section.id === 'themePresets' && showLate && (

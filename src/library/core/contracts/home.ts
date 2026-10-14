@@ -9,7 +9,7 @@ import type {
     StatusMessage,
     Theme,
 } from '../../../types';
-import type { ProviderCollection, ProviderUser } from '../../../types/onlineMusic';
+import type { OnlineProviderId, ProviderCollection, ProviderUser } from '../../../types/onlineMusic';
 import type { NavidromeSong } from '../../../types/navidrome';
 
 // src/library/core/contracts/home.ts
@@ -72,7 +72,7 @@ export interface LibraryHomeData {
     onAddNavidromeSongsToQueue?: (songs: NavidromeSong[]) => void;
     navidromeFocusedAlbumIndex?: number;
     setNavidromeFocusedAlbumIndex?: (index: number) => void;
-    onSearchCommitted: (query: string, sourceTab: HomeViewTab, replace?: boolean) => void;
+    onSearchCommitted: (query: string, sourceTab: HomeViewTab | OnlineProviderId, replace?: boolean) => void;
     stageEnabled?: boolean;
     stageIsActive?: boolean;
     onOpenStagePlayer?: () => void;

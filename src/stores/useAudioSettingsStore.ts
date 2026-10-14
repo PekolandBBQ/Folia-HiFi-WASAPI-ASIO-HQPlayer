@@ -1,5 +1,6 @@
 import { readLivePcmPrebufferMs, writeLivePcmPrebufferMs } from '../utils/livePcmPrebuffer';
 import { prepareOutputHandoff } from '../services/nativeAudio/outputHandoff';
+import { hasPendingPlaybackSourceRequest, waitForPlaybackSourceRequest } from '../services/playbackSourceRequest';
 // src/stores/useAudioSettingsStore.ts
 // Audio output and the media cache: stream quality, output device, the equalizer, how queued
 // songs are added, and the cache ceiling.
@@ -214,6 +215,10 @@ export const useAudioSettingsStore = create<AudioSettingsState>((set, get) => ({
         ? 'integer-direct' : 'compatibility',
     handleSetNativeAudioOutput: async (backend, deviceId, closeHQPlayer = true) => {
         const ticket = ++outputChange;
+        if (hasPendingPlaybackSourceRequest()) {
+            await waitForPlaybackSourceRequest();
+            if (ticket !== outputChange) return;
+        }
         const previous = get();
         if (previous.nativeAudioBackend === backend && previous.nativeAudioDeviceId === deviceId && !outputRelease) return;
         const cancelHandoff = prepareOutputHandoff(backend, deviceId);

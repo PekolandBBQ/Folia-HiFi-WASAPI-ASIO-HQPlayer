@@ -58,6 +58,7 @@ const BravaisHome: React.FC<LibraryHomeSurfaceProps> = (props) => {
         selectTab,
         scanPercent,
         scanning: Boolean(actionState.scan?.active),
+        searchSource: tab === 'local' || tab === 'navidrome' ? tab : online.providerId,
         props,
     });
     const tabLabel = (key: LibraryHomeTabKey) => tabs.find(candidate => candidate.key === key)?.label ?? key;

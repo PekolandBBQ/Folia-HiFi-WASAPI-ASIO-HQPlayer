@@ -1340,7 +1340,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
     // for that section to register, which is the only moment it exists to scroll to. It runs after
     // the reset above on purpose — that reset fires on the same commit the section changes on, and
     // a scrollTop write would abort the smooth scroll this starts.
-    useSettingsInitialAnchor(initialAnchor, settingsAnchors, scrollToAnchor);
+    useSettingsInitialAnchor(initialAnchor, settingsAnchors, scrollToAnchor, contentScrollRef);
 
 
     return (

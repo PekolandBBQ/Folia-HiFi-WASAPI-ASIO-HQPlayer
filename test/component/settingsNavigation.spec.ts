@@ -80,6 +80,27 @@ test.describe('settings navigation - wide layout', () => {
         await content(page).evaluate(node => node.scrollTo({ top: node.scrollHeight }));
         await expect.poll(() => activeTocLabel(page)).toBe('Echo Section');
     });
+
+    test('keeps an initial destination visible when an earlier status panel expands', async ({ mount, page }) => {
+        await mount('settingsNavigation', { initialAnchor: 'stageTrackPill', expandAfterMs: 1200 });
+        const target = page.locator('[data-settings-anchor="stageTrackPill"]');
+        await expect.poll(() => scrollTop(page)).toBeGreaterThan(1000);
+        await expect(page.locator('[data-settings-anchor="lyricsRenderer"] > div')).toHaveCSS('height', '1300px');
+        await expect.poll(() => target.evaluate(node => {
+            const column = document.querySelector('[data-probe-content]')!;
+            return Math.round(node.getBoundingClientRect().top - column.getBoundingClientRect().top);
+        })).toBe(12);
+    });
+
+    test('leaves the user scroll alone when the earlier panel expands', async ({ mount, page }) => {
+        await mount('settingsNavigation', { initialAnchor: 'stageTrackPill', expandAfterMs: 1800 });
+        await expect.poll(() => scrollTop(page)).toBeGreaterThan(1000);
+        await content(page).hover();
+        await page.mouse.wheel(0, -4000);
+        await expect.poll(() => scrollTop(page)).toBe(0);
+        await expect(page.locator('[data-settings-anchor="lyricsRenderer"] > div')).toHaveCSS('height', '1300px');
+        expect(await scrollTop(page)).toBe(0);
+    });
 });
 
 test.describe('settings navigation - narrow layout', () => {

@@ -9,6 +9,7 @@ import { setPlayerState, usePlaybackStore } from '@/stores/usePlaybackStore';
 import { usePlaybackLoadStore } from '@/stores/usePlaybackLoadStore';
 import type { NativeAudioApi, NativeAudioBackend, NativeAudioEvent, NativeAudioState } from '@/types/nativeAudio';
 import { PlayerState, type SongResult } from '@/types';
+import { beginPlaybackSourceRequest, finishPlaybackSourceRequest, cancelPlaybackSourceRequest } from '@/services/playbackSourceRequest';
 
 // Actual settings store → React deck → handoff → native transport lifecycle. Only the IPC
 // device boundary is simulated; source loading, intents, store commits and effects are real.
@@ -28,6 +29,7 @@ beforeEach(() => {
     useAudioSettingsStore.setState({ nativeAudioOutputRevision: 0, volume: .4, isMuted: false });
 });
 afterEach(async () => {
+    cancelPlaybackSourceRequest();
     if (root) await act(async () => root!.unmount());
     root = null; host?.remove(); currentAudio = null;
     vi.restoreAllMocks();
@@ -89,6 +91,26 @@ function fixture(backend: NativeAudioBackend) {
 const nativeBackends = ['wasapi-exclusive', 'asio', 'hqplayer'] as const;
 const directions = nativeBackends.flatMap(from => nativeBackends.filter(to => to !== from).map(to => ({ from, to })));
 describe('settings output lifecycle', () => {
+    it('waits for a resolving queue selection instead of reopening the previous track at its old position', async () => {
+        const f = fixture('wasapi-exclusive'); await f.mount(true);
+        const sourceRequest = beginPlaybackSourceRequest();
+        let change!: Promise<unknown>;
+        await act(async () => { change = Promise.resolve(useAudioSettingsStore.getState().handleSetNativeAudioOutput('asio', 'asio')); });
+        expect(useAudioSettingsStore.getState().nativeAudioBackend).toBe('wasapi-exclusive');
+        expect(f.request.mock.calls).toEqual([]);
+        const release = f.delayBegin();
+        await act(async () => { usePlaybackStore.setState({ currentSong: { ...song, id: 2 }, audioSrc: 'https://example.test/next.flac' }); });
+        await flush();
+        expect(currentAudio!.readyState).toBe(0);
+        void currentAudio!.play().catch(() => {});
+        await act(async () => { finishPlaybackSourceRequest(sourceRequest); await change; });
+        expect(useAudioSettingsStore.getState().nativeAudioBackend).toBe('asio');
+        expect(checkpoint.current).not.toBe(37);
+        await act(async () => { release(); });
+        await flush();
+        await vi.waitFor(() => expect(currentAudio!.paused).toBe(false));
+        expect(f.request).toHaveBeenCalledWith(expect.objectContaining({ action: 'begin', backend: 'asio', position: 0 }));
+    });
     it.each(directions)('automatically resumes the same heard position $from → $to', async ({ from, to }) => {
         const f = fixture(from); await f.mount(true);
         await act(async () => { await useAudioSettingsStore.getState().handleSetNativeAudioOutput(to, to); });

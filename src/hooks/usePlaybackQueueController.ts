@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Dispatch, MutableRefObject, SetStateAction } from 'react';
 import type { MotionValue } from 'framer-motion';
 import { applyOnlineAudioSourceMetadata, loadOnlineSongAudioSource, loadOnlineSongLyrics } from '../services/onlinePlayback';
-import { beginPlaybackSourceRequest } from '../services/playbackSourceRequest';
+import { beginPlaybackSourceRequest, finishPlaybackSourceRequest } from '../services/playbackSourceRequest';
 import { useAccountPlaybackCleanup } from './useAccountPlaybackCleanup';
 import { getSongReplacement, isSongUnavailable } from '../services/onlineMusic/songAvailability';
 import { getSongResourceCacheKey } from '../services/onlineMusic/resourceKeys';
@@ -516,6 +516,7 @@ export function usePlaybackQueueController({
             setIsLyricsLoading(false);
         }); sourceRequestRef.current = sourceRequest;
         pendingSourceSongRef.current = song;
+        try {
         const isLatestPlaybackRequest = () => playbackRequestIdRef.current === playbackRequestId;
         // 点歌没有落地：FM 状态退回本次请求之前的值，否则会和仍在播的上一首、旧队列对不上，handleNextTrack 会按错的模式选歌。
         // 重试 / 跳过 / 替代版本都带着 isFmCall 重新调用 playSong，会再设一次；更新的请求已经写了自己的值，不能覆盖。
@@ -785,6 +786,8 @@ export function usePlaybackQueueController({
             currentOnlineAudioUrlFetchedAtRef.current = null;
         }
         setAudioSrc(audioResult.audioSrc);
+        // The new source now belongs to the deck. Lyrics/theme work must not hold output selection.
+        finishPlaybackSourceRequest(sourceRequest);
 
         try {
             await loadOnlineSongLyrics(song, prefetched, userId, {
@@ -822,6 +825,10 @@ export function usePlaybackQueueController({
 
         if (newQueue.length > 1) {
             prefetchNearbySongs(resolvedSong, resolvedQueue, audioQuality, userId);
+        }
+        } finally {
+            finishPlaybackSourceRequest(sourceRequest);
+            if (sourceRequestRef.current === sourceRequest) pendingSourceSongRef.current = null;
         }
     }, [
         audioQuality,
