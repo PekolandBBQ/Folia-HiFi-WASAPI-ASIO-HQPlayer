@@ -25,7 +25,7 @@
 
 使用独立复制的验收资料，未重装、未重跑 backup/apply、未覆盖已有备份。候选从本分支 renderer 和 Electron 源码启动。
 
-- everscape 经 Wrapper 在完整 Folia 开始播放，接收 PCM 44.1 kHz / 32-bit 标记及 Spotify 自带歌词出现；界面观察不能单独代替 native-terminal 交付证明。
+- everscape 经 Wrapper 在完整 Folia 开始播放，接收 PCM 44.1 kHz / 32-bit 标记及歌词出现；本次尚无歌词来源和 native-terminal 交付记录，因此只计为界面播放观察，不计为自带歌词回传或最终输出新增验收通过。
 - 实际暂停后正常退出，显示“保留 Spotify / 同时退出 Spotify”；本轮选择保留 Spotify。
 - 随后窗口捕获连续返回 `foreground window did not report a process id`；已通知用户恢复窗口前台。音频实际交付、WASAPI/ASIO/HQPlayer、跨音源和退出路由恢复最终确认仍待完成。
 - 三秒目标与偶发 Seek 保留原观察，本轮不重新判定性能。
