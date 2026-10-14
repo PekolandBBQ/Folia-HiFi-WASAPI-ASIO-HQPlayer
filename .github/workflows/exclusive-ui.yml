@@ -20,6 +20,7 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
+      - run: node --test test/node/spotifyFirstSetup.test.cjs test/node/spotifyComponentFreshness.test.cjs
       - run: npx playwright install chromium
       - run: npx playwright test -c playwright.exclusive.config.ts test/component/nativeAudio.spec.ts test/component/hqplayerComponent.spec.ts test/component/playbackPreparation.spec.ts test/component/spotifyWrapperGuide.spec.ts test/component/publicPlaylistMetadata.spec.ts --project=components --output=test-results/exclusive-ui
       - uses: actions/upload-artifact@v4

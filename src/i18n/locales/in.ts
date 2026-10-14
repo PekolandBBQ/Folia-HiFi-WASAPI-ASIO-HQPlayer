@@ -3309,7 +3309,9 @@ hifi0_7_12r2: {
       }
     },
     "v0_7_19": {
-      "intro": "0.7.19 mengubah halaman artis dan album di Bravais menjadi poster bergaya Tempera. Saat lagu online gagal diputar, Folia kini menyebutkan alasan sebenarnya, tidak lagi selalu menyebutnya dihapus; visualizer per kata seperti Tempera memotong lirik Tionghoa dan Jepang dengan lebih wajar; dan versi web kembali bisa dibuka tanpa jaringan.",
+      "intro": "Folia HiFi mengintegrasikan upstream 0.7.19 dengan tetap mendukung Spotify Wrapper, WASAPI/ASIO, HQPlayer dan PCM integer. Revisi ini memperbaiki konfigurasi Spicetify pertama dan memeriksa paket komponen terverifikasi Folia beserta berkas yang sudah ada sebelum pemasangan.",
+      "spotifySetup": {"title":"Konfigurasi Spotify pertama diperbaiki","description":"Tangani konfirmasi pencadangan versi Store, siapkan program dan snapshot yang diperlukan, serta gunakan direktori AppX Store atau Apps desktop yang sesuai. Konfigurasi dan cadangan yang sudah ada dipertahankan; konfigurasi selesai tidak mengulang backup."},
+      "spotifyComponents": {"title":"Periksa versi dan integritas komponen","description":"Periksa paket komponen terbaru yang telah diverifikasi Folia secara daring sebelum setiap pemasangan. Gunakan kembali paket dengan versi sama hanya setelah semua berkas lolos pemeriksaan. Periksa versi driver VB-CABLE tanpa memasang ulang versi yang sama."},
       "artistPoster": {
         "title": "Halaman Artis Menjadi Poster",
         "description": "Strip info lengkap di halaman artis Bravais kini digambar sebagai poster bergaya Tempera yang tersemat di kiri dinding. Tata letaknya tetap untuk tiap artis, warnanya diambil dari tiga album terpopuler artis tersebut, dan nama menyesuaikan lebar tanpa meluap. Dinding album di kanan ikut miring, dan Anda tetap bisa menyeret dan menggulir saat dinding miring."

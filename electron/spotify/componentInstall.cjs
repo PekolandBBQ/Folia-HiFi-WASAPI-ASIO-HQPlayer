@@ -5,27 +5,31 @@ const os = require('node:os');
 const bundle = require('./componentBundle.json');
 const { fail } = require('./componentPackage.cjs');
 // One resumable operation owns the component set; existing installations are reused.
-function createComponentInstall({ directory, inspect, installSpicetify, configureSpicetify, prepareEngine, installDriver, bootTime = () => Date.now() - os.uptime() * 1000, log = () => {} }) {
+function createComponentInstall({ directory, inspect, installSpicetify, configureSpicetify, prepareEngine, installDriver,
+  checkLatest = async () => {}, getBundle = () => bundle, bootTime = () => Date.now() - os.uptime() * 1000, log = () => {} }) {
   let active, state = { phase: 'idle', bundleVersion: bundle.version };
   const receipt = path.join(directory, 'component-install.json');
   async function record(phase, extra = {}) {
-    state = { ...state, ...extra, phase, updatedAt: Date.now() };
+    state = { ...state, ...extra, bundleVersion: getBundle().version, phase, updatedAt: Date.now() };
     await fs.mkdir(directory, { recursive: true });
     const temporary = receipt + '.tmp'; await fs.writeFile(temporary, JSON.stringify(state)); await fs.rename(temporary, receipt);
-    log('spotify-component-install', { phase, bundleVersion: bundle.version, code: state.code });
+    log('spotify-component-install', { phase, bundleVersion: getBundle().version, code: state.code });
   }
   async function run(operation) {
     await status();
-    if (state.restartRequired) return;
+    await record('checking-updates', { code: undefined, operation });
+    await checkLatest();
+    if (state.restartRequired) { await record('restart-required'); return; }
     await record('checking', { code: undefined, operation });
     let current = await inspect();
     if (!current.installations.length) throw fail(current.detectionFailed ? 'SPOTIFY_DISCOVERY_FAILED' : 'SPOTIFY_NOT_INSTALLED');
     if (!current.selected) throw fail('SPOTIFY_INSTALL_CHOICE_REQUIRED');
     if (operation === 'install') {
       if (!current.engine) { await record('engine'); await prepareEngine(); }
-      if (!current.cli) { await record('spicetify'); await installSpicetify(); }
+      // Revalidate even an existing package; acquisition reuses it only after content checks.
+      await record('spicetify'); await installSpicetify();
       current = await inspect();
-      if (!current.driver) {
+      if (!current.driver || current.driverCurrent === false) {
         await record('driver', { driverInstallStartedAt: Date.now() }); await installDriver();
         current = await inspect();
         await record('restart-required', { restartRequired: true }); return;
@@ -33,7 +37,7 @@ function createComponentInstall({ directory, inspect, installSpicetify, configur
       if (!current.engine || !current.cli) throw fail('SPOTIFY_COMPONENT_SETUP_INCOMPLETE');
       await record('installed'); return;
     }
-    if (!current.engine || !current.cli || !current.driver || current.driverEndpointsReady === false) throw fail('SPOTIFY_INSTALL_COMPONENTS_FIRST');
+    if (!current.engine || !current.cli || !current.driver || current.driverCurrent === false || current.driverEndpointsReady === false) throw fail('SPOTIFY_INSTALL_COMPONENTS_FIRST');
     if (!current.wrapper || !current.extension) {
       if (current.running) throw fail('SPOTIFY_CLOSE_FOR_SETUP');
     }

@@ -1,4 +1,4 @@
-import { CircleAlert, Disc3, Languages, Newspaper, WifiOff, Wrench } from 'lucide-react';
+import { CircleAlert, Disc3, Languages, Newspaper, Monitor, Wrench } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 // src/components/modal/newFeaturesRelease.ts
@@ -25,7 +25,7 @@ export const NEW_FEATURES_RELEASE: NewFeaturesRelease = {
         { id: 'albumPoster', icon: Disc3, daylightIconClassName: 'text-violet-600', darkIconClassName: 'text-violet-400' },
         { id: 'playbackFailure', icon: CircleAlert, daylightIconClassName: 'text-amber-600', darkIconClassName: 'text-amber-400' },
         { id: 'lyricSegmenter', icon: Languages, daylightIconClassName: 'text-sky-600', darkIconClassName: 'text-sky-400' },
-        { id: 'offlineStartup', icon: WifiOff, daylightIconClassName: 'text-emerald-600', darkIconClassName: 'text-emerald-400' },
-        { id: 'stabilityFixes', icon: Wrench, daylightIconClassName: 'text-cyan-600', darkIconClassName: 'text-cyan-400' },
+        { id: 'spotifySetup', icon: Monitor, daylightIconClassName: 'text-emerald-600', darkIconClassName: 'text-emerald-400' },
+        { id: 'spotifyComponents', icon: Wrench, daylightIconClassName: 'text-cyan-600', darkIconClassName: 'text-cyan-400' },
     ],
 };

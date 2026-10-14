@@ -26,13 +26,14 @@ export default function SpotifyDesktopSetup({ onMode, onReady, finishing = false
     return <section className="space-y-3 text-sm" aria-label="Spotify 组件安装向导">
         <h4 className="font-medium">准备 Spotify 本机播放</h4>
         <p className="spotify-setup-hint text-xs">组件包 {status.bundleVersion} · Spicetify {status.versions.spicetify} · VB-CABLE {status.versions.cable}</p>
+        <p className="spotify-setup-hint text-xs">每次安装前联网核对 Folia 已验证组件清单，并检查已有文件；版本一致且完整才复用。</p>
         {!status.installations.length && <p role="alert">{status.detectionFailed ? '安装检测失败，尚不能确定是否安装。' : '未检测到 Spotify。请自行安装官网桌面版或 Microsoft Store 版，并登录账号。'}</p>}
         {status.installations.map(item => <button disabled={busy} className={button} key={item.id} onClick={() => void run('choose', { installation: item.id })}>
             {item.layout === 'store' ? 'Microsoft Store 版' : '官网桌面版'} {item.version}{status.selected === item.id ? ' · 已选择' : ''}</button>)}
         <ul className="space-y-1 text-xs">
-            <li>Spicetify：{status.wrapper ? '已准备' : '待安装并配置'}</li>
+            <li>Spicetify：{status.wrapper ? '已准备' : status.cli ? '已安装，待配置' : '待安装并配置'}</li>
             <li>Folia 桥接扩展：{status.extension ? '已准备' : '待配置'}</li>
-            <li>VB-CABLE：{status.driver ? '已检测到驱动设备' : '尚未检测到驱动设备'}</li>
+            <li>VB-CABLE：{status.driverCurrent === false ? '版本需更新，请完成一键安装' : status.driver ? '已检测到驱动设备' : '尚未检测到驱动设备'}</li>
             <li>音频输入输出：{status.driverEndpointsReady ? '已识别完整设备对' : '尚未就绪'}</li>
             <li>采集与路由组件：{status.engine ? '已准备' : '待安装'}</li>
             <li>本机桥接：{status.connected ? '已连接' : status.running ? '等待连接' : 'Spotify 尚未启动'}</li>
@@ -48,7 +49,7 @@ export default function SpotifyDesktopSetup({ onMode, onReady, finishing = false
         <div className="flex flex-wrap gap-2">
             {!status.installations.length && <button className={button} disabled={busy} onClick={() => void run('open', { component: 'spotify' })}>前往 Spotify 下载页</button>}
             <button className={button} disabled={busy || status.install.busy || status.install.restartRequired || !status.selected} onClick={() => void run('install')}>① 一键安装</button>
-            <button className={button} disabled={busy || status.install.busy || status.install.restartRequired || !status.selected || !status.cli || !status.driverEndpointsReady || !status.engine} onClick={() => void run('configure')}>② 一键配置</button>
+            <button className={button} disabled={busy || status.install.busy || status.install.restartRequired || !status.selected || !status.cli || status.driverCurrent === false || !status.driverEndpointsReady || !status.engine} onClick={() => void run('configure')}>② 一键配置</button>
             {!status.connected && status.wrapper && status.extension && <button className={button} disabled={busy} onClick={() => void run('launch')}>启动并连接 Spotify</button>}
             <button className={button} disabled={busy} onClick={() => void run()}>{busy ? '正在检查…' : '重新检查'}</button>
             {status.ready && <button className={button} disabled={busy || finishing || status.install.busy} onClick={onReady}>{finishing ? '正在确认…' : '完成并返回歌单'}</button>}
