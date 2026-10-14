@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_PARTITA_TUNING, type Line, type Theme } from '@/types';
-import { buildPartitaLayoutCacheKey } from '@/components/visualizer/partita/VisualizerPartita';
+import { buildPartitaLayoutCacheKey } from '@/components/visualizer/partita/partitaLayout';
 
 // test/unit/visualizer/partitaLayoutCacheKey.test.ts
 // Partita keeps built columns in a Map bounded only by an LRU, so anything that changes the

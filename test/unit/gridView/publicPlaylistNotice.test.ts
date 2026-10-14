@@ -2,7 +2,7 @@ import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { beforeEach, describe, expect, it } from 'vitest';
 import i18n from '../../../src/i18n/config';
-import CollectionMetadataNotice from '../../../src/components/folia-grid/CollectionMetadataNotice';
+import CollectionMetadataNotice from '../../../src/library/suites/grid/shared/CollectionMetadataNotice';
 import type { ProviderMetadataStatus } from '../../../src/types/onlineMusic';
 
 // publicPlaylistNotice.test.ts — Presentation content checks; these do not claim visual/browser coverage.

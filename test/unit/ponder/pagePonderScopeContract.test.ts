@@ -9,16 +9,21 @@ const SRC = path.resolve(__dirname, '../../../src');
 
 const PAGE_SCOPE_OWNERS = {
     'grid-page': [
-        'components/Grid3D.tsx',
-        'components/folia-grid/DesktopGrid3DSurface.tsx',
+        'library/suites/grid/home/Grid3D.tsx',
+        'library/suites/grid/home/DesktopGrid3DSurface.tsx',
     ],
     'grid-view-page': [
-        'components/GridView.tsx',
-        'components/ArtistGridView.tsx',
+        'library/suites/grid/collection/GridView.tsx',
+        'library/suites/grid/artist/ArtistGridView.tsx',
     ],
-    'local-grid-map-page': ['components/GridMap.tsx'],
+    'local-grid-map-page': ['library/suites/grid/directory/GridMap.tsx'],
     'help-page': ['components/modal/SettingsModal.tsx'],
     'settings-page': ['components/modal/SettingsModal.tsx'],
+    'bravais-wall': [
+        'library/suites/bravais/BravaisHome.tsx',
+        'library/suites/bravais/BravaisCollection.tsx',
+        'library/suites/bravais/BravaisArtist.tsx',
+    ],
 } as const;
 
 describe('page Ponder scope contract', () => {
@@ -27,5 +32,16 @@ describe('page Ponder scope contract', () => {
         const source = owners.map(owner => readFileSync(path.join(SRC, owner), 'utf8')).join('\n');
         expect(source).toContain('data-ponder-page-scope');
         expect(source.includes(`"${targetId}"`) || source.includes(`'${targetId}'`)).toBe(true);
+    });
+
+    it.each(['BravaisHome', 'BravaisCollection', 'BravaisArtist'])('%s maps every bravais surface to the wall tutorial', owner => {
+        const source = readFileSync(path.join(SRC, `library/suites/bravais/${owner}.tsx`), 'utf8');
+        expect(source).toContain('data-ponder-page-scope="bravais-wall"');
+        expect(source).not.toContain('data-ponder-page-scope="none"');
+    });
+
+    it.each(['LibraryTuiHome', 'LibraryTuiView', 'LibraryTuiArtist'])('%s explicitly has no page tutorial', owner => {
+        const source = readFileSync(path.join(SRC, `library/suites/tui/${owner}.tsx`), 'utf8');
+        expect(source).toContain('data-ponder-page-scope="none"');
     });
 });

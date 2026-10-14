@@ -13,8 +13,8 @@ vi.mock('react-i18next', async original => ({ ...await original<typeof import('r
 vi.mock('@/hooks/useSpotifyPlaybackSetup', () => ({ useSpotifyPlaybackSetup: () => mock.state }));
 vi.mock('@/services/onlineMusic/spotifyPlaybackSetup', () => ({ spotifyPlaybackSetup: { canRun: () => !mock.state.busy, run: mock.run } }));
 import SpotifyConnectionModal from '@/components/app/home/SpotifyConnectionModal';
-import SpotifyPublicArtwork from '@/components/folia-grid/SpotifyPublicArtwork';
-import { PolaroidCardCover, type GridItem } from '@/components/folia-grid/polaroidCardParts';
+import SpotifyPublicArtwork from '@/library/suites/grid/shared/SpotifyPublicArtwork';
+import { PolaroidCardCover, type GridItem } from '@/library/suites/grid/shared/polaroidCardParts';
 import { hasBlockingWindow } from '@/utils/keyboardTargets';
 
 let host: HTMLDivElement, root: Root;

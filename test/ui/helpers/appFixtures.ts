@@ -244,6 +244,8 @@ export async function installBaseState(
     localStorage.setItem('last_home_view_tab', 'playlist');
     // 必须写当前版本：写死旧版本会让用户指引弹窗自动弹出并盖住整页，后续点击全部被拦截
     localStorage.setItem(payload.guideVersionStorageKey, payload.appVersion);
+    // 「资料库界面」那一页每个安装都要问一次、不看版本（2026-10-10），不种就会在每条用例开头弹出来。
+    localStorage.setItem('library_suite_prompt_seen', 'true');
 
     if (payload.navidromeEnabled) {
       localStorage.setItem('navidrome_enabled', 'true');
@@ -261,6 +263,7 @@ export async function installBaseState(
         clearAudioCache: async () => {},
         getAudioCacheStats: async () => ({ size: 0, count: 0 }),
         isWindowMaximized: async () => false,
+        // WindowControls 一挂载就订阅全屏变化并查询一次；桩里缺了它们，整个应用在首屏就抛错。
         isWindowFullscreen: async () => false,
         onWindowFullscreenChanged: () => () => {},
       },
@@ -462,12 +465,15 @@ export async function mockNeteaseApi(page: Page, mode: MockNeteaseMode) {
 
     const responses: Record<string, unknown> = {
       '/login/status': {
+        code: 200,
         data: {
+          code: 200,
           profile: neteaseFixtures.profile,
         },
         cookie: 'fixture-cookie',
       },
       '/user/account': {
+        code: 200,
         account: {
           id: neteaseFixtures.profile.userId,
         },

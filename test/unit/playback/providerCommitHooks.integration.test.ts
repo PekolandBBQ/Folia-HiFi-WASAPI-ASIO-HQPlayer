@@ -107,7 +107,7 @@ function mount() {
     const shared = { setLyrics: vi.fn(), setIsLyricsLoading: vi.fn(), navigateToPlaybackView: vi.fn(),
         persistLastPlaybackCache: vi.fn(async () => {}), restoreCachedThemeForSong: vi.fn(async () => null),
         interruptStagePlaybackForMainTransition: vi.fn(() => null), blobUrlRef: ref<string | null>(null),
-        shouldAutoPlayRef: ref(false), currentSongRef: ref<string | number | null>(null),
+        shouldAutoPlayRef: ref(false), currentSongRef: ref<string | number | null>(null), playbackGenerationRef: ref(0),
         currentOnlineAudioUrlFetchedAtRef: ref<number | null>(null) };
     const audio = { pause: vi.fn(), play: vi.fn(async () => {}), currentTime: 0, paused: false, ended: false };
     const props = { ...shared, isNowPlayingStageActive: false, shouldNavigateToPlayerOnTrackChange: false,
@@ -265,7 +265,7 @@ function mountTransport() {
         audioRef: ref(audio), audioContextRef: ref<AudioContext | null>(null),
         stageLyricsClockRef: ref({ startTimeSec: 0, endTimeSec: 0, baseTimeSec: 0, startedAtMs: null as number | null }),
         setupAudioAnalyzer: vi.fn(), syncOutputGain: vi.fn(), getTargetPlaybackVolume: () => 1,
-        shouldRefreshCurrentOnlineAudioSource: () => false, recoverOnlinePlaybackSource: vi.fn(async () => false),
+        shouldRefreshCurrentOnlineAudioSource: () => false, recoverOnlinePlaybackSource: vi.fn(async () => ({ status: 'not-attempted' as const })),
         getSyntheticStageLyricsTime: () => 0, syncStageLyricsClock: vi.fn() };
     function Probe() { transport = usePlaybackTransportController(props); return null; }
     root = createRoot(document.createElement('div'));
@@ -275,7 +275,7 @@ function mountTransport() {
 
 describe('passive rehydration and later real Play intent', () => {
     it('remembered paused local source performs no provider exit and marks lazy output', async () => {
-        expect(await restorePlaybackSourceForSong(unifiedLocal(), restoreOptions(false))).toBe(true);
+        expect(await restorePlaybackSourceForSong(unifiedLocal(), restoreOptions(false))).toBe('restored');
         expect(bridge).not.toHaveBeenCalled();
         expect(usePlaybackStore.getState().audioSrc).toBe('blob:local-one');
         expect(isPassivePlaybackSource('blob:local-one')).toBe(true);
@@ -286,14 +286,14 @@ describe('passive rehydration and later real Play intent', () => {
         const task = restorePlaybackSourceForSong(unifiedLocal(), restoreOptions(true));
         await vi.waitFor(() => expect(bridge.mock.calls.some(([x]) => x.action === 'leaveProvider')).toBe(true));
         expect(usePlaybackStore.getState().audioSrc).toBe('https://fixture.invalid/old-spotify');
-        restore.resolve(null); expect(await task).toBe(true);
+        restore.resolve(null); expect(await task).toBe('restored');
         expect(usePlaybackStore.getState().audioSrc).toBe('blob:local-one');
         expect(isPassivePlaybackSource('blob:local-one')).toBe(false);
     });
     it('failed restore during autoplay cannot publish or load the new source', async () => {
         bridge.mockImplementation(async input => input.action === 'sourceRevision' ? { revision: 7 }
             : { spotifyError: { code: 'setup-required', message: 'Spotify: route-restore-unconfirmed' } });
-        expect(await restorePlaybackSourceForSong(unifiedLocal(), restoreOptions(true))).toBe(false);
+        expect(await restorePlaybackSourceForSong(unifiedLocal(), restoreOptions(true))).toBe('failed');
         expect(usePlaybackStore.getState().audioSrc).toBe('https://fixture.invalid/old-spotify');
         expect(useStatusMessageStore.getState().message?.type).toBe('error');
     });
@@ -443,7 +443,7 @@ describe('actual queue navigation and actual App EOF decisions', () => {
         const task = restorePlaybackSourceForSong(unifiedLocal(), { ...restoreOptions(false), signal: abort.signal });
         await vi.waitFor(() => expect(localLookup).toHaveBeenCalled());
         abort.abort(); source.resolve('blob:cancelled');
-        expect(await task).toBe(false);
+        expect(await task).toBe('stale');
         expect(usePlaybackStore.getState().audioSrc).toBe('https://fixture.invalid/old-spotify');
         expect(bridge).not.toHaveBeenCalled();
     });

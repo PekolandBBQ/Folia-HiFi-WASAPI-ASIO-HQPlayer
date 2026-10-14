@@ -7,6 +7,7 @@ import { kugouProvider } from './kugouProvider';
 import { qqProvider } from './qqProvider';
 import { spotifyProvider } from './spotifyProvider';
 import { spotifyAvailable } from './spotifyTransport';
+import { bodianProvider } from './bodianProvider';
 
 // src/services/onlineMusic/providerRegistry.ts
 
@@ -84,3 +85,4 @@ registerOnlineMusicProvider(kugouProvider);
 registerOnlineMusicProvider(qqProvider);
 // Unfinished integration is restricted to the explicitly enabled local preview runtime.
 if (spotifyAvailable()) registerOnlineMusicProvider(spotifyProvider);
+registerOnlineMusicProvider(bodianProvider);

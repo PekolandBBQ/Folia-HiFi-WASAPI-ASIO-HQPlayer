@@ -25,6 +25,7 @@ import {
   type CacheTableName,
 } from './repositories/cacheRepository';
 import {
+  readLocalSong,
   readLocalSongs,
 } from './repositories/localSongRepository';
 import { clearSessionValues, putSessionValue, readSession } from './repositories/sessionRepository';
@@ -214,6 +215,20 @@ export const getLocalSongs = async (): Promise<LocalSong[]> => {
   } catch (error) {
     console.error('Failed to get local songs', error);
     return [];
+  }
+};
+
+/**
+ * 按 id 读一首本地歌曲的最新记录。
+ * 不走 ensureLocalLibraryInitialized：那一步会把 local_music 和 assignments 整表读一遍，
+ * 而这里只服务切歌、匹配写回这类「只关心一首」的热路径。读失败或记录不存在时返回 undefined。
+ */
+export const getLocalSong = async (id: string): Promise<LocalSong | undefined> => {
+  try {
+    return await readLocalSong(id);
+  } catch (error) {
+    console.error('Failed to get local song', error);
+    return undefined;
   }
 };
 

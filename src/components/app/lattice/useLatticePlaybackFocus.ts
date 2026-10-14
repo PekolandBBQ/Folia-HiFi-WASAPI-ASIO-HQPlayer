@@ -4,7 +4,7 @@ import { useLatticeControlsStore } from '../../../stores/useLatticeControlsStore
 import { useLatticeSettingsStore } from '../../../stores/useLatticeSettingsStore';
 import type { SongResult } from '../../../types';
 import { getPlaybackSongKey } from '../../../utils/appPlaybackGuards';
-import { layoutExpandedBlock, locateNearestInstance, type LatticeGeometry, type QueueInstance, type WallMetrics } from './layout';
+import { layoutExpandedBlock, locateNearestInstance, type LatticeGeometry, type QueueInstance, type WallMetrics } from '../../wall/layout';
 import type { LatticeTile } from './latticeModel';
 
 // Follows discrete song changes; per-frame camera movement stays inside useWallCameraPan.

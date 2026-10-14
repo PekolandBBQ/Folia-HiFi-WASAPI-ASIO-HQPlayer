@@ -55,6 +55,8 @@ type UseStagePlaybackControllerParams = {
     isElectronWindow: boolean;
     audioRef: RefObject<HTMLAudioElement | null>;
     currentSongRef: MutableRefObject<string | number | null>;
+    /** Bumped when a snapshot commits its song, so work started for an earlier playback of that song reads as stale. */
+    playbackGenerationRef: MutableRefObject<number>;
     shouldAutoPlayRef: MutableRefObject<boolean>;
     pendingResumeTimeRef: MutableRefObject<number | null>;
     lastAudioRecoverySourceRef: MutableRefObject<string | null>;
@@ -89,6 +91,7 @@ export function useStagePlaybackController({
     isElectronWindow,
     audioRef,
     currentSongRef,
+    playbackGenerationRef,
     shouldAutoPlayRef,
     pendingResumeTimeRef,
     lastAudioRecoverySourceRef,
@@ -213,6 +216,12 @@ export function useStagePlaybackController({
         shouldAutoPlayRef.current = snapshot?.playerState === PlayerState.PLAYING;
         lastAudioRecoverySourceRef.current = null;
         currentOnlineAudioUrlFetchedAtRef.current = null;
+        // Applying a snapshot commits to its song the way playSong does. Left on the Stage song's key,
+        // recovery and failure handling would read the restored song as already replaced and drop its
+        // refresh or failure message as stale.
+        currentSongRef.current = snapshot?.currentSong ? getPlaybackSongKey(snapshot.currentSong) : null;
+        // A new playback even when it is the song a refresh was started for before Stage opened: that refresh is now stale.
+        playbackGenerationRef.current += 1;
         setCurrentSong(snapshot?.currentSong ?? null);
         setLyrics(snapshot?.lyrics ?? null);
         setCachedCoverUrl(snapshot?.cachedCoverUrl ?? null);
@@ -227,9 +236,11 @@ export function useStagePlaybackController({
         setDuration(snapshot?.duration ?? 0);
     }, [
         currentOnlineAudioUrlFetchedAtRef,
+        currentSongRef,
         currentTime,
         lastAudioRecoverySourceRef,
         pendingResumeTimeRef,
+        playbackGenerationRef,
         setAudioSrc,
         setCachedCoverUrl,
         setCurrentLineIndex,

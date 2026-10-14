@@ -184,7 +184,8 @@ contextBridge.exposeInMainWorld('electron', {
     fetchLyricProxy: (url, init) => ipcRenderer.invoke('lyric-proxy-fetch', url, init),
     getNeteasePort: () => ipcRenderer.invoke('get-netease-port'),
     getNeteaseApiStatus: () => ipcRenderer.invoke('get-netease-api-status'),
-    getNeteaseLoginDiagnostics: () => ipcRenderer.invoke('get-netease-login-diagnostics'),
+    getLoginDiagnostics: (providerId) => ipcRenderer.invoke('get-login-diagnostics', providerId),
+    runLoginSelfCheck: (providerId) => ipcRenderer.invoke('run-login-self-check', providerId),
     restartNeteaseApi: () => ipcRenderer.invoke('restart-netease-api'),
     onNeteaseApiStatusChanged: (callback) => {
         const listener = (_event, status) => callback(status);
@@ -193,6 +194,7 @@ contextBridge.exposeInMainWorld('electron', {
     },
     getKugouApiStatus: () => ipcRenderer.invoke('kugou-api-status'),
     kugouRequest: (operation, params) => ipcRenderer.invoke('kugou-api-request', operation, params),
+    bodianRequest: (operation, params) => ipcRenderer.invoke('bodian-api-request', operation, params),
     getQqPort: () => ipcRenderer.invoke('get-qq-port'),
     getQqApiStatus: () => ipcRenderer.invoke('get-qq-api-status'),
     onQqApiStatusChanged: (callback) => {

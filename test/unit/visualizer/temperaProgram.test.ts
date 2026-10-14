@@ -234,6 +234,39 @@ describe('Tempera program compiler', () => {
         });
     });
 
+    it('never cuts a shot between two touching single-character Chinese words', () => {
+        // 我/想/再/陪/你/看 is six "words" to the 2..4-word target, which used to split 我想你-like
+        // runs across shots. Per-character timing, the way karaoke lyrics arrive.
+        const text = '我想再陪你看一次海只剩下一句我想你';
+        const chars = Array.from(text);
+        const perChar = chars.map((char, index) => ({ text: char, startTime: index * 0.3, endTime: index * 0.3 + 0.3 }));
+        const split = ['我', '想', '再', '陪', '你', '看', '一次', '海', '只', '剩下', '一句', '我', '想', '你'];
+        const lyric = line(text, 0, chars.length * 0.3, perChar, { autoWordSegments: split });
+
+        for (const seed of ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']) {
+            const program = compileTemperaProgram([lyric], seed);
+            const segments = program.paragraphs[0].lines[0].segments;
+            const shots = program.paragraphs.flatMap(p => p.shots).filter(s => !s.isBridge);
+            shots.slice(0, -1).forEach(shot => {
+                const end = shot.slices[0].segmentEnd;
+                const last = segments[end - 1].text;
+                const next = segments[end]?.text ?? '';
+                expect(/^\p{Script=Han}$/u.test(last) && /^\p{Script=Han}$/u.test(next)).toBe(false);
+            });
+        }
+    });
+
+    it('lets the single-character glue run past 2.2s but not past its hard cap', () => {
+        // Forty single characters at 0.3s each: without the cap the glue would make this one shot.
+        const text = '我你他'.repeat(14).slice(0, 40);
+        const perChar = Array.from(text, (char, index) => ({ text: char, startTime: index * 0.3, endTime: index * 0.3 + 0.3 }));
+        const lyric = line(text, 0, 12, perChar, { autoWordSegments: Array.from(text) });
+        const shots = compileTemperaProgram([lyric], 'glue-cap').paragraphs.flatMap(p => p.shots).filter(s => !s.isBridge);
+        expect(shots.length).toBeGreaterThan(1);
+        // The cap is checked when a character ends, so a chunk can close one character past it.
+        shots.forEach(shot => expect(shot.lyricEndTime - shot.startTime).toBeLessThanOrEqual(3.2 + 0.3 + 1e-6));
+    });
+
     it('keeps each complete lyric line in one shot when splitting is disabled', () => {
         const lines = [
             line('世界， 再见！', 0, 3.6, [

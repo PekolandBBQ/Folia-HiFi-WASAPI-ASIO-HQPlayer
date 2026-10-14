@@ -2,7 +2,7 @@ import { layoutWithLines, prepareWithSegments } from '@chenglou/pretext';
 import type { TemperaSegment } from './types';
 
 // src/components/visualizer/tempera/temperaMeasure.ts
-// pretext-backed text metrics for the Tempera collage. Words come from the Intl.Segmenter
+// pretext-backed text metrics for the Tempera collage. Words come from the wordSegmentation.ts
 // split done at compile time; measuring the whole word and then normalising the per-grapheme
 // advances to that width keeps shaping/kerning intact while still allowing per-char placement.
 export interface TemperaMeasureContext {

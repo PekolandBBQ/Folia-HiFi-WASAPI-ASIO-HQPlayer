@@ -1,6 +1,6 @@
 # Folium 模组开发与贡献指南
 
-这份指南面向想为 Folia 写模组的开发者：从零写出第一个模组、在本地调试，到把它发布到 [模组市场](https://folium-compound.vercel.app) 并获得官方认证。
+这份指南面向想为 Folia 写模组的开发者：从零写出第一个模组、在本地调试，到把它发布到 [模组市场](https://folium-compound.cielaniska.top) 并获得官方认证。
 
 三份文档分工如下：
 
@@ -194,7 +194,7 @@ function mountHello(folium, container, ctx) {
 
 ## 6. 发布到模组市场
 
-官方模组和通过审查的社区模组收录在 [folium-compound](https://github.com/chthollyphile/folium-compound)，发布在 [模组市场](https://folium-compound.vercel.app)。收录的模组都带有 Folium 签名，用户安装后显示「官方认证」。
+官方模组和通过审查的社区模组收录在 [folium-compound](https://github.com/chthollyphile/folium-compound)，发布在 [模组市场](https://folium-compound.cielaniska.top)。收录的模组都带有 Folium 签名，用户安装后显示「官方认证」。
 
 不需要 fork 任何仓库：你只需要把模组放在自己的公开源码仓库里，再开一个 issue。
 

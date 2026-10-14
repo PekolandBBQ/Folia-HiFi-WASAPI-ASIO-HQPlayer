@@ -20,6 +20,7 @@ import { useVisualizerSettingsStore } from '@/stores/useVisualizerSettingsStore'
 import { useTypographySettingsStore } from '@/stores/useTypographySettingsStore';
 import { useThemeSettingsStore } from '@/stores/useThemeSettingsStore';
 import { useStageSettingsStore } from '@/stores/useStageSettingsStore';
+import { useLibraryWallLookStore } from '@/stores/useLibraryWallLookStore';
 
 const switchMock = vi.mocked(readStoredThemeAutoSwitchEnabled);
 const generateMock = vi.mocked(readStoredThemeAutoGenerateEnabled);
@@ -210,5 +211,54 @@ describe('buildVisualSettingsConfig', () => {
             stageTrackPillTimeoutSec: 12,
             stageTrackPillOnHome: true,
         });
+    });
+
+    // The bravais wall's collection stack edges travel with a shared look (a tile look with no user
+    // exception); the wall's transparency and windows per block deliberately do not.
+    it('carries the collection stack edges but not the wall transparency', () => {
+        useLibraryWallLookStore.setState({ collectionStackEdges: false, look: 'clear', windowsPerBlock: 5 });
+
+        const config = buildVisualSettingsConfig();
+        expect(config.libraryWallStackEdges).toBe(false);
+        expect(config).not.toHaveProperty('look');
+        expect(config).not.toHaveProperty('windowsPerBlock');
+        expect(config).not.toHaveProperty('libraryWallLook');
+
+        const restored = decompressConfig(extractCfgFromInput(asObsUrl(compressConfig(config))));
+        expect(restored.libraryWallStackEdges).toBe(false);
+        expect(decompressConfig(JSON.stringify({ lwse: true }))).toMatchObject({ libraryWallStackEdges: true });
+        expect(decompressConfig(JSON.stringify({ libraryWallStackEdges: false }))).toMatchObject({ libraryWallStackEdges: false });
+        useLibraryWallLookStore.setState({ collectionStackEdges: true, look: 'solid', windowsPerBlock: 3 });
+    });
+
+    // 2026-10-09: the info strip's material and the picture behind the wall are visual settings with no
+    // user exception, so they travel too (short codes lwsc / lwss / lwbl / lwbb).
+    it('carries the info strip material and the backdrop lyrics / blur', () => {
+        useLibraryWallLookStore.setState({ seamClear: true, seamStyle: 'contour', backdropLyrics: true, backdropBlur: true });
+
+        const config = buildVisualSettingsConfig();
+        expect(config).toMatchObject({
+            libraryWallSeamClear: true,
+            libraryWallSeamStyle: 'contour',
+            libraryWallBackdropLyrics: true,
+            libraryWallBackdropBlur: true,
+        });
+
+        const restored = decompressConfig(extractCfgFromInput(asObsUrl(compressConfig(config))));
+        expect(restored).toMatchObject({
+            libraryWallSeamClear: true,
+            libraryWallSeamStyle: 'contour',
+            libraryWallBackdropLyrics: true,
+            libraryWallBackdropBlur: true,
+        });
+        // A hand-written minified config carrying only these is recognised as the minified shape.
+        expect(decompressConfig(JSON.stringify({ lwss: 'white' }))).toMatchObject({ libraryWallSeamStyle: 'white' });
+        expect(decompressConfig(JSON.stringify({ lwsc: false, lwbl: false, lwbb: true }))).toMatchObject({
+            libraryWallSeamClear: false,
+            libraryWallBackdropLyrics: false,
+            libraryWallBackdropBlur: true,
+        });
+        expect(decompressConfig(JSON.stringify({ libraryWallSeamStyle: 'hatch' }))).toMatchObject({ libraryWallSeamStyle: 'hatch' });
+        useLibraryWallLookStore.setState({ seamClear: false, seamStyle: 'paper', backdropLyrics: false, backdropBlur: false });
     });
 });

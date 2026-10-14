@@ -13,6 +13,14 @@ test('版本更新按钮打开当前 release notes，并可关闭返回 Help', a
     await expect(page.getByTestId('release-notes-dialog')).toHaveCount(0);
 });
 
+// 它挂着 data-folia-keyboard-window，全局热键的 Esc 都会让路，关闭只能靠它自己的监听。
+test('release notes 按 Esc 关闭', async ({ page }) => {
+    await page.getByTestId('help-release-notes').click();
+    await expect(page.getByTestId('release-notes-dialog')).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(page.getByTestId('release-notes-dialog')).toHaveCount(0);
+});
+
 test('Help Ponder 按钮打开的是导航页，不是直接开一段教程', async ({ page }) => {
     await page.getByTestId('help-page-ponder').click();
     const nav = page.getByTestId('ponder-navigation');

@@ -4,7 +4,6 @@ import React, { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { useSpotifyLibrary } from '@/hooks/useSpotifyLibrary';
 import { useHomeProviderRefresh } from '@/hooks/useHomeProviderRefresh';
-import type { OnlineProviderPlatformState } from '@/hooks/useOnlineProviderPlatform';
 import { omni } from '@/services/onlineMusic/omni';
 import { spotifyProvider } from '@/services/onlineMusic/spotifyProvider';
 import { registerOnlineMusicProvider, unregisterOnlineMusicProvider } from '@/services/onlineMusic/providerRegistry';
@@ -47,8 +46,7 @@ async function mount(strict = false) {
         current = useSpotifyLibrary();
         useOnlineProviderAccountStore(state => state.accounts.spotify);
         const activeProvider = omni.getProviderSummaries().find(provider => provider.providerId === 'spotify');
-        const platform = { activeProviderId: 'spotify', activeProvider } as OnlineProviderPlatformState;
-        useHomeProviderRefresh({ onlineProviderPlatform: platform,
+        useHomeProviderRefresh({ activeProviderId: 'spotify', activeProviderFreshness: activeProvider?.freshness,
             refreshActiveProviderPlaylists: refreshPlaylists, checkKugouLoginStatus: noCheck });
         return React.createElement('div', null, account()?.collections.map(collection =>
             React.createElement('span', { key: collection.id, 'data-collection': collection.id }, `${collection.name}:${collection.trackCount}`)));

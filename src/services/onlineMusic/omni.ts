@@ -24,6 +24,7 @@ import type {
     ProviderConnectionSettings,
     ProviderPlaybackSetupRequest,
     ProviderPlaybackSetupStatus,
+    LoginSelfCheckResult,
     QrLoginMethod,
     QrLoginState,
 } from '../../types/onlineMusic';
@@ -191,6 +192,10 @@ export const omni = {
         return requireOnlineMusicProvider(providerId).capabilities;
     },
 
+    supportsDailySongs(providerId: OmniProviderId): boolean {
+        return typeof requireOnlineMusicProvider(providerId).recommendations?.getDailySongs === 'function';
+    },
+
     getProviderAvailability(providerId: OmniProviderId) {
         return requireOnlineMusicProvider(providerId).getAvailability?.() ?? { configured: true };
     },
@@ -297,6 +302,16 @@ export const omni = {
         } catch (error) {
             return [`provider diagnostics unavailable: ${error instanceof Error ? error.message : String(error)}`];
         }
+    },
+
+    // 扫码失败后的主动自检：没有这个能力的 provider（kugou、bodian、mod 源）回 false / null。
+    // 自检本身出错时照常抛出，由登录会话记进时间线与报告。
+    canRunQrLoginSelfCheck(providerId: OmniProviderId): boolean {
+        return Boolean(requireOnlineMusicProvider(providerId).auth?.canRunQrLoginSelfCheck?.());
+    },
+
+    async runQrLoginSelfCheck(providerId: OmniProviderId): Promise<LoginSelfCheckResult | null> {
+        return await requireOnlineMusicProvider(providerId).auth?.runQrLoginSelfCheck?.() ?? null;
     },
 
     // 只有明确声明了二维码寿命的 provider 才由前端计时；其余照旧只认后端报出的过期状态。
@@ -527,7 +542,18 @@ export const omni = {
     },
 
     async getAudioSource(song: SongResult, quality: AudioQualityPreference, options?: AudioSourceRequestOptions): Promise<OmniAudioSource | null> {
-        const source = await (providerForSong(song).playback?.getAudioSource(song, quality, options) ?? null);
+        const provider = providerForSong(song);
+        let source: OmniAudioSource | null;
+        try {
+            source = await (provider.playback?.getAudioSource(song, quality, options) ?? null);
+        } catch (error) {
+            // The provider refused (network, auth, entitlement...). An installed audio hook may still
+            // supply a URL; without one, or when it has none, rethrow the very same error instance so
+            // the caller classifies the provider's evidence. Nothing is saved on this path.
+            const rescued = await applyOmniAudioHook(song, null);
+            if (rescued?.url) return rescued;
+            throw error;
+        }
         // Written here rather than at either caller because this is the only moment a provider ever
         // states a track's ReplayGain, and both callers - the prefetch pass and playback itself -
         // may be the one that happens to see it. See getCachedSongReplayGain for what is lost
@@ -664,6 +690,25 @@ export const omni = {
         await this.updateCollectionTracks(playlist, 'add', [song]);
         try {
             await this.refreshProviderPlaylists(playlist.providerId);
+            // Netease owns its liked state in useNeteaseLibrary; avoid its cached /likelist here.
+            if (playlist.isLiked === true && playlist.providerId !== 'netease' && providerSupports(provider, 'likes')) {
+                const account = useOnlineProviderAccountStore.getState().accounts[playlist.providerId];
+                if (account?.user?.id !== undefined && account?.user?.id !== null) {
+                    const userId = account.user.id;
+                    // A full liked list may be large. Do not delay success or overwrite a newer account/mutation.
+                    void this.getProviderLikedSongIds(playlist.providerId, userId).then(async likedSongIds => {
+                        const latest = useOnlineProviderAccountStore.getState().accounts[playlist.providerId];
+                        if (latest?.user?.id !== userId || latest.likedSongIds !== account.likedSongIds) return;
+                        useOnlineProviderAccountStore.getState().updateAccount(playlist.providerId, { likedSongIds });
+                        await persistProviderLikedSongIds(playlist.providerId);
+                    }).catch(error => {
+                        console.warn('[Omni] Failed to refresh liked songs after playlist mutation', {
+                            providerId: playlist.providerId,
+                            name: error instanceof Error ? error.name : 'Error',
+                        });
+                    });
+                }
+            }
         } catch (error) {
             console.warn('[Omni] Failed to refresh provider playlists after mutation', {
                 providerId: playlist.providerId,

@@ -5,7 +5,7 @@ import { omni } from '../services/onlineMusic/omni';
 import { spotifyPlaybackSetup } from '../services/onlineMusic/spotifyPlaybackSetup';
 import { getSpotifyConnectionStep } from '../services/onlineMusic/spotifyConnectionSteps';
 import { useSpotifyConnectionStore } from '../stores/useSpotifyConnectionStore';
-import { useOnlineProviderQrLogin } from './useOnlineProviderQrLogin';
+import { useSpotifyAuthorization } from './useSpotifyAuthorization';
 
 // Catalog authorization is only the first step. One visible attempt owns every
 // callback; dismissing or replacing it cannot complete/activate a late response.
@@ -22,7 +22,7 @@ export function useSpotifyConnection(onComplete: (isCurrent: () => boolean) => P
     const completion = useRef(onComplete);
     completion.current = onComplete;
     const isCurrent = useCallback((owner: number) => generation.current === owner && useSpotifyConnectionStore.getState().open, []);
-    const login = useOnlineProviderQrLogin({ providerId: 'spotify', t, onConfirmed: async () => {
+    const login = useSpotifyAuthorization({ onConfirmed: async () => {
         const owner = generation.current;
         setCatalogVerifying(true);
         try {

@@ -35,6 +35,7 @@ const NO_PINNED_COMMANDS: PinnedSlots = [null, null, null];
 const seedApp = async (page: Page, pinnedCommandIds: PinnedSlots) => {
     await page.addInitScript(([version, guideKey, pinnedKey, pinned]) => {
         localStorage.clear();
+        localStorage.setItem('library_suite_prompt_seen', 'true');
         localStorage.setItem('i18nextLng', 'zh-CN');
         localStorage.setItem('open_player_on_launch', 'true');
         localStorage.setItem('visualizer_mode', 'classic');

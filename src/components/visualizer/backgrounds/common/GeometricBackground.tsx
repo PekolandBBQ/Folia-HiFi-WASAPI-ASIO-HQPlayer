@@ -1,7 +1,8 @@
 import React, { useMemo } from 'react';
 import { AnimatePresence, motion, MotionValue, useSpring, useTransform } from 'framer-motion';
-import * as LucideIcons from 'lucide-react';
 import { AudioBands, Theme } from '../../../../types';
+import { useLucideIcons } from '../../../../hooks/useLucideIcons';
+import { getLucideIconStatus, resolveLucideIcon } from '../../../../services/lucideIconResolver';
 
 // src/components/visualizer/backgrounds/common/GeometricBackground.tsx
 
@@ -110,7 +111,8 @@ const StaticGeometricScene: React.FC<{
       <>
         {shapes.map((shape) => {
           if (shape.type === 'icon' && shape.iconName) {
-            const IconComponent = LucideIcons[shape.iconName as keyof typeof LucideIcons] as LucideIcons.LucideIcon | undefined;
+            if (getLucideIconStatus(shape.iconName) === 'loading') return null;
+            const IconComponent = resolveLucideIcon(shape.iconName);
 
             if (IconComponent) {
               return (
@@ -196,7 +198,9 @@ const AnimatedGeometricScene: React.FC<{
         <>
           {shapes.map((shape) => {
             if (shape.type === 'icon' && shape.iconName) {
-              const IconComponent = LucideIcons[shape.iconName as keyof typeof LucideIcons] as LucideIcons.LucideIcon | undefined;
+              // The icon's chunk is still loading: leave the slot empty rather than flash the square fallback.
+              if (getLucideIconStatus(shape.iconName) === 'loading') return null;
+              const IconComponent = resolveLucideIcon(shape.iconName);
 
               if (IconComponent) {
                 return (
@@ -300,6 +304,9 @@ const GeometricLayer: React.FC<GeometricBackgroundProps> = ({
   disableVignette = false,
   paused = false,
 }) => {
+  // Re-renders the scenes below as the theme's icons arrive.
+  useLucideIcons(theme.lyricsIcons);
+
   const shapes = useMemo<BackgroundShape[]>(() => {
     const shapeTypes: Array<Exclude<ShapeType, 'icon'>> = ['circle', 'square', 'triangle', 'cross'];
     const availableIcons = theme.lyricsIcons || [];

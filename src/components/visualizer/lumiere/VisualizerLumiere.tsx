@@ -3,6 +3,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DEFAULT_LUMIERE_TUNING } from '../../../types';
 import type { Line } from '../../../types';
+import { loadLucideIcons } from '../../../services/lucideIconResolver';
 import { resolveThemeFontStack, resolveThemeFontWeight } from '../../../utils/fontStacks';
 import { getLineRenderEndTime } from '../../../utils/lyrics/renderHints';
 import type { VisualizerSharedProps } from '../definition';
@@ -94,8 +95,12 @@ const VisualizerLumiere: React.FC<VisualizerSharedProps> = (props) => {
         // 只有真正需要新 WebGL 上下文的输入；歌、tuning、暂停、静态模式都就地推给运行时。
         rebuildKey: [currentTime],
         song: songContext,
+        // 场景同步建，主题图标线稿只画已加载的图标：建运行时和换歌前先把这首歌的主题图标加载好。
         create: async (host, song, signal) => {
-            const { LumierePixiRuntime } = await import('./createLumierePixiRuntime');
+            const [{ LumierePixiRuntime }] = await Promise.all([
+                import('./createLumierePixiRuntime'),
+                loadLucideIcons(song.theme.lyricsIcons),
+            ]);
             const latest = latestRef.current;
             const runtime = await LumierePixiRuntime.create({
                 host,
@@ -119,7 +124,10 @@ const VisualizerLumiere: React.FC<VisualizerSharedProps> = (props) => {
             runtime.setPaused(current.paused);
             return runtime;
         },
-        swap: (runtime, song, signal) => runtime.swapSong(song, signal),
+        swap: async (runtime, song, signal) => {
+            await loadLucideIcons(song.theme.lyricsIcons);
+            return runtime.swapSong(song, signal);
+        },
         destroy: runtime => runtime.destroy(),
         onFailedChange: setRuntimeFailed,
     });

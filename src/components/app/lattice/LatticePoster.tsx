@@ -1,16 +1,25 @@
-import { LatticeTitle } from './LatticeTitle';
-import { lazy, memo, Suspense } from 'react';
-import { motion, type Variants } from 'framer-motion';
+import { WallTitle } from '../../wall/WallTitle';
+import { lazy, memo, Suspense, useMemo } from 'react';
+import { motion, type TransformProperties, type Variants } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { useRef, type KeyboardEvent, type MouseEvent, type MutableRefObject, type PointerEvent } from 'react';
-import type { ReflowTile } from './layout';
+import type { ReflowTile } from '../../wall/layout';
 import type { LatticeTile } from './latticeModel';
 import { useLatticeChromeDisclosure } from './useLatticeChromeDisclosure';
 import LatticePlaybackControls from './LatticePlaybackControls';
 import { useLatticeExpansionSettled } from './useLatticeExpansionSettled';
 import { prewarmLatticeLyrics } from './lyrics/prewarmLatticeLyrics';
-import { prewarmLatticePosterArtwork, useLatticePosterArtwork } from './useLatticePosterArtwork';
+import { prewarmWallPosterArtwork, useWallPosterArtwork } from '../../wall/useWallPosterArtwork';
 import { countRender } from '../../../dev/renderCount';
+import {
+    WALL_HANDOFF_FLIP_IN_MS,
+    WALL_HANDOFF_FLIP_OUT_MS,
+    WALL_HANDOFF_IN_EASE,
+    WALL_HANDOFF_OUT_EASE,
+    WALL_HANDOFF_PERSPECTIVE_PX,
+} from '../../wall/wallHandoff';
+import type { LatticePosterHandoff } from './useLatticeWallHandoff';
+import { WALL_REFLOW_CONTROLS_REVEAL, WALL_REFLOW_SPRING } from '../../wall/wallReflowMotion';
 
 // Renders one poster and its expanded Player Chrome controls.
 const LatticeLyrics = lazy(() => import('./lyrics/LatticeLyrics'));
@@ -35,6 +44,11 @@ type LatticePosterProps = {
      * re-render every mounted card on each re-cull. Identity must stay stable.
      */
     getExitDelay: (rect: { x: number; y: number }) => number;
+    /**
+     * 翻牌交接（设计稿 §7「进入队列」）里这张海报的排期：hold = 侧立着等开翻；in / out = 过 delay 秒后翻进 / 翻出半圈；
+     * static = 淡入淡出交叉里进来（不跑入场）。不在交接里为 null。同一段里是同一个对象（PosterWall 缓存）。
+     */
+    handoff: LatticePosterHandoff | null;
     expanded: boolean;
     reducedMotion: boolean | null;
     didDragRef: MutableRefObject<boolean>;
@@ -90,6 +104,21 @@ const arePosterPropsEqual = (previous: LatticePosterProps, next: LatticePosterPr
     return sameTile(previous.tile, next.tile) && sameRect(previous.rect, next.rect);
 };
 
+/**
+ * 交接翻牌时的 transform：透视要放在平移之后（以海报自己的中心为视点）。Framer 自带的 transformPerspective 排在
+ * 最前面，透视中心落在世界原点上，离原点远的海报侧立时会被看成一大块斜着的梯形。不转（rotateY 为 0）时原样返回
+ * Framer 生成的那一串——交接以外 transform 里没有 3D 项。
+ */
+const handoffTransform = (transform: TransformProperties, generated: string) => {
+    const rotate = transform.rotateY;
+    if (rotate === undefined || parseFloat(String(rotate)) === 0) return generated;
+    const length = (value: unknown) => (value === undefined ? '0px' : typeof value === 'number' ? `${value}px` : String(value));
+    const factor = (value: unknown) => (value === undefined ? '1' : String(value));
+    return `translateX(${length(transform.x)}) translateY(${length(transform.y)}) perspective(${WALL_HANDOFF_PERSPECTIVE_PX}px) `
+        + `scale(${factor(transform.scale)}) scaleX(${factor(transform.scaleX)}) scaleY(${factor(transform.scaleY)}) `
+        + `rotateY(${typeof rotate === 'number' ? `${rotate}deg` : String(rotate)})`;
+};
+
 const fallbackBackground = (id: string) => {
     const hue = [...id].reduce((sum, character) => sum + character.charCodeAt(0), 0) % 360;
     return `linear-gradient(145deg, hsl(${hue} 68% 58%), hsl(${(hue + 52) % 360} 62% 18%))`;
@@ -105,6 +134,7 @@ function LatticePoster({
     expandedSize,
     entranceDelay,
     getExitDelay,
+    handoff,
     expanded,
     reducedMotion,
     didDragRef,
@@ -128,16 +158,45 @@ function LatticePoster({
     // The artwork only has to cover the card's own box, and a square cover is scaled to the longer
     // edge. Both inputs are discrete - gears are integer spans and the camera only rescales on a
     // breakpoint - so this is not a per-frame value even while the card animates towards the size.
-    const coverUrl = useLatticePosterArtwork(tile.coverUrl, Math.max(rect.width, rect.height) * pixelScale);
+    const coverUrl = useWallPosterArtwork(tile.coverUrl, Math.max(rect.width, rect.height) * pixelScale);
     // Hover and press are the last moments before the open: warming here keeps the lyric chunk,
     // the Pixi module and the first shader compile off the click path.
     const warmLyrics = () => { if (isCurrent) prewarmLatticeLyrics(); };
     // Deliberately not on hover: a pointer sweeping the wall would pull a full-size cover per card,
     // which costs more than the swap it saves. A press is already an open in all but name.
-    const warmExpandedArtwork = () => prewarmLatticePosterArtwork(tile.coverUrl, expandedSize * pixelScale);
+    const warmExpandedArtwork = () => prewarmWallPosterArtwork(tile.coverUrl, expandedSize * pixelScale);
     // Frozen at mount: the wave's own delay must not follow later camera moves.
     const landingDelay = useRef(entranceDelay).current;
     const landing = entranceDelay === null ? null : landingDelay;
+    // 翻牌交接：绕 Y 轴半圈（与资料库墙磁贴的翻牌同一种），只在交接期间带透视（handoffTransform）——交接以外 transform
+    // 里没有 3D 项，海报不会因此单独升层（见下面关于 will-change 的说明）。翻进用关键帧（从侧立的那一边转回来），按排期对象记住。
+    const flipping = handoff !== null && handoff.kind !== 'static';
+    const flipRotate = useMemo(() => {
+        if (!handoff || handoff.kind === 'static') return 0;
+        if (handoff.kind === 'hold') return -90;
+        if (handoff.kind === 'in') return [-90 * handoff.direction, 0];
+        return 90 * handoff.direction;
+    }, [handoff]);
+    const flipTransition = !handoff || handoff.kind === 'static'
+        ? { duration: 0.2, ease: 'easeOut' as const }
+        : handoff.kind === 'hold'
+            ? { duration: 0 }
+            : handoff.kind === 'in'
+                ? { duration: WALL_HANDOFF_FLIP_IN_MS / 1000, delay: handoff.delay, ease: WALL_HANDOFF_IN_EASE }
+                : { duration: WALL_HANDOFF_FLIP_OUT_MS / 1000, delay: handoff.delay, ease: WALL_HANDOFF_OUT_EASE };
+    const baseTransition = reducedMotion
+        ? { duration: 0 }
+        : landing === null
+            ? {
+                ...WALL_REFLOW_SPRING,
+                opacity: { duration: 0.26, ease: 'easeOut' as const },
+                scaleX: { duration: 0.3, ease: 'easeOut' as const },
+                scaleY: { duration: 0.3, ease: 'easeOut' as const },
+            }
+            : {
+                type: 'spring' as const, stiffness: 360, damping: 24, delay: landing,
+                opacity: { duration: 0.24, delay: landing },
+            };
 
     const handleClick = (event: MouseEvent<HTMLElement>) => {
         if (event.target instanceof Element && event.target.closest('button, input')) return;
@@ -179,8 +238,11 @@ function LatticePoster({
             key={instanceId}
             className={`lattice-poster ${expanded ? 'is-expanded' : ''} ${isFocused ? 'is-focused' : ''} ${isCurrent ? 'is-current' : ''}`}
             data-instance-id={instanceId}
-            initial={reducedMotion
+            initial={reducedMotion || handoff?.kind === 'static'
                 ? false
+                // 交接进来：落在原位、不透明，只是侧立着（看不见），等自己的时刻翻进来。
+                : handoff?.kind === 'hold' || handoff?.kind === 'in'
+                    ? { ...rect, opacity: 1, scale: 1, rotateY: -90 }
                 : landing === null
                     // Outside the opening wave a poster still fades up in place, so posters
                     // revealed by a pan or a queue change never pop in fully drawn.
@@ -195,26 +257,20 @@ function LatticePoster({
                 scale: 1,
                 scaleX: popScaleX,
                 scaleY: popScaleY,
+                rotateY: flipRotate,
             }}
+            transformTemplate={flipping ? handoffTransform : undefined}
             // A dynamic variant rather than a target object: Framer resolves it when the exit
             // actually runs, which is the only moment the wave's delay can be read from the camera
             // where it stands. Nothing else here is a variant, so no label reaches the children.
             variants={LEAVING}
             custom={() => ({ y: rect.y - ENTRANCE_LIFT, delay: getExitDelay(rect) })}
-            exit={reducedMotion ? { opacity: 0, transition: { duration: 0 } } : 'leaving'}
-            transition={reducedMotion
-                ? { duration: 0 }
-                : landing === null
-                    ? {
-                        type: 'spring', stiffness: 300, damping: 34,
-                        opacity: { duration: 0.26, ease: 'easeOut' },
-                        scaleX: { duration: 0.3, ease: 'easeOut' },
-                        scaleY: { duration: 0.3, ease: 'easeOut' },
-                    }
-                    : {
-                        type: 'spring', stiffness: 360, damping: 24, delay: landing,
-                        opacity: { duration: 0.24, delay: landing },
-                    }}
+            // 交接里离开（翻完那一刻整层卸掉）：海报已经侧立，不再跑抬起的退场。
+            exit={reducedMotion || handoff !== null ? { opacity: 0, transition: { duration: 0 } } : 'leaving'}
+            transition={{
+                ...baseTransition,
+                rotateY: flipTransition,
+            }}
             style={{
                 backgroundImage: coverUrl ? `url("${coverUrl}")` : fallbackBackground(tile.id),
                 zIndex: expanded ? 20 : undefined,
@@ -235,21 +291,24 @@ function LatticePoster({
                 {String(tile.queueIndex + 1).padStart(2, '0')}
             </span>
             {expanded && expansionSettled && isCurrent ? (
-                <Suspense fallback={<span className="lattice-poster-copy"><LatticeTitle title={tile.title} expanded={expanded} targetPosterWidth={rect.width} /><small>{tile.artist}</small></span>}>
+                <Suspense fallback={<span className="lattice-poster-copy"><WallTitle title={tile.title} expanded={expanded} targetPosterWidth={rect.width} /><small>{tile.artist}</small></span>}>
                     <LatticeLyrics key={tile.id} tile={tile} reducedMotion={Boolean(reducedMotion)} />
                 </Suspense>
             ) : <span className="lattice-poster-copy">
                 {/* `rect` is the slot the card is heading for, in world units, so the title is fitted
                     against its final column before the spring has moved it there. */}
-                <LatticeTitle title={tile.title} expanded={expanded} targetPosterWidth={rect.width} />
+                <WallTitle title={tile.title} expanded={expanded} targetPosterWidth={rect.width} />
                 <small>{tile.artist}</small>
             </span>}
             {expanded && (
                 <motion.div
                     className="lattice-poster-controls"
-                    initial={{ opacity: 0, y: 12 }}
+                    initial={{ opacity: 0, y: WALL_REFLOW_CONTROLS_REVEAL.risePx }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: reducedMotion ? 0 : 0.14, duration: reducedMotion ? 0 : 0.24 }}
+                    transition={{
+                        delay: reducedMotion ? 0 : WALL_REFLOW_CONTROLS_REVEAL.delayMs / 1000,
+                        duration: reducedMotion ? 0 : WALL_REFLOW_CONTROLS_REVEAL.durationMs / 1000,
+                    }}
                 >
                     <LatticePlaybackControls
                         revealed={chrome.revealed}

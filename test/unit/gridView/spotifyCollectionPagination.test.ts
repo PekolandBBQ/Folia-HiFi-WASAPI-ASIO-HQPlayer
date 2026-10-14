@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
-import { mergeCollectionPage, syncRemainingCollectionPages } from '@/components/folia-grid/onlineCollectionSync';
-import { createCollectionTrackSnapshot, readCollectionTrackSnapshot } from '@/components/folia-grid/onlineCollectionCache';
+import { mergeCollectionPage, syncRemainingCollectionPages } from '@/library/core/services/onlineCollectionSync';
+import { createCollectionTrackSnapshot, readCollectionTrackSnapshot } from '@/library/suites/grid/shared/onlineCollectionCache';
 import { MAX_PROVIDER_PAGES } from '@/services/onlineMusic/providerPagination';
 import { normalizeSpotifyPage, normalizeSpotifySong } from '@/services/onlineMusic/spotifyNormalize';
 

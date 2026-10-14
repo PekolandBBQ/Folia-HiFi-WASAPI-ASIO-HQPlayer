@@ -35,14 +35,14 @@ App / ThemePark / VisPlayground / OBS source
 | mode | 显示名 | 主要 renderer / 辅助文件 |
 | --- | --- | --- |
 | `still` | 静止 | `still/VisualizerStill.tsx`（不挂载共享背景层） |
-| `classic` | Luminous | `classic/Visualizer.tsx`、`classic/tuning.ts` |
-| `cadenza` | Mindscape | `cadenza/VisualizerCadenza.tsx`、`cadenza/tuning.ts` |
-| `partita` | 云阶 | `partita/VisualizerPartita.tsx`、`partita/tuning.ts` |
+| `classic` | Luminous | `classic/Visualizer.tsx`、共用 `GlowWord.tsx` / `glowWordTiming.ts` / `glowWordVariants.ts`、`classic/tuning.ts` |
+| `cadenza` | Mindscape | `cadenza/VisualizerCadenza.tsx`（RAF 渲染）、`cadenzaPreparedState.ts` / `cadenzaFragments.ts` / `cadenzaPlacements.ts`（测量与落点）、`cadenzaEnvelopes.ts`（时序包络）、`cadenza/tuning.ts` |
+| `partita` | 云阶 | `partita/VisualizerPartita.tsx`、`partitaLayout.ts`（分栏布局与缓存）、`PartitaChunk.tsx`、共用 `GlowWord.tsx`、`partita/tuning.ts` |
 | `fume` | Fume | `fume/VisualizerFume.tsx`、`fume/tuning.ts` |
-| `cappella` | Cappella | `cappella/VisualizerCappella.tsx`、`avatarImages.ts`、`emoImages.ts` |
+| `cappella` | Cappella | `cappella/VisualizerCappella.tsx`、`CappellaMessageRow.tsx` / `CappellaBubbleParts.tsx`（消息行与气泡）、`cappellaMessages.ts`（消息编排）、`cappellaReveal.ts` / `cappellaBubbleMetrics.ts`（逐字时序与测量）、`avatarImages.ts`、`emoImages.ts` |
 | `tilt` | Tilt | `tilt/VisualizerTilt.tsx`、`tilt/tuning.ts` |
-| `claddagh` | Claddagh | `claddagh/VisualizerCladdagh.tsx`、`claddagh/tuning.ts` |
-| `monet` | Monet | `monet/VisualizerMonet.tsx`、`monet/monetLyricsModel.ts`、`monet/tuning.ts` |
+| `claddagh` | Claddagh | `claddagh/VisualizerCladdagh.tsx`、`CladdaghRingLine.tsx`（环上一行）、`claddaghTimeline.ts` / `claddaghLayout.ts` / `claddaghGlow.ts`、`claddagh/tuning.ts` |
+| `monet` | Monet | `monet/VisualizerMonet.tsx`、`MonetLyricsRail.tsx`（歌词栏外壳与滚动）、`MonetRailLine.tsx` / `MonetRailTokens.tsx`（行与扫字）、`monetRailLayout.ts`、`monet/monetLyricsModel.ts`、`monet/tuning.ts` |
 | `diorama` | 镜台 | `diorama/VisualizerDiorama.tsx`、`diorama/DioramaScene.tsx`、`diorama/dioramaTextRaster.ts` |
 | `pendolo` | Pendolo | `pendolo/VisualizerPendolo.tsx`、`pendolo/pendoloTextLayout.ts`、`pendolo/pendoloTimeline.ts` |
 | `sonnet` | 商籁 | `sonnet/VisualizerSonnet.tsx`、`sonnet/createSonnetPixiRuntime.ts`、`sonnet/*` |
@@ -117,15 +117,15 @@ Visualizer 消费已解析的 `LyricData` / `Line` / `Word`，不负责解析 `.
 
 ### Diorama
 
-`diorama/VisualizerDiorama.tsx` 进入 React Three Fiber 场景；场景/粒子/相机/文字光栅化分别看 `DioramaScene.tsx`、`dioramaParticle*.ts`、`cameraPath.ts`、`dioramaTextRaster.ts`。连续场景数据不要提升到 React state。
+`diorama/VisualizerDiorama.tsx` 进入 React Three Fiber 场景；场景/粒子/相机/文字光栅化分别看 `DioramaScene.tsx`（结构推导 `dioramaSceneLayout.ts`、每帧写入 `dioramaSceneFrame.ts`、邻行栅格缓存 `dioramaLineRasterCache.ts`、当前行单元平面 `DioramaActiveUnitPlanes.tsx`）、`dioramaParticle*.ts`、`cameraPath.ts`、`dioramaTextRaster.ts`。连续场景数据不要提升到 React state。
 
 ### Pendolo
 
-`pendolo/VisualizerPendolo.tsx` 是 React 外壳；`PendoloClockworkCanvas.tsx` 负责时钟机械 canvas，`pendoloTextLayout.ts`、`pendoloTimeline.ts`、`pendoloGeometry.ts` 负责有界布局与时间线，`PendoloSettingsPanel.tsx` 负责调参。
+`pendolo/VisualizerPendolo.tsx` 是 React 外壳；`PendoloClockworkCanvas.tsx` 负责时钟机械 canvas（优先 WebGL2：`pendoloClockworkWebGL.ts` 绘制、`pendoloClockworkMeshes.ts` 缓存齿轮几何、`pendoloClockworkMotion.ts` 推进摆动；不支持时退回 `pendoloClockworkDraw2d.ts` 的 Canvas2D；`pendoloClockworkScene.ts` 放共用的帧输入、配色与画布包围盒），`pendoloTextLayout.ts`、`pendoloTimeline.ts`、`pendoloGeometry.ts` 负责有界布局与时间线，`PendoloSettingsPanel.tsx` 负责调参。
 
 ### Sonnet
 
-`sonnet/VisualizerSonnet.tsx` 负责 React shell/subtitle，`createSonnetPixiRuntime.ts` 创建 Pixi runtime；其余 `sonnet*` 文件按 scene builder、shot flow、glyph/typography、post-process、resource pool 分工。注意 Pixi runtime、纹理和 RAF 的销毁。
+`sonnet/VisualizerSonnet.tsx` 负责 React shell/subtitle，`createSonnetPixiRuntime.ts` 创建 Pixi runtime（只管生命周期、段落场景缓存、换歌溶解和每帧调度；shot 逐帧姿态 `sonnetShotFrame.ts`、场景转场选择 `sonnetSceneFrame.ts`、画框 `sonnetFrameOverlay.ts`、片尾模糊 `sonnetOutroBlur.ts`、主题图标纹理 `sonnetIconTextures.ts`）；其余 `sonnet*` 文件按 scene builder、shot flow、glyph/typography、post-process、resource pool 分工。注意 Pixi runtime、纹理和 RAF 的销毁。
 
 ### Tempera
 

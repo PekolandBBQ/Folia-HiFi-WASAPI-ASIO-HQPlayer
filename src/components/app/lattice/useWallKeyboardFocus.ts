@@ -10,12 +10,12 @@ import {
     type RefObject,
     type SetStateAction,
 } from 'react';
-import type { LatticeGeometry, QueueInstance, WallMetrics } from './layout';
+import type { LatticeGeometry, QueueInstance, WallMetrics } from '../../wall/layout';
 import {
     findAdjacentInstance,
     findNearestInstance,
     type WallDirection,
-} from './wallNavigation';
+} from '../../wall/wallNavigation';
 import { useLatticePosterSelection } from './useLatticePosterSelection';
 import type { LatticeTile } from './latticeModel';
 import type { ActiveLatticePoster } from './useLatticePlaybackFocus';

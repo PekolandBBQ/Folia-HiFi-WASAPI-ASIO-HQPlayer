@@ -7,6 +7,8 @@
 
 ## 构建输入
 
+2026-10-14 的源码候选以最新稳定上游 `v0.7.19`（`607771d593e5b50e39defcb964928672b48310cb`）为基线；上游尚未发布的 `main` 改动不混入本轮。当前公开下载仍为 `folia-hifi-v0.7.12-r4`，不会因源码同步而替换旧标签或发行附件。候选须通过本轮单测、类型检查、音乐库/HiFi 界面、完整 Folia 实播及上游 CI 后才能合入正式分支。
+
 - `package-lock.json` 固定宿主依赖。Node 24+；安装时遵循仓库 `.npmrc` 及供应链设置。
 - `packaging/exclusive/release.json` 固定版本、FFmpeg 二进制 SHA-256 和允许的组件 ZIP SHA-256。
 - `FOLIA_COMPONENT_CATALOG` 指向组件构建生成的开发目录 JSON；每个条目的 `localPath` 指向其 ZIP。构建程序只接受固定哈希对应的组件。

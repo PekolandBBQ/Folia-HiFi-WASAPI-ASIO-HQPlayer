@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Wall } from './lattice-performance/Wall';
 import type { ProbeDefinition } from './definition';
+import '../../src/components/wall/wall.css';
 import '../../src/components/app/lattice/Lattice.css';
 
 // dev/probes/latticeExit.probe.tsx

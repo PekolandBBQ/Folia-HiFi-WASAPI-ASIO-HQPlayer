@@ -1,6 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { LocalLibraryGroup } from '../types';
-import type { NavidromeViewSelection } from '../types/navidrome';
 import {
     type SearchReturnView,
     type SearchSource,
@@ -9,13 +8,23 @@ import {
 import {
     type CollectionNavigationOrigin,
     type CollectionNavigationSnapshot,
+    notifyCollectionPop,
     useCollectionNavigationStore,
 } from '../stores/useCollectionNavigationStore';
-import type { GridViewCollectionDescriptor } from '../components/app/home/gridViewCollectionAdapters';
+import type { GridViewCollectionDescriptor } from '../library/core/contracts/collection';
+import { collectionHashPath } from '../library/core/model/collectionIdentity';
+import { resolveCollectionPopTo } from '../library/core/model/collectionNavigation';
+import {
+    APP_HISTORY_SESSION,
+    createNavigationHistoryJournal,
+    findCollectionTraversal,
+    findLayerBaseIndex,
+    type NavigationHistoryState,
+} from './navigationHistoryJournal';
 import { useAppViewStore } from '../stores/useAppViewStore';
 import type { AppView } from '../stores/useAppViewStore';
 import { usePlaybackStore } from '../stores/usePlaybackStore';
-import { usePlaybackEntryViewStore } from '../stores/usePlaybackEntryViewStore';
+import { resolvePlaybackSurface, usePlaybackEntryViewStore, type PlaybackEntryView } from '../stores/usePlaybackEntryViewStore';
 import { setStatusMessage } from '../stores/useStatusMessageStore';
 import i18n from '../i18n/config';
 
@@ -34,12 +43,7 @@ type LocalMusicNavigationState = {
     focusedPlaylistIndex: number;
 };
 
-export type NavigationHistoryState = {
-    view: ViewState;
-    search?: { query: string; sourceTab: SearchSource; returnView?: SearchReturnView; } | null;
-    collection?: CollectionNavigationSnapshot | null;
-    appHistoryIndex: number;
-};
+export type { NavigationHistoryState };
 
 const LAST_APP_VIEW_KEY = 'last_app_view';
 const OPEN_PLAYER_ON_LAUNCH_KEY = 'open_player_on_launch';
@@ -54,6 +58,7 @@ const buildHistoryState = (
     search,
     collection,
     appHistoryIndex,
+    appHistorySession: APP_HISTORY_SESSION,
 });
 
 const getAppHistoryIndex = (state: unknown): number => {
@@ -72,11 +77,12 @@ export const shouldReplacePlayerNavigation = (
 
 export const resolvePlayerCapsuleNavigationTarget = (
     view: ViewState,
-    playbackEntryView: 'player' | 'lattice',
+    playbackEntryView: PlaybackEntryView,
     isFmMode: boolean,
 ): 'player' | 'lattice' | null => {
     if (view === 'lattice') return null;
-    return playbackEntryView === 'lattice' && !isFmMode ? 'lattice' : 'player';
+    // fb3：「留在原处」没有自己的视图，显式要求进入播放视图（胶囊、启动、bravais 的「进入」）时去播放页。
+    return resolvePlaybackSurface(playbackEntryView) === 'lattice' && !isFmMode ? 'lattice' : 'player';
 };
 
 const getSearchHistorySnapshot = (): NavigationHistoryState['search'] => {
@@ -102,7 +108,7 @@ export const resolveStartupView = ({
     queueLength,
 }: {
     openPlayerOnLaunch: boolean;
-    playbackEntryView: 'player' | 'lattice';
+    playbackEntryView: PlaybackEntryView;
     isFmMode: boolean;
     queueLength: number;
 }): 'home' | 'player' | 'lattice' => {
@@ -118,7 +124,7 @@ export const isStartupLatticeDeferred = ({
     isFmMode,
 }: {
     openPlayerOnLaunch: boolean;
-    playbackEntryView: 'player' | 'lattice';
+    playbackEntryView: PlaybackEntryView;
     isFmMode: boolean;
 }): boolean => openPlayerOnLaunch && playbackEntryView === 'lattice' && !isFmMode;
 
@@ -133,11 +139,12 @@ const getStartupView = (): ViewState => resolveStartupView({
     queueLength: usePlaybackStore.getState().playQueue.length,
 });
 
-const getCollectionHash = (collection: GridViewCollectionDescriptor) => (
-    `#collection/${collection.source}/${collection.type}/${encodeURIComponent(String(collection.id))}`
-);
-
 const LOCAL_MUSIC_LAST_ROW_KEY = 'folia_local_music_last_row';
+
+// 折叠往返（history.back()）与面包屑跳层（history.go(-k)）是异步的：popstate 到来之前 store 还是退回前的栈，这时
+// 再点一次会按旧栈再算一遍、多退几步。等 popstate 期间新的压栈 / 跳层都忽略；popstate 一直不来（理论上不会）时
+// 最多等这么久。应用内返回不受它限制（连按返回本来就该一层层退）。
+const COLLECTION_TRAVERSAL_TIMEOUT_MS = 1000;
 
 export const blockLatticeNavigationInFm = (): boolean => {
     if (!usePlaybackStore.getState().isFmMode) return false;
@@ -152,8 +159,10 @@ export function useAppNavigation() {
     const setCurrentView = useAppViewStore(state => state.setView);
     const isFmMode = usePlaybackStore(state => state.isFmMode);
     const [focusedPlaylistIndex, setFocusedPlaylistIndex] = useState(0);
+    // 应用历史记录的内存日志（N1）：面包屑跳层（popCollectionTo）据此算出要后退几步。寿命与这个 hook 相同（App 只挂一份）。
+    const [historyJournal] = useState(createNavigationHistoryJournal);
+    const pendingTraversalRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const [navidromeFocusedAlbumIndex, setNavidromeFocusedAlbumIndex] = useState(0);
-    const [pendingNavidromeSelection, setPendingNavidromeSelection] = useState<NavidromeViewSelection | null>(null);
     const [localMusicState, setLocalMusicState] = useState<LocalMusicNavigationState>(() => {
         let savedRow = 0;
         try {
@@ -187,6 +196,18 @@ export function useAppNavigation() {
         }
     }, [localMusicState.activeRow]);
 
+    /** 折叠往返 / 跳层的历史后退已经落地（popstate）或等不来了：放开压栈与跳层。 */
+    const finishCollectionTraversal = useCallback(() => {
+        if (pendingTraversalRef.current !== null) clearTimeout(pendingTraversalRef.current);
+        pendingTraversalRef.current = null;
+    }, []);
+
+    /** 发出一次历史后退之前调用：在它的 popstate 落地之前忽略新的压栈与跳层。 */
+    const beginCollectionTraversal = useCallback(() => {
+        finishCollectionTraversal();
+        pendingTraversalRef.current = setTimeout(finishCollectionTraversal, COLLECTION_TRAVERSAL_TIMEOUT_MS);
+    }, [finishCollectionTraversal]);
+
     const restoreHistoryState = useCallback((state: NavigationHistoryState) => {
         localStorage.setItem(LAST_APP_VIEW_KEY, state.view);
         setCurrentView(state.view);
@@ -219,12 +240,14 @@ export function useAppNavigation() {
             replace ? currentHistoryIndex : currentHistoryIndex + 1,
         );
         const method = replace ? window.history.replaceState.bind(window.history) : window.history.pushState.bind(window.history);
+        // 当前记录可能是别处直接 pushState 写的（例如 suite 自己的面板记录），压栈前先把它同步进日志。
+        if (!replace) historyJournal.observe(window.history.state);
         method(nextState, '', hash ?? window.location.hash);
+        historyJournal.record(nextState, replace ? 'replace' : 'push');
         restoreHistoryState(nextState);
-    }, [restoreHistoryState]);
+    }, [historyJournal, restoreHistoryState]);
 
     const resetLocalNavigationContext = useCallback(() => {
-        setPendingNavidromeSelection(null);
         setLocalMusicState(prev => ({
             ...prev,
             activeRow: 0,
@@ -242,6 +265,7 @@ export function useAppNavigation() {
             '',
             initialView === 'player' ? '#player' : initialView === 'lattice' ? '#lattice' : (window.location.pathname + window.location.search),
         );
+        historyJournal.reset(initialState);
         restoreHistoryState(initialState);
         resetLocalNavigationContext();
 
@@ -282,6 +306,7 @@ export function useAppNavigation() {
                 if (target !== 'lattice') return;
                 const upgradedState = buildHistoryState('lattice');
                 window.history.replaceState(upgradedState, '', '#lattice');
+                historyJournal.record(upgradedState, 'replace');
                 restoreHistoryState(upgradedState);
             };
             unsubscribeDeferredLattice = usePlaybackStore.subscribe(tryUpgrade);
@@ -289,19 +314,26 @@ export function useAppNavigation() {
         }
 
         const handlePopState = (event: PopStateEvent) => {
+            finishCollectionTraversal();
             const state = event.state as NavigationHistoryState | null;
             if (!state) {
                 const fallbackState = buildHistoryState(getStartupView());
                 window.history.replaceState(fallbackState, '', fallbackState.view === 'player' ? '#player' : fallbackState.view === 'lattice' ? '#lattice' : '#home');
+                historyJournal.reset(fallbackState);
                 restoreHistoryState(fallbackState);
                 return;
             }
+            historyJournal.observe(state);
+            // 历史后退弹掉集合层时（浏览器后退，或应用内返回走的 history.back()），先在 store 变化之前通知：
+            // 集合宿主据此让渲染这一层的 suite 跑 beforeBack（网格的反向移形换影），和应用内返回一致。
+            notifyCollectionPop(state.collection ?? null);
             restoreHistoryState(state);
         };
 
         window.addEventListener('popstate', handlePopState);
         return () => {
             cancelDeferredLattice();
+            finishCollectionTraversal();
             window.removeEventListener('popstate', handlePopState);
         };
     }, []);
@@ -337,7 +369,7 @@ export function useAppNavigation() {
         pushNavigationState({
             view: 'home',
             hash: collection?.stack.length
-                ? getCollectionHash(collection.stack[collection.stack.length - 1])
+                ? collectionHashPath(collection.stack[collection.stack.length - 1])
                 : '#home',
             search,
             collection,
@@ -369,6 +401,9 @@ export function useAppNavigation() {
         const view = useAppViewStore.getState().view;
         if (view === 'lattice') return;
         const entryView = usePlaybackEntryViewStore.getState().playbackEntryView;
+        // fb3「留在原处」：播放不带人去任何地方——资料库的卡片 / 墙自己显示正在播放（暂停 / 继续）。
+        // 已经在播放页上（例如自动切歌）时照旧走下面的 navigateToPlayer，与另外两个值一致。
+        if (entryView === 'stay' && view !== 'player') return;
         if (entryView === 'lattice' && view !== 'player' && !usePlaybackStore.getState().isFmMode) {
             navigateToLattice();
             return;
@@ -462,45 +497,127 @@ export function useAppNavigation() {
         const search = origin === 'search' ? getSearchHistorySnapshot() : null;
         pushNavigationState({
             view: 'home',
-            hash: getCollectionHash(collection),
+            hash: collectionHashPath(collection),
             search,
             collection: snapshot,
         });
     }, [pushNavigationState]);
 
-    const pushCollection = useCallback((collection: GridViewCollectionDescriptor) => {
-        const snapshot = useCollectionNavigationStore.getState().push(collection);
-        if (!snapshot) {
+    /**
+     * 把集合栈退到 to（更浅的一层；null 是整个关掉），浏览器历史同步退回（N1，popCollectionTo 用）。
+     *
+     * 只改 store、或者再写一条截短的记录都不够：下一次浏览器后退会回到前面那条带着长栈的记录，退掉的层又被恢复出来。
+     * 所以先在历史日志里找 to 对应的那条记录，history.go(-k) 退过去；之后与浏览器后退完全同路：popstate →
+     * notifyCollectionPop（一次弹多层，宿主让 suite 只跑一次 beforeBack）→ restoreHistoryState。
+     * 找不到（刷新后日志为空、记录被别处改写过……）时兜底：先通知弹栈，再压一条截短的记录。已知限制：兜底之后的
+     * 浏览器后退可能回到跳层之前的位置。
+     */
+    const traverseCollectionTo = useCallback((to: CollectionNavigationSnapshot | null) => {
+        const from = useCollectionNavigationStore.getState().snapshot;
+        if (!from) return;
+        historyJournal.observe(window.history.state);
+        const steps = findCollectionTraversal(historyJournal, getAppHistoryIndex(window.history.state), from, to);
+        if (steps !== null) {
+            beginCollectionTraversal();
+            window.history.go(-steps);
             return;
         }
-        pushNavigationState({
-            view: 'home',
-            hash: getCollectionHash(collection),
-            search: snapshot.origin === 'search' ? getSearchHistorySnapshot() : null,
-            collection: snapshot,
-        });
-    }, [pushNavigationState]);
 
-    const backCollection = useCallback(() => {
+        notifyCollectionPop(to);
+        if (to) {
+            pushNavigationState({
+                view: 'home',
+                hash: collectionHashPath(to.stack[to.stack.length - 1]),
+                search: to.origin === 'search' ? getSearchHistorySnapshot() : null,
+                collection: to,
+            });
+            return;
+        }
+        // 整个关掉：落回根集合打开之前的地方（与没有历史记录时从根返回一致：播放器打开的回播放器）。
+        const search = from.origin === 'search' ? getSearchHistorySnapshot() : null;
+        const view: ViewState = from.origin === 'player' ? 'player' : 'home';
+        pushNavigationState({
+            view,
+            hash: view === 'player'
+                ? '#player'
+                : search ? `#search/${encodeURIComponent(search.query)}` : '#home',
+            search,
+            collection: null,
+        });
+    }, [beginCollectionTraversal, historyJournal, pushNavigationState]);
+
+    /**
+     * 应用内返回一层（返回按钮、Escape，以及折叠往返）：当前历史记录带集合就 history.back()，之后与浏览器后退同路
+     * （popstate → 弹栈通知 → 恢复）；没有历史记录时手动弹一层，同样先通知再改 store。返回值是走了哪条路。
+     */
+    const popCollectionLayer = useCallback((options?: { leaveLayer?: boolean }): 'history' | 'local' | 'none' => {
         const snapshot = useCollectionNavigationStore.getState().snapshot;
         if (!snapshot) {
-            return;
+            return 'none';
         }
         if (window.history.state?.collection) {
-            window.history.back();
-            return;
+            // leaveLayer（折叠往返）：当前层之上若压着 suite 自己的面板记录（同一个栈，例如 bravais 的列表面板），
+            // 连它们一起退，落到上一层；只退一步会只关掉面板、留在这一层。应用内返回不传——返回先关面板。
+            const index = getAppHistoryIndex(window.history.state);
+            if (options?.leaveLayer) historyJournal.observe(window.history.state);
+            const steps = options?.leaveLayer ? index - findLayerBaseIndex(historyJournal, index) + 1 : 1;
+            if (steps > 1) window.history.go(-steps);
+            else window.history.back();
+            return 'history';
         }
 
         const nextStack = snapshot.stack.slice(0, -1);
         if (nextStack.length > 0) {
-            useCollectionNavigationStore.getState().restore({ ...snapshot, stack: nextStack });
-            return;
+            const next = { ...snapshot, stack: nextStack };
+            notifyCollectionPop(next);
+            useCollectionNavigationStore.getState().restore(next);
+            return 'local';
         }
+        notifyCollectionPop(null);
         useCollectionNavigationStore.getState().clear();
         if (snapshot.origin === 'player') {
             setCurrentView('player');
         }
-    }, [setCurrentView]);
+        return 'local';
+    }, [historyJournal, setCurrentView]);
+
+    const pushCollection = useCallback((collection: GridViewCollectionDescriptor) => {
+        if (pendingTraversalRef.current !== null) return;
+        const decision = useCollectionNavigationStore.getState().push(collection);
+        if (decision.kind === 'back') {
+            // 要进入的正好是上一层（歌手 ↔ 专辑来回点）：当作一次应用内返回，而不是再压一层（N1 折叠紧邻往返）。
+            // beforeBack 由弹栈通知跑一次（宿主在这条路上不跑 beforePush / beforeBack）。
+            if (popCollectionLayer({ leaveLayer: true }) === 'history') beginCollectionTraversal();
+            return;
+        }
+        if (decision.kind !== 'push') {
+            return;
+        }
+        const snapshot = decision.snapshot;
+        pushNavigationState({
+            view: 'home',
+            hash: collectionHashPath(collection),
+            search: snapshot.origin === 'search' ? getSearchHistorySnapshot() : null,
+            collection: snapshot,
+        });
+    }, [beginCollectionTraversal, popCollectionLayer, pushNavigationState]);
+
+    /**
+     * 跳到集合栈的第 depth 层（面包屑点击用）：depth 是保留的层数，与 LibraryNavigationContext.depth 同一种量；
+     * 0 表示整个关掉。不比当前浅的 depth 什么都不做；栈里有重复的集合时按位置算（点哪一项就退到哪一层）。
+     * 走浏览器历史（history.go(-k)），beforeBack 由 popstate 的弹栈通知触发一次，调用方（宿主 / suite）不要自己
+     * 再跑 beforeBack。上一次跳层 / 折叠的 popstate 还没落地时忽略。
+     */
+    const popCollectionTo = useCallback((depth: number) => {
+        if (pendingTraversalRef.current !== null) return;
+        const to = resolveCollectionPopTo(useCollectionNavigationStore.getState().snapshot, depth);
+        if (to === undefined) return;
+        traverseCollectionTo(to);
+    }, [traverseCollectionTo]);
+
+    const backCollection = useCallback(() => {
+        popCollectionLayer();
+    }, [popCollectionLayer]);
 
     return {
         currentView,
@@ -508,8 +625,6 @@ export function useAppNavigation() {
         setFocusedPlaylistIndex,
         navidromeFocusedAlbumIndex,
         setNavidromeFocusedAlbumIndex,
-        pendingNavidromeSelection,
-        setPendingNavidromeSelection,
         localMusicState,
         setLocalMusicState,
         navigateToPlayer,
@@ -524,6 +639,7 @@ export function useAppNavigation() {
         closeSearchView,
         navigateToCollection,
         pushCollection,
+        popCollectionTo,
         backCollection,
     };
 }

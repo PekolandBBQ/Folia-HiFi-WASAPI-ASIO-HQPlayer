@@ -3,7 +3,8 @@ import { motion, useSpring, useTransform } from 'framer-motion';
 import { Star, type LucideIcon } from 'lucide-react';
 import { DEFAULT_PENDOLO_TUNING } from '../../../types';
 import { colorWithAlpha } from '../colorMix';
-import { resolveLucideIcon } from '../../../utils/lucideIconResolver';
+import { useLucideIcons } from '../../../hooks/useLucideIcons';
+import { resolveLucideIcon } from '../../../services/lucideIconResolver';
 import { type VisualizerSharedProps } from '../definition';
 import VisualizerShell from '../VisualizerShell';
 import PendoloClockworkCanvas from './PendoloClockworkCanvas';
@@ -418,9 +419,13 @@ const VisualizerPendolo: React.FC<VisualizerSharedProps> = (props) => {
     const primaryTextColor = theme.primaryColor || '#FFFFFF';
     const accentTextColor = theme.accentColor || '#3B82F6';
     const secondaryTextColor = theme.secondaryColor || '#9CA3AF';
+    // Star stands in while the theme icon loads, and for names lucide does not have.
+    const balanceIconName = theme.lyricsIcons?.[0];
+    const lucideIconRevision = useLucideIcons(balanceIconName ? [balanceIconName] : undefined);
     const BalanceIcon = useMemo<LucideIcon>(
-        () => resolveLucideIcon(theme.lyricsIcons?.[0]) ?? Star,
-        [theme.lyricsIcons],
+        () => resolveLucideIcon(balanceIconName) ?? Star,
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [balanceIconName, lucideIconRevision],
     );
     const balanceGearX = centerX + baseRadius * 0.2;
     const balanceGearY = centerY - baseRadius * 0.75;

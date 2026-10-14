@@ -11,7 +11,7 @@ import { createMotes, type MotesLayer } from './light/motes';
 import { MAX_BEAMS, resolveBeams, type LightRig, type ResolvedBeam } from './light/rig';
 import { createStarfall, starfallIgnition } from './light/starfall';
 import type { LightSprites } from './light/sprites';
-import { createLineArt, type LineArtLayer } from './lineart/lineArt';
+import { createLineArt, showLineArtLayer, type LineArtLayer } from './lineart/lineArt';
 import { buildShotIconArts } from './lineart/themeIcons';
 import { keywordBurstColor, prepareLumiereKeywords } from './text/keywordColors';
 import { createLyricEcho } from './text/lyricEcho';
@@ -469,13 +469,15 @@ export const createLumiereScene = (pixi: PixiModule, options: LumiereSceneOption
                 // 下次出现：还没开始描就是 begin，窗口里就是现在；淡出之后顺放不会再出现（回拖回来会重新 update）。
                 // 藏着的线稿交给 idle 按滞回放掉 GPU 数据——轨迹过渡整首一个单元时，画过的镜头线稿不然会一直占着缓冲。
                 const nextUse = time < begin ? begin : time <= shot.endTime + 0.8 ? time : Number.POSITIVE_INFINITY;
-                layer.view.visible = fade > 0.003;
-                if (layer.view.visible) layer.update(time, draw, fade, beams, lightHex);
+                const artShown = fade > 0.003;
+                showLineArtLayer(lineArtHolder, lineArts, shotIndex, artShown);
+                if (artShown) layer.update(time, draw, fade, beams, lightHex);
                 else layer.idle(time, nextUse);
                 const icons = iconArts[shotIndex];
                 if (icons) {
-                    icons.view.visible = base > 0.003;
-                    if (icons.view.visible) icons.update(time, draw, base, beams, lightHex);
+                    const iconsShown = base > 0.003;
+                    showLineArtLayer(iconHolder, iconArts, shotIndex, iconsShown);
+                    if (iconsShown) icons.update(time, draw, base, beams, lightHex);
                     else icons.idle(time, nextUse);
                 }
             });
@@ -490,6 +492,7 @@ export const createLumiereScene = (pixi: PixiModule, options: LumiereSceneOption
             unlitColor: palette.unlit,
             unlitAlpha: tuning.unlitOpacity,
             intensity: smooth(local / 0.6) * exit,
+            hideTrails: tuning.hideTrails,
         });
     };
 

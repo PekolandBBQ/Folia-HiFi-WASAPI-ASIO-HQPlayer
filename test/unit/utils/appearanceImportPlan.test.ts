@@ -648,4 +648,24 @@ describe('buildImportPlan', () => {
             expect(keys(p)).toEqual([]);
         });
     });
+
+    // The bravais wall's collection stack edges: a library-wall row of its own, and false is a real value.
+    it('plans the collection stack edges under the library wall group', () => {
+        const p = plan({ libraryWallStackEdges: false }, { libraryWallStackEdges: true }, unpinned);
+        expect(keys(p)).toEqual(['libraryWallStackEdges']);
+        expect(p.groups).toEqual(['libraryWall']);
+    });
+
+    // The info strip's material and the picture behind the wall share that group; false is a real
+    // value, an empty preset is "the exporter had none" (the apply path only takes known presets).
+    it('plans the info strip and backdrop rows under the library wall group', () => {
+        const p = plan(
+            { libraryWallSeamClear: false, libraryWallSeamStyle: 'white', libraryWallBackdropLyrics: true, libraryWallBackdropBlur: false },
+            { libraryWallSeamClear: true, libraryWallSeamStyle: 'paper', libraryWallBackdropLyrics: false, libraryWallBackdropBlur: true },
+            unpinned,
+        );
+        expect(keys(p)).toEqual(['libraryWallSeamClear', 'libraryWallSeamStyle', 'libraryWallBackdropLyrics', 'libraryWallBackdropBlur']);
+        expect(p.groups).toEqual(['libraryWall']);
+        expect(keys(plan({ libraryWallSeamStyle: '' }, { libraryWallSeamStyle: 'dots' }, unpinned))).toEqual([]);
+    });
 });

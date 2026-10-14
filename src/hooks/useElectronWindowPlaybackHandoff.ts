@@ -11,8 +11,9 @@ import { cancelPlaybackSourceRequest, playbackSourceRequestRevision } from '../s
 import { PlayerState } from '../types';
 import type { LyricData, SongResult, StageSource, StageStatus, StatusMessage } from '../types';
 import type { AudioQualityPreference, MediaId } from '../types/onlineMusic';
+import type { RestorePlaybackSourceOutcome } from '../types/playbackFailure';
 import type { ThemeCacheSongKey } from '../services/themeCache';
-import { isSamePlaybackSong, isStagePlaybackSong } from '../utils/appPlaybackGuards';
+import { getPlaybackSongKey, isSamePlaybackSong, isStagePlaybackSong } from '../utils/appPlaybackGuards';
 import type {
     PlaybackSnapshot,
     StageLyricsClockState,
@@ -66,6 +67,10 @@ type UseElectronWindowPlaybackHandoffParams = {
     setIsLyricsLoading: SetState<boolean>;
     blobUrlRef: MutableRefObject<string | null>;
     shouldAutoPlayRef: MutableRefObject<boolean>;
+    /** The playing song's key that recovery and failure handling gate on; the handoff commits to a song like playSong does. */
+    currentSongRef: MutableRefObject<string | number | null>;
+    /** Bumped with each commit of the current song (see usePlaybackRuntimeRefs). */
+    playbackGenerationRef: MutableRefObject<number>;
     pendingResumeTimeRef: MutableRefObject<number | null>;
     lastAudioRecoverySourceRef: MutableRefObject<string | null>;
     currentOnlineAudioUrlFetchedAtRef: MutableRefObject<number | null>;
@@ -128,6 +133,8 @@ export function useElectronWindowPlaybackHandoff({
     setIsLyricsLoading,
     blobUrlRef,
     shouldAutoPlayRef,
+    currentSongRef,
+    playbackGenerationRef,
     pendingResumeTimeRef,
     lastAudioRecoverySourceRef,
     currentOnlineAudioUrlFetchedAtRef,
@@ -266,6 +273,9 @@ export function useElectronWindowPlaybackHandoff({
         shouldAutoPlayRef.current = snapshot.playerState === PlayerState.PLAYING;
         lastAudioRecoverySourceRef.current = null;
         currentOnlineAudioUrlFetchedAtRef.current = null;
+        const handedOffSongKey = getPlaybackSongKey(snapshot.currentSong);
+        currentSongRef.current = handedOffSongKey;
+        playbackGenerationRef.current += 1;
         setCurrentSong(snapshot.currentSong);
         setLyrics(snapshot.lyrics);
         setCachedCoverUrl(snapshot.cachedCoverUrl);
@@ -300,7 +310,10 @@ export function useElectronWindowPlaybackHandoff({
             return;
         }
 
-        await restorePlaybackSourceForSong(snapshot.currentSong, {
+        // The snapshot URL was playing moments ago: falling back to it beats seconds of silence spent on retries.
+        const fallbackAudioSrc = !isSessionBoundAudio(snapshot.currentSong) && snapshot.audioSrc && !snapshot.audioSrc.startsWith('blob:') ? snapshot.audioSrc : null;
+        let sourceCommitFailed = false;
+        const restored = await restorePlaybackSourceForSong(snapshot.currentSong, {
             audioQuality,
             userId,
             blobUrlRef,
@@ -318,22 +331,42 @@ export function useElectronWindowPlaybackHandoff({
                 && (isSessionBoundAudio(snapshot.currentSong) || playbackSourceRequestRevision() === sourceRevision)
                 && isSamePlaybackSong(usePlaybackStore.getState().currentSong, snapshot.currentSong),
             onCancel: () => { shouldAutoPlayRef.current = false; },
-        }).catch((error) => {
+            hasFallbackSource: fallbackAudioSrc !== null,
+            onSourceCommitFailure: () => { sourceCommitFailed = true; },
+        }).catch((error): RestorePlaybackSourceOutcome => {
             console.warn('[Electron] Failed to restore window playback handoff source', error);
-            return false;
+            // A throw for a song the listener has since left is stale too: the snapshot URL must not land on their deck.
+            return currentSongRef.current === handedOffSongKey ? 'failed' : 'stale';
         });
 
-        // A failed restore has no verified source. Reusing the snapshot URL here
-        // would bypass its cancellation, provider-release and passive-load guards.
+        // Only a failed restore falls back to the snapshot's URL; a stale one means another song now owns the deck.
+        if (restored === 'failed' && sourceCommitFailed) {
+            shouldAutoPlayRef.current = false;
+            setPlayerState(PlayerState.PAUSED);
+        } else if (restored === 'failed' && fallbackAudioSrc) {
+            const isCurrent = () => !signal?.aborted && currentSongRef.current === handedOffSongKey && playbackSourceRequestRevision() === sourceRevision;
+            try {
+                if (snapshot.playerState === PlayerState.PLAYING) await preparePlaybackSourceCommit(snapshot.currentSong, { signal, source: fallbackAudioSrc, isCurrent });
+                else markPassivePlaybackSource(fallbackAudioSrc);
+                if (isCurrent()) setAudioSrc(fallbackAudioSrc);
+            } catch (error) {
+                if (!isCurrent() || isOnlinePlaybackCancellation(error)) return;
+                shouldAutoPlayRef.current = false;
+                setPlayerState(PlayerState.PAUSED);
+                setStatusMsg(createOnlinePlaybackFailureStatus(error, i18n.t));
+            }
+        }
     }, [
         audioQuality,
         blobUrlRef,
         currentOnlineAudioUrlFetchedAtRef,
+        currentSongRef,
         currentTime,
         lastAudioRecoverySourceRef,
         mainPlaybackSnapshotRef,
         pendingResumeTimeRef,
         persistLastPlaybackCache,
+        playbackGenerationRef,
         restoreCachedThemeForSong,
         setAudioSrc,
         setCachedCoverUrl,

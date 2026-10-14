@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type React from 'react';
 import type { PanelTab } from '../components/UnifiedPanel';
+import type { LibraryQueryPort } from '../library/core/contracts/session';
 
 // src/stores/useAppViewStore.ts
 // Which surface the app is showing, and the unified panel's own open/tab state.
@@ -32,11 +33,39 @@ export type CommandPaletteRequest =
     // from needing a prop chain back to the palette hook.
     | { seq: number; kind: 'command'; commandId: string };
 
-export type CommandFilterHandle = {
-    getQuery: () => string;
-    setQuery: (query: string) => void;
+/**
+ * Where the palette's inline box goes. Only the renderer knows that — it is a DOM element — so it is
+ * kept apart from the query itself, which may come from Library Core (a browse session) and must
+ * not drag `HTMLElement` into it.
+ */
+export type CommandFilterAnchor = {
     getAnchor: () => HTMLElement | null;
+    /**
+     * ↓ in the filter box hands the keyboard to the first result on screen (the bravais wall's rank 0). Returns
+     * true when it took the key — the palette then swallows it, so the same press does not also move the
+     * wall's own focus one step further. Surfaces without it keep the box's default arrow handling.
+     */
+    focusResults?: () => boolean;
+    /**
+     * The surface draws its own filter input (the bravais seam) instead of borrowing the palette's inline box.
+     * Bare typing and `openCommandFilter` requests go to it; the palette keeps its own keys (`:`, the opt-in `s`)
+     * and the `filter-view` command itself — picked from the list or by its hotkey it still opens the palette's
+     * box (as the overlay, since such a surface gives no anchor), with the `--play` / `--add` dialect.
+     */
+    ownInput?: {
+        /**
+         * A modifier-free printable key (or an IME's opening `Process`) pressed outside any text field. Returns true
+         * when the surface took it; it calls preventDefault itself only when the keystroke must not land anywhere.
+         * Returning false leaves the key alone (Space, a key the surface reserves for something else).
+         */
+        takeKey: (event: KeyboardEvent) => boolean;
+        /** Put the input up and focus it. */
+        open: () => void;
+    };
 };
+
+/** The registered owner of typed characters: a query port (read/write the filter text) plus its anchor. */
+export type CommandFilterHandle = LibraryQueryPort & CommandFilterAnchor;
 
 type AppViewState = {
     view: AppView;

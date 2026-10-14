@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { resolveLucideIcon } from '../../../utils/lucideIconResolver';
+import { useLucideIcons } from '../../../hooks/useLucideIcons';
+import { hasLucideIcon, resolveLucideIcon } from '../../../services/lucideIconResolver';
 import { LYRICS_ICON_LIMIT, WORD_COLOR_LIMIT, type WordColorEntry } from './themeParkDraft';
 
 // src/components/modal/theme-park/ThemeParkContentPanel.tsx
@@ -26,6 +27,8 @@ const ThemeParkContentPanel: React.FC<ThemeParkContentPanelProps> = ({
     const { t } = useTranslation();
     const [iconDraft, setIconDraft] = useState('');
     const [iconError, setIconError] = useState<string | null>(null);
+    // The icon chips read loaded icons; this re-renders them as their chunks arrive.
+    useLucideIcons(lyricsIcons);
 
     const updateWordColor = (index: number, patch: Partial<WordColorEntry>) => {
         onWordColorsChange(wordColors.map((entry, entryIndex) => (
@@ -33,12 +36,12 @@ const ThemeParkContentPanel: React.FC<ThemeParkContentPanelProps> = ({
         )));
     };
 
-    const handleAddIcon = () => {
+    const handleAddIcon = async () => {
         const name = iconDraft.trim();
         if (!name) {
             return;
         }
-        if (!resolveLucideIcon(name)) {
+        if (!(await hasLucideIcon(name))) {
             setIconError(t('theme.lyricsIconUnknown'));
             return;
         }
@@ -166,7 +169,7 @@ const ThemeParkContentPanel: React.FC<ThemeParkContentPanelProps> = ({
                         onKeyDown={(event) => {
                             if (event.key === 'Enter') {
                                 event.preventDefault();
-                                handleAddIcon();
+                                void handleAddIcon();
                             }
                         }}
                         placeholder={t('theme.lyricsIconPlaceholder')}
@@ -177,7 +180,7 @@ const ThemeParkContentPanel: React.FC<ThemeParkContentPanelProps> = ({
                     />
                     <button
                         type="button"
-                        onClick={handleAddIcon}
+                        onClick={() => void handleAddIcon()}
                         disabled={lyricsIcons.length >= LYRICS_ICON_LIMIT}
                         className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-2.5 text-xs transition-colors hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
                         style={{ color: 'var(--text-primary)' }}

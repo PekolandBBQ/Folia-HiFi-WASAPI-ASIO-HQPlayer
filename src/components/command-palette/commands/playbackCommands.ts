@@ -1,5 +1,5 @@
 import { PlayerState } from '../../../types';
-import { Heart, ListX, Pause, Play, Repeat, Shuffle, SkipBack, SkipForward, Star, VolumeX } from 'lucide-react';
+import { Heart, ListX, Pause, Piano, Play, Repeat, Shuffle, SkipBack, SkipForward, Star, VolumeX } from 'lucide-react';
 import { executeModeCommand } from './executeModeCommand';
 import { queueCommand } from './queueCommand';
 import { volumeCommand } from './volumeCommand';
@@ -14,6 +14,14 @@ import { createToggleCommand, createReplayGainCommand, createSoundPresetCommand 
 export const playbackCommands: CommandPaletteCommand[] = [
     executeModeCommand,
     queueCommand,
+    createToggleCommand(
+        'queue-keep-open',
+        'playback',
+        'Keep queue palette open',
+        'Toggle keeping the command palette open after choosing a queue song',
+        ['stay open', 'keep queue open', '切歌不关闭', '队列保持打开'],
+        context => context.playback.setQueuePaletteKeepOpen(!context.playback.queuePaletteKeepOpen),
+    ),
     volumeCommand,
     fmModeCommand,
     createReplayGainCommand('off', 'Disable ReplayGain', 'Play audio without ReplayGain adjustment', ['replaygain off', 'audio gain off', '关闭音频增益', '关闭 replaygain', 'gbyyzy']),
@@ -133,5 +141,16 @@ export const playbackCommands: CommandPaletteCommand[] = [
         description: 'Run automatic best lyric matching for the current song',
         keywords: ['best lyrics', 'auto match lyrics', '最佳歌词', '匹配最佳歌词', '自动匹配歌词'],
         execute: (_input, context) => context.playback.runAutoMatchBestLyric(),
+    },
+    {
+        id: 'playback-toggle-pure-music',
+        // 只对本地歌曲有意义，与两个歌词匹配窗口里的「标记为纯音乐」是同一个开关。
+        isAvailable: context => (context ? context.playback.canToggleCurrentSongPureMusicMark : true),
+        group: 'playback',
+        title: 'Mark or unmark as instrumental',
+        description: 'Mark the current local song as instrumental so its lyrics are no longer matched automatically; run again to unmark',
+        keywords: ['instrumental', 'pure music', 'no lyrics', '纯音乐', '标记纯音乐', '取消纯音乐', '无歌词'],
+        icon: Piano,
+        execute: (_input, context) => context.playback.toggleCurrentSongPureMusicMark(),
     }
 ];

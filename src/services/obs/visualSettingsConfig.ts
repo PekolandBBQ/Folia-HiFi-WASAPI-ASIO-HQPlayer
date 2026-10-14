@@ -6,6 +6,7 @@ import { useVisualizerAssetStore } from '../../stores/useVisualizerAssetStore';
 import { useTypographySettingsStore } from '../../stores/useTypographySettingsStore';
 import { useThemeSettingsStore } from '../../stores/useThemeSettingsStore';
 import { useStageSettingsStore } from '../../stores/useStageSettingsStore';
+import { useLibraryWallLookStore } from '../../stores/useLibraryWallLookStore';
 
 // src/services/obs/visualSettingsConfig.ts
 // Everything compressConfig serializes except the theme. Reads the live settings store, so both
@@ -94,6 +95,17 @@ export function buildVisualSettingsConfig(): Record<string, unknown> {
     stageTrackPillMode: storeStageSettings.stageTrackPillMode,
     stageTrackPillTimeoutSec: storeStageSettings.stageTrackPillTimeoutSec,
     stageTrackPillOnHome: storeStageSettings.stageTrackPillOnHome,
+    // The bravais wall's collection stack edges (a tile look, so it travels with a shared look by the
+    // settings rule). The wall's transparency and windows per block deliberately stay out — the user
+    // decided so; see useLibraryWallLookStore.
+    libraryWallStackEdges: useLibraryWallLookStore.getState().collectionStackEdges,
+    // The bravais info strip's material (always see-through, or the solid preset) and how the
+    // visualizer behind the wall is drawn (lyrics, blur): visual settings with no user exception,
+    // so they travel with a shared look as well.
+    libraryWallSeamClear: useLibraryWallLookStore.getState().seamClear,
+    libraryWallSeamStyle: useLibraryWallLookStore.getState().seamStyle,
+    libraryWallBackdropLyrics: useLibraryWallLookStore.getState().backdropLyrics,
+    libraryWallBackdropBlur: useLibraryWallLookStore.getState().backdropBlur,
   };
 }
 

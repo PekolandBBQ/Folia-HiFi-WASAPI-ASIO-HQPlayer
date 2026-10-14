@@ -282,6 +282,9 @@ const normalizeQqArtist = (item: any, existing: any): ProviderCollection => {
 
 const COLLECTION_TYPES = ['playlist', 'album', 'artist'];
 
+// QQ 音乐「我喜欢」歌单的自建目录号。
+const QQ_LIKED_DIR_ID = 201;
+
 // Reads a GetPlaylistByUin `v_playlist` entry or a cached ProviderCollection.
 export const normalizeQqCollection = (raw: unknown, type = 'playlist'): ProviderCollection => {
     const item = record(raw);
@@ -312,6 +315,9 @@ export const normalizeQqCollection = (raw: unknown, type = 'playlist'): Provider
     // GetPlaylistByUin exposes both cover sizes and songNum; cached normalized keys remain fallbacks.
     const coverUrl = normalizeQqCoverUrl(pick(item, 'bigpicUrl', 'picUrl', 'picurl', 'coverUrl'));
     const trackCount = Number(pick(item, 'songNum', 'songnum', 'trackCount'));
+    // 「我喜欢」是自建目录 201（GetPlaylistByUin 实测；getPlaylistTracks 也按它走 liked-songs 路由）。收藏条目的
+    // dirId 是创建者账号里的目录号，所以还要 owned，别把收藏来的别人的「我喜欢」标成自己的。
+    const isLiked = owned === true && Number(dirId) === QQ_LIKED_DIR_ID;
 
     return {
         providerId: 'qq',
@@ -327,5 +333,6 @@ export const normalizeQqCollection = (raw: unknown, type = 'playlist'): Provider
             ['dirShow', dirShow],
             ['owned', owned],
         ]),
+        ...(isLiked ? { isLiked: true } : {}),
     };
 };

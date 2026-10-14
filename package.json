@@ -8,7 +8,7 @@
     "email": "chthollyphile@users.noreply.github.com"
   },
   "private": true,
-  "version": "0.7.12",
+  "version": "0.7.19",
   "license": "AGPL-3.0",
   "type": "module",
   "main": "electron/main.cjs",
@@ -40,6 +40,7 @@
     "manual:analysis-idle": "node test/manual/analysis_idle_release.mts",
     "manual:visualizer-memory": "node test/manual/visualizer-memory-probe.mjs",
     "manual:lattice-cover-memory": "node test/manual/lattice-cover-memory.mjs",
+    "manual:bravais-perf": "node test/manual/bravais-perf-probe.mjs",
     "stage:client": "vite --open /stage-client.html",
     "dev:electron": "cross-env ELECTRON_DEV=true FOLIA_WINDOWTOLAYER_PATH=build/windowtolayer FOLIA_WALLPAPER_HELPER_PATH=build/folia-wallpaper-helper.exe concurrently -k \"vite\" \"wait-on tcp:3000 && electron .\"",
     "dev:electron:update-preview": "cross-env ELECTRON_DEV=true FOLIA_DEV_UPDATE_PREVIEW=true FOLIA_WINDOWTOLAYER_PATH=build/windowtolayer FOLIA_WALLPAPER_HELPER_PATH=build/folia-wallpaper-helper.exe concurrently -k \"vite\" \"wait-on tcp:3000 && electron .\"",
@@ -137,6 +138,12 @@
       }
     ],
     "mac": {
+      "extraResources": [
+        {
+          "from": "build/koffi/darwin_${arch}",
+          "to": "koffi/darwin_${arch}"
+        }
+      ],
       "target": [
         {
           "target": "dmg",
@@ -206,15 +213,17 @@
   },
   "dependencies": {
     "@google/genai": "^2.24.0",
-    "@neteasecloudmusicapienhanced/api": "^4.40.1",
+    "@neteasecloudmusicapienhanced/api": "^4.41.1",
     "@xhayper/discord-rpc": "^1.5.1",
     "@xmldom/xmldom": "^0.9.12",
-    "@yakult-green-tea/qq-music-api": "3.1.2",
+    "@yakult-green-tea/qq-music-api": "3.1.4",
     "axios": "^1.20.0",
+    "bodian-music-api": "0.1.2",
     "busboy": "^1.6.0",
     "electron-store": "^11.0.2",
     "electron-updater": "^6.8.9",
     "fflate": "^0.8.3",
+    "file-type": "^21.3.4",
     "koffi": "^3.3.1",
     "kugoumusicapi": "https://github.com/MakcRe/KuGouMusicApi/archive/refs/tags/v1.6.0.tar.gz",
     "multicast-dns": "7.2.5",
@@ -246,6 +255,7 @@
     "autoprefixer": "^10.6.1",
     "baseline-browser-mapping": "^2.11.26",
     "blueimp-md5": "^2.19.0",
+    "budoux": "^0.9.3",
     "buffer": "^6.0.3",
     "concurrently": "^10.0.5",
     "cross-env": "^10.1.0",
@@ -279,6 +289,9 @@
   },
   "overrides": {
     "@babel/plugin-transform-runtime": "7.29.7",
+    "concurrently": {
+      "shell-quote": "1.12.0"
+    },
     "@discordjs/rest": {
       "undici": "^6.27.0"
     },

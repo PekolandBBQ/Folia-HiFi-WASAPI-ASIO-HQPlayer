@@ -6,6 +6,7 @@ import { getVisualizerModeLabel, hasVisualizerMode } from '../../visualizer/regi
 import { getVisualizerBackgroundModeLabel, hasVisualizerBackgroundMode } from '../../visualizer/backgrounds/registry';
 import { ACTIVATE_CUSTOM_THEME_KEY, THEME_DARK_KEY, THEME_LIGHT_KEY, type ImportChange, type ImportGroup, type ImportPlan } from '../../../utils/appearanceImportPlan';
 import { resolveSettingLabelKey, resolveSettingValueLabelKey } from '../../../utils/settingLabelLookup';
+import { isLibraryWallSeamStyle, LIBRARY_WALL_SEAM_STYLE_LABEL_KEYS } from '../../../utils/libraryWallSeamStyle';
 
 // src/components/modal/settings/ImportConfirmDialog.tsx
 // What an imported config would change, before it is applied, chosen field by field. Rows spell out
@@ -31,6 +32,7 @@ const GROUP_LABEL_KEYS: Record<ImportGroup, string> = {
     background: 'options.importGroupBackground',
     songTheme: 'options.importGroupSongTheme',
     trackCard: 'options.importGroupTrackCard',
+    libraryWall: 'options.importGroupLibraryWall',
 };
 
 const DERIVED_LABEL_KEYS: Record<string, string> = {
@@ -87,6 +89,11 @@ const FIELD_LABEL_KEYS: Record<string, string> = {
     stageTrackPillMode: 'options.stageTrackPill',
     stageTrackPillTimeoutSec: 'options.stageTrackPillTimeout',
     stageTrackPillOnHome: 'options.stageTrackPillOnHome',
+    libraryWallStackEdges: 'options.bravaisStackEdges',
+    libraryWallSeamClear: 'options.bravaisSeamClear',
+    libraryWallSeamStyle: 'options.bravaisSeamStyle',
+    libraryWallBackdropLyrics: 'options.bravaisBackdropLyrics',
+    libraryWallBackdropBlur: 'options.bravaisBackdropBlur',
 };
 
 // The per-renderer tunings borrow the renderer's own display name instead of inventing one.
@@ -272,6 +279,9 @@ const ImportConfirmDialog: React.FC<ImportConfirmDialogProps> = ({
         }
         if (key === 'visualizerBackgroundMode' && typeof value === 'string' && hasVisualizerBackgroundMode(value)) {
             return <span className={cls}>{getVisualizerBackgroundModeLabel(value, k => t(k))}</span>;
+        }
+        if (key === 'libraryWallSeamStyle' && isLibraryWallSeamStyle(value)) {
+            return <span className={cls}>{t(LIBRARY_WALL_SEAM_STYLE_LABEL_KEYS[value])}</span>;
         }
         if (isHexColor(value)) {
             return (

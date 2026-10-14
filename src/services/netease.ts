@@ -1,6 +1,11 @@
 import { NeteaseUser, NeteasePlaylist, NoCopyrightRecommendation, SongPrivilege, SongResult } from "../types";
 import { readProviderSessionValue, removeProviderSessionValue, writeProviderSessionValue } from './onlineMusic/providerStorage';
 import { OnlineProviderError, type PersonalFmRequestOptions } from '../types/onlineMusic';
+import {
+  isNeteaseRouteMissingResponse,
+  NETEASE_API_BASE_MISSING,
+  neteaseUpstreamNetworkError,
+} from './onlineMusic/neteasePlaybackFailure';
 
 type UnavailableSongReplacement = {
   replacementSong: SongResult;
@@ -36,8 +41,12 @@ const getConfiguredApiBase = () => {
   return null;
 };
 
-// Thrown when the Electron backend is not listening. The QR login modal keys its "restart backend"
-// overlay off this, so it must stay distinguishable from an ordinary request failure.
+/** 网页版配置的远端 API 地址（自检与诊断报告用）；桌面版走内嵌后端，返回 null。 */
+export const getNeteaseRemoteApiBase = (): string | null => (isElectronRuntime() ? null : getConfiguredApiBase());
+
+// Thrown (as the error's `code`, and at the start of its message) when the Electron backend is not
+// listening, so it stays distinguishable from an ordinary request failure. The message carries the
+// backend's own status and error, which is what the QR login timeline needs to say why.
 export const NETEASE_API_UNAVAILABLE = 'NETEASE_API_UNAVAILABLE';
 
 const NETEASE_PORT_POLL_INTERVAL_MS = 250;
@@ -50,17 +59,17 @@ const delay = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, m
 // The Electron backend no longer blocks window creation, so the renderer can outrun it. Wait while
 // it is still starting, but return null the moment it reports a failure — the login modal turns
 // that into a restart button rather than another opaque request error.
-const waitForNeteasePort = async (bridge: any): Promise<number | null> => {
+const waitForNeteasePort = async (bridge: any): Promise<{ port: number | null; status: ElectronNeteaseApiStatus | null }> => {
   const deadline = Date.now() + NETEASE_PORT_WAIT_TIMEOUT_MS;
 
   for (;;) {
     const port = await bridge.getNeteasePort();
-    if (Number.isInteger(port) && port > 0) return port;
+    if (Number.isInteger(port) && port > 0) return { port, status: null };
 
     const status = typeof bridge.getNeteaseApiStatus === 'function'
       ? await bridge.getNeteaseApiStatus()
       : null;
-    if (status?.status !== 'starting' || Date.now() >= deadline) return null;
+    if (status?.status !== 'starting' || Date.now() >= deadline) return { port: null, status };
 
     await delay(NETEASE_PORT_POLL_INTERVAL_MS);
   }
@@ -72,9 +81,13 @@ const getApiBase = async () => {
   // renderer to the dead default port for the rest of the session, so every online feature kept
   // failing with a bare network error long after the backend recovered.
   if (isElectronRuntime()) {
-    const port = await waitForNeteasePort(getElectronBridge());
+    const { port, status } = await waitForNeteasePort(getElectronBridge());
     if (port === null) {
-      throw new Error(NETEASE_API_UNAVAILABLE);
+      const state = status?.status ?? 'unknown';
+      throw Object.assign(
+        new Error(`${NETEASE_API_UNAVAILABLE}: local NetEase API is ${state}${status?.error ? ` (${status.error})` : ''}`),
+        { code: NETEASE_API_UNAVAILABLE },
+      );
     }
     // 必须是 127.0.0.1 而不是 localhost：本地 API 只监听 IPv4 回环（见 electron/main.cjs 的 startApi），
     // 有公网 IPv6 的机器上 localhost 会先解析到 ::1。
@@ -89,7 +102,11 @@ const getApiBase = async () => {
     return API_BASE;
   }
 
-  throw new Error("Failed to access environment variables for API base. Please configure VITE_NETEASE_API_BASE.");
+  // code 标签让 provider 认出“未配置”（持久，不是暂时失败）；message 原文不变，诊断依赖它。
+  throw Object.assign(
+    new Error("Failed to access environment variables for API base. Please configure VITE_NETEASE_API_BASE."),
+    { code: NETEASE_API_BASE_MISSING },
+  );
 };
 
 export type NeteaseSessionRequest = { cookie: string | null; signal?: AbortSignal };
@@ -156,10 +173,33 @@ const fetchWithCreds = async (endpoint: string, options: RequestInit = {}, sessi
     finalUrl = `${finalUrl}${sep}cookie=${encodeURIComponent(cookieToUse)}`;
   }
 
-  const res = await fetch(finalUrl, { ...defaultOptions, credentials: 'include' });
-  if (res.status >= 500) throw new OnlineProviderError('unavailable', 'NetEase service temporarily unavailable', 'netease');
-  if (res.status === 401 || res.status === 403) throw new OnlineProviderError('auth-required', 'NetEase rejected authentication', 'netease');
-  const data = await res.json();
+  const target = endpoint.split('?')[0];
+  let res: Response;
+  try {
+    res = await fetch(finalUrl, { ...defaultOptions, credentials: 'include' });
+  } catch (error) {
+    // 连 API 本身都没连上（本地后端退出、远端 API 不可达），不是网易上游的失败：说清是哪个接口，原始错误挂在 cause 上。
+    // networkFailure 标签供 provider 归为 network；message 原文不变，二维码诊断依赖它。
+    throw Object.assign(
+      new Error(`NetEase API request ${target} failed: ${error instanceof Error ? error.message : String(error)}`, { cause: error }),
+      { networkFailure: true },
+    );
+  }
+  // HTTP 服务错误与鉴权拒绝先保留其原因，不能让 body 中的旧 code 301 冒充登录过期。
+  // 其余响应继续按 JSON code 处理；非 JSON 正文保留状态码和短诊断片段。
+  if (res.status >= 500) throw Object.assign(new OnlineProviderError('unavailable', 'NetEase service temporarily unavailable', 'netease'), { httpStatus: res.status });
+  if (res.status === 401 || res.status === 403) throw Object.assign(new OnlineProviderError('auth-required', 'NetEase rejected authentication', 'netease'), { httpStatus: res.status });
+  const body = await res.text();
+  let data: any;
+  try {
+    data = JSON.parse(body);
+  } catch {
+    // httpStatus 标签供 provider 区分服务异常（≥500）与形态错误（<500）。
+    throw Object.assign(
+      new Error(`NetEase API ${target} returned HTTP ${res.status} without a JSON body: ${body.slice(0, 200) || '(empty)'}`),
+      { httpStatus: res.status },
+    );
+  }
 
   if (!storedCookie && cookieToUse && (data?.code === 301 || data?.code === 401 || data?.code === 403)) {
     removeProviderSessionValue('netease', 'anonymous_cookie', ['netease_anonymous_cookie']);
@@ -446,9 +486,32 @@ const getSongDetail = async (ids: number[] | number) => {
   return res;
 };
 
-const getSongCopyrightRecommendation = async (songId: number) => {
-  const result = await fetchWithCreds(`/song/copyright/rcmd?songid=${songId}`);
-  return normalizeUnavailableSongReplacement(result);
+// 先看原始响应：只有路由缺失（routeMissing）才算接口不支持；上游网络失败抛 OmniError，
+// 不当成“没有替代版本”。
+// 路由缺失有两种形态：部署里真的没有这个路由时，Express 默认回 HTML 404（Cannot GET ...），不是 JSON，
+// fetchWithCreds 解析失败会打上 httpStatus 404 的标签；以及本地 API 的 Not Found JSON 形态。
+const getSongCopyrightRecommendation = async (
+  songId: number
+): Promise<{ replacement: UnavailableSongReplacement | null; routeMissing: boolean }> => {
+  let result: any;
+  try {
+    result = await fetchWithCreds(`/song/copyright/rcmd?songid=${songId}`);
+  } catch (error) {
+    if ((error as { httpStatus?: unknown } | null)?.httpStatus === 404) {
+      return { replacement: null, routeMissing: true };
+    }
+    throw error;
+  }
+  if (isNeteaseRouteMissingResponse(result)) {
+    return { replacement: null, routeMissing: true };
+  }
+
+  const upstreamError = neteaseUpstreamNetworkError(result, 'replacement');
+  if (upstreamError) {
+    throw upstreamError;
+  }
+
+  return { replacement: normalizeUnavailableSongReplacement(result), routeMissing: false };
 };
 
 // Resolves an alternate playable song while keeping legacy APIs as the primary path.
@@ -488,8 +551,9 @@ const getUnavailableSongReplacement = async (
     return null;
   }
 
+  let recommendationError: unknown = null;
   try {
-    const replacement = await getSongCopyrightRecommendation(Number(song.id));
+    const { replacement, routeMissing } = await getSongCopyrightRecommendation(Number(song.id));
     if (replacement) {
       songCopyrightRecommendationApiSupported = true;
       return {
@@ -498,17 +562,20 @@ const getUnavailableSongReplacement = async (
       };
     }
 
-    if (!isElectronRuntime()) {
+    // 只有路由缺失才在本会话内关掉这个查询；一次网络失败或没有替代版本都不算接口不支持。
+    if (routeMissing && !isElectronRuntime()) {
       songCopyrightRecommendationApiSupported = false;
     }
-  } catch {
-    if (!isElectronRuntime()) {
-      songCopyrightRecommendationApiSupported = false;
-    }
+  } catch (error) {
+    recommendationError = error;
   }
 
   if (detailError) {
     throw detailError;
+  }
+
+  if (recommendationError) {
+    throw recommendationError;
   }
 
   return null;

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import CollectionMetadataNotice from '../../src/components/folia-grid/CollectionMetadataNotice';
+import CollectionMetadataNotice from '../../src/library/suites/grid/shared/CollectionMetadataNotice';
 import type { ProviderMetadataStatus } from '../../src/types/onlineMusic';
 import type { ProbeDefinition } from './definition';
 

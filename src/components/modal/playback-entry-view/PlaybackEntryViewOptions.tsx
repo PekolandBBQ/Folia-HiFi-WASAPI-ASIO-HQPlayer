@@ -1,13 +1,15 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { LatticeViewArt, PlayerViewArt } from './playbackEntryViewArt';
+import { LatticeViewArt, PlayerViewArt, StayViewArt } from './playbackEntryViewArt';
+import { OnboardingChoiceCards, type OnboardingChoiceArt, type OnboardingChoiceCard } from './OnboardingChoiceCards';
 import type { PlaybackEntryView } from '../../../stores/usePlaybackEntryViewStore';
 
 // src/components/modal/playback-entry-view/PlaybackEntryViewOptions.tsx
-// The two picture-and-text cards for choosing where playback opens.
+// The picture-and-text cards for choosing where playback opens (fb3 added the third, 留在原处).
 //
 // Shared by the one-time prompt and the settings section so the two cannot drift: the prompt is
 // most people's only look at this choice, and the settings copy has to describe the same thing.
+// The card itself is OnboardingChoiceCards, which the prompt's library-suite page uses too.
 
 type PlaybackEntryViewOptionsProps = {
     value: PlaybackEntryView;
@@ -16,9 +18,10 @@ type PlaybackEntryViewOptionsProps = {
     accentColor: string;
 };
 
-const OPTIONS: Array<{ value: PlaybackEntryView; art: typeof PlayerViewArt; i18nKey: string }> = [
+const OPTIONS: Array<{ value: PlaybackEntryView; art: OnboardingChoiceArt; i18nKey: string }> = [
     { value: 'player', art: PlayerViewArt, i18nKey: 'player' },
     { value: 'lattice', art: LatticeViewArt, i18nKey: 'lattice' },
+    { value: 'stay', art: StayViewArt, i18nKey: 'stay' },
 ];
 
 export const PlaybackEntryViewOptions: React.FC<PlaybackEntryViewOptionsProps> = ({
@@ -28,41 +31,21 @@ export const PlaybackEntryViewOptions: React.FC<PlaybackEntryViewOptionsProps> =
     accentColor,
 }) => {
     const { t } = useTranslation();
+    const cards = useMemo<OnboardingChoiceCard<PlaybackEntryView>[]>(() => OPTIONS.map(({ value: optionValue, art, i18nKey }) => ({
+        value: optionValue,
+        art,
+        title: t(`playbackEntryView.${i18nKey}.title`),
+        description: t(`playbackEntryView.${i18nKey}.description`),
+    })), [t]);
 
     return (
-        <div className="grid grid-cols-2 gap-3">
-            {OPTIONS.map(({ value: optionValue, art: Art, i18nKey }) => {
-                const isSelected = value === optionValue;
-                const frameClass = isSelected
-                    ? (isDaylight ? 'bg-white shadow-md' : 'bg-white/[0.07]')
-                    : (isDaylight ? 'bg-zinc-50 hover:bg-white' : 'bg-white/[0.03] hover:bg-white/[0.06]');
-
-                return (
-                    <button
-                        key={optionValue}
-                        type="button"
-                        onClick={() => onChange(optionValue)}
-                        aria-pressed={isSelected}
-                        className={`text-left rounded-2xl border p-3 transition-colors ${frameClass}`}
-                        style={{
-                            borderColor: isSelected
-                                ? accentColor
-                                : (isDaylight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.08)'),
-                        }}
-                    >
-                        <Art
-                            accentColor={accentColor}
-                            className={`w-full h-auto rounded-lg ${isDaylight ? 'text-zinc-900' : 'text-zinc-100'}`}
-                        />
-                        <div className="mt-3 text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-                            {t(`playbackEntryView.${i18nKey}.title`)}
-                        </div>
-                        <div className="mt-1 text-[11px] leading-relaxed opacity-60" style={{ color: 'var(--text-secondary)' }}>
-                            {t(`playbackEntryView.${i18nKey}.description`)}
-                        </div>
-                    </button>
-                );
-            })}
-        </div>
+        <OnboardingChoiceCards
+            cards={cards}
+            value={value}
+            onChange={onChange}
+            isDaylight={isDaylight}
+            accentColor={accentColor}
+            dataAttribute="data-playback-entry-view"
+        />
     );
 };

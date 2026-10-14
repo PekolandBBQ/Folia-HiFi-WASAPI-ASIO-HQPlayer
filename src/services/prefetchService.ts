@@ -16,13 +16,15 @@ import { getPlaybackSourceRef } from '../utils/appPlaybackGuards';
 import { omni } from './onlineMusic/omni';
 import { getSongResourceCacheKey } from './onlineMusic/resourceKeys';
 import { getSongCacheWithLegacyMigration, hasCachedSongAudio } from './onlineMusic/resourceCache';
-import { toSafePlaybackUrl } from '../utils/appPlaybackHelpers';
+import { toPlayableAudioUrl, toSafePlaybackUrl } from '../utils/appPlaybackHelpers';
 import { getProviderSongMetadata } from './onlineMusic/songMetadata';
 import { ensureTrackProfile, setAnalysisScope } from './automix/profileService';
 import { modeNeedsBeatGrid } from './automix/transitionStrategy';
 import { useLyricSettingsStore } from '../stores/useLyricSettingsStore';
 import { useAutomixSettingsStore } from '../stores/useAutomixSettingsStore';
 import { useAudioSettingsStore } from '../stores/useAudioSettingsStore';
+import { classifyPlaybackError } from './playbackRecovery/onlinePlaybackFailure';
+import { getProviderPlaybackCooldown, noteProviderFailure } from './playbackRecovery/providerPlaybackCooldown';
 
 // Prefetch configuration
 //
@@ -159,6 +161,55 @@ export const getPrefetchedData = (song: SongResult, requiredQuality?: AudioQuali
     return touchPrefetchCacheEntry(songKey, cached);
 };
 
+/** 预取到的音源：'CACHED_IN_DB' 表示媒体缓存里已有这首歌，否则是 provider 给的地址与它附带的 ReplayGain。 */
+export interface PrefetchedAudioUrl {
+    audioUrl: string;
+    replayGain?: ReplayGainInfo;
+}
+
+/**
+ * 预取一首歌的音源地址；拿不到时返回 null，调用方什么都不写。
+ *
+ * provider 在冷却期内（限流 / 服务异常之后）不请求；请求失败按原因登记冷却，但永不回写预取条目、可用性或缓存。
+ * 每个 await 之后检查 signal：预取已被新的队列取代时，结果直接丢弃。
+ * 不能 import onlinePlayback.ts（它反过来依赖本文件），所以失败归一直接用分类器和冷却模块。
+ */
+export const resolvePrefetchAudioUrl = async (
+    song: SongResult,
+    audioQuality: AudioQualityPreference,
+    signal: AbortSignal,
+): Promise<PrefetchedAudioUrl | null> => {
+    if (isSessionBoundAudio(song)) return null;
+    const sourceRef = getPlaybackSourceRef(song);
+    const providerId = sourceRef.kind === 'online' ? sourceRef.providerId : undefined;
+    try {
+        const audioExists = await hasCachedSongAudio(song, audioQuality);
+        if (signal.aborted) return null;
+        if (audioExists) {
+            console.log(`[Prefetch] Audio already cached for: ${song.name}`);
+            return { audioUrl: 'CACHED_IN_DB' };
+        }
+
+        const cooldown = providerId ? getProviderPlaybackCooldown(providerId, 'prefetch') : null;
+        if (cooldown) {
+            console.log(`[Prefetch] Skipping audio URL for ${song.name}: ${providerId} is cooling down (${Math.ceil(cooldown.remainingMs / 1000)}s left)`);
+            return null;
+        }
+
+        const audioSource = await omni.getAudioSource(song, audioQuality, { signal });
+        if (signal.aborted) return null;
+        const url = toPlayableAudioUrl(audioSource?.url);
+        if (!url) return null;
+        console.log(`[Prefetch] Got audio URL for: ${song.name} (quality: ${audioQuality})`);
+        return { audioUrl: url, replayGain: audioSource?.replayGain };
+    } catch (e) {
+        console.warn(`[Prefetch] Failed to get audio URL for ${song.name}:`, e);
+        // 只有策略表标了冷却的原因（限流、服务异常）才会真正登记；其余原因在这里是空操作。
+        noteProviderFailure(classifyPlaybackError(e, { stage: 'prefetch', providerId }));
+        return null;
+    }
+};
+
 /**
  * Prefetch a single song's resources
  */
@@ -215,28 +266,16 @@ const prefetchSong = async (
 
     // Prefetch audio URL (if not cached or expired)
     if (!data.audioUrl && !isSessionBoundAudio(song)) {
-        try {
-            const audioExists = await hasCachedSongAudio(song, audioQuality);
-            if (audioExists) {
-                console.log(`[Prefetch] Audio already cached for: ${song.name}`);
-                data.audioUrl = 'CACHED_IN_DB';
+        const resolved = await resolvePrefetchAudioUrl(song, audioQuality, signal);
+        if (resolved) {
+            data.audioUrl = resolved.audioUrl;
+            data.audioUrlFetchedAt = Date.now();
+            if (resolved.audioUrl !== 'CACHED_IN_DB') {
                 data.audioUrlQuality = audioQuality;
-                data.audioUrlFetchedAt = Date.now();
-            } else if (!signal.aborted) {
-                const audioSource = await omni.getAudioSource(song, audioQuality, { signal });
-                const url = toSafePlaybackUrl(audioSource?.url) ?? null;
-                if (url) {
-                    data.audioUrl = url;
-                    data.audioUrlFetchedAt = Date.now();
-                    data.audioUrlQuality = audioQuality;
-                    data.replayGain = audioSource?.replayGain
-                        ? { ...data.replayGain, ...audioSource.replayGain }
-                        : data.replayGain;
-                    console.log(`[Prefetch] Got audio URL for: ${song.name} (quality: ${audioQuality})`);
-                }
+                data.replayGain = resolved.replayGain
+                    ? { ...data.replayGain, ...resolved.replayGain }
+                    : data.replayGain;
             }
-        } catch (e) {
-            console.warn(`[Prefetch] Failed to get audio URL for ${song.name}:`, e);
         }
     }
 
@@ -533,6 +572,53 @@ export const clearPrefetchRuntime = (): void => {
     currentPrefetchAbortController?.abort();
     currentPrefetchAbortController = null;
     prefetchCache.clear();
+};
+
+/**
+ * 正在播放那首的预取窗口（前 PREFETCH_COUNT_PREV 首、它自己、后 PREFETCH_COUNT_NEXT 首）的身份串；
+ * 当前歌不在队列里时是空串。队列被编辑（拖拽排序、下一首播放、移到末尾、移除）前后这个串变了，才需要重新预取。
+ */
+export const getPrefetchWindowKey = (currentSong: SongResult, queue: readonly SongResult[]): string => {
+    const currentSongKey = getPrefetchSongKey(currentSong);
+    const currentIndex = queue.findIndex(song => getPrefetchSongKey(song) === currentSongKey);
+    if (currentIndex < 0) return '';
+    return queue
+        .slice(Math.max(0, currentIndex - PREFETCH_COUNT_PREV), currentIndex + PREFETCH_COUNT_NEXT + 1)
+        .map(getPrefetchSongKey)
+        .join('|');
+};
+
+/**
+ * 队列被就地编辑（拖拽排序、下一首播放、移到末尾、移除、批量操作、Electron 舞台的 move / remove）之后要不要重新预取：
+ * 正在播放那首前后的预取窗口变了才要。编辑后当前歌不在队列里（窗口键为空）时不要——prefetchNearbySongs 表达不了
+ * 「当前歌不在队列里」：invalidateAndRefetch 会先按新队列清缓存（把当前歌自己的预取删掉）、中止进行中的邻近预取，
+ * 然后因为找不到当前歌直接返回、不再重启，setAnalysisScope 还会把原来的下一首踢出分析范围。保留旧窗口的预取更正确：
+ * 下一次切歌（handleNextTrack 在当前歌不在队列里时回到队首）会照常按新队列预取。
+ */
+export const shouldRefreshPrefetchAfterQueueEdit = (
+    currentSong: SongResult | null,
+    previousQueue: readonly SongResult[],
+    nextQueue: SongResult[],
+): currentSong is SongResult => {
+    if (!currentSong || nextQueue === previousQueue || nextQueue.length <= 1) return false;
+    const nextWindowKey = getPrefetchWindowKey(currentSong, nextQueue);
+    return nextWindowKey !== '' && nextWindowKey !== getPrefetchWindowKey(currentSong, previousQueue);
+};
+
+/**
+ * 队列就地编辑之后：预取窗口变了就与洗牌一样重新预取。automix 与「下一首」提示每次都读 store 里最新的队列，能感知顺序
+ * 变化；但下一首的地址与歌词只在切歌与洗牌时预取，不补这一步的话，刚挪到下一首的那首到交叉淡入时还没有预取数据
+ * （混音只能盲排、不能预热）。所有就地编辑都经这里（createQueueMutations.updateQueueOrder 与舞台的队列请求）。
+ */
+export const refreshPrefetchAfterQueueEdit = (
+    currentSong: SongResult | null,
+    previousQueue: readonly SongResult[],
+    nextQueue: SongResult[],
+    audioQuality: AudioQualityPreference,
+    userId?: MediaId | null,
+): void => {
+    if (!shouldRefreshPrefetchAfterQueueEdit(currentSong, previousQueue, nextQueue)) return;
+    void invalidateAndRefetch(currentSong, nextQueue, audioQuality, userId);
 };
 
 /**

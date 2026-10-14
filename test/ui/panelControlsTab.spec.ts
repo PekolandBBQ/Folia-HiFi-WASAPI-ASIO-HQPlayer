@@ -17,6 +17,7 @@ const openPlayerPage = async (page: import('@playwright/test').Page, bottomBarOf
         offset: number;
     }) => {
         localStorage.clear();
+        localStorage.setItem('library_suite_prompt_seen', 'true');
         localStorage.setItem('i18nextLng', 'zh-CN');
         localStorage.setItem('open_player_on_launch', 'true');
         localStorage.setItem('visualizer_mode', 'classic');
@@ -115,7 +116,6 @@ test('steps lyric modes with the arrows and opens the full list from the name', 
     await lyricRow.getByRole('button', { name: '歌词样式', exact: true }).click();
     const list = page.getByRole('listbox', { name: '歌词样式' });
     await expect(list).toBeVisible();
-    // Upstream 0.7.12 adds Lumière to the existing modes.
     await expect(list.getByRole('option')).toHaveCount(14);
     await expect(list.getByRole('option', { name: '静止' })).toBeVisible();
     await expect(page.getByText('更多设置', { exact: true })).toBeVisible();

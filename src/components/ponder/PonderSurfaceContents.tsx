@@ -11,6 +11,7 @@ import PonderOnboardingSurface from './surfaces/PonderOnboardingSurface';
 import PonderDesktopFeaturesSurface from './surfaces/PonderDesktopFeaturesSurface';
 import PonderQueueCommandSurface from './surfaces/PonderQueueCommandSurface';
 import PonderLyricExportSurface from './surfaces/PonderLyricExportSurface';
+import PonderBravaisWallSurface from './surfaces/PonderBravaisWallSurface';
 import {
     PonderGridHotkeySurface,
     PonderLibraryWatchSurface,
@@ -31,6 +32,8 @@ import {
     PonderVisPlaygroundSurface,
 } from './surfaces/PonderFullEditorSurfaces';
 import PonderLatticeChromeSurface from './surfaces/PonderLatticeChromeSurface';
+import PonderBravaisHomeSeamSurface from './surfaces/PonderBravaisHomeSeamSurface';
+import PonderBravaisStripSurface from './surfaces/PonderBravaisStripSurface';
 import {
     PonderLyricsAnimationSettingsSurface,
     PonderThemeSettingsSurface,
@@ -263,6 +266,10 @@ const PonderSurfaceContents: React.FC<PonderSurfaceContentsProps> = ({ kind, acc
         ? <PageContents kind={resolvedKind} line={line} outline={outline} accent={accent} registerStateNode={registerStateNode} />
         : resolvedKind === 'lattice-chrome'
         ? <PonderLatticeChromeSurface accent={accent} line={line} outline={outline} registerStateNode={registerStateNode} />
+        : resolvedKind === 'bravais-seam-home'
+        ? <PonderBravaisHomeSeamSurface accent={accent} line={line} outline={outline} registerStateNode={registerStateNode} />
+        : resolvedKind === 'bravais-seam-strip'
+        ? <PonderBravaisStripSurface accent={accent} line={line} outline={outline} registerStateNode={registerStateNode} />
         : resolvedKind === 'lyrics-animation-settings'
         ? <PonderLyricsAnimationSettingsSurface accent={accent} line={line} outline={outline} registerStateNode={registerStateNode} />
         : resolvedKind === 'theme-settings'
@@ -303,6 +310,8 @@ const PonderSurfaceContents: React.FC<PonderSurfaceContentsProps> = ({ kind, acc
         ? <PonderQueueCommandSurface accent={accent} line={line} outline={outline} registerStateNode={registerStateNode} />
         : resolvedKind === 'lyric-export'
         ? <PonderLyricExportSurface accent={accent} line={line} outline={outline} registerStateNode={registerStateNode} />
+        : resolvedKind === 'bravais-wall'
+        ? <PonderBravaisWallSurface accent={accent} line={line} outline={outline} registerStateNode={registerStateNode} />
         : resolvedKind === 'desktop-features'
         ? <PonderDesktopFeaturesSurface accent={accent} line={line} outline={outline} registerStateNode={registerStateNode} />
         : resolvedKind === 'ponder-onboarding'

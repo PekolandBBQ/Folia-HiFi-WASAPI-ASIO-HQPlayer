@@ -10,13 +10,22 @@ import type {
     ProviderSongReplacement,
     ProviderArtistSummary,
     ProviderUser,
+    QrLoginState,
 } from '../../types/onlineMusic';
 import { getPersonalFmRequestOptions } from '../../stores/usePersonalFmModeStore';
 import { parseNeteaseChorusRanges, processNeteaseLyrics } from '../../utils/lyrics/neteaseProcessing';
 import { createProviderSongMetadata } from '../../utils/songMetadata';
-import { isSongMarkedUnavailable, neteaseApi } from '../netease';
+import { getNeteaseRemoteApiBase, neteaseApi } from '../netease';
 import { readProviderSessionValue, writeProviderSessionValue } from './providerStorage';
-import { collectNeteaseLoginDiagnostics } from './neteaseLoginDiagnostics';
+import {
+    classifyNeteaseSongUrlResponse,
+    resolveNeteaseSongAvailability,
+    toNeteaseRequestError,
+} from './neteasePlaybackFailure';
+import { collectLoginBackendDiagnostics } from './loginBackendDiagnostics';
+import { canRunLoginSelfCheck, runLoginSelfCheck } from './loginSelfCheck';
+import { formatDiagnosticClock } from '../../utils/qrLoginDiagnosticReport';
+import { isConnectionResetMessage, isNetworkFailureMessage } from '../../../shared/networkErrorText.mjs';
 import { normalizeNeteaseAudioSource } from './neteaseAudioSource';
 
 // src/services/onlineMusic/neteaseProvider.ts
@@ -70,6 +79,19 @@ const normalizeStringList = (value: unknown): string[] => (
         : []
 );
 
+// 网易云 `/user/playlist` 给「我喜欢的音乐」的标记：`specialType: 5`（普通歌单是 0）。
+const NETEASE_LIKED_PLAYLIST_SPECIAL_TYPE = 5;
+
+/**
+ * `/user/playlist` 的条目是不是这个账号自己的「我喜欢的音乐」：`specialType: 5` 且创建者就是这个账号。
+ * 收藏的别人的「喜欢的音乐」也是 5，标成 isLiked 会让「从歌单移除」变成取消自己账号的喜欢，所以必须比对创建者。
+ */
+const isOwnNeteaseLikedPlaylist = (raw: any, userId: MediaId): boolean => {
+    if (Number(raw?.specialType) !== NETEASE_LIKED_PLAYLIST_SPECIAL_TYPE) return false;
+    const creatorId = raw?.creator?.userId ?? raw?.userId;
+    return creatorId !== undefined && creatorId !== null && String(creatorId) === String(userId);
+};
+
 const normalizeCollection = (raw: any, type = 'playlist'): ProviderCollection => {
     const artists = (Array.isArray(raw?.artists)
         ? raw.artists
@@ -105,6 +127,34 @@ const normalizeCollection = (raw: any, type = 'playlist'): ProviderCollection =>
         ...(Number.isFinite(tracksUpdatedAt) && tracksUpdatedAt > 0 ? { tracksUpdatedAt } : {}),
         ...(raw?.specialType === 'liked' || raw?.isLiked === true ? { isLiked: true } : {}),
     };
+};
+
+// 扫码接口失败时给日志与诊断时间线的一行：返回码 + 后端原文。
+const describeQrResponse = (response: any): string => (
+    `code ${response?.code ?? 'none'}: ${response?.message || response?.msg || 'no message'}`
+);
+
+/**
+ * 扫码接口没给出预期结果时交给会话的失败：原文与原始返回码；本地 API 把上游的网络错误转成 { code: 502, msg }，
+ * 这类失败没拿到网易的回应、二维码仍然有效（transient，会话会接着轮询），其中连接被重置单独标出原因。
+ */
+const qrFailureOf = (response: any): Extract<QrLoginState, { state: 'error' }> => {
+    const networkFailure = response?.code === 502 && isNetworkFailureMessage(response?.msg);
+    return {
+        state: 'error',
+        message: describeQrResponse(response),
+        ...(response?.code === 502 && isConnectionResetMessage(response?.msg) ? { reason: 'connection-reset' as const } : {}),
+        ...(networkFailure ? { transient: true } : {}),
+        detail: { code: response?.code ?? null, message: response?.message ?? response?.msg ?? null },
+    };
+};
+
+const yesNo = (value: boolean): string => (value ? 'yes' : 'no');
+
+// 最近一次登录态检查的结论。扫码确认后账户没加载出来（account-refresh-failed）时，报告靠它说明是哪个接口拿不到登录态。
+let lastLoginStatusCheck: string | null = null;
+const noteLoginStatusCheck = (summary: string): void => {
+    lastLoginStatusCheck = `${formatDiagnosticClock(Date.now())} ${summary}`;
 };
 
 const extractCloudLyricText = (response: any): string => (
@@ -278,20 +328,28 @@ export const neteaseProvider: OnlineMusicProvider = {
             return raw ? normalizeNeteaseSong(raw) : null;
         },
         async getAudioSource(song, quality) {
-            const response = await neteaseApi.getSongUrl(toNeteaseId(song.id), mapQuality(quality));
-            return normalizeNeteaseAudioSource(response?.data?.[0], quality);
+            let response: any;
+            try {
+                response = await neteaseApi.getSongUrl(toNeteaseId(song.id), mapQuality(quality));
+            } catch (error) {
+                throw toNeteaseRequestError(error, 'song-url');
+            }
+            // 没给出可播 URL（或只给了试听片段）时按响应形态抛出 OmniError；不在客户端换音质重试。
+            const failure = classifyNeteaseSongUrlResponse(response);
+            if (failure) throw failure;
+            const raw = response?.data?.[0];
+            return normalizeNeteaseAudioSource(raw, quality);
         },
         getAvailability(song): ProviderSongAvailability {
-            if (!isSongMarkedUnavailable(song)) return { state: 'playable' };
-            return {
-                state: 'unavailable',
-                label: typeof song.noCopyrightRcmd?.typeDesc === 'string'
-                    ? song.noCopyrightRcmd.typeDesc
-                    : undefined,
-            };
+            return resolveNeteaseSongAvailability(song);
         },
         async getReplacement(song): Promise<ProviderSongReplacement | null> {
-            const replacement = await neteaseApi.getUnavailableSongReplacement(song);
+            let replacement: Awaited<ReturnType<typeof neteaseApi.getUnavailableSongReplacement>>;
+            try {
+                replacement = await neteaseApi.getUnavailableSongReplacement(song);
+            } catch (error) {
+                throw toNeteaseRequestError(error, 'replacement');
+            }
             if (!replacement?.replacementSong) return null;
             return {
                 song: normalizeNeteaseSong(replacement.replacementSong),
@@ -350,6 +408,7 @@ export const neteaseProvider: OnlineMusicProvider = {
             const loginResponse = await query(() => neteaseApi.getLoginStatus(session));
             assertCurrentSession();
             const loginProfile = loginResponse?.data?.profile;
+            const loginCode = Number(loginResponse?.code ?? loginResponse?.data?.code);
             const loginCodes = [loginResponse?.code, loginResponse?.data?.code].filter(code => code !== undefined).map(Number);
             if (loginCodes.some(code => [301, 401, 403].includes(code))) return null;
             if (!loginCodes.length || loginCodes.some(code => code !== 200) || !loginProfile) {
@@ -362,6 +421,7 @@ export const neteaseProvider: OnlineMusicProvider = {
             const accountProfile = accountResponse?.profile;
             const accountId = accountResponse?.account?.id ?? accountProfile?.userId;
             const loginId = loginProfile?.userId ?? loginProfile?.id;
+            const accountCode = Number(accountResponse?.code ?? accountResponse?.data?.code);
             if (accountCodes.some(code => [301, 401, 403].includes(code))) return null;
             const validId = (id: unknown) => (typeof id === 'number' || typeof id === 'string')
                 && Number.isSafeInteger(Number(id)) && Number(id) > 0;
@@ -373,37 +433,60 @@ export const neteaseProvider: OnlineMusicProvider = {
                 throw new OnlineProviderError('unavailable', 'NetEase account identity changed during login verification', 'netease');
             }
             // Status checks are read-only: a late reply must never replace a newer QR login cookie.
+            noteLoginStatusCheck(`signed in (login/status code=${loginCode}, user/account code=${accountCode})`);
             return normalizeUser({ ...loginProfile, ...accountProfile });
         },
         async logout() { await neteaseApi.logout(); },
+        // 扫码三步：要码（unikey）→ 生成二维码图片 → 轮询。没拿到 key 或图片就直接失败：空 key 去轮询只会换来
+        // 一个看不出原因的 code 400，空图片会让界面一直转圈。失败带上原始响应（cause），时间线里看得到网易回了什么。
         async getQrKey() {
             const response = await neteaseApi.getQrKey();
-            return String(response?.data?.unikey || '');
+            const unikey = String(response?.data?.unikey || '');
+            if (unikey) return unikey;
+            const failure = qrFailureOf(response);
+            const error = new OnlineProviderError('invalid-response', `NetEase QR key request failed: ${failure.message}`, 'netease', response);
+            throw Object.assign(error, {
+                ...(failure.reason ? { qrLoginReason: failure.reason } : {}),
+                ...(failure.transient ? { transient: true } : {}),
+            });
         },
         async createQr(key) {
             const response = await neteaseApi.createQr(key);
-            return String(response?.data?.qrimg || '');
+            const image = String(response?.data?.qrimg || '');
+            if (image) return image;
+            throw new OnlineProviderError('invalid-response', `NetEase QR image request failed: ${describeQrResponse(response)}`, 'netease', response);
         },
         async checkQr(key) {
             const response = await neteaseApi.checkQr(key);
-            if (response?.code === 800) return { state: 'expired' };
-            if (response?.code === 802) return { state: 'scanned' };
-            if (response?.code === 803) {
-                if (typeof response?.cookie === 'string' && response.cookie) {
-                    writeProviderSessionValue('netease', 'cookie', response.cookie);
-                }
-                return { state: 'confirmed' };
+            switch (response?.code) {
+                case 800: return { state: 'expired' };
+                case 801: return { state: 'waiting' };
+                case 802: return { state: 'scanned' };
+                case 803:
+                    if (typeof response?.cookie === 'string' && response.cookie) {
+                        writeProviderSessionValue('netease', 'cookie', response.cookie);
+                    }
+                    return { state: 'confirmed' };
+                // 风控（8821 等）、上游网络错误（502）与别的返回码都带着原始 code 与原文交给会话。
+                default: return qrFailureOf(response);
             }
-            if (response?.code === 801) return { state: 'waiting' };
-            // 带上原始状态码：只剩 state 的话，风控（8821 等）和后端吞错后的 404 在日志里无从区分。
-            return { state: 'error', message: `code ${response?.code ?? 'none'}: ${response?.message || response?.msg || 'no message'}` };
         },
-        getQrLoginDiagnostics: collectNeteaseLoginDiagnostics,
+        async getQrLoginDiagnostics() {
+            return collectLoginBackendDiagnostics('netease', [
+                `session: login cookie=${yesNo(Boolean(readProviderSessionValue('netease', 'cookie', ['netease_cookie'])))}, anonymous cookie=${yesNo(Boolean(readProviderSessionValue('netease', 'anonymous_cookie', ['netease_anonymous_cookie'])))}`,
+                `last account check: ${lastLoginStatusCheck ?? 'none'}`,
+            ], getNeteaseRemoteApiBase());
+        },
+        canRunQrLoginSelfCheck: () => canRunLoginSelfCheck(getNeteaseRemoteApiBase()),
+        runQrLoginSelfCheck: () => runLoginSelfCheck('netease', getNeteaseRemoteApiBase()),
     },
     library: {
         async getUserPlaylists(userId, limit, offset) {
             const response = await neteaseApi.getUserPlaylists(toNeteaseId(userId), limit, offset);
-            const items = (response?.playlist || []).map((item: any) => normalizeCollection(item));
+            // 只有用户歌单列表知道「这是谁的歌单」，「我喜欢的音乐」在这里标 isLiked；归一化结果带着它进缓存，回灌时照样保留。
+            const items = (response?.playlist || []).map((item: any) => normalizeCollection(
+                isOwnNeteaseLikedPlaylist(item, userId) ? { ...item, isLiked: true } : item,
+            ));
             return { items, hasMore: items.length === limit, nextOffset: offset + items.length };
         },
         async getLikedSongIds(userId) {

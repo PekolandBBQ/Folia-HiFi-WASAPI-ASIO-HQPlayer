@@ -9,7 +9,7 @@ import {
     resolveLatentShaderColors,
     resolveLatentShaderSpeed,
 } from '@/components/visualizer/backgrounds/latent/LatentBackground';
-import { resolveMonetWordColor } from '@/components/visualizer/monet/MonetLyricsRail';
+import { resolveMonetWordColor } from '@/components/visualizer/monet/monetRailLayout';
 import { buildMonetDisplayTokens, resolveMonetLyricContext } from '@/components/visualizer/monet/VisualizerMonet';
 import { buildMonetVisibleLineEntries, measureMonetLineLayout, resolveMonetSweepEdgeSoftness, resolveMonetSweepEnd } from '@/components/visualizer/monet/monetLyricsModel';
 import { colorWithAlpha, mixColors, parseColorChannels } from '@/components/visualizer/colorMix';

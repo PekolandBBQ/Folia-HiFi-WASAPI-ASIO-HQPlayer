@@ -74,6 +74,48 @@ node dev/mcp/ts-code-map/cli.mjs doctor    # 环境自检
   `isBuiltinVisualizerMode` / `isBuiltinVisualizerBackgroundMode`，不要 import registry。
   需要认 mod 投稿模式时才用 registry 的 `hasVisualizerMode`。模式清单由 registry 初始化时
   断言，漂移会抛错。
+- 集合浏览（Library）按 headless core 与 UI suite 分开，都在 `src/library/`：`core/` 里
+  `contracts`（只有类型：集合描述、资源、能力、端口、变更动作、会话）← `model`（纯变换，叶子：不读
+  store、不调 service、不 import react）← `services`（资源、registry、缓存、同步、变更控制器）/
+  `state`（zustand store，storeContract 一并扫描）← `bindings`（React hooks）。`suites/<id>/` 是
+  各套 UI（每套 `entry.ts` + 自己的整个文件夹），`registry.ts` 发现 suite 并按 surface 回退到默认的
+  grid，`app/` 是宿主装配（集合宿主、播放 / 变更端口、suite 切换、stage 挂载位）。规则：core 不 import suites、
+  app、registry 和 `src/components`；suite 之间互不 import，也不直接用 `core/services`（资源与控制器
+  由宿主创建后传入）；stores / services / utils / types 不 import suites 与 app；suites 之外只有 registry
+  引用 suite（宿主、首页外壳都经 registry 解析）；不建 barrel。
+  反方向是允许的：suite 属于 UI 层，可以 import `src/components/`（例如共享 wall 引擎）、`src/hooks/`、
+  `src/stores/` 里的 app 级 store（播放、视图、动效设置、透光偏好等）与 `utils`；但不读账户与网易后端 store
+  （`useOnlineProviderAccountStore`、`useNeteaseApiStatusStore`，数据来自账户 controller），也不直连 Omni 的扫码 / 登出。
+  设置 UI（`components/modal/settings`）反过来不能 import suite，所以 suite 专属的偏好要放 app 层 store
+  （例如 bravais 的透光 `useLibraryWallLookStore`），由 suite 读它。
+  这些规则同时写在 `codemap.mjs` 的 `BOUNDARY_RULES` 和 `test/unit/library/layerBoundaries.test.ts` 里。
+  网格 suite 按 surface 分子目录：`suites/grid/{home,collection,directory,artist,shared,transitions}`
+  （首页 `Grid3D` 与本地 / Navidrome 首页、集合详情 `GridView`、`GridMap` 与批量面板、歌手页、
+  hex 视口与卡片、打开转场）；TUI 在 `suites/tui/`（实现首页 `LibraryTuiHome`、集合 `LibraryTuiView` 与歌手页 `LibraryTuiArtist`）；
+  集合宿主 `GridViewOverlayHost` 与端口在 `app/`，首页资源（在线 feed、Navidrome 概览、文件夹树、首页动作）由
+  Home 外壳的 `app/useLibraryHomeResources` 持有，换 suite 不重新请求。
+  能力契约在 `core/contracts/suite.ts`（surface：home / collection / artist；集合动作 `LibraryActionId`、
+  首页动作 `LibraryHomeActionId`、歌手页动作 `LibraryArtistActionId`（能力规则在 `core/model/artistSurface`，两套歌手页共用 `core/bindings/useArtistView`）；
+  每个 surface 的 props 契约；suite manifest），每套 suite 的 `entry.ts` 声明自己实现了哪些 surface 与动作。
+  没实现的 surface 由默认 suite（grid）渲染，没声明的动作不进命令面板（`buildGridSurfaceState` 按声明过滤）。
+  entry 里的组件必须是 `React.lazy`，只有默认 suite 例外（Grid3D 在首屏、移形换影要从第一次打开就在）；
+  开发验证专用的 suite（tui）默认关闭，只有 `import.meta.env.DEV` 且显式 `VITE_LIBRARY_TUI=true` 时启用；测试配置自动开启。
+  网格专属的转场（移形换影）经 entry 的
+  `transitions` 交给宿主，宿主与 `switchLibrarySuite` 不直接 import 网格。
+  bravais（正式新 UI，开发阶段的初始选择）在 `suites/bravais/`，四个 surface 全部实现，分工是 **stage 画、surface 投影**：
+  manifest 的 `stage`（`BravaisStage`）由宿主经 `registry.resolveLibraryStage` 只为生效 suite 挂一个，横跨首页与集合层，
+  拥有墙、相机、缝、翻牌、聚焦卡、键盘、面板与外观动作注册；`BravaisHome` / `BravaisCollection` / `BravaisArtist`
+  不画画面，只把 core binding 的数据投影成层描述（`BravaisLayer`）推进 suite 内的 `bravaisStageStore`，并照常注册命令面板；
+  `BravaisAccount` 渲染 null，登录 / 确认经 `bravaisAccountStore` 交给 stage 在缝里画。新的墙面行为放 stage 一侧，
+  新的数据投影放 surface 一侧，stage 不 import core binding 以外的东西、不直接调 controller。
+  entry 只能静态 import react（stage、surface 全部 lazy，转场钩子由 stage 的 chunk 装上），选 grid 的用户不加载 bravais。
+  外观动作（只在命令面板里的 suite 操作）静态声明在 manifest 的 `chromeActions`，运行时用 `useLibrarySuiteChromeRegistration`。
+  接口细节见 `docs/library-suites.md`。
+- `src/components/wall/` 是与内容无关的墙面引擎（几何、slot / rank、有限墙、缝的选线、翻牌计划、相机、`WallTitle`、
+  海报样式 `wall.css`、浮层控件 `WallBackButton` / `WallToolsButton` 与它上方的队列浮岛 `WallToolsQueueIsland`），Lattice 与 bravais 共用。工具面板要动应用的动作（洗牌、主题、音量预览、播放页、队列编辑）经 `wallToolsHost` 上下文由 App（`components/app/wall-tools/useAppWallToolsHost`）注入，wall 自己不认识 App。它不依赖 `src/components/app/**`（含 Lattice）与 `src/library/**`，
+  连 `import type` 与动态 import 一起查（`test/unit/wall/wallBoundaries.test.ts`，codemap 的 `BOUNDARY_RULES` 同一条）；
+  新几何写成不 import React 的纯函数放这里。透光 / 底板等 bravais 专属的东西不放 wall，Lattice 的队列模型、键盘焦点、
+  播放展开也不放 wall。CSS 类名与变量沿用 `.lattice-*` / `--lattice-*`（测试选择器依赖它们），bravais 的 DOM 也用这些类名。
 - `App.tsx` 是历史遗留的装配缝，已经很大。新行为应该组装进相邻的 `components/app/*`、
   hooks、stores、services，而不是继续堆进去。参见 `skills/file-modularization/SKILL.md`。
 
@@ -88,8 +130,25 @@ LSP 会老老实实找到死文件和历史命名，这几个需要人工标注�
   `useLyricSettingsStore`、`useThemeSettingsStore`、`useTypographySettingsStore` 等）。
   想找某个设置项时按领域找，不要指望有一个统一的设置 store。
 - `buildCommandPaletteContext` —— 现在是 `useCommandPaletteContext`（hook，不是 build 函数）。
+- Lattice 里抽出去的墙面引擎：`components/app/lattice/` 下的 `layout` / `blockTemplates` / `blockReflows` /
+  `wallNavigation` / `useWallCameraPan` / `useWallPointerPan` 现在在 `src/components/wall/`；`useLatticePosterArtwork` →
+  `useWallPosterArtwork`，`LatticeTitle` → `WallTitle`；`LatticeFocusButton` 的按钮 / 面板外壳 → `WallToolsButton`（`LatticeFocusButton`
+  只剩 Lattice 自己的条目），左上角返回 → `WallBackButton`，熄灯规则从 `Lattice.css` 搬进 `wall.css`。几何类型名（`QueueInstance`、`LatticeGeometry`、`LatticeCamera`）
+  没改名。`useWallKeyboardFocus` 名字带 Wall，但和队列模型耦合，仍在 Lattice 目录。
+- bravais 透光的「纱层」与「全屏遮罩底板」（`bravaisPlateMask`、`useBravaisPlate`、`useBravaisLivePlate`）都已删除，
+  现在是按块的内联 SVG 底板：`BravaisBlockPlates`、`useBravaisBlockPlates`（纯函数 `bravaisBlockPlate`）、让位时的
+  `useBravaisReflowPlate`。设计稿与交接记录里的「纱层」「遮罩」说的是旧写法。
 
 发现文档里还有别的死路径，直接改掉，不要绕过去。
+
+## 并行 worktree
+
+同一个仓库常有几个并行的 worktree（`folia-*` 兄弟目录，各自一个分支）。定位时只看当前 worktree：rg、CODEMAP 和 cli
+都按当前工作目录算，别把兄弟 worktree 里的同名文件当成当前代码。分支上的 `docs/CODEMAP.md` 只在 main 上由
+workflow 自动重生成，分支里可能落后于代码，结构性问题拿不准时本地跑 `npm run codemap` 看一眼（`codemap:check` 报不一致
+是预期的，只核对违规清单有没有新增）。并行 worktree 的 `node_modules` 若是指向主 worktree 的 junction，拆的时候只拆
+junction，不要递归删除；各 worktree 共用 `node_modules/.vite` 的预构建缓存，Playwright 固定用 4173 端口且复用已有服务器，
+同时跑两份要换端口。
 
 ## Validation
 

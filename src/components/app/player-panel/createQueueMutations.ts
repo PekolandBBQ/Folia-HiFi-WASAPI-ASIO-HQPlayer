@@ -5,6 +5,9 @@ import type { NavidromeSong } from '../../../types/navidrome';
 import type { QueueAddBehavior, SongResult, StatusMessage } from '../../../types';
 import { getPlaybackSongKey } from '../../../utils/appPlaybackGuards';
 import { applyQueueBatchOperation as transformQueueBatch } from '../../../utils/queueBatchOperations';
+import { moveQueueItem, moveQueueItemToNext } from '../../../utils/queueReorder';
+import { refreshPrefetchAfterQueueEdit } from '../../../services/prefetchService';
+import type { AudioQualityPreference, MediaId } from '../../../types/onlineMusic';
 import type { QueueBatchAction } from '../../command-palette/queueQuery';
 import { setStatusMessage as setStatusMsg } from '../../../stores/useStatusMessageStore';
 import { setPlayQueue } from '../../../stores/usePlaybackStore';
@@ -17,6 +20,9 @@ type CreateQueueMutationsParams = {
     persistLastPlaybackCache: (song: SongResult | null, queue: SongResult[]) => Promise<void>;
     t: (key: string) => string;
     queueAddBehavior: QueueAddBehavior;
+    /** 就地编辑后重新预取用（与切歌预取同一份音质与账号）。 */
+    audioQuality: AudioQualityPreference;
+    userId?: MediaId | null;
 };
 
 // Creates queue mutations that are triggered from app-level panel and home surfaces.
@@ -26,6 +32,8 @@ export const createQueueMutations = ({
     persistLastPlaybackCache,
     t,
     queueAddBehavior,
+    audioQuality,
+    userId,
 }: CreateQueueMutationsParams) => {
     const addNavidromeSongsToQueue = (songs: NavidromeSong[]) => {
         if (songs.length === 0) {
@@ -54,9 +62,12 @@ export const createQueueMutations = ({
         }
     };
 
+    // 所有就地编辑（播放页队列页、命令面板、墙面工具的队列浮岛）都经这里：写 store、持久化，正在播放那首前后的
+    // 预取窗口变了就重新预取（prefetchService.refreshPrefetchAfterQueueEdit；编辑前的队列就是这一份 playQueue）。
     const updateQueueOrder = (nextQueue: SongResult[]) => {
         setPlayQueue(nextQueue);
         void persistLastPlaybackCache(currentSong, nextQueue);
+        refreshPrefetchAfterQueueEdit(currentSong, playQueue, nextQueue, audioQuality, userId);
     };
 
     const removeQueueSong = (index: number) => {
@@ -76,12 +87,15 @@ export const createQueueMutations = ({
         const currentIndex = currentSongKey
             ? playQueue.findIndex(song => getPlaybackSongKey(song) === currentSongKey)
             : -1;
-        const targetIndex = Math.min(currentIndex + 1, playQueue.length - 1);
-        if (index < 0 || index >= playQueue.length || index === targetIndex || index === currentIndex) return;
-        const nextQueue = [...playQueue];
-        const [song] = nextQueue.splice(index, 1);
-        const adjustedTargetIndex = index < targetIndex ? targetIndex - 1 : targetIndex;
-        nextQueue.splice(adjustedTargetIndex, 0, song);
+        const nextQueue = moveQueueItemToNext(playQueue, index, currentIndex);
+        if (nextQueue === playQueue) return;
+        updateQueueOrder(nextQueue);
+    };
+
+    // 把 from 的那首移到 to（拖拽排序）；没变或越界时什么都不做。
+    const moveQueueSong = (from: number, to: number) => {
+        const nextQueue = moveQueueItem(playQueue, from, to);
+        if (nextQueue === playQueue) return;
         updateQueueOrder(nextQueue);
     };
 
@@ -119,5 +133,6 @@ export const createQueueMutations = ({
         removeQueueSong,
         moveQueueSongToEnd,
         moveQueueSongToNext,
+        moveQueueSong,
     };
 };

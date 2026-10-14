@@ -5,6 +5,7 @@ import { emptyCounters, makeFitter, type Strategy } from './lattice-performance/
 import { runWorkload, type Job, type Result, type Scenario } from './lattice-performance/run';
 import { Wall } from './lattice-performance/Wall';
 import type { ProbeDefinition } from './definition';
+import '../../src/components/wall/wall.css';
 import '../../src/components/app/lattice/Lattice.css';
 import './lattice-performance/probe.css';
 

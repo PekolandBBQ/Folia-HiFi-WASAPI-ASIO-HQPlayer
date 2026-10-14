@@ -16,6 +16,7 @@ const storedShortcut = (page: import('@playwright/test').Page) => page.evaluate(
 const openInteractionSettings = async (page: import('@playwright/test').Page) => {
     await page.addInitScript(([version, guideKey]) => {
         localStorage.clear();
+        localStorage.setItem('library_suite_prompt_seen', 'true');
         localStorage.setItem('i18nextLng', 'en');
         localStorage.setItem('static_mode', 'true');
         localStorage.setItem(guideKey, version);
@@ -103,6 +104,7 @@ test('clears the binding', async ({ page }) => {
 test('lands on the section a command names, not the top of its page', async ({ page }) => {
     await page.addInitScript(([version, guideKey]) => {
         localStorage.clear();
+        localStorage.setItem('library_suite_prompt_seen', 'true');
         localStorage.setItem('i18nextLng', 'en');
         localStorage.setItem('static_mode', 'true');
         localStorage.setItem(guideKey, version);

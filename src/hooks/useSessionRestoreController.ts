@@ -39,6 +39,10 @@ type UseSessionRestoreControllerParams = {
      * alone so the session comes back paused; the lab switch below is the only thing that arms it.
      */
     shouldAutoPlayRef: MutableRefObject<boolean>;
+    /** The playing song's key that recovery and failure handling gate on; restore commits to a song like playSong does. */
+    currentSongRef: MutableRefObject<string | number | null>;
+    /** Bumped with each commit of the current song (see usePlaybackRuntimeRefs). */
+    playbackGenerationRef: MutableRefObject<number>;
 };
 
 // Restores the main playback session without pushing more boot logic into App.tsx.
@@ -54,6 +58,8 @@ export function useSessionRestoreController({
     loadLocalPlaylists,
     canRestoreSession = true,
     shouldAutoPlayRef,
+    currentSongRef,
+    playbackGenerationRef,
 }: UseSessionRestoreControllerParams) {
     const audioQuality = useAudioSettingsStore(state => state.audioQuality);
 
@@ -148,6 +154,10 @@ export function useSessionRestoreController({
                 // Retire the old owner before arming this replacement's autoplay flag.
                 cancelPlaybackSourceRequest();
                 setCurrentSong(lastSong);
+                // Left unset, every "is this still the current song" check reads the restored song
+                // as already replaced, and its source refresh or failure message is dropped as stale.
+                currentSongRef.current = getPlaybackSongKey(lastSong);
+                playbackGenerationRef.current += 1;
                 setPlayQueue(lastQueue && lastQueue.length > 0 ? lastQueue : [lastSong]);
                 const restoredKey = getPlaybackSongKey(lastSong);
                 const isCurrent = () => {
@@ -166,7 +176,7 @@ export function useSessionRestoreController({
                 }
 
                 try {
-                    await restorePlaybackSourceForSong(lastSong, {
+                    const outcome = await restorePlaybackSourceForSong(lastSong, {
                         audioQuality,
                         userId,
                         blobUrlRef,
@@ -181,6 +191,12 @@ export function useSessionRestoreController({
                         signal: lifetime.signal,
                         onCancel: () => { shouldAutoPlayRef.current = false; },
                     });
+                    // A failed restore landed no source either, so the intent is withdrawn as below.
+                    // A stale one is left alone: the listener has already picked another song, and
+                    // the intent now belongs to that one.
+                    if (outcome === 'failed') {
+                        shouldAutoPlayRef.current = false;
+                    }
                 } catch (error) {
                     // No source ever landed, so the intent was never spent. Left standing it would
                     // fire on whatever the listener plays next, which they did not ask for.

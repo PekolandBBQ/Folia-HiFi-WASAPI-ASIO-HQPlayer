@@ -1134,7 +1134,7 @@ export interface FoliumWordColorRange {
 export interface FoliumLyricsHelpers {
     /** When the host stops showing the line: `renderHints.renderEndTime`. -Infinity for null. */
     getLineRenderEndTime(line: FoliumLine | null | undefined): number;
-    /** The user's saved split when valid, otherwise Intl.Segmenter word segmentation. */
+    /** The user's saved split when valid, otherwise Folia's default word segmentation (icu-folia: Intl.Segmenter with jieba for Chinese and BudouX for Japanese; plain Intl.Segmenter until it has loaded). */
     segmentWords(line: Pick<FoliumLine, 'fullText' | 'wordSegments'>): FoliumWordSegment[];
     /** With no active line (index -1): the last line already over, for subtitles in gaps. */
     getRecentCompletedLine(lines: readonly FoliumLine[], lineIndex: number, time: number): FoliumLine | null;

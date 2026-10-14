@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createRequire } from 'node:module';
 import { readFileSync } from 'node:fs';
 import { normalizeSpotifyPage, normalizeSpotifySong } from '@/services/onlineMusic/spotifyNormalize';
-import { mergeCollectionPage } from '@/components/folia-grid/onlineCollectionSync';
+import { mergeCollectionPage } from '@/library/core/services/onlineCollectionSync';
 
 // Independent review exercises real catalog, rights router, parser, transport and renderer page merge together.
 const require = createRequire(import.meta.url);

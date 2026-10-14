@@ -16,7 +16,7 @@ export interface LyricSegmentationRecord {
     source: LyricSegmentationSource;
     /**
      * Line key -> word boundaries for that line. Each boundary array joins back to the line's
-     * fullText exactly; a line whose key is absent keeps the default Intl.Segmenter split.
+     * fullText exactly; a line whose key is absent keeps the default split (icu-folia).
      */
     lines: Record<string, string[]>;
 }

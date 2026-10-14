@@ -1,19 +1,19 @@
 import React from 'react';
 
 // src/components/modal/playback-entry-view/playbackEntryViewArt.tsx
-// The two diagrams the entry-view prompt and the settings section share.
+// The diagrams the entry-view prompt and the settings section share (one per PlaybackEntryView).
 //
 // Inline SVG rather than an asset: both are a handful of rectangles, they have to pick up the
 // current theme's accent colour, and shipping them as files would put a network fetch in front of
 // a modal that opens exactly once.
 
-type ArtProps = {
+export type ArtProps = {
     /** The playing/selected element's colour; everything else is drawn in `currentColor`. */
     accentColor: string;
     className?: string;
 };
 
-const FRAME_PROPS = {
+export const FRAME_PROPS = {
     x: 1,
     y: 1,
     width: 158,
@@ -99,5 +99,48 @@ export const LatticeViewArt: React.FC<ArtProps> = ({ accentColor, className }) =
                 );
             })
         ))}
+    </svg>
+);
+
+const STAY_COLUMNS = 3;
+const STAY_ROWS = 2;
+const STAY_CARD_WIDTH = 38;
+const STAY_CARD_HEIGHT = 32;
+const STAY_GAP = 9;
+const STAY_PLAYING_INDEX = 1;
+
+/**
+ * Stay here (fb3): the library as it was when play was pressed — a few cards, one of them marked
+ * as playing with a pause glyph — and nothing opening on top of it.
+ */
+export const StayViewArt: React.FC<ArtProps> = ({ accentColor, className }) => (
+    <svg viewBox="0 0 160 100" className={className} role="presentation" aria-hidden="true">
+        <rect {...FRAME_PROPS} />
+        {Array.from({ length: STAY_ROWS * STAY_COLUMNS }).map((_, index) => {
+            const column = index % STAY_COLUMNS;
+            const row = Math.floor(index / STAY_COLUMNS);
+            const x = 14 + column * (STAY_CARD_WIDTH + STAY_GAP);
+            const y = 13 + row * (STAY_CARD_HEIGHT + STAY_GAP);
+            const isPlaying = index === STAY_PLAYING_INDEX;
+            return (
+                <g key={index}>
+                    <rect
+                        x={x}
+                        y={y}
+                        width={STAY_CARD_WIDTH}
+                        height={STAY_CARD_HEIGHT}
+                        rx="5"
+                        fill={isPlaying ? accentColor : 'currentColor'}
+                        fillOpacity={isPlaying ? 0.85 : 0.16}
+                    />
+                    {isPlaying && (
+                        <>
+                            <rect x={x + STAY_CARD_WIDTH - 14} y={y + STAY_CARD_HEIGHT - 13} width="3" height="8" rx="1.5" fill="currentColor" />
+                            <rect x={x + STAY_CARD_WIDTH - 9} y={y + STAY_CARD_HEIGHT - 13} width="3" height="8" rx="1.5" fill="currentColor" />
+                        </>
+                    )}
+                </g>
+            );
+        })}
     </svg>
 );

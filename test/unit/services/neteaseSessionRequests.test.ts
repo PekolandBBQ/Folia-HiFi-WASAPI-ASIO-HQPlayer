@@ -8,7 +8,7 @@ beforeEach(() => {
     vi.resetModules(); values = new Map([[key, 'old-session']]);
     vi.stubGlobal('localStorage', { getItem: (key: string) => values.get(key) ?? null, setItem: (key: string, value: string) => values.set(key, value), removeItem: (key: string) => values.delete(key) });
     vi.stubGlobal('window', { electron: { getNeteasePort: vi.fn(() => new Promise<number>(resolve => { releasePort = resolve; })) } });
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ status: 200, json: async () => ({ code: 200 }) }));
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ status: 200, text: async () => JSON.stringify({ code: 200 }) }));
 });
 afterEach(() => { vi.unstubAllGlobals(); });
 describe('NetEase captured request session', () => {

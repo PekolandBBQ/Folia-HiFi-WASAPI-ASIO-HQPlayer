@@ -3,8 +3,11 @@ import { fileURLToPath } from 'url';
 import { type ConfigEnv, type UserConfig, type ViteDevServer } from 'vite';
 import react from '@vitejs/plugin-react';
 import { commandPinyinPlugin } from './dev/pinyin/commandPinyinPlugin.mjs';
+import { icuFoliaDataPlugin } from './dev/icuFolia/icuFoliaDataPlugin.mjs';
+import { normalizeBuildCommit, resolveBuildKind, resolveBuildRepo } from './dev/build/buildIdentity.mjs';
 import { VitePWA } from 'vite-plugin-pwa';
 import { execSync } from 'child_process';
+import { createHash } from 'crypto';
 import fs from 'fs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -36,12 +39,7 @@ function isAllowedLyricProxyHost(hostname: string): boolean {
   return hostname === 'qq.com' || hostname.endsWith('.qq.com') ||
     hostname === 'y.gtimg.cn' ||
     hostname === 'kugou.com' || hostname.endsWith('.kugou.com') ||
-    hostname === 'kgimg.com' || hostname.endsWith('.kgimg.com') ||
-    hostname === 'amll-ttml-db.stevexmh.net';
-}
-
-function isAmllDbHost(hostname: string): boolean {
-  return hostname === 'amll-ttml-db.stevexmh.net';
+    hostname === 'kgimg.com' || hostname.endsWith('.kgimg.com');
 }
 
 function setLyricProxyCorsHeaders(res: import('http').ServerResponse): void {
@@ -113,11 +111,6 @@ function devLyricProxyPlugin() {
           });
 
           setLyricProxyCorsHeaders(res);
-          if (isAmllDbHost(targetUrl.hostname) && response.status === 404) {
-            res.statusCode = 204;
-            res.end();
-            return;
-          }
 
           res.statusCode = response.status;
           res.statusMessage = response.statusText;
@@ -187,9 +180,25 @@ export default async function viteConfig(_config: ConfigEnv): Promise<UserConfig
     throw new Error(`Could not resolve the commit name for ${commitHash}`);
   }
 
+  // 请求 AMLL 官方 API 时 UA 里的构建身份，见 dev/build/buildIdentity.mjs
+  const buildRepo = resolveBuildRepo(process.env, () => execSync('git remote get-url origin', { stdio: ['ignore', 'pipe', 'ignore'] }).toString());
+  const buildCommit = normalizeBuildCommit(commitHash);
+  // 官方 / 自部署 / 非官方：设置里的版本号、扫码诊断报告和反馈入口都会读它
+  const buildKind = resolveBuildKind(process.env);
+
   const appVersionLabel = process.env.APP_VERSION_LABEL?.trim() || 'Realeco';
   const appReleaseChannel = process.env.APP_RELEASE_CHANNEL?.trim().toLowerCase() || 'realeco';
   const dockerStackVersion = process.env.DOCKER_STACK_VERSION?.trim() || '';
+
+  // The /__folia_cover/ route (public/folia-cover-sw.js) runs inside the PWA worker instead of as a
+  // worker of its own: a scope holds one registration, so a second script at '/' replaced sw.js and
+  // left the precache with nothing to serve it offline. The query is the file's content hash: an edit
+  // to it alone still changes sw.js, and the new copy is not taken from the HTTP cache (imported
+  // scripts go through it under the default updateViaCache).
+  const localCoverWorkerImport = `folia-cover-sw.js?v=${createHash('sha256')
+    .update(fs.readFileSync(path.resolve(__dirname, 'public/folia-cover-sw.js')))
+    .digest('hex')
+    .slice(0, 12)}`;
 
   return {
     base: process.env.ELECTRON === 'true' ? './' : '/',
@@ -210,15 +219,28 @@ export default async function viteConfig(_config: ConfigEnv): Promise<UserConfig
           modExport: 'mod-export.html',
         },
         output: {
-          // three.js is a large dependency used only by the diorama 3D visualizer. Split it into its
-          // own chunk so it doesn't bloat the main bundle past the PWA precache size limit (each file
-          // must stay under workbox.maximumFileSizeToCacheInBytes to be cached for offline use).
-          manualChunks(id) {
-            return id.includes('/node_modules/three/') ? 'three' : undefined;
+          // Rolldown ignores manualChunks once codeSplitting is set, so every manual split lives here.
+          codeSplitting: {
+            groups: [
+              // three.js is a large dependency used only by the diorama 3D visualizer. Split it into its
+              // own chunk so it doesn't bloat the main bundle past the PWA precache size limit (each file
+              // must stay under workbox.maximumFileSizeToCacheInBytes to be cached for offline use).
+              { name: 'three', test: /[\\/]node_modules[\\/]three[\\/]/ },
+              // lucide's dynamicIconImports (folium.ui.icon, theme lyricsIcons) makes every icon a dynamic
+              // entry, so rolldown gives each icon a chunk of its own - the ones the app imports by name
+              // too, which turns them into ~200 single-file startup requests the precache leaves out.
+              // An icon referenced by more than its own loader is one the app imports: keep those in
+              // one ordinary chunk.
+              {
+                name: 'lucide-icons',
+                test: /[\\/]node_modules[\\/]lucide-react[\\/]dist[\\/]esm[\\/]icons[\\/]/,
+                minShareCount: 2,
+              },
+            ],
           },
-          // folium.ui.icon loads each lucide icon as its own chunk (~2000 of them). They live in one
-          // directory so the PWA precache can leave them out: only mods ask for them, and mods run in
-          // the desktop app, which does not go through the service worker.
+          // Icons only reachable through dynamicIconImports stay one chunk each (~1600 of them), loaded
+          // when a mod or a theme's lyricsIcons asks for that icon. They live in one directory so the
+          // PWA precache can leave them out; workbox.runtimeCaching keeps the ones that get used.
           chunkFileNames(chunk) {
             return chunk.moduleIds.some(id => id.includes('/node_modules/lucide-react/dist/esm/icons/'))
               && chunk.moduleIds.length === 1
@@ -243,6 +265,7 @@ export default async function viteConfig(_config: ConfigEnv): Promise<UserConfig
     plugins: [
       devLyricProxyPlugin(),
       commandPinyinPlugin(),
+      icuFoliaDataPlugin(),
       react(),
       VitePWA({
         registerType: 'autoUpdate',
@@ -252,10 +275,23 @@ export default async function viteConfig(_config: ConfigEnv): Promise<UserConfig
         },
         workbox: {
           maximumFileSizeToCacheInBytes: 5000000,
+          importScripts: [localCoverWorkerImport],
           // Docker serves this file dynamically; it must never be pinned in the PWA precache.
-          globIgnores: ['**/runtime-config.js', '**/assets/folium-icons/**'],
-          // API navigations must reach the deployment platform instead of the SPA shell.
-          navigateFallbackDenylist: [/^\/api(?:\/|$)/]
+          // The cover route is stored with the worker script itself, so precaching it is redundant.
+          globIgnores: ['**/runtime-config.js', '**/assets/folium-icons/**', '**/folia-cover-sw.js'],
+          runtimeCaching: [{
+            // Per-icon chunks load on demand. Their names are content-hashed, so an icon cached on
+            // first use can be served as-is when the app later starts offline.
+            urlPattern: /\/assets\/folium-icons\/[^/]+\.js$/,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'folia-lucide-icons',
+              expiration: { maxEntries: 400 },
+            },
+          }],
+          // API navigations must reach the deployment platform instead of the SPA shell. Opening a
+          // local cover in its own tab is a navigation too, and the cover route already answers it.
+          navigateFallbackDenylist: [/^\/api(?:\/|$)/, /^\/__folia_cover\//]
         },
         manifest: {
           name: 'Folia Music',
@@ -278,6 +314,10 @@ export default async function viteConfig(_config: ConfigEnv): Promise<UserConfig
     define: {
       '__COMMIT_HASH__': JSON.stringify(commitHash + commitSuffix),
       '__GIT_BRANCH__': JSON.stringify(gitBranch),
+      '__BUILD_REPO__': JSON.stringify(buildRepo),
+      '__BUILD_COMMIT__': JSON.stringify(buildCommit),
+      '__BUILD_KIND__': JSON.stringify(buildKind.kind),
+      '__BUILD_HOST__': JSON.stringify(buildKind.host ?? ''),
       '__APP_VERSION__': JSON.stringify(JSON.parse(fs.readFileSync(path.resolve(__dirname, 'package.json'), 'utf-8')).version),
       '__APP_VERSION_LABEL__': JSON.stringify(appVersionLabel),
       '__APP_RELEASE_CHANNEL__': JSON.stringify(appReleaseChannel),
