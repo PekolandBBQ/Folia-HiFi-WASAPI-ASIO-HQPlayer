@@ -34,7 +34,9 @@ export function SpotifyConnectionDialog({ connection, daylight, portalTheme }: S
         dialogRef.current?.focus();
         return () => { if (previous?.isConnected) previous.focus(); };
     }, []);
-    return <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}
+    // Keep the completion owner alive while exposing the provider controller's confirmation underneath.
+    return <motion.div initial={{ opacity: 0 }} animate={{ opacity: connection.finishing ? 0 : 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}
+        inert={connection.finishing} aria-hidden={connection.finishing || undefined}
         ref={dialogRef} tabIndex={-1} role="dialog" aria-modal="true" aria-label={t('home.loginTitleSpotify')} data-folia-keyboard-window="true"
         onKeyDown={event => {
             if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); connection.close(); }
@@ -45,7 +47,7 @@ export function SpotifyConnectionDialog({ connection, daylight, portalTheme }: S
                 else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
             }
         }}
-        className={`spotify-connection-overlay ${daylight ? 'bg-black/25' : 'bg-black/60'}`} style={portalTheme}>
+        className={`spotify-connection-overlay ${daylight ? 'bg-black/25' : 'bg-black/60'}`} style={{ ...portalTheme, pointerEvents: connection.finishing ? 'none' : undefined }}>
         <motion.div initial={{ scale: 0.96, opacity: 0, y: 16 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }}
             className={`spotify-connection-panel relative w-full max-w-lg rounded-3xl ${PLAYER_PROGRESS_FRAME_CLASS} ${playerProgressGlass(daylight, true)}`}
             style={{ color: 'var(--text-primary)', colorScheme: daylight ? 'light' : 'dark' }}>

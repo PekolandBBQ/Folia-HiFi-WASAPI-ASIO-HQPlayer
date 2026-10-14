@@ -3413,7 +3413,9 @@ hifi0_7_12r2: {
       }
     },
     "v0_7_19": {
-      "intro": "0.7.19 把 Bravais 的歌手页和专辑页做成了凝彩风格的海报；在线播放失败时会说明真正的原因，不再一律报「已下架」；凝彩等按词排版的模式对中文、日文的分词更自然；网页版断网也能正常启动。",
+      "intro": "Folia HiFi 同步上游 0.7.19，保留 Spotify Wrapper、WASAPI/ASIO、HQPlayer 与整数 PCM。本次修复首次 Spicetify 配置遗漏，并在安装前核对最新已验证组件与已有文件。",
+      "spotifySetup": {"title":"Spotify 首次配置修复","description":"自动处理 Store 版备份确认，准备预处理所需程序和 snapshot，并使用正确的 Store AppX 或桌面版 Apps 目录。已有配置和备份保留，已完成配置不重跑备份。"},
+      "spotifyComponents": {"title":"组件版本与完整性检查","description":"每次安装前联网核对 Folia 最新已验证组件组合。已有组件逐文件校验，完整且同版才复用；VB-CABLE 检查驱动版本，同版不重复安装。"},
       "artistPoster": {
         "title": "歌手页变成海报",
         "description": "Bravais 歌手页的完整信息条画成一张凝彩风格的海报，钉在墙的左边：构图按歌手固定，配色取自这位歌手最热门的三张专辑；名字按宽度自动缩放，不会溢出。右边的专辑墙随之倾斜，倾斜着也能照常拖动和滚动。"

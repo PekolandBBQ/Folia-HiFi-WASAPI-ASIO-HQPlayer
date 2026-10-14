@@ -135,3 +135,45 @@ test('an unreadable account does not delete its saved grant', async ({ page, mou
     await expect(page.getByTestId('account-state')).toHaveText('anonymous');
     expect(await page.evaluate(() => (window as any).spotifyLogoutCalls)).toBe(0);
 });
+
+test('an installed CLI still needs configuration and an old driver blocks configuration', async ({ page, mount }) => {
+    await page.addInitScript(() => (window as any).spotifyConnectionProbe.patch({
+        cli: true, driver: true, driverCurrent: false, driverEndpointsReady: true, engine: true,
+    }));
+    await mount('spotifyAccount');
+    await page.getByRole('button', { name: 'Connect Spotify', exact: true }).click();
+    await expect(page.getByText('Spicetify：已安装，待配置')).toBeVisible();
+    await expect(page.getByText('VB-CABLE：版本需更新，请完成一键安装')).toBeVisible();
+    await expect(page.getByRole('button', { name: '② 一键配置', exact: true })).toBeDisabled();
+});
+
+test('an unavailable latest component manifest offers retry and does not claim latest', async ({ page, mount }) => {
+    await page.addInitScript(() => (window as any).spotifyConnectionProbe.patch({
+        install: { phase: 'failed', code: 'SPOTIFY_COMPONENT_UPDATE_CHECK_FAILED', busy: false },
+    }));
+    await mount('spotifyAccount');
+    await page.getByRole('button', { name: 'Connect Spotify', exact: true }).click();
+    await expect(page.getByText('无法核对最新组件清单，请联网后重试安装。')).toBeVisible();
+    await expect(page.getByRole('button', { name: '① 一键安装', exact: true })).toBeEnabled();
+});
+
+for (const accept of [true, false]) test(`completing setup exposes the provider confirmation (${accept ? 'confirm' : 'cancel'})`, async ({ page, mount }) => {
+    await page.addInitScript(() => {
+        localStorage.setItem('active_online_provider_id', 'netease');
+        (window as any).spotifyConnectionProbe.authenticate();
+        (window as any).spotifyConnectionProbe.patch({ cli: true, driver: true, driverEndpointsReady: true, engine: true,
+            wrapper: true, extension: true, ready: true, connected: true, running: true });
+    });
+    await mount('spotifyAccount');
+    await page.getByRole('button', { name: 'Connect Spotify', exact: true }).click();
+    await page.getByRole('button', { name: '完成并返回歌单', exact: true }).click();
+    await page.getByRole('button', { name: accept ? 'Confirm provider switch' : 'Cancel provider switch', exact: true }).click();
+    if (accept) {
+        await expect(page.getByRole('dialog')).toHaveCount(0);
+        await expect(page.getByText('My Spotify playlist')).toBeVisible();
+    } else {
+        await expect(page.getByRole('button', { name: '完成并返回歌单', exact: true })).toBeVisible();
+        await expect(page.getByRole('button', { name: '① 一键安装', exact: true })).toBeEnabled();
+        expect(await page.evaluate(() => localStorage.getItem('active_online_provider_id'))).toBe('netease');
+    }
+});

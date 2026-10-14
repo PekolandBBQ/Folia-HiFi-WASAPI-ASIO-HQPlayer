@@ -4,11 +4,13 @@ export type DesktopSetupStatus = {
     detectionFailed: boolean; running: boolean; connected: boolean; cli: boolean; wrapper: boolean;
     extension: boolean; driver: boolean; driverEndpointsReady: boolean; engine: boolean; ready: boolean; bundleVersion: string;
     versions: { spicetify: string; cable: string };
+    driverCurrent?: boolean;
+    updateCheck?: { checkedAt: number; release: string; publishedVersion: string };
     systemOutput?: { state: 'ready' | 'cable' | 'unknown'; names: string[] };
     install: { phase: string; busy: boolean; code?: string; operation?: string; restartRequired?: boolean };
 };
 export const installPhase: Record<string, string> = {
-    idle: '先安装组件，再完成配置。', checking: '正在检查已有组件…', engine: '正在准备采集与路由组件…',
+    idle: '先安装组件，再完成配置。', 'checking-updates': '正在核对最新已验证组件包…', checking: '正在检查组件版本与完整性…', engine: '正在准备采集与路由组件…',
     spicetify: '正在下载并准备 Spicetify…', driver: '请完成 VB-CABLE 管理员授权及安装窗口。',
     installed: '组件已准备，请点击“一键配置”。', configuring: '正在配置 Spotify 桥接与采集设备…',
     created: '正在准备独立配置目录…', copied: '正在处理 Spotify 资源副本…',
@@ -30,4 +32,10 @@ export const installError: Record<string, string> = {
     SPOTIFY_APPLY_REVIEW_REQUIRED: '组件配置在中途停止。原进度已保留，不会自动重复修改。',
     SPOTIFY_CONFIGURATION_REVIEW_REQUIRED: '检测到未完成的资源目录，已保留现场，请保留回报供排查。',
     SPOTIFY_CONFIGURE_CLI_FAILED: 'Spicetify 配置未完成；原进度已保存。',
+    SPOTIFY_CONFIGURE_CLI_TIMEOUT: 'Spicetify 配置等待超时；原进度和错误记录已保存。',
+    SPOTIFY_ASSET_BINARY_MISSING: 'Spotify 安装缺少配置所需的程序文件，请检查所选安装版本。',
+    SPOTIFY_COMPONENT_UPDATE_CHECK_FAILED: '无法核对最新组件清单，请联网后重试安装。',
+    SPOTIFY_COMPONENT_MANIFEST_INVALID: '最新组件清单无法读取，请稍后重试。',
+    SPOTIFY_COMPONENT_APP_UPDATE_REQUIRED: '最新组件需要更新 Folia，请先更新 Folia 再安装组件。',
+    SPOTIFY_DRIVER_VERSION_CHECK_FAILED: '无法确认 VB-CABLE 驱动版本，请重新检查。',
 };

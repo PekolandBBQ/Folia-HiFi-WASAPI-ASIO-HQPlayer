@@ -1,16 +1,16 @@
 <!-- docs/exclusive/USAGE.md -->
 # Folia-HiFi-WASAPI-ASIO-HQPlayer-Spotify 使用说明
 
-这是我维护的 Windows x64 正式专版，名称为 **Folia-HiFi-WASAPI-ASIO-HQPlayer-Spotify**，当前应用版本 **0.7.12**、专版修订 **r4**。它基于 Folia v0.7.12，保留原项目的许可证和署名。
+这是我维护的 Windows x64 正式专版，名称为 **Folia-HiFi-WASAPI-ASIO-HQPlayer-Spotify**，当前应用版本 **0.7.19**、专版修订 **r1**。它基于 Folia v0.7.19，保留原项目的许可证和署名。
 
 ## 安装与更新
 
-从 [0.7.12 r4 正式版](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/releases/tag/folia-hifi-v0.7.12-r4) 选择一种安装方式：
+从 [0.7.19 r1 正式版](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/releases/tag/folia-hifi-v0.7.19-r1) 选择一种安装方式：
 
 | 方式 | 下载与使用 |
 | --- | --- |
-| **EXE 安装版（推荐）** | 下载 [Folia-HiFi-WASAPI-ASIO-HQPlayer-0.7.12-win-x64-Setup.exe](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/releases/download/folia-hifi-v0.7.12-r4/Folia-HiFi-WASAPI-ASIO-HQPlayer-0.7.12-win-x64-Setup.exe)，运行安装向导并选择目录；安装后从开始菜单启动。仅为当前用户安装，提供 Windows“已安装的应用”卸载入口。 |
-| **ZIP 免安装版** | 下载 [Folia-HiFi-WASAPI-ASIO-HQPlayer-0.7.12-win-x64.zip](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/releases/download/folia-hifi-v0.7.12-r4/Folia-HiFi-WASAPI-ASIO-HQPlayer-0.7.12-win-x64.zip)，完整解压到可写目录，运行 `Folia-HiFi-WASAPI-ASIO-HQPlayer.exe`。不要在压缩包内直接运行，也不要单独移动 EXE。 |
+| **EXE 安装版（推荐）** | 下载 [Folia-HiFi-WASAPI-ASIO-HQPlayer-0.7.19-win-x64-Setup.exe](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/releases/download/folia-hifi-v0.7.19-r1/Folia-HiFi-WASAPI-ASIO-HQPlayer-0.7.19-win-x64-Setup.exe)，运行安装向导并选择目录；安装后从开始菜单启动。仅为当前用户安装，提供 Windows“已安装的应用”卸载入口。 |
+| **ZIP 免安装版** | 下载 [Folia-HiFi-WASAPI-ASIO-HQPlayer-0.7.19-win-x64.zip](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/releases/download/folia-hifi-v0.7.19-r1/Folia-HiFi-WASAPI-ASIO-HQPlayer-0.7.19-win-x64.zip)，完整解压到可写目录，运行 `Folia-HiFi-WASAPI-ASIO-HQPlayer.exe`。不要在压缩包内直接运行，也不要单独移动 EXE。 |
 
 两种方式包含相同程序、WASAPI/ASIO 组件 0.1.3-preview.2、独立 HQPlayer 组件 0.1.4-preview.5 和支持 PCM24/PCM32 的 FFmpeg，无需安装 Node 或 .NET SDK。ASIO 需要另行安装厂商的 x64 驱动，HQPlayer 需另行安装并授权。
 
@@ -22,17 +22,17 @@
 
 ## Spotify 首次使用与播放
 
-r4 支持在 Windows 10（1803 或更新）/ Windows 11 x64 上自动识别应用音频路由接口，不再要求内核构建号 28000。用户不需要安装 .NET SDK、Node、Visual Studio 或自行构建；下载安装 Folia 后按同一组件向导完成安装与配置即可。接口不存在时会显示明确说明，播放时继续核验 Spotify 的实际路由。官网桌面版与 Microsoft Store 版均有安装检测；本机实播为 Store 版。其他系统的完整实播结果仍待取得。
+本版支持在 Windows 10（1803 或更新）/ Windows 11 x64 上自动识别应用音频路由接口，不再要求内核构建号 28000。用户不需要安装 .NET SDK、Node、Visual Studio 或自行构建；下载安装 Folia 后按同一组件向导完成安装与配置即可。接口不存在时会显示明确说明，播放时继续核验 Spotify 的实际路由。官网桌面版与 Microsoft Store 版均有安装检测；本机实播为 Store 版。其他系统的完整实播结果仍待取得。
 
 1. 自行安装 Spotify，打开并登录账号。未安装时 Folia 只提示自行安装并提供下载入口。
 2. Folia 首页点击“连接 Spotify”。检测到两种安装时，明确选择要连接的版本。
-3. 点击“① 一键安装”，按提示完成 VB-CABLE 管理员授权和驱动安装。Spicetify、VB-CABLE、桥接与路由组件由一个固定版本组件组合管理；已有组件继续复用。
+3. 点击“① 一键安装”，按提示完成 VB-CABLE 管理员授权和驱动安装。Spicetify、VB-CABLE、桥接与路由组件由 Folia 最新已验证组件组合管理。每次安装前联网核对 Release 清单并校验已有包的所有文件，版本一致且完整才复用；旧版或损坏的组件目录保留后升级。清单读取失败会提示联网重试，不把“存在”当成“最新”。VB-CABLE 检查实际驱动版本，同版不重复安装。
 4. 首次安装/重装 VB-CABLE 后重启 Windows，返回向导“重新检查”，确认驱动和完整输入输出设备对就绪。不要反复安装。Windows 默认输出必须是实际扬声器或 DAC，不能是 CABLE Input / CABLE In 16ch；向导可打开系统声音设置。
-5. 按提示正常退出 Spotify，再点击“② 一键配置”。有已有配置和备份时继续原进度；中断的 backup/apply 会保留现场并提示处理，不能靠重复覆盖备份恢复。
+5. 按提示正常退出 Spotify，再点击“② 一键配置”。已有完整配置继续复用；r4 中断的 backup/apply 及其备份保留，本版使用新的私有资源目录完成首次配置，不重复覆盖旧备份。新流程也会保留中断现场。
 6. “启动并连接 Spotify”，就绪后点击“完成并返回歌单”。随后在 Folia 打开 Spotify 歌单并点歌；Spotify 未运行时可后台拉起，左下角显示启动准备。
 7. 选择 WASAPI、ASIO 或 HQPlayer 输出后直接播放。Spotify 与其他音源使用同一输出选择；整数模式是 WASAPI/ASIO 的 PCM 处理选项，HQPlayer 的 DAC 和 DSP 仍在 Desktop 中配置。Spotify PCM 预缓冲在原生音频设置中统一调整，WASAPI、ASIO 和 HQPlayer 共用。
 
-组件组合：Spicetify **2.45.3**、VB-CABLE **Pack45 / 3.3.1.7**、路由 **0.19.0-dev.26**、采集 **0.1.5-capture.9**、统一组件包 **0.1.0-preview.3**。主程序正式修订与内部组件版本各自标记；正式发布不改写组件验证事实。
+组件组合：Spicetify **2.45.3**、VB-CABLE **Pack45 / 3.3.1.7**、路由 **0.19.0-dev.26**、采集 **0.1.5-capture.9**、统一组件包 **0.1.0-preview.4**。主程序正式修订与内部组件版本各自标记；正式发布不改写组件验证事实。
 
 ### 桌面换歌、跨音源与退出
 

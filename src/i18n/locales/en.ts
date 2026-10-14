@@ -3414,7 +3414,9 @@ hifi0_7_12r2: {
       }
     },
     "v0_7_19": {
-      "intro": "0.7.19 turns the artist and album pages in Bravais into Tempera-style posters. When an online song fails to play, Folia now tells you the real reason instead of always saying it was removed; word-by-word visualizers such as Tempera split Chinese and Japanese lyrics more naturally; and the web version starts up offline again.",
+      "intro": "Folia HiFi integrates upstream 0.7.19 while retaining Spotify Wrapper, WASAPI/ASIO, HQPlayer and integer PCM. This revision fixes first-time Spicetify setup and checks the latest Folia-validated component bundle and existing files before installation.",
+      "spotifySetup": {"title":"First-time Spotify setup fixed","description":"Handle the Store backup confirmation, prepare the required binaries and snapshots, and use the proper Store AppX or desktop Apps directory. Existing configurations and backups are preserved; completed setup does not repeat backup."},
+      "spotifyComponents": {"title":"Component version and integrity checks","description":"Check the latest Folia-validated component bundle online before each installation. Reuse matching packages only after all files pass integrity checks. Check the actual VB-CABLE driver version without reinstalling the same version."},
       "artistPoster": {
         "title": "Artist Pages Become Posters",
         "description": "The full info strip on a Bravais artist page is now drawn as a Tempera-style poster pinned to the left of the wall. Its layout is fixed per artist, its colours come from the artist's three most popular albums, and the name scales to fit instead of overflowing. The album wall to the right tilts to meet it, and you can still drag and scroll while it is tilted."
