@@ -8,6 +8,7 @@ import { CustomSelect } from '../../shared/CustomSelect';
 import SettingsSectionHeading from './navigation/SettingsSectionHeading';
 import { SettingsAnchor } from './navigation/SettingsAnchorContext';
 import SpotifyPlaybackSetup from './SpotifyPlaybackSetup';
+import SpotifyDesktopSetup from '../../app/home/SpotifyDesktopSetup';
 
 // Public OAuth settings use Omni and the existing settings surfaces; no credential is editable here.
 export default function SpotifySettingsSection({ settingsCardClass }: { settingsCardClass: string }) {
@@ -31,6 +32,14 @@ export default function SpotifySettingsSection({ settingsCardClass }: { settings
         finally { setBusy(false); }
     };
     const disabled = busy || value?.readOnly;
+    if (value?.playbackMode === 'wrapper') return <SettingsAnchor anchorId="spotifyConnection" label={t('spotifySettings.title')}>
+        <SettingsSectionHeading icon={Music2} label={t('spotifySettings.title')} />
+        <div className={`p-4 rounded-xl border space-y-4 ${settingsCardClass}`}>
+            <p className="text-xs leading-relaxed">Spotify 通过本机 Wrapper 连接。设备由 Folia 自动识别，播放时准备路由和采集；无需填写 Client ID 或手动确认采样率。</p>
+            <SpotifyDesktopSetup showCompletion={false} onMode={() => {}} onReady={() => setMessage('组件配置与连接已完成。实际音频输出将在播放时确认。')} />
+            {message && <p role="status" className="text-xs">{message}</p>}
+        </div>
+    </SettingsAnchor>;
     return <SettingsAnchor anchorId="spotifyConnection" label={t('spotifySettings.title')}>
         <SettingsSectionHeading icon={Music2} label={t('spotifySettings.title')} />
         <div className={`p-4 rounded-xl border space-y-4 ${settingsCardClass}`}>

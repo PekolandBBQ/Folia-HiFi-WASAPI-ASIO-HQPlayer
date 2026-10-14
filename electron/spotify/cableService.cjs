@@ -161,7 +161,7 @@ function createCableSpotifyService({ directory, safeStorage, fetcher, renderQr, 
   });
 }
 function registerCableSpotify({ app, ipcMain, isTrustedSender, createService = createCableSpotifyService,
-  platform = process.platform, beforeLeaveProvider = async () => {}, electron = require('electron') }) {
+  connectionMode = 'oauth', platform = process.platform, beforeLeaveProvider = async () => {}, electron = require('electron') }) {
   let runtime, closing = false, quitAllowed = false, epoch = 0, sourceRevision = 0, mutations = Promise.resolve();
   const { safeStorage, net, shell } = electron;
   const directory = process.env.FOLIA_SPOTIFY_PREVIEW === '1' && process.env.FOLIA_SPOTIFY_PREVIEW_DIRECTORY
@@ -169,7 +169,7 @@ function registerCableSpotify({ app, ipcMain, isTrustedSender, createService = c
   const componentDirectory = nativeComponentPath('spotify-cable');
   function acquire() {
     if (runtime) return runtime;
-    runtime = createSpotifyRuntime({ directory, createService: settings => createService({ directory, safeStorage, ...settings,
+    runtime = createSpotifyRuntime({ directory, connectionMode, createService: settings => createService({ directory, safeStorage, ...settings,
       platform, beforeLeaveProvider, helperPath: path.join(componentDirectory, 'folia-capture.exe'), driverDirectory: path.join(componentDirectory, 'vendor'),
       openAuthorization: url => shell.openExternal(url), openPath: file => shell.openPath(file),
       onRevoke: () => app.emit('session-bound-audio-revoked', { providerId: 'spotify' }),
@@ -183,9 +183,16 @@ function registerCableSpotify({ app, ipcMain, isTrustedSender, createService = c
     const task = mutations.then(async () => { if (closing) throw spotifyError('unavailable', 'runtime-closed'); epoch++; return operation(); });
     mutations = task.catch(() => {}); return task;
   }
-  const publicFailure = error => ({ spotifyError: { code: spotifyError(error?.code || 'unavailable').code,
+  const publicFailure = (error, operation) => {
+    const details = require('./failureDetails.cjs').failureDetails(error, operation);
+    try {
+      const logs = path.join(directory, 'diagnostics'); require('node:fs').mkdirSync(logs, { recursive: true });
+      require('node:fs').appendFileSync(path.join(logs, new Date().toISOString().slice(0,10) + '.jsonl'), JSON.stringify({ at: Date.now(), operation, ...details }) + '\n');
+    } catch { /* Logging never blocks recovery. */ }
+    return { spotifyError: {
+    ...require('./failureDetails.cjs').failureDetails(error, operation), code: spotifyError(error?.code || 'unavailable').code,
     ...(error?.code === 'DESKTOP_SOURCE_UNQUALIFIED' ? { sourceCode: 'DESKTOP_SOURCE_UNQUALIFIED' } : {}),
-    message: /^ROUTE_/.test(error?.code || '') ? 'Spotify: automatic-route-restore-unconfirmed' : /^Spotify: [a-z0-9-]+$/.test(error?.message || '') ? error.message : 'Spotify: cable-operation-failed' } });
+    message: /^ROUTE_/.test(error?.code || '') ? 'Spotify: automatic-route-restore-unconfirmed' : /^Spotify: [a-z0-9-]+$/.test(error?.message || '') ? error.message : 'Spotify: cable-operation-failed' } }; };
   ipcMain.handle('spotify:request', async (event, input) => {
     if (closing || !isTrustedSender(event.sender)) return publicFailure(spotifyError('unavailable', 'untrusted-sender'));
     try {
@@ -212,14 +219,14 @@ function registerCableSpotify({ app, ipcMain, isTrustedSender, createService = c
         await barrier(); const expected = epoch, value = await perform();
         if (closing || expected !== epoch) throw spotifyError('unavailable', 'request-cancelled'); return value;
       });
-    } catch (error) { return publicFailure(error); }
+    } catch (error) { if (input?.action === 'audio' || !input?.action) require('./playbackHealth.cjs').failed(error, input?.action || 'browser-pcm'); return publicFailure(error, input?.action || 'browser-pcm'); }
   });
   ipcMain.handle('spotify:browser-pcm', async (event, input) => {
     if (closing || !runtime || !isTrustedSender(event.sender)) return publicFailure(spotifyError('unavailable', 'untrusted-sender'));
     try {
       await barrier(); const expected = epoch, value = await runtime.requestBrowserPcm(input);
       if (closing || expected !== epoch) throw spotifyError('unavailable', 'request-cancelled'); return value;
-    } catch (error) { return publicFailure(error); }
+    } catch (error) { require('./playbackHealth.cjs').failed(error, 'browser-pcm'); return publicFailure(error, 'browser-pcm'); }
   });
   app.on('before-quit', event => {
     if (quitAllowed || !runtime && !closing) return;
@@ -233,12 +240,13 @@ function registerCableSpotify({ app, ipcMain, isTrustedSender, createService = c
       closing = false;
       app.emit('spotify-route-cleanup-failed', { code: error?.code === 'ROUTE_HELPER_EXIT_UNCONFIRMED'
         ? 'ROUTE_HELPER_EXIT_UNCONFIRMED' : 'ROUTE_RESTORE_UNCONFIRMED' });
-      void electron.dialog?.showMessageBox({ type: 'error', title: 'Spotify route recovery required',
-        message: 'Folia could not confirm that Spotify is safely paused and its original output route is restored.',
+      const failure = publicFailure(error, 'exit-restore').spotifyError;
+      void electron.dialog?.showMessageBox({ type: 'error', title: 'Spotify 路由恢复未完成',
+        message: failure.detail || '未能确认 Spotify 原输出路由已恢复。',
         detail: isRetryableRouteCleanup(error)
-          ? 'Folia kept the exact route recovery pending. Let the current Spotify request settle, then try Quit again.'
-          : 'Folia will stay open because route restoration is still unconfirmed. Keep the recovery records for review.',
-        buttons: ['Keep Folia open'], noLink: true }).catch(() => {});
+          ? '原路由恢复任务已保留。当前 Spotify 请求结束后，可以再次退出以重试恢复。'
+          : '原路由恢复尚未确认，Folia 暂时保留窗口和恢复记录。',
+        buttons: ['保留 Folia'], noLink: true }).catch(() => {});
     });
   });
   return {

@@ -862,7 +862,7 @@ export default {
       }
     },
     "commands": {
-      "settings-spotify": { "title": "Spotify 连接", "description": "配置自有应用和回调地址" },
+      "settings-spotify": { "title": "Spotify 连接", "description": "管理 Spotify 连接和本机播放组件" },
       "spotify-playback-start": {"title": "连接 Spotify 音频线", "description": "验证已保存的桌面端与 44.1 kHz 音频路由"},
       "spotify-cable-probe": {"title": "检查 Spotify 音频路由", "description": "检查所选音频线端点和实际音频格式"},
       "spotify-playback-stop": {"title": "停止 Spotify 音频线", "description": "停止当前采集连接或取消验证"},

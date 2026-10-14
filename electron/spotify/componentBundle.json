@@ -1,6 +1,7 @@
 {
   "schema": 1,
   "version": "0.1.0-preview.4",
+  "revision": 1,
   "platform": "win32-x64",
   "spicetify": {
     "version": "2.45.3",
@@ -20,7 +21,7 @@
   "route": {
     "version": "0.19.0-dev.26",
     "pairedCaptureRequired": true,
-    "sha256": "df6186b4554bf9b331115ef57e08ec49e6eed5dfb4d0820f5af6435032375ae4"
+    "sha256": "a50b7da549cd1d3d1c9836091e2abe11f49961cc8007be27a1c2cda3e65e083a"
   },
   "capture": {
     "version": "0.1.5-capture.9",

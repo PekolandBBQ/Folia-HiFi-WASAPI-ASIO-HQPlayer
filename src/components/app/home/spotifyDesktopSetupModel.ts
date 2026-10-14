@@ -1,5 +1,6 @@
 // First-use component progress contains no account, filesystem or raw exception data.
 export type DesktopSetupStatus = {
+    issues?: { detail?: string; stage?: string; nativeCode?: string }[]; playback?: { state: 'untested' | 'prepared' | 'failed'; detail?: string };
     enabled: boolean; installations: { id: string; layout: string; version: string }[]; selected?: string;
     detectionFailed: boolean; running: boolean; connected: boolean; cli: boolean; wrapper: boolean;
     extension: boolean; driver: boolean; driverEndpointsReady: boolean; engine: boolean; ready: boolean; bundleVersion: string;
@@ -7,7 +8,7 @@ export type DesktopSetupStatus = {
     driverCurrent?: boolean;
     updateCheck?: { checkedAt: number; release: string; publishedVersion: string };
     systemOutput?: { state: 'ready' | 'cable' | 'unknown'; names: string[] };
-    install: { phase: string; busy: boolean; code?: string; operation?: string; restartRequired?: boolean };
+    install: { phase: string; busy: boolean; code?: string; detail?: string; operation?: string; restartRequired?: boolean };
 };
 export const installPhase: Record<string, string> = {
     idle: '先安装组件，再完成配置。', 'checking-updates': '正在核对最新已验证组件包…', checking: '正在检查组件版本与完整性…', engine: '正在准备采集与路由组件…',
@@ -16,7 +17,8 @@ export const installPhase: Record<string, string> = {
     created: '正在准备独立配置目录…', copied: '正在处理 Spotify 资源副本…',
     'backup-started': '正在为首次配置建立独立备份…', 'backup-complete': '独立备份已完成…',
     'apply-started': '正在将桥接应用到独立资源副本…', applied: '正在检查资源引用…', configured: '正在检查采集设备…',
-    complete: '配置已完成，可以启动并连接 Spotify。', interrupted: '上次操作中断，请继续原来的安装或配置步骤。',
+    stopping: '正在结束采集、恢复原输出并退出 Spotify…', connecting: '配置已写入，正在自动启动 Spotify 并确认桥接连接…',
+    complete: '配置已保存；当前连接状态见上方“本机桥接”。', interrupted: '上次操作中断，请继续原来的安装或配置步骤。',
     'restart-required': 'VB-CABLE 安装步骤已完成，请重启 Windows。回来后点击“重新检查”，无需重复安装。',
     'verification-required': '已完成重启，但尚未检测到完整的 VB-CABLE 输入输出设备对。请重新检查或检查驱动安装。',
 };

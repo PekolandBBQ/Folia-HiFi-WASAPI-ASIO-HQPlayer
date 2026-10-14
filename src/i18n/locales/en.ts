@@ -862,7 +862,7 @@ export default {
       }
     },
     "commands": {
-      "settings-spotify": { "title": "Spotify connection", "description": "Configure your application and callback address" },
+      "settings-spotify": { "title": "Spotify connection", "description": "Manage Spotify connection and local playback components" },
       "spotify-playback-start": {"title": "Connect Spotify audio cable", "description": "Verify the saved desktop and 44.1 kHz cable route"},
       "spotify-cable-probe": {"title": "Check Spotify audio route", "description": "Inspect the selected cable endpoints and actual audio format"},
       "spotify-playback-stop": {"title": "Stop Spotify audio cable", "description": "Stop the current capture connection or cancel verification"},

@@ -23,3 +23,8 @@ it('keeps unknown provider details out of the renderer message', () => {
     expect(status.persistent).toBeUndefined();
     expect(status.text).not.toContain('private');
 });
+
+it('keeps structured Spotify component reasons visible on the playback page', () => {
+ const error = new OnlineProviderError('unavailable', 'Spotify: cable-preparation-failed', 'spotify', undefined, undefined, undefined, { userMessage: '采集程序无法启动 [CAPTURE_HELPER_UNAVAILABLE]', nativeCode: 'CAPTURE_HELPER_UNAVAILABLE' });
+ expect(createOnlinePlaybackFailureStatus(error, translate).text).toBe('采集程序无法启动 [CAPTURE_HELPER_UNAVAILABLE]');
+});

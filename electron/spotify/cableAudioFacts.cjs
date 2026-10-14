@@ -33,7 +33,7 @@ const CONTROL_CODES = new Set(['AUTH_REQUIRED', 'SCOPES_UNKNOWN', 'SCOPE_REQUIRE
   'BOOTSTRAP_VOLUME_UNAVAILABLE', 'BOOTSTRAP_VOLUME_UNCONFIRMED', 'BOOTSTRAP_VOLUME_RECOVERY_REQUIRED', 'BOOTSTRAP_IDENTITY_UNCONFIRMED']);
 const diagnosticCode = error => error?.code === 'setup-required' || CONTROL_CODES.has(error?.code) || ROUTE_CODES.has(error?.code)
   ? error.code : captureFailure(error?.code).code;
-function publicError(error) {
+function mappedError(error) {
   const code = error?.code;
   if (code === 'HELPER_RESTART_REQUIRED') return Object.assign(spotifyError('unavailable', 'cable-capture-restart-required'), { nativeCode: code });
   if (code === 'FORMAT_LEASE_READBACK_MISMATCH') return Object.assign(spotifyError('setup-required', 'cable-format-changed'), { nativeCode: code });
@@ -86,5 +86,11 @@ function publicError(error) {
   if (code === 'CAPTURE_OVERFLOW') return spotifyError('unavailable', 'cable-capture-overflow');
   if (['PLAYBACK_STATE_UNCONFIRMED', 'SEEK_UNCONFIRMED', 'CONTROL_REJECTED'].includes(code)) return spotifyError('unavailable', 'cable-playback-unconfirmed');
   return spotifyError('unavailable', 'cable-preparation-failed');
+}
+function publicError(error) {
+  const result = mappedError(error);
+  for (const key of ['nativeCode', 'failureCode', 'stage']) if (typeof error?.[key] === 'string') result[key] = error[key];
+  if (!result.nativeCode && /^[A-Z][A-Z0-9_]{1,127}$/.test(error?.code || '')) result.nativeCode = error.code;
+  return result;
 }
 module.exports = { fail, validTrack, position, sameStamp, metadataFacts, requireFacts, publicError, diagnosticCode };

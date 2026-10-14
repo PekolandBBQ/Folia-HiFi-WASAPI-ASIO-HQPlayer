@@ -310,6 +310,9 @@ export interface ProviderPlaybackAttempt {
 }
 
 export interface OnlineProviderErrorDetails {
+    userMessage?: string;
+    nativeCode?: string;
+    causeCode?: string;
     /** 'config' | 'backend' | 'runtime' | 'ipc' | 'upstream' | 'local-api' | 'song-url' | 'audio-source' ... */
     stage?: string;
     upstreamCode?: number | string;
@@ -528,7 +531,7 @@ export interface OnlineMutationProvider {
     subscribeAlbum?(id: MediaId, subscribed: boolean): Promise<void>;
 }
 
-export type ProviderConnectionSettings = { mode: 'shared' | 'custom'; clientId: string; redirectUri: string; readOnly?: boolean };
+export type ProviderConnectionSettings = { playbackMode?: 'wrapper' | 'oauth'; mode: 'shared' | 'custom'; clientId: string; redirectUri: string; readOnly?: boolean };
 export type ProviderCableSelection = { connectDeviceId: string; captureDeviceId: string; renderDeviceId: string;
     internal44100Confirmed: boolean; spotifyOnlyConfirmed: boolean; defaultsConfirmed: boolean };
 export type ProviderPlaybackSetupStatus = {

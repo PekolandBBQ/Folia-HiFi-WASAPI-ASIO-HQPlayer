@@ -41,6 +41,7 @@ function createOwnedRouteLifecycle({ host, heartbeatMs = 4000, onDiagnostic = ()
     } catch (error) {
       record.restoreFailed = true;
       blocked = retainedCleanupFailure(error?.retryableCleanupReceipt, record) || failure('ROUTE_RESTORE_UNCONFIRMED');
+      Object.assign(blocked, { cause: error, nativeCode: error.nativeCode || error.code, failureCode: error.failureCode, stage: 'route-restore' });
       // A confirmed pre-write recovery failure still owns its exact native
       // lease. Keep only that owner's liveness until an explicit retry; stopping
       // its heartbeat would turn a recoverable source outage into idle shutdown.

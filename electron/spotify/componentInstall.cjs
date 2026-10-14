@@ -6,6 +6,7 @@ const bundle = require('./componentBundle.json');
 const { fail } = require('./componentPackage.cjs');
 // One resumable operation owns the component set; existing installations are reused.
 function createComponentInstall({ directory, inspect, installSpicetify, configureSpicetify, prepareEngine, installDriver,
+  prepareConfiguration = async () => {}, connect = async () => {},
   checkLatest = async () => {}, getBundle = () => bundle, bootTime = () => Date.now() - os.uptime() * 1000, log = () => {} }) {
   let active, state = { phase: 'idle', bundleVersion: bundle.version };
   const receipt = path.join(directory, 'component-install.json');
@@ -17,7 +18,7 @@ function createComponentInstall({ directory, inspect, installSpicetify, configur
   }
   async function run(operation) {
     await status();
-    await record('checking-updates', { code: undefined, operation });
+    await record('checking-updates', { code: undefined, detail: undefined, operation });
     await checkLatest();
     if (state.restartRequired) { await record('restart-required'); return; }
     await record('checking', { code: undefined, operation });
@@ -38,13 +39,14 @@ function createComponentInstall({ directory, inspect, installSpicetify, configur
       await record('installed'); return;
     }
     if (!current.engine || !current.cli || !current.driver || current.driverCurrent === false || current.driverEndpointsReady === false) throw fail('SPOTIFY_INSTALL_COMPONENTS_FIRST');
-    if (!current.wrapper || !current.extension) {
-      if (current.running) throw fail('SPOTIFY_CLOSE_FOR_SETUP');
-    }
     const reused = current.wrapper && current.extension;
+    await record('stopping'); await prepareConfiguration(current);
     await record('configuring'); await configureSpicetify(current, phase => record(phase));
     current = await inspect();
     if (!current.wrapper || !current.extension || !current.engine) throw fail('SPOTIFY_COMPONENT_SETUP_INCOMPLETE');
+    await record('connecting'); await connect();
+    current = await inspect();
+    if (!current.connected) throw fail('SPOTIFY_BRIDGE_NOT_READY');
     await record('complete', { reused });
   }
   async function status() {
@@ -63,7 +65,7 @@ function createComponentInstall({ directory, inspect, installSpicetify, configur
     status,
     start(operation) {
       if (!['install', 'configure'].includes(operation)) throw fail('SPOTIFY_SETUP_OPERATION_INVALID');
-      if (!active) active = run(operation).catch(e => record('failed', { code: e.code || 'SPOTIFY_COMPONENT_SETUP_FAILED' })).finally(() => { active = null; });
+      if (!active) active = run(operation).catch(e => record('failed', { code: e.code || 'SPOTIFY_COMPONENT_SETUP_FAILED', detail: require('./failureDetails.cjs').failureDetails(e, state.phase).detail })).finally(() => { active = null; });
       return { ...state, busy: true };
     },
     settled: () => active,

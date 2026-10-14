@@ -32,7 +32,7 @@ function initialize(log){
 }
 function registerLocalUiTrial(options){
   const log=global.__foliaTrialLog||(()=>{}), local=initialize(log);
-  return require('./cableService.cjs').registerCableSpotify({...options,createService:settings=>createService(settings,local,log)});
+  return require('./cableService.cjs').registerCableSpotify({...options,connectionMode:'wrapper',createService:settings=>createService(settings,local,log)});
 }
 function createService({beforeLeaveProvider},local,log){
   const {source,bridge,catalog,refresh,desktop}=local;
@@ -96,7 +96,7 @@ function createService({beforeLeaveProvider},local,log){
   const host=require('./ownedRouteHost.cjs').createOwnedRouteHost({componentDirectory:process.env.FOLIA_LOCAL_ROUTE_COMPONENT || runtimePaths().route,onConfigurationRequired:showOutputGuide,onSourceControl:(i,o)=>control.routeSourceControl(i,o)});host.setTrialEnabled(true);
   const request=host.request.bind(host);host.request=async(c,p)=>{try{return await request(c,p);}catch(e){log('route-request-failed',{command:c,code:e.code,failureCode:e.failureCode});throw e;}};
   const route=require('./ownedRouteLifecycle.cjs').createOwnedRouteLifecycle({host,onDiagnostic:d=>log('route',d)});
-  const capability=route.availability();route.availability=()=>capability;
+  const capability=route.availability();
   void Promise.all([capture.supportsPositionEpoch(),capability]).catch(e=>log('ui-prewarm-failed',{code:e.code}));
   control=require('./desktopPlaybackControl.cjs').createDesktopPlaybackControl({vault,cooldown,createSourceApi:()=>source,reuseColdTrack:true,settleIntervalMs:50,selectionTimeoutMs:30000,
     readRoutePcmEvidence:(s,g)=>route.pcmStopped(s,g),readSeekParkEvidence:(s,g,t,k)=>route.seekParkEvidence(s,g,t,k),
@@ -107,10 +107,8 @@ function createService({beforeLeaveProvider},local,log){
     fetcher:async()=>{throw Error('Official HTTP disabled');},getSelection:async()=>{
       const [sample,devices]=await Promise.all([source.sample(),capture.devices()]);
       const output=require('./systemOutputCheck.cjs').systemOutputCheck(devices);
-      if(output.state!=='ready'){
-        showOutputGuide();
-        throw Object.assign(Error('NON_BASE_DEFAULT_OUTPUT_REQUIRED'),{code:'NON_BASE_DEFAULT_OUTPUT_REQUIRED'});
-      }
+      // Exact Spotify route inspection owns the decision; a missing global default alone is not a playback failure.
+      if(output.state!=='ready')log('system-output-advisory',{state:output.state});
       const pair=await configureEndpoints(devices.endpoints);
       return {deviceId:sample.deviceId,...pair,temporaryFormatLease:true,automaticRouting:true};
     },onDiagnostic:d=>log('audio-source',d)});
@@ -122,9 +120,21 @@ function createService({beforeLeaveProvider},local,log){
   return {
     async request(input,progress){
       log('ui-spotify-request',{action:input.action,operation:input.operation,trackId:input.action==='audio'?input.id:undefined});
-      if(input.action==='desktopSetup')return require('./desktopSetupGuide.cjs').request({input,desktop,bridge,apps:local.apps,capture,route,directory:path.join(profile,'spotify'),assetDirectory:runtimePaths().assetRoot,existingCli:process.env.FOLIA_WRAPPER_EXISTING_CLI,extension:local.extension,activateApps:local.activateApps,configureEndpoints,endpointsConfigured:endpoints=>Boolean(require('./cableEndpointSelection.cjs').selectCableEndpoints(endpoints,saved)),log});
-      if(input.action==='audio'){const intent=++launchIntent;await desktop.ensure(progress);if(closing||intent!==launchIntent)throw Object.assign(Error('CANCELLED'),{code:'CANCELLED'});return audio.prepare(input.id,input.requestId,progress,input.quality);}
+      if(input.action==='desktopSetup')return require('./desktopSetupGuide.cjs').request({input,beforeConfigure:leave,desktop,bridge,apps:local.apps,capture,route,directory:path.join(profile,'spotify'),assetDirectory:runtimePaths().assetRoot,existingCli:process.env.FOLIA_WRAPPER_EXISTING_CLI,extension:local.extension,activateApps:local.activateApps,configureEndpoints,endpointsConfigured:endpoints=>Boolean(require('./cableEndpointSelection.cjs').selectCableEndpoints(endpoints,saved)),log});
+      if(input.action==='audio'){
+        const intent=++launchIntent;
+        const current=()=>{if(closing||intent!==launchIntent)throw Object.assign(Error('CANCELLED'),{code:'CANCELLED'});};
+        await desktop.ensure(progress);current();let prepared;
+        try{prepared=await audio.prepare(input.id,input.requestId,progress,input.quality);}
+        catch(error){
+          if((error.nativeCode||error.code)!=='ORIGINAL_ENDPOINT_UNSAFE'||error.stage!=='route-inspect')throw error;
+          await require('./orphanRouteRecovery.cjs').recoverOrphanRoute({componentDirectory:process.env.FOLIA_LOCAL_ROUTE_COMPONENT||runtimePaths().route,source,current,log});
+          prepared=await audio.prepare(input.id,input.requestId,progress,input.quality);
+        }
+        require('./playbackHealth.cjs').prepared();return prepared;
+      }
       if(input.action==='cancelAudio'){launchIntent++;audio.cancel(input.requestId);return null;}
+      if(input.action==='logout'){await leave();return null;}
       if(input.action==='lyrics'){
         await local.ready;
         if(!catalog.has(input.id))await refresh();
@@ -135,6 +145,7 @@ function createService({beforeLeaveProvider},local,log){
       if(input.action==='leaveProvider'){await leave();await desktop.offerExit('source');return null;}
       if(input.action==='status'){if(!bridge.connected())throw Object.assign(Error('Spotify: desktop-offline'),{code:'unavailable'});const s=await source.sample();return {id:s.account,display_name:'本机 Spotify · '+(process.env.FOLIA_LOCAL_CONTROL_PATH||'wrapper')};}
       if(input.action==='playbackSetup'){
+        if(!['status','devices'].includes(input.operation))throw Object.assign(Error('SPOTIFY_WRAPPER_SETTINGS_AUTOMATIC'),{code:'SPOTIFY_WRAPPER_SETTINGS_AUTOMATIC'});
         const s=await source.sample(),c=await route.availability(),devices=await capture.devices();
         const pair=require('./cableEndpointSelection.cjs').selectCableEndpoints(devices.endpoints||[],saved);
         if(pair)await configureEndpoints(devices.endpoints);

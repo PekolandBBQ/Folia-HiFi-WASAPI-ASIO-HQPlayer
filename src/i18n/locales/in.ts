@@ -868,7 +868,7 @@ export default {
       }
     },
     "commands": {
-      "settings-spotify": { "title": "Koneksi Spotify", "description": "Atur aplikasi dan alamat callback" },
+      "settings-spotify": { "title": "Koneksi Spotify", "description": "Kelola koneksi Spotify dan komponen pemutaran lokal" },
       "spotify-playback-start": {"title": "Hubungkan kabel audio Spotify", "description": "Verifikasi desktop tersimpan dan rute kabel 44,1 kHz"},
       "spotify-cable-probe": {"title": "Periksa rute audio Spotify", "description": "Periksa endpoint kabel dan format audio sebenarnya"},
       "spotify-playback-stop": {"title": "Hentikan kabel audio Spotify", "description": "Hentikan koneksi tangkapan atau batalkan verifikasi"},

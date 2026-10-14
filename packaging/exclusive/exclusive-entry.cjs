@@ -28,7 +28,7 @@ app.setPath('userData', profile);
 process.env.ELECTRON_DEV = 'false';
 process.env.NODE_ENV = 'production';
 if (release.spotifyBackend === 'wrapper') process.env.FOLIA_SPOTIFY_PREVIEW = '1';
-if (release.wrapperPreview || release.wrapperLocalValidation) {
+if (release.wrapperPreview || release.wrapperLocalValidation || process.env.FOLIA_PRIVATE_DIAGNOSTICS === '1') {
     const logFile = path.join(profile, 'wrapper-validation.jsonl');
     global.__foliaTrialLog = (kind, data) => fs.appendFileSync(logFile, JSON.stringify({ at: Date.now(), kind, data }) + '\n');
     require('./debug/privatePreviewDiagnosticBus.cjs').installPreviewDiagnosticSink({ enabled: () => true, record: global.__foliaTrialLog });

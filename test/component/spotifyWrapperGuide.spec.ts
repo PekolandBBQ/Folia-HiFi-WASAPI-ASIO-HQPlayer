@@ -2,6 +2,33 @@ import { test, expect } from './fixtures';
 import { automaticCableStatus } from '../unit/onlineMusic/spotifyCableFixture';
 
 // Production Wrapper guide/library controller, synthetic IPC only. Not an installation or playback claim.
+test('connected bridge preserves a concrete audio failure and refreshes when Spotify exits', async ({ page, mount }) => {
+    await page.addInitScript(() => (window as any).spotifyConnectionProbe.patch({
+        running: true, connected: true, cli: true, wrapper: true, extension: true,
+        driver: true, driverEndpointsReady: true, engine: true,
+        playback: { state: 'failed', detail: '路由准备失败：ORIGINAL_ENDPOINT_UNSAFE [route-inspect]' },
+    }));
+    await mount('spotifyAccount');
+    await page.getByRole('button', { name: 'Connect Spotify', exact: true }).click();
+    await expect(page.getByText('本机桥接：已连接', { exact: true })).toBeVisible();
+    await expect(page.getByText('音频链路：路由准备失败：ORIGINAL_ENDPOINT_UNSAFE [route-inspect]', { exact: true })).toBeVisible();
+    await page.evaluate(() => (window as any).spotifyConnectionProbe.patch({ running: false, connected: false }));
+    await expect(page.getByText('本机桥接：Spotify 尚未启动', { exact: true })).toBeVisible({ timeout: 12000 });
+    await expect(page.getByText('音频链路：路由准备失败：ORIGINAL_ENDPOINT_UNSAFE [route-inspect]', { exact: true })).toBeVisible();
+});
+
+test('component discovery errors remain visible independently of bridge readiness', async ({ page, mount }) => {
+    await page.addInitScript(() => (window as any).spotifyConnectionProbe.patch({
+        running: true, connected: false, engine: false,
+        issues: [{ detail: '采集组件不可用：COMPONENT_PROTOCOL_MISMATCH [capture-devices]' }],
+    }));
+    await mount('spotifyAccount');
+    await page.getByRole('button', { name: 'Connect Spotify', exact: true }).click();
+    await expect(page.getByText('采集组件不可用：COMPONENT_PROTOCOL_MISMATCH [capture-devices]', { exact: true })).toBeVisible();
+    await expect(page.getByText('本机桥接：等待连接', { exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: '② 一键配置', exact: true })).toBeDisabled();
+});
+
 test.beforeEach(async ({ page }) => {
     await page.addInitScript(cable => {
         localStorage.setItem('active_online_provider_id', 'spotify');
@@ -21,7 +48,7 @@ test.beforeEach(async ({ page }) => {
             (window as any).spotifyConnectionProbe.operations.push(`${input.action}:${input.operation || ''}`);
             if (input.action === 'desktopSetup') {
                 if (input.operation === 'install') status = { ...status, cli: true, driver: true, driverEndpointsReady: true, engine: true, install: { ...status.install, phase: 'installed' } };
-                if (input.operation === 'configure') status = { ...status, wrapper: true, extension: true, install: { ...status.install, phase: 'complete' } };
+                if (input.operation === 'configure') { authenticated = true; status = { ...status, wrapper: true, extension: true, running: true, connected: true, ready: true, install: { ...status.install, phase: 'complete' } }; }
                 if (input.operation === 'launch') { authenticated = true; status = { ...status, running: true, connected: true, ready: true }; }
                 return status;
             }
@@ -49,7 +76,7 @@ test('installs then configures Wrapper, connects, completes library activation a
     await page.getByRole('button', { name: '① 一键安装', exact: true }).click();
     await expect(page.getByRole('button', { name: '② 一键配置', exact: true })).toBeEnabled();
     await page.getByRole('button', { name: '② 一键配置', exact: true }).click();
-    await page.getByRole('button', { name: '启动并连接 Spotify', exact: true }).click();
+    await expect(page.getByRole('button', { name: '启动并连接 Spotify', exact: true })).toHaveCount(0);
     await page.getByRole('button', { name: '完成并返回歌单', exact: true }).click();
     await expect(page.getByRole('dialog')).toHaveCount(0);
     await expect(page.getByTestId('account-state')).toHaveText('authenticated');
@@ -57,6 +84,7 @@ test('installs then configures Wrapper, connects, completes library activation a
     await expect(page.getByText('Liked Songs', { exact: true })).toBeVisible();
     const operations = await page.evaluate(() => (window as any).spotifyConnectionProbe.operations as string[]);
     expect(operations.indexOf('desktopSetup:install')).toBeLessThan(operations.indexOf('desktopSetup:configure'));
+    expect(operations).not.toContain('desktopSetup:launch');
     expect(operations.some(x => x.startsWith('login'))).toBe(false);
     expect(await page.evaluate(() => (window as any).spotifySavedOffsets)).toEqual([0, 50]);
     await page.getByRole('button', { name: 'Disconnect', exact: true }).click();

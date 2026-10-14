@@ -543,6 +543,11 @@ function createDesktopPlaybackControl({ onRevoke = () => {}, onFailureDiagnostic
     } catch (error) {
       if (inspecting) reportSpotifyColdBootstrap(record.session, 'inspect', 'failed', { errorCode: error,
         ...(inspectionCause ? { causeCode: inspectionCause } : {}), selectInvoked: selected, selectConfirmed: selected });
+      if (inspectionCause && error.code === 'BOOTSTRAP_IDENTITY_UNCONFIRMED') {
+        error.cause = inspectionCause;
+        error.failureCode = inspectionCause.nativeCode || inspectionCause.failureCode || inspectionCause.code;
+        error.stage = inspectionCause.stage || 'identity-inspect';
+      }
       // Selecting may have succeeded before an inspection failure. Observe and
       // pause only that exact source; never seek, select, transfer or change volume.
       if (selected || record.preparationPending) {

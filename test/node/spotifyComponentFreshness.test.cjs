@@ -55,6 +55,16 @@ test('r4 without a manifest asset uses its tagged source manifest',async()=>{
   const f=releaseFetcher(bundle,false);await latestComponentBundle({fetcher:f.fetcher});
   assert.match(f.requests[1],/raw.githubusercontent.com.*componentBundle.json$/);
 });
+test('same-version release replacement cannot silently retain the old native pair',async()=>{
+  const replaced={...bundle,route:{...bundle.route,sha256:'a'.repeat(64)}};
+  await assert.rejects(latestComponentBundle({fetcher:releaseFetcher(replaced).fetcher}),{code:'SPOTIFY_COMPONENT_APP_UPDATE_REQUIRED'});
+});
+
+test('same-version candidate keeps its newer revision until release replacement; old apps detect the update',async()=>{
+  const older={...bundle,revision:0,route:{...bundle.route,sha256:'b'.repeat(64)}};
+  assert.equal((await latestComponentBundle({fetcher:releaseFetcher(older).fetcher})).bundle.revision,1);
+  await assert.rejects(latestComponentBundle({fetcher:releaseFetcher(bundle).fetcher,bundled:older}),{code:'SPOTIFY_COMPONENT_APP_UPDATE_REQUIRED'});
+});
 test('a newer validated pin is selected; a native ABI change requires matching Folia',async()=>{
   const newer={...bundle,version:'0.1.0-preview.5',spicetify:{...bundle.spicetify,version:'2.46.0'}};
   assert.equal((await latestComponentBundle({fetcher:releaseFetcher(newer).fetcher})).bundle.spicetify.version,'2.46.0');

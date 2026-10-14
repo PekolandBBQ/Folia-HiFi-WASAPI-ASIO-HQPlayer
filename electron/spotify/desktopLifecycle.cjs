@@ -13,7 +13,7 @@ function select(catalog,selected){
  if(catalog.candidates.length!==1)throw failure('SPOTIFY_INSTALL_CHOICE_REQUIRED');
  return catalog.candidates[0];
 }
-function createDesktopLifecycle({directory,apps,bridge,ready,log,dialog,parent,discovery=discover,start=spawn}){
+function createDesktopLifecycle({directory,apps,bridge,ready,log,dialog,parent,discovery=discover,start=spawn,stop=p=>process.kill(p.pid)}){
  const assetPath=()=>typeof apps==='function'?apps():apps;
  const file=path.join(directory,'desktop-installation.json');let selected,owned,starting;
  try{selected=JSON.parse(fs.readFileSync(file,'utf8')).id;}catch{}
@@ -52,7 +52,25 @@ function createDesktopLifecycle({directory,apps,bridge,ready,log,dialog,parent,d
   if(owned){const current=await discovery();owned.pids=current.running.filter(p=>p.exe.toLowerCase()===owned.exe.toLowerCase()&&Date.parse(p.started)>=owned.launchedAt-1000);}
   log('spotify-background-ready',{owned:Boolean(owned)});
  }
- return {inspect,choose,ensure(progress){if(!starting)starting=run(progress).catch(e=>{log('spotify-background-failed',{code:e.code||'UNKNOWN',message:e.message});throw e;}).finally(()=>{starting=null;});return starting;},
+ // Configuration restores Folia's audio route before stopping only the selected installation.
+ async function stopForConfiguration(){
+  if(starting)await starting;
+  const info=await discovery(),target=select(info,selected);
+  if(info.running.some(p=>p.exe.toLowerCase()!==target.exe.toLowerCase()))throw failure('SPOTIFY_OTHER_INSTALL_RUNNING');
+  for(const p of info.running){
+   const fresh=await discovery();
+   if(fresh.running.some(n=>n.pid===p.pid&&n.started===p.started&&n.exe.toLowerCase()===target.exe.toLowerCase())){
+    try{await stop(p);}catch(e){if(e.code!=='ESRCH')throw Object.assign(failure('SPOTIFY_SETUP_STOP_FAILED'),{cause:e});}
+   }
+  }
+  const deadline=Date.now()+10000;
+  while((await discovery()).running.some(p=>p.exe.toLowerCase()===target.exe.toLowerCase())||bridge.connected()){
+   if(Date.now()>deadline)throw failure('SPOTIFY_SETUP_STOP_TIMEOUT');
+   await new Promise(r=>setTimeout(r,100));
+  }
+  owned=null;log('spotify-configuration-stopped',{processes:info.running.length});
+ }
+ return {inspect,choose,stopForConfiguration,ensure(progress){if(!starting)starting=run(progress).catch(e=>{log('spotify-background-failed',{code:e.code||'UNKNOWN',message:e.message});throw e;}).finally(()=>{starting=null;});return starting;},
   handBack(){owned=null;},
   async offerExit(reason){if(!owned)return;const scope=owned;const info=await discovery();const matches=info.running.filter(p=>scope.pids.some(old=>old.pid===p.pid&&old.started===p.started));if(!matches.length){owned=null;return;}
    const result=await dialog.showMessageBox(parent(),{type:'question',title:'后台 Spotify',message:reason==='quit'?'退出 Folia 时，是否同时退出由 Folia 拉起的 Spotify？':'已切换音源，是否同时退出由 Folia 拉起的 Spotify？',buttons:['保留 Spotify','同时退出 Spotify'],defaultId:0,cancelId:0});

@@ -6,6 +6,7 @@ const { compareVersions } = require('../updateChannels.cjs');
 // electron/spotify/latestComponentBundle.cjs — each installation checks the latest published, validated fork bundle.
 const repository = 'PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer';
 function validateBundle(value) {
+  if (value?.revision !== undefined && (!Number.isSafeInteger(value.revision) || value.revision < 0)) throw fail('SPOTIFY_COMPONENT_MANIFEST_INVALID');
   if (value?.schema !== 1 || value.platform !== 'win32-x64' || !/^\d+\.\d+\.\d+(?:-[\w.-]+)?$/.test(value.version || '')) throw fail('SPOTIFY_COMPONENT_MANIFEST_INVALID');
   for (const key of ['spicetify', 'cable']) {
     const pin = value[key];
@@ -32,7 +33,11 @@ async function latestComponentBundle({ fetcher = fetch, bundled = embedded } = {
   } catch (error) {
     throw error.code === 'SPOTIFY_COMPONENT_MANIFEST_INVALID' ? error : fail('SPOTIFY_COMPONENT_UPDATE_CHECK_FAILED');
   }
-  const bundle = compareVersions(published.version, bundled.version) > 0 ? published : bundled;
+  // A same-version release replacement can update the native pair. Prefer the
+  // published manifest at equality so an older executable cannot silently keep
+  // treating its previous native pair as the latest validated component set.
+  const order = compareVersions(published.version, bundled.version);
+  const bundle = order > 0 || (order === 0 && (published.revision || 0) >= (bundled.revision || 0)) ? published : bundled;
   // A new native ABI/source must arrive in a matching Folia build, never reuse an older available binary.
   for (const key of ['route', 'capture']) {
     if (bundle[key].version !== bundled[key].version || bundle[key].sha256 !== bundled[key].sha256) throw fail('SPOTIFY_COMPONENT_APP_UPDATE_REQUIRED');

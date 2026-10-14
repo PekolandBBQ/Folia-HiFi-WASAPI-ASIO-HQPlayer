@@ -292,7 +292,7 @@ function createDesktopColdBootstrap({ directory, request, beginConfirmation, beg
         checkConfirmation(record, inspect);
         if (['CANCELLED', 'SUPERSEDED', 'STALE_SESSION', 'CLOSED', 'SESSION_CHANGED'].includes(error?.code)) throw error;
         if (error?.name === 'AbortError') throw fail('CANCELLED');
-        throw fail('BOOTSTRAP_IDENTITY_UNCONFIRMED');
+        throw Object.assign(fail('BOOTSTRAP_IDENTITY_UNCONFIRMED'), { cause: error, failureCode: error?.failureCode || error?.nativeCode || error?.code, stage: 'identity-inspect' });
       }
       checkConfirmation(record, inspect);
       report('completed');

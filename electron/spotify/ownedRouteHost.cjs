@@ -74,6 +74,8 @@ function createOwnedRouteHost({ componentDirectory, platform = process.platform,
       if (value.ok) pending.resolve(value);
       else {
         const error = failure(value.code);
+        if (/^[A-Z][A-Z0-9_]{1,127}$/.test(value.code || '')) error.nativeCode = value.code;
+        error.stage = 'route-' + pending.command;
         if (value.code === 'BASE_OR_UNPROVEN_DEFAULT_FEEDBACK_GUARD') {
           // Resume can discover an output change after the initial setup check.
           // Notify the existing guide without changing rejection or route ownership.

@@ -885,6 +885,7 @@ function createCableAudioPreparation({ captureHost, control, vault, cooldown, ge
       if (['AUTH_REQUIRED', 'SESSION_CHANGED'].includes(error?.code)) metadataCache.clear();
       // Record the initiating stage before cleanup can fail and replace its public result.
       const failure = publicError(record.failure || (cancelled ? fail('CANCELLED') : error));
+      failure.stage ||= stage;
       reportSpotifyPreparationFailure(requestId, stage, error, failure);
       try { await release(record); }
       catch (cleanupError) {

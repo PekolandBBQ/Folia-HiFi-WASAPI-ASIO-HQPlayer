@@ -1,0 +1,4 @@
+<Project Sdk="Microsoft.NET.Sdk">
+<PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net8.0</TargetFramework><AssemblyName>ReleaseGuard.Tests</AssemblyName><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable><EnableDefaultCompileItems>false</EnableDefaultCompileItems><NoWarn>CA1416</NoWarn><TreatWarningsAsErrors>true</TreatWarningsAsErrors></PropertyGroup>
+<ItemGroup><ProjectReference Include="../OwnedRoute.Windows/OwnedRoute.Windows.csproj"/><Compile Include="ReleaseGuardTests.cs"/><Compile Include="../src/*.cs" Exclude="../src/Program.cs"/></ItemGroup>
+</Project>

@@ -21,9 +21,9 @@ export async function requestSpotify<T>(request: SpotifyRequest, options?: Audio
         ? { action: 'playbackSetup', operation: 'stop' } : { action: 'cancelAudio', requestId }).catch(() => {}); };
     options?.signal?.addEventListener('abort', cancel, { once: true });
     try {
-        const result = await bridge.request({ ...request, ...(requestId ? { requestId } : {}) }) as T & { spotifyError?: { code: ProviderErrorCode; message: string } };
+        const result = await bridge.request({ ...request, ...(requestId ? { requestId } : {}) }) as T & { spotifyError?: { code: ProviderErrorCode; message: string; detail?: string; stage?: string; nativeCode?: string; causeCode?: string } };
         if (options?.signal?.aborted) throw new DOMException('Request cancelled', 'AbortError');
-        if (result?.spotifyError) throw new OnlineProviderError(result.spotifyError.code, result.spotifyError.message, 'spotify');
+        if (result?.spotifyError) throw new OnlineProviderError(result.spotifyError.code, result.spotifyError.message, 'spotify', undefined, undefined, undefined, { userMessage: result.spotifyError.detail, stage: result.spotifyError.stage, nativeCode: result.spotifyError.nativeCode, causeCode: result.spotifyError.causeCode });
         return result;
     } finally { unsubscribe?.(); options?.signal?.removeEventListener('abort', cancel); }
 }

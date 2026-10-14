@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><TargetFramework>net8.0</TargetFramework><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable><TreatWarningsAsErrors>true</TreatWarningsAsErrors><NoWarn>CA1416</NoWarn></PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../OwnedRoute.Service/OwnedRoute.Service.csproj" />
+    <ProjectReference Include="../OwnedRoute.Windows/OwnedRoute.Windows.csproj" />
+    <ProjectReference Include="../OwnedRoute.Observation/OwnedRoute.Observation.csproj" />
+    <Compile Include="../src/*.cs" Exclude="../src/Program.cs" Link="A025/%(Filename)%(Extension)" />
+  </ItemGroup>
+</Project>

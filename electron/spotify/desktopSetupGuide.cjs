@@ -11,7 +11,7 @@ const { cableDriverVersion } = require('./driverVersion.cjs');
 // Two explicit steps share one pinned bundle and one persistent receipt.
 const managers = new WeakMap();
 const links = { spotify: 'https://www.spotify.com/download/windows/', spicetify: 'https://spicetify.app/docs/getting-started', cable: 'https://vb-audio.com/Cable/' };
-function createGuide({ desktop, bridge, apps, capture, route, directory, assetDirectory, existingCli, extension, activateApps, configureEndpoints, endpointsConfigured, log,
+function createGuide({ desktop, bridge, apps, capture, route, directory, assetDirectory, existingCli, extension, activateApps, configureEndpoints, endpointsConfigured, log, beforeConfigure,
   resolveBundle = latestComponentBundle, driverVersions = cableDriverVersion }) {
   const managed = path.join(directory, 'component-packages');
   let cliDirectory, currentBundle = bundle, updateCheck, currentDriverVersions;
@@ -26,21 +26,30 @@ function createGuide({ desktop, bridge, apps, capture, route, directory, assetDi
   }
   async function inspect() {
     const state = await desktop.inspect(); let driver = false, engine = false, wrapper = false, valid = false, endpoints = [], devices = {};
-    try { devices = await capture.devices(); endpoints = devices.endpoints || []; driver = endpoints.some(e => e.supportedBaseCable && e.flow === 'capture'); } catch {}
+    const issues = []; let captureAvailable = false;
+    const issue = (stage, error) => issues.push(require('./failureDetails.cjs').failureDetails(error, stage));
+    try { devices = await capture.devices(); captureAvailable = true; endpoints = devices.endpoints || []; driver = endpoints.some(e => e.supportedBaseCable && e.flow === 'capture'); } catch (error) { issue('capture-devices', error); }
     const systemOutput = systemOutputCheck(devices);
-    try { engine = (await route.availability()).supported === true; } catch {}
+    try { const availability = await route.availability(); engine = availability.supported === true; if (!engine) issue('route-component', { code: availability.code || 'ROUTE_HELPER_UNAVAILABLE' }); } catch (error) { issue('route-component', error); }
+    engine = engine && captureAvailable;
     const currentApps = apps();
     try { wrapper = digest(await fs.readFile(path.join(currentApps, 'xpui/helper/spicetifyWrapper.js'))) === currentBundle.spicetify.wrapperSha256; } catch {}
-    try { await validateAssets(currentApps, currentBundle); valid = true; } catch {}
+    try { await validateAssets(currentApps, currentBundle); valid = (await fs.readFile(path.join(currentApps, 'xpui/extensions/folia-live-bridge.js'), 'utf8')) === await extension(); if (!valid) issue('bridge-extension', { code: 'SPOTIFY_EXTENSION_UPDATE_REQUIRED' }); } catch (error) { issue('bridge-assets', error); }
+    const receipt = await require('./upgradeAssets.cjs').findReceipt(currentApps);
+    if (receipt && receipt.receipt.installation !== state.selected) { wrapper = false; valid = false; issue('selected-installation', { code: 'SPOTIFY_CONFIGURATION_VERSION_CHANGED' }); }
+    let connected = false;
+    if (bridge.connected()) { try { const snapshot = await bridge.request('snapshot'); connected = snapshot.local === true && snapshot.wrapperReady === true && Boolean(snapshot.account && snapshot.deviceId); if (!connected) issue('bridge-player', { code: 'SPOTIFY_PLAYER_NOT_READY' }); } catch (error) { issue('bridge-player', error); } }
     return { enabled: true, bundleVersion: currentBundle.version, versions: { spicetify: currentBundle.spicetify.version, cable: currentBundle.cable.version },
       installations: state.candidates.map(x => ({ id: x.id, layout: x.layout, version: x.version })), selected: state.selected,
-      detectionFailed: state.errors.length > 0, running: state.running.length > 0, connected: bridge.connected(),
+      detectionFailed: state.errors.length > 0, running: state.running.length > 0, connected, issues, playback: require('./playbackHealth.cjs').get(),
       cli: Boolean(await findCli()), wrapper, extension: valid, driver, driverCurrent: currentDriverVersions?.every(version => version === currentBundle.cable.version)
         && currentDriverVersions.length > 0, updateCheck: updateCheck && { checkedAt: updateCheck.checkedAt, release: updateCheck.release,
           publishedVersion: updateCheck.publishedVersion }, driverEndpointsReady: endpointsConfigured(endpoints), engine, systemOutput,
-      ready: Boolean(state.selected) && valid && driver && engine && endpointsConfigured(endpoints) && systemOutput.state === 'ready' && bridge.connected() };
+      ready: Boolean(state.selected) && valid && driver && engine && endpointsConfigured(endpoints) && connected };
   }
   const installer = createComponentInstall({ directory, inspect, log, getBundle: () => currentBundle,
+    prepareConfiguration: async () => { await beforeConfigure(); await desktop.stopForConfiguration(); },
+    connect: () => desktop.ensure(),
     checkLatest: async () => { updateCheck = await resolveBundle(); currentBundle = updateCheck.bundle; currentDriverVersions = await driverVersions(); },
     installSpicetify: async () => { cliDirectory = await acquirePackage(currentBundle.spicetify, path.join(managed, 'spicetify')); },
     prepareEngine: async () => { throw fail('SPOTIFY_NATIVE_COMPONENT_UNAVAILABLE'); },
@@ -53,14 +62,19 @@ function createGuide({ desktop, bridge, apps, capture, route, directory, assetDi
       currentDriverVersions = await driverVersions();
     },
     configureSpicetify: async (current, progress) => {
-      if (current.wrapper && !current.extension) {
+      if (current.wrapper) {
         await configureExistingAssets(apps(), await extension(), currentBundle);
       } else if (!current.wrapper) {
         const found = await desktop.inspect(), target = found.candidates.find(c => c.id === current.selected);
         if (!target) throw fail('SPOTIFY_SELECTED_INSTALL_MISSING');
         if (!assetDirectory) throw fail('SPOTIFY_ASSET_DIRECTORY_REQUIRED');
         await fs.mkdir(assetDirectory, { recursive: true });
-        const assetRoot = await configureAssets({ directory: path.join(assetDirectory, currentBundle.version), target, cli: await findCli(), extension: await extension(), progress, bundle: currentBundle });
+        const cli = await findCli(), bridgeExtension = await extension();
+        const upgraded = await require('./upgradeAssets.cjs').upgradeAssets({ apps: apps(), assetDirectory, target, cli, extension: bridgeExtension, bundle: currentBundle });
+        // A separately selected installation owns a separate receipt, never an overwrite of the old selection.
+        const old = await require('./upgradeAssets.cjs').findReceipt(apps());
+        const suffix = old && old.receipt.installation !== target.id ? '-' + require('node:crypto').createHash('sha256').update(target.id).digest('hex').slice(0, 12) : '';
+        const assetRoot = upgraded || await configureAssets({ directory: path.join(assetDirectory, currentBundle.version + suffix), target, cli, extension: bridgeExtension, progress, bundle: currentBundle });
         await activateApps(assetRoot);
       }
       await configureEndpoints();

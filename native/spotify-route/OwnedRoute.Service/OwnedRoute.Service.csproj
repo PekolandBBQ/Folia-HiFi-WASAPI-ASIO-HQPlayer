@@ -1,0 +1,4 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><OutputType>Library</OutputType><TargetFramework>net8.0</TargetFramework><AssemblyName>folia-route-service</AssemblyName><Version>0.19.0-dev.1</Version><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable><TreatWarningsAsErrors>true</TreatWarningsAsErrors></PropertyGroup>
+  <ItemGroup><Compile Remove="Program.cs" /><ProjectReference Include="../OwnedRoute.Core/OwnedRoute.Core.csproj" /></ItemGroup>
+</Project>

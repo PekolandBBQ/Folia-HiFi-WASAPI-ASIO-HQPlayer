@@ -4,16 +4,17 @@ const { spotifyError } = require('./errors.cjs');
 const { NCSPOT_CLIENT_ID } = require('./catalogLogin.cjs');
 
 // Serializes client changes against new requests while cancelling work from the previous configuration.
-function createSpotifyRuntime({ directory, createService, environment = process.env }) {
+function createSpotifyRuntime({ directory, createService, environment = process.env, connectionMode = 'oauth' }) {
   let service, queue = Promise.resolve(), closed = false, cleanupFailed = false, cleanupFailure, closing, reconfigurePending = false;
   const publicSettings = () => {
     const config = readClientSettings(directory, environment);
-    return { mode: config.catalogClientId === NCSPOT_CLIENT_ID ? 'shared' : 'custom', clientId: config.catalogClientId,
+    return { playbackMode: connectionMode, mode: config.catalogClientId === NCSPOT_CLIENT_ID ? 'shared' : 'custom', clientId: config.catalogClientId,
       redirectUri: config.catalogRedirectUri, readOnly: Boolean(environment.FOLIA_SPOTIFY_CLIENT_ID || environment.FOLIA_SPOTIFY_REDIRECT_URI) };
   };
   return {
     async request(input, progress) {
       if (input?.action === 'configure') {
+        if (connectionMode === 'wrapper') throw Object.assign(new Error('SPOTIFY_WRAPPER_SETTINGS_AUTOMATIC'), { code: 'SPOTIFY_WRAPPER_SETTINGS_AUTOMATIC' });
         const task = queue.then(async () => {
           if (closed) throw new Error('Spotify: runtime-closed');
           if (cleanupFailed) throw cleanupFailure;

@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+ <PropertyGroup>
+  <OutputType>Exe</OutputType><TargetFramework>net8.0-windows</TargetFramework><RuntimeIdentifier>win-x64</RuntimeIdentifier>
+  <RuntimeFrameworkVersion>8.0.31</RuntimeFrameworkVersion><PlatformTarget>x64</PlatformTarget>
+  <AssemblyName>folia-route-runner</AssemblyName><Version>0.2.5-dev.1</Version><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable>
+  <PublishSingleFile>true</PublishSingleFile><IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract><DebugType>none</DebugType>
+  <ApplicationManifest>app.manifest</ApplicationManifest><TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+ </PropertyGroup>
+ <ItemGroup><ProjectReference Include="../OwnedRoute.Core/OwnedRoute.Core.csproj"/><ProjectReference Include="../OwnedRoute.Windows/OwnedRoute.Windows.csproj"/></ItemGroup>
+</Project>

@@ -29,7 +29,7 @@ export function createOnlinePlaybackFailureStatus(error: unknown, t: TFunction):
         : error.code === 'unsupported' ? (/^Spotify: (?:playback|catalog)-http-403$/.test(error.message) ? 'forbidden' : 'unsupported')
         : 'unavailable';
     return {
-        type: 'error', text: t(sourceRestore ? 'spotifyCable.sourceRestoreUnconfirmed'
+        type: 'error', text: error.details?.userMessage || t(sourceRestore ? 'spotifyCable.sourceRestoreUnconfirmed'
             : coldRecovery ? 'spotifyCable.bootstrapRecovery' : `spotifyPlaybackErrors.${key}`),
         ...(coldRecovery ? { statusKey: 'spotify-cold-volume-recovery-required' } : {}),
         ...(error.code === 'setup-required' || sourceRestore ? {
