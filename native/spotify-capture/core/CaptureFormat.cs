@@ -8,6 +8,8 @@ public sealed record CaptureFormat(int SampleRate, int Channels, int ContainerBi
     public const int SelectedRate = 44100;
     public const int SelectedChannels = 2;
     public const int OutputFrameBytes = 8;
+    // Process loopback negotiates its own stream; VB endpoint descriptors are diagnostics only.
+    public static CaptureFormat ProcessLoopback { get; } = new(44100, 2, 32, 32, 8, 352800, "float", 0, null);
     public static readonly Guid PcmSubtype = new("00000001-0000-0010-8000-00aa00389b71");
     public static readonly Guid FloatSubtype = new("00000003-0000-0010-8000-00aa00389b71");
 

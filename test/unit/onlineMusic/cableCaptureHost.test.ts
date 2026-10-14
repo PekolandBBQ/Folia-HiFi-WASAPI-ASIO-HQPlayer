@@ -17,6 +17,24 @@ function configuration() {
     route: { ready: true, spotifyOnlyObserved: true, spotifySessionPresent: true } };
 }
 const cleanups: Array<() => Promise<void>> = [];
+it('preserves native capture binding failures with a specific Chinese explanation', () => {
+  const { failure } = require('../../../electron/spotify/cableCaptureProtocol.cjs');
+  const { failureDetails } = require('../../../electron/spotify/failureDetails.cjs');
+  const error = failure('CAPTURE_STATE_INVALID');
+  expect(error.code).toBe('CAPTURE_STATE_INVALID');
+  expect(failureDetails(error, 'capture-open').detail).toContain('格式或运行状态不一致');
+});
+it('accepts independently negotiated process PCM with different VB endpoint formats, preserving legacy endpoint checks', () => {
+  const { requireConfiguration, requireBootstrapConfiguration } = require('../../../electron/spotify/cableCaptureProtocol.cjs');
+  const config = configuration();
+  Object.assign(config.route, { evidenceKind: 'windows-process-tree-loopback' });
+  config.capture.mixFormat = { sampleRate: 48000, channels: 8, containerBits: 24 };
+  config.render.mixFormat = { sampleRate: 96000, channels: 2, containerBits: 32 };
+  expect(requireConfiguration(config, selection)).toBe(config);
+  expect(requireBootstrapConfiguration({ ...config, bootstrapReady: true }, selection)).toBeDefined();
+  Object.assign(config.route, { evidenceKind: 'windows-render-session-process-snapshot' });
+  expect(() => requireConfiguration(config, selection)).toThrow('CAPTURE_PROTOCOL_INVALID');
+});
 afterEach(async () => { vi.useRealTimers(); for (const cleanup of cleanups.splice(0)) await cleanup(); });
 const tick = () => new Promise(resolve => setImmediate(resolve));
 function fixture(options: any = {}) {
@@ -379,6 +397,19 @@ it.each(['format-probe', 'capture-open'])('retains nested configuration failure 
   expect(JSON.stringify(f.controlDiagnostics)).not.toMatch(/PRIVATE_|message|devicePath/);
   expect(f.connectImpl).not.toHaveBeenCalled();
 });
+it.each(['format-probe', 'capture-open'])('preserves requested and observed format differences from a rejected %s before a capture session exists', async operation => {
+  const requested = { sampleRate: 44100, channels: 2, containerBits: 32, validBits: 32,
+    blockAlign: 8, averageBytesPerSecond: 352800, encoding: 'float', channelMask: 3, subFormatKind: 'float' };
+  const readback = { endpointRole: 'render', comparison: 'descriptor', periodFrames: 441, requested,
+    observed: { ...requested, channelMask: 0, subFormatKind: 'none' }, differingFields: ['channelMask', 'subFormatKind'] };
+  const f = fixture({ handle(request: any, reply: any) {
+    if (request.action !== operation) return false;
+    reply(request, { state: 'configuration-required', errorCode: 'FORMAT_LEASE_READBACK_MISMATCH', formatLeaseReadback: readback }); return true;
+  } });
+  await expect(operation === 'format-probe' ? f.host.formatProbe({ ...selection, temporaryFormatLease: true })
+    : f.host.open({ session, ...selection, temporaryFormatLease: true })).rejects.toThrow('FORMAT_LEASE_READBACK_MISMATCH');
+  expect(f.controlDiagnostics.at(-1)).toMatchObject({ formatLeaseReadback: readback });
+});
 it('classifies a code-free native configuration response as configuration-required, not a capture failure', async () => {
   const f = fixture({ handle(request: any, reply: any) {
     if (request.action !== 'format-probe') return false;
@@ -603,7 +634,7 @@ it('drains a paused reader while native stop waits behind an outstanding control
   await source.stopVerified();
 });
 
-it.each(['rejected', 'timeout', 'channel-break'])('releases a deferred reader after native stop %s and never claims verified cleanup', async mode => {
+it.each(['rejected', 'timeout', 'channel-break'])('releases a deferred reader after native stop %s and accepts only ACK or exact child exit', async mode => {
   const f = fixture({ requestTimeoutMs: 25, handle(request: any, _reply: Function, child: any) {
     if (request.action !== 'capture-stop') return false;
     if (mode === 'rejected') child.stdout.write(JSON.stringify({ id: request.id, ok: false, errorCode: 'ENDPOINT_UNAVAILABLE' }) + '\n');
@@ -613,9 +644,26 @@ it.each(['rejected', 'timeout', 'channel-break'])('releases a deferred reader af
   const source = await f.host.open({ session, ...selection }); await source.start();
   const stopping = source.stop(); expect(f.sockets[0].destroy).not.toHaveBeenCalled();
   await stopping; expect(f.sockets[0].destroy).toHaveBeenCalledOnce();
-  await expect(source.stopVerified()).rejects.toThrow('CAPTURE_STOP_TIMEOUT');
+  if (mode === 'rejected') await expect(source.stopVerified()).rejects.toThrow('CAPTURE_STOP_TIMEOUT');
+  else await expect(source.stopVerified()).resolves.toBeUndefined();
   expect(f.diagnostics.some(value => value.formatLeaseReleased)).toBe(false);
   if (mode !== 'rejected') expect(f.child.kill).toHaveBeenCalledOnce();
+});
+
+it('accepts unexpected exact child exit as stopped without waiting for a dead control channel', async () => {
+  const f = fixture();
+  const source = await f.host.open({ session, ...selection }); await source.start();
+  f.child.emit('exit', 1);
+  await expect(source.stopVerified()).resolves.toBeUndefined();
+  expect(f.child.kill).not.toHaveBeenCalled();
+  expect(f.diagnostics.some(value => value.formatLeaseReleased)).toBe(false);
+});
+
+it('does not accept a broken channel or dispatched kill as capture stop proof', async () => {
+  const f = fixture({ exitTimeoutMs: 20, kill: () => true, expectedCloseCode: 'CAPTURE_HELPER_EXIT_UNCONFIRMED' });
+  const source = await f.host.open({ session, ...selection }); await source.start();
+  f.child.stdout.emit('error', new Error('control channel failed'));
+  await expect(source.stopVerified()).rejects.toThrow('CAPTURE_HELPER_EXIT_UNCONFIRMED');
 });
 
 it.each(['CAPTURE_PIPE_FAILED', 'FORMAT_LEASE_READBACK_MISMATCH'])('preserves a native %s before stop intent and isolates its late event from the next generation', async errorCode => {

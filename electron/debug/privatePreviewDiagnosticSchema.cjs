@@ -144,7 +144,7 @@ const events = {
     'native.hq-input': { sessionRef, generation: integer(2147483647), phase: choices('accepted rejected'), errorCode,
         inputSampleRate: integer(1536000), inputChannels: integer(32), inputContainerBits: integer(64) },
     'native.hq-experiment': { ...common, phase: choices('configured waiting delay ready playing buffering sample final'),
-        generation: integer(2147483647), enabled: bool, prebufferMs: integer(2000), startupDelayMs: integer(1000),
+        generation: integer(2147483647), enabled: bool, prebufferMs: integer(5000), startupDelayMs: integer(1000),
         elapsedMs: integer(604800000), prebufferWaitMs: integer(604800000), startupWaitMs: integer(604800000),
         componentReady: bool, outputReadyWaitMs: integer(604800000),
         estimatedBufferedMs: integer(604800000), queueDepthMs: integer(10000), queueSampleAgeMs: integer(604800000), bufferCapacityBytes: integer(2 ** 30),
@@ -268,8 +268,10 @@ function projectEvent(type, fields) {
         const value = own(fields, key);
         if (value !== undefined && validate(value)) result[key] = value;
     }
-    if (type === 'spotify.capture' && result.phase === 'native-terminal' && result.snapshotSource === 'native-terminal'
-        && result.captureState === 'failed' && result.errorCode === 'FORMAT_LEASE_READBACK_MISMATCH') {
+    if (result.errorCode === 'FORMAT_LEASE_READBACK_MISMATCH'
+        && (type === 'spotify.capture-helper' && result.ok === false
+            || type === 'spotify.capture' && result.phase === 'native-terminal' && result.snapshotSource === 'native-terminal'
+              && result.captureState === 'failed')) {
         const readback = projectFormatLeaseReadback(own(fields, 'formatLeaseReadback'));
         if (readback) result.formatLeaseReadback = readback;
     }

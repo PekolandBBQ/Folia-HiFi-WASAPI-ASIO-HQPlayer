@@ -11,7 +11,7 @@ namespace Folia.RouteRunner;
 internal static class OrphanRouteRecovery
 {
     internal static bool Eligible(RouteRecord record, SpotifyProcess process, bool oldProcessAlive) =>
-        !oldProcessAlive && record.OriginalProcess.SameApplication(process)
+        (!oldProcessAlive || record.CurrentProcess == process) && record.OriginalProcess.SameApplication(process)
         && record.Stage is not (RouteStage.Restored or RouteStage.RolledBack or RouteStage.Conflict)
         && record.Roles.Any(role => role.Stage is RoleStage.Applied or RoleStage.ApplyIntent or RoleStage.RestoreIntent);
 
@@ -40,9 +40,9 @@ internal static class OrphanRouteRecovery
                     if (last is null) continue;
                     using var frame = System.Text.Json.JsonDocument.Parse(last);
                     preview = System.Text.Json.JsonSerializer.Deserialize<RouteRecord>(frame.RootElement.GetProperty("Payload").GetString()!);
-                    if (preview is null || preview.Stage is RouteStage.Restored or RouteStage.RolledBack or RouteStage.Conflict || Alive(preview.CurrentProcess)) continue;
+                    if (preview is null || preview.Stage is RouteStage.Restored or RouteStage.RolledBack or RouteStage.Conflict) continue;
                     var matched = false;
-                    foreach (var candidate in candidates) { using var identity = new SpotifyIdentity(candidate.Id); if (Eligible(preview, identity.Identity, false)) { matched = true; break; } }
+                    foreach (var candidate in candidates) { using var identity = new SpotifyIdentity(candidate.Id); if (Eligible(preview, identity.Identity, Alive(preview.CurrentProcess))) { matched = true; break; } }
                     if (!matched) continue;
                 } catch (IOException) { continue; }
                   catch (System.Text.Json.JsonException) { continue; }
@@ -56,11 +56,14 @@ internal static class OrphanRouteRecovery
                 using (guard) using (journal)
                 {
                     var record = journal.ReadLatest();
-                    if (record is null || record.Stage is RouteStage.Restored or RouteStage.RolledBack or RouteStage.Conflict || Alive(record.CurrentProcess)) continue;
+                    if (record is null || record.Stage is RouteStage.Restored or RouteStage.RolledBack or RouteStage.Conflict) continue;
                     foreach (var candidate in candidates)
                     {
                         using var identity = new SpotifyIdentity(candidate.Id);
-                        if (!Eligible(record, identity.Identity, false)) continue;
+                        // Spotify is the routed application, not the journal owner.
+                        // The exclusive journal above excludes a live Folia owner;
+                        // a surviving Spotify must match the exact retained process.
+                        if (!Eligible(record, identity.Identity, Alive(record.CurrentProcess))) continue;
                         var resolver = new Win11SpotifyPolicyResolver(identity.Check);
                         using var bound = resolver.OpenVerified(identity.Identity);
                         string?[] present;
@@ -69,7 +72,8 @@ internal static class OrphanRouteRecovery
                         if (!present.Take(2).Any(value => value == record.Target.PolicyValue)) continue;
                         _ = audio.VerifySelected(record.Target);
                         var originals = record.Roles.OrderBy(role => role.Role).Select(role => role.Original).ToArray();
-                        _ = OriginalPolicySafety.Verify(originals, record.Target, ProductDefaultEndpoints.Read(), audio.Endpoints(), audio.EndpointForPolicy, PhysicalOriginalEndpointProbe.Read);
+                        _ = OriginalPolicySafety.Verify(originals, record.Target, ProductDefaultEndpoints.Read(), audio.Endpoints(), audio.EndpointForPolicy, PhysicalOriginalEndpointProbe.Read,
+                            allowDefaultFollow: true);
                         using var observer = new ProductSessionObserver(new WindowsCoreAudioSessionFeed(TimeSpan.FromSeconds(2)), record.Target.Id);
                         observer.BindAudioProcessSet(candidates.Select(value => value.Id));
                         var observation = observer.ForPause.Observe(bound, TimeSpan.FromSeconds(3));

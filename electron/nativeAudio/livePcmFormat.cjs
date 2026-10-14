@@ -2,7 +2,7 @@ const { audioError } = require('./errors.cjs');
 
 // Main-owned CABLE wire contract, separate from unknown original Spotify encoding.
 const LIVE_PCM_CONTRACT = 'live-pcm-s32le-v1';
-const LIVE_PCM_COMPONENT_VERSION = '0.1.4-preview.5';
+const LIVE_PCM_COMPONENT_VERSION = '0.1.4-preview.6';
 const LIVE_PCM_RELEASE_CONTRACT = 'confirmed-stop-owner-v1';
 const LIVE_PCM_TRANSPORT = Object.freeze({ contract: LIVE_PCM_CONTRACT, sampleFormat: 's32le',
     sampleRate: 44100, channels: 2, containerBits: 32, endianness: 'little', interleaved: true,

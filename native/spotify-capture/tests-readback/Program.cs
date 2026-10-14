@@ -81,37 +81,33 @@ Run("unchanged descriptors preserve the exact object and non-mismatch errors gai
     Check(!closed.TryGetProperty("formatLeaseReadback", out _), "Normal close gained mismatch evidence");
 });
 
-foreach (var role in new[] { "capture", "render" })
-Run(role + " runtime mismatch survives the actual Tick and terminal path with native-owned direction", () =>
+
+Run("process capture ignores VB format changes and opens no capture-pin format lease", () =>
 {
     var events = new List<object>(); using var engine = new CaptureEngine(events.Add);
-    var session = role == "capture" ? "00000000-0000-0000-0000-000000000001"
-        : "00000000-0000-0000-0000-000000000002";
-    JsonElement Request(string action) => Wire(new { action, session, generation = 1,
+    JsonElement Request(string action) => Wire(new { action, session = "00000000-0000-0000-0000-000000000001", generation = 1,
         captureDeviceId = "capture", renderDeviceId = "render", temporaryFormatLease = true,
-        pipeName = "folia-capture-" + Guid.NewGuid().ToString("N"), endpointRole = "PRIVATE_FORGED_ROLE" });
+        pipeName = "folia-capture-" + Guid.NewGuid().ToString("N") });
     engine.Command(Request("capture-open")); engine.Command(Request("capture-start"));
     EngineScenario.Sessions[0].CapturedFrames = 78939;
-    EngineScenario.Endpoints.Single(value => value.EndpointId == role).ReadbackOverride = requested with
-        { SampleRate = 48000, AverageBytesPerSecond = 384000 };
+    Check(EngineScenario.Endpoints.Count == 1 && EngineScenario.Endpoints[0].EndpointId == "render", "Opened obsolete VB capture format lease");
+    EngineScenario.Endpoints[0].ReadbackOverride = requested with { SampleRate = 96000, AverageBytesPerSecond = 768000, ChannelMask = 0 };
     Thread.Sleep(260); engine.Tick();
-    var serializedEvent = Wire(events.Single());
-    var terminal = serializedEvent.GetProperty("terminalEvidence");
-    var evidence = terminal.GetProperty("formatLeaseReadback");
-    Check(terminal.GetProperty("state").GetString() == "failed"
-        && terminal.GetProperty("errorCode").GetString() == "FORMAT_LEASE_READBACK_MISMATCH"
-        && terminal.GetProperty("capturedFrames").GetInt64() == 78939
-        && terminal.GetProperty("cleanupConfirmed").GetBoolean()
-        && evidence.GetProperty("endpointRole").GetString() == role
-        && evidence.GetProperty("comparison").GetString() == "rate-or-channels"
-        && evidence.GetProperty("observed").GetProperty("sampleRate").GetInt32() == 48000
-        && !terminal.TryGetProperty("hresult", out _) && !terminal.TryGetProperty("failureStage", out _)
-        && !terminal.GetRawText().Contains("PRIVATE"), "Tick lost or invented same-origin mismatch facts");
-    var stopped = Wire(engine.Command(Request("capture-stop"))).GetProperty("terminalEvidence");
-    Check(stopped.GetProperty("formatLeaseReadback").GetRawText() == evidence.GetRawText(), "Stop replaced the captured mismatch facts");
-    // This exact production-record serialization is a synthetic, device-free protocol
-    // fixture for the one new host projection check. It contains no observed user data.
-    if (role == "render" && args.Length == 1)
-        File.WriteAllText(args[0], serializedEvent.GetRawText() + Environment.NewLine);
+    Check(events.Count == 0, "Endpoint descriptor change stopped independent process capture");
+    engine.Command(Request("capture-stop"));
 });
-Console.WriteLine($"PASS {passed} targeted format-readback failure tests. Existing suites were not run; no Windows API or device was used.");
+Run("failed open returns compared format details and permits another preparation after cleanup", () =>
+{
+    using var engine = new CaptureEngine(_ => { });
+    var failure = Failure(() => FormatLeasePolicy.RequireReadback(requested with { ChannelMask = 0 }, 448, requested, "render"));
+    EngineScenario.AcquisitionFailure = _ => failure;
+    JsonElement Request(int generation) => Wire(new { action = "capture-open", session = "00000000-0000-0000-0000-000000000002", generation,
+        captureDeviceId = "capture", renderDeviceId = "render", temporaryFormatLease = true,
+        pipeName = "folia-capture-" + Guid.NewGuid().ToString("N") });
+    var rejected = Wire(engine.Command(Request(1)));
+    Check(rejected.GetProperty("errorCode").GetString() == "FORMAT_LEASE_READBACK_MISMATCH"
+        && rejected.GetProperty("formatLeaseReadback").GetProperty("differingFields")[0].GetString() == "channelMask", "Open swallowed format comparison");
+    EngineScenario.AcquisitionFailure = null;
+    Check(Wire(engine.Command(Request(2))).GetProperty("state").GetString() != "configuration-required", "Failed open poisoned reusable capture");
+});
+Console.WriteLine($"PASS {passed} targeted format and process capture tests; no Windows API or device was used.");

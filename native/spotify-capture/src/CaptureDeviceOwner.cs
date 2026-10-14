@@ -47,7 +47,9 @@ internal sealed class CaptureDeviceOwner : IDisposable
 
     internal void Bind(CaptureSession session) => Invoke(device =>
     {
-        if (bound != null || running || device.Format != session.Configuration.Capture.MixFormat)
+        var expectedFormat = session.Configuration.Route.EvidenceKind == "windows-process-tree-loopback"
+            ? CaptureFormat.ProcessLoopback : session.Configuration.Capture.MixFormat;
+        if (bound != null || running || device.Format != expectedFormat)
             throw new CaptureFailure("CAPTURE_STATE_INVALID");
         bound = session;
         session.MarkPrepared();

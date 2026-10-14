@@ -16,6 +16,16 @@ Test("interrupted selection parks without inventing target activity or changing 
  Check(!f.Send("armCaptureInterval").Ok,"Recovery invented activity witness");
  Ok(f.Send("release"));f.CheckOriginals();
 });
+Test("capture child exit does not prevent verified pause cleanup and a fresh preparation on the retained route",()=>{
+ using var f=new Fixture();f.Prepare();f.Start(1);var writes=f.Writes;
+ f.CaptureChildExited=true;f.Paused=true;f.PcmStopped=true;f.ResetReceipt();
+ Ok(f.Send("suspendPaused",new{intervalEpoch=1}));
+ Check(f.Writes==writes&&f.Service.HasLease,"Cleanup rewrote original policy or dropped ownership");
+ f.CaptureChildExited=false;f.Epoch=2;f.ResetReceipt();
+ Ok(f.Send("resumePreparation",new{intervalEpoch=2,selectedSourceUri=Fixture.Track}));
+ Ok(f.Send("completePreparedSelection"));f.Start(2);
+ Check(f.Send("status").Ready,"Fresh capture did not recover");
+});
 
 Test("preparation cannot complete from a paused empty scan without prior target activity",()=>{
  using var f=new Fixture();f.BeginPreparation();f.AlterObservation=o=>o with{Sessions=[]};

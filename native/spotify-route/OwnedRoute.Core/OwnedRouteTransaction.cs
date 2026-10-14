@@ -119,7 +119,12 @@ public sealed class OwnedRouteTransaction(IVerifiedSpotifyResolver resolver,
         lock (gate)
         {
             var record = RequireRecord();
-            if (record.Stage is not (RouteStage.Active or RouteStage.HeldPaused)) return record;
+            // A late active observation can overlap capture shutdown. The service
+            // has freshly proved source pause and PCM stop before reaching here;
+            // recheck ownership/policy without requiring the retired keeper.
+            var stoppedObservation = record.Stage == RouteStage.RecoveryRequired
+                && record.Issue == "SESSION_OBSERVATION_UNTRUSTED";
+            if (record.Stage is not (RouteStage.Active or RouteStage.HeldPaused) && !stoppedObservation) return record;
             using var bound = Bind(record.CurrentProcess);
             CheckEndpoint(record.Target); CheckAppliedValues(bound);
             return record.Stage == RouteStage.HeldPaused ? record : ChangeStage(RouteStage.HeldPaused, null);

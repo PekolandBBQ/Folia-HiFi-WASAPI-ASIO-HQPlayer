@@ -42,13 +42,13 @@ internal static class EndpointInspector
             evidence?.After.Capture ?? EngineScenario.BaseFormat, true, BaseIdentity: new("verified", "base-owner"));
         var render = new EndpointEvidence(renderId, "CABLE Input", "VB-Audio Virtual Cable", "render", "render-instance",
             evidence?.After.Render ?? EngineScenario.BaseFormat, true, BaseIdentity: new("verified", "base-owner"));
-        string[] issues = evidence == null ? ["CAPTURE_RATE_MISMATCH", "RENDER_RATE_MISMATCH"] : [];
+        string[] issues = [];
         var sessions = new[] { EngineScenario.Spotify }.Concat(EngineScenario.Endpoints
             .Where(endpoint => endpoint.Identity is { } id && id.EndpointId == renderId)
             .Select(endpoint => endpoint.Observed with
             { IsOwnedFormatLease = NativeFormatLease.RenderSessions.Owns(endpoint.Identity!.Value, endpoint.Observed),
                 IsOwnedActiveSilentFormatLease = NativeFormatLease.RenderSessions.Owns(endpoint.Identity!.Value, endpoint.Observed) && endpoint.Observed.State == "active" })).ToArray();
-        var route = RoutePolicy.Evaluate(sessions, false, false);
+        var route = RoutePolicy.Evaluate(sessions, false, false, processCapture: true);
         issues = issues.Concat(route.Issues).Distinct().ToArray();
         var configuration = new ConfigurationEvidence(issues.Length == 0, issues, capture, render, route,
             sessions, [], TemporaryFormatLeaseEligible: route.Ready, FormatLease: evidence);
@@ -59,7 +59,7 @@ internal static class EndpointInspector
 }
 
 internal sealed class NativeFormatLease(string endpointId, CaptureFormat format, FormatLeaseSessionIdentity? identity,
-    string? endpointRole) : ITemporaryFormatEndpoint
+    string? endpointRole, bool preserveEndpointFormat) : ITemporaryFormatEndpoint
 {
     internal static FormatLeaseSessionRegistry RenderSessions { get; set; } = new(20, 123);
     internal FormatLeaseSessionIdentity? Identity => identity;
@@ -68,13 +68,13 @@ internal sealed class NativeFormatLease(string endpointId, CaptureFormat format,
     internal string EndpointId => endpointId;
     internal CaptureFormat? ReadbackOverride;
     internal static NativeFormatLease Acquire(string endpointId, CaptureFormat before, Guid groupingId, bool trackRenderSession = false,
-        string? endpointRole = null)
+        string? endpointRole = null, bool preserveEndpointFormat = false)
     {
         EngineScenario.Trace.Add("acquire:" + endpointId);
         if (EngineScenario.AcquisitionFailure?.Invoke(endpointId) is { } error) throw error;
         FormatLeaseSessionIdentity? identity = trackRenderSession ? new(endpointId, Guid.NewGuid().ToString(), groupingId) : null;
         if (identity is { } created) { RenderSessions.Register(created); RenderSessions.MarkSilentStarted(created, 621355968001230000); }
-        var endpoint = new NativeFormatLease(endpointId, FormatLeasePolicy.Request(before), identity, endpointRole);
+        var endpoint = new NativeFormatLease(endpointId, preserveEndpointFormat ? before : FormatLeasePolicy.Request(before), identity, endpointRole, preserveEndpointFormat);
         EngineScenario.Endpoints.Add(endpoint);
         try
         {
@@ -86,7 +86,7 @@ internal sealed class NativeFormatLease(string endpointId, CaptureFormat format,
     public CaptureFormat ReadCurrent()
     {
         if (Disposals != 0) throw new CaptureFailure("FORMAT_LEASE_CLOSED");
-        return FormatLeasePolicy.RequireReadback(ReadbackOverride ?? format, 448, format, endpointRole);
+        return preserveEndpointFormat ? ReadbackOverride ?? format : FormatLeasePolicy.RequireReadback(ReadbackOverride ?? format, 448, format, endpointRole);
     }
     public void Dispose()
     {

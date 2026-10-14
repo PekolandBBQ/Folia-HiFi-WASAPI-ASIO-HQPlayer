@@ -1,7 +1,7 @@
 
 
 export default {
- livePcmPrebuffer: {"title": "Buffer awal PCM Spotify", "description": "25–1000 ms · Default 350 ms. Nilai rendah dapat menyebabkan audio terputus. Berlaku untuk PCM Spotify di WASAPI, ASIO, dan HQPlayer saat pemutaran, pelanjutan, pencarian posisi, atau persiapan lagu berikutnya; penggeser tidak mengganggu pemutaran.", "sharedHint": "Buffer awal dibagikan dengan WASAPI dan ASIO. Atur “Buffer awal PCM Spotify” di pengaturan audio native."},
+ livePcmPrebuffer: {"title": "Buffer awal PCM Spotify", "description": "25–5000 ms · Default 350 ms. Nilai rendah dapat menyebabkan audio terputus. Berlaku untuk PCM Spotify di WASAPI, ASIO, dan HQPlayer saat pemutaran, pelanjutan, pencarian posisi, atau persiapan lagu berikutnya; penggeser tidak mengganggu pemutaran.", "sharedHint": "Buffer awal dibagikan dengan WASAPI dan ASIO. Atur “Buffer awal PCM Spotify” di pengaturan audio native."},
  spotifyCable: {
   "routeProbeFailed": "Pemeriksaan rute audio tidak selesai. Muat ulang dan coba lagi; hasil ini saja tidak membuktikan kegagalan driver atau penangkapan.",
   "routeUnverified": "Rute khusus Spotify belum terverifikasi. Periksa kabel yang dipilih dan perutean aplikasi, lalu coba lagi.",
@@ -887,7 +887,7 @@ export default {
       "spotify-playback-start": {"title": "Hubungkan kabel audio Spotify", "description": "Verifikasi desktop tersimpan dan rute kabel 44,1 kHz"},
       "spotify-cable-probe": {"title": "Periksa rute audio Spotify", "description": "Periksa endpoint kabel dan format audio sebenarnya"},
       "spotify-playback-stop": {"title": "Hentikan kabel audio Spotify", "description": "Hentikan koneksi tangkapan atau batalkan verifikasi"},
- "settings-live-pcm-prebuffer": {"title": "Buffer awal PCM Spotify", "description": "Atur buffer awal bersama 25–1000 ms untuk stream native berikutnya"},
+ "settings-live-pcm-prebuffer": {"title": "Buffer awal PCM Spotify", "description": "Atur buffer awal bersama 25–5000 ms untuk stream native berikutnya"},
  "hqplayer-silent-launch-toggle": {"title":"Launch HQPlayer in background","description":"Toggle startup window visibility"},
  "settings-hqplayer-component": {"title":"Komponen HQPlayer","description":"Kelola instalasi, pembaruan, dan pengembalian versi komponen"},
  "hqplayer-dsp-panel": {"title":"HQPlayer upsampling","description":"Open the upsampling controls"},

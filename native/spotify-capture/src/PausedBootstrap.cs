@@ -24,6 +24,8 @@ internal static class PausedBootstrap
             processCapture: configuration.Route.EvidenceKind == "windows-process-tree-loopback");
         if (route.Issues.Any(issue => issue != "SPOTIFY_ROUTE_NOT_FOUND"))
             throw new CaptureFailure(route.Issues.First(issue => issue != "SPOTIFY_ROUTE_NOT_FOUND"));
+        if (route.EvidenceKind == "windows-process-tree-loopback")
+            return configuration with { BootstrapReady = true };
         var captureIssue = configuration.Capture.MixFormat.ConfigurationIssue();
         if (captureIssue != null && !(allowRateMismatch && captureIssue == "CAPTURE_RATE_MISMATCH"))
             throw new CaptureFailure(captureIssue);

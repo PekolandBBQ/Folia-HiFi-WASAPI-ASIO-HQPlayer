@@ -83,7 +83,7 @@ internal sealed class CaptureSession : IDisposable
             bootstrapQueueCapacityBytes = ring.BootstrapDelivery == "buffer" ? (int?)27165600 : null,
             bootstrapPrefixFrames = buffer.BootstrapPrefixFrames,
             sampleRate = 44100, channels = 2, bitDepth = 32, sampleFormat = "s32le", sampleRateConversion = false,
-            actualMixFormat = Configuration.Capture.MixFormat, pipeConnected = pipe.Connected,
+            actualMixFormat = CaptureFormat.ProcessLoopback, pipeConnected = pipe.Connected,
             formatLeaseReleased = latestConfiguration.FormatLease?.State == "released",
             capturedFrames = packets.ReceivedFrames, concealedFrames = packets.ConcealedFrames, discontinuities = packets.Discontinuities, lastGapFrames = packets.LastGapFrames, deliveredFrames = pipe.DeliveredFrames,
             queuedBytes = buffer.QueuedBytes, queueCapacityBytes = buffer.CapacityBytes,
@@ -113,7 +113,7 @@ internal sealed class CaptureSession : IDisposable
     {
         if (!BootstrapPending || configuration.Sessions.Any(item => item.State != "expired" && RoutePolicy.IsSpotify(item)))
             SpotifyProcess.RequireUnchanged(configuration.Sessions);
-        if (configuration.Capture.MixFormat != Configuration.Capture.MixFormat) throw new CaptureFailure("CAPTURE_FORMAT_CHANGED");
+        // Endpoint format changes do not change the independently negotiated process stream.
         lock (stateGate) { latestConfiguration = configuration; routeObservedAtUnixMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(); }
     }
 

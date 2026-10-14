@@ -8,13 +8,18 @@ using System.Text.Json;
 try
 {
     using var client = ProcessLoopbackActivation.Open(int.Parse(args[0]));
-    var format = WaveFormat.CreateIeeeFloatWaveFormat(44100, 2);
+    var bytes = CaptureFormat.ProcessLoopback.ToWaveFormatEx();
+    var pointer = Marshal.AllocHGlobal(bytes.Length);
+    WaveFormat format;
+    try { Marshal.Copy(bytes, 0, pointer, bytes.Length); format = WaveFormat.MarshalFromPtr(pointer); }
+    finally { Marshal.FreeHGlobal(pointer); }
     client.Initialize(AudioClientShareMode.Shared,
         AudioClientStreamFlags.Loopback | AudioClientStreamFlags.EventCallback | AudioClientStreamFlags.AutoConvertPcm,
         0, 0, format, Guid.Empty);
     using var ready = new AutoResetEvent(false);
     client.SetEventHandle(ready.SafeWaitHandle.DangerousGetHandle());
     var capture = client.AudioCaptureClient;
+    Console.WriteLine(JsonSerializer.Serialize(new { stage = "initialized", bufferFrames = client.BufferSize }));
     long frames = 0, nonzero = 0, gaps = 0;
     client.Start();
     var until = Environment.TickCount64 + (args.Length > 1 ? int.Parse(args[1]) : 10000);

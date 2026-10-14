@@ -11,7 +11,7 @@ const CODES = new Set(['PROCESS_CAPTURE_UNSUPPORTED', 'CANCELLED', 'CAPTURE_UNSU
   'CAPTURE_HELPER_CLOSED', 'CAPTURE_HELPER_EXIT_UNCONFIRMED', 'CAPTURE_CONTROL_TIMEOUT', 'CAPTURE_CONTROL_BUSY', 'CAPTURE_PROTOCOL_INVALID',
   'CAPTURE_CONFIGURATION_REQUIRED', 'CAPTURE_PIPE_TIMEOUT', 'CAPTURE_PIPE_FAILED', 'CAPTURE_PIPE_CLOSED',
   'CAPTURE_FRAME_INVALID', 'CAPTURE_OVERFLOW', 'CAPTURE_READER_USED', 'CAPTURE_READ_PENDING',
-  'CAPTURE_REQUEST_FAILED', 'CAPTURE_CLOSED', 'CAPTURE_START_TIMEOUT', 'CAPTURE_STOP_TIMEOUT',
+  'CAPTURE_REQUEST_FAILED', 'CAPTURE_STATE_INVALID', 'CAPTURE_CLOSED', 'CAPTURE_START_TIMEOUT', 'CAPTURE_STOP_TIMEOUT',
   'CAPTURE_INITIALIZE_TIMEOUT', 'CAPTURE_BOOTSTRAP_TIMEOUT', 'CAPTURE_DEVICE_FAILED', 'PROCESS_LIMIT',
   'CAPTURE_PIPE_NOT_CONNECTED', 'CAPTURE_FORMAT_CHANGED', 'CAPTURE_FORMAT_UNSUPPORTED',
   'CAPTURE_FORMAT_INVALID', 'CAPTURE_RATE_MISMATCH', 'CAPTURE_CHANNELS_MISMATCH',
@@ -27,9 +27,16 @@ const CODES = new Set(['PROCESS_CAPTURE_UNSUPPORTED', 'CANCELLED', 'CAPTURE_UNSU
   'CAPTURE_SEEK_INVALID', 'CAPTURE_SEEK_EXPIRED', 'CAPTURE_SEEK_IDENTITY_CHANGED', 'CAPTURE_SEEK_NOT_PLAYING',
   'CAPTURE_POSITION_EPOCH_INVALID', 'CAPTURE_POSITION_SOURCE_ACTIVE',
   'CAPTURE_BUSY', 'SPOTIFY_PROCESS_CHANGED', 'SPOTIFY_PROCESS_AMBIGUOUS']);
-const failure = code => {
+const failure = (code, details) => {
   const safe = CODES.has(code) ? code : 'CAPTURE_REQUEST_FAILED';
-  return Object.assign(new Error(safe), { code: safe });
+  const error = Object.assign(new Error(safe), { code: safe });
+  if (Number.isInteger(details?.hresult) && details.hresult >= -2147483648 && details.hresult <= 4294967295)
+    error.hresult = details.hresult;
+  if (safe === 'FORMAT_LEASE_READBACK_MISMATCH') {
+    const readback = require('../debug/privatePreviewDiagnosticSchema.cjs').projectFormatLeaseReadback(details?.formatLeaseReadback);
+    if (readback) error.formatLeaseReadback = readback;
+  }
+  return error;
 };
 const endpointId = id => typeof id === 'string' && id.length > 0 && id.length <= 512 && !/[\u0000-\u001f\u007f]/.test(id);
 const sessionId = id => typeof id === 'string' && /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(id);
@@ -104,7 +111,8 @@ function requireConfiguration(value, selection) {
   for (const [key, flow, id] of [['capture', 'capture', selection.captureDeviceId], ['render', 'render', selection.renderDeviceId]]) {
     const endpoint = value[key];
     if (endpoint?.id !== id || endpoint.flow !== flow || endpoint.supportedBaseCable !== true
-      || endpoint.mixFormat?.sampleRate !== RATE || endpoint.mixFormat.channels !== 2) throw failure('CAPTURE_PROTOCOL_INVALID');
+      || value.route?.evidenceKind !== 'windows-process-tree-loopback'
+        && (endpoint.mixFormat?.sampleRate !== RATE || endpoint.mixFormat.channels !== 2)) throw failure('CAPTURE_PROTOCOL_INVALID');
   }
   return value;
 }
@@ -116,14 +124,15 @@ function requireBootstrapConfiguration(value, selection) {
   for (const [key, flow, id] of [['capture', 'capture', selection.captureDeviceId], ['render', 'render', selection.renderDeviceId]]) {
     const endpoint = value[key];
     if (endpoint?.id !== id || endpoint.flow !== flow || endpoint.supportedBaseCable !== true
-      || endpoint.mixFormat?.sampleRate !== RATE || endpoint.mixFormat.channels !== 2) throw failure('CAPTURE_PROTOCOL_INVALID');
+      || value.route?.evidenceKind !== 'windows-process-tree-loopback'
+        && (endpoint.mixFormat?.sampleRate !== RATE || endpoint.mixFormat.channels !== 2)) throw failure('CAPTURE_PROTOCOL_INVALID');
   }
   if (value.ready === true) requireConfiguration(value, selection);
   else if (value.issues.length !== 1 || value.route?.spotifySessionPresent !== false) throw failure('CAPTURE_PROTOCOL_INVALID');
   return value;
 }
 function requireSnapshot(value, record, state, expectedDelivery) {
-  if (value?.state === 'configuration-required') throw failure(value.errorCode || 'CAPTURE_CONFIGURATION_REQUIRED');
+  if (value?.state === 'configuration-required') throw failure(value.errorCode || 'CAPTURE_CONFIGURATION_REQUIRED', value);
   if (value?.errorCode != null) throw failure(value.errorCode);
   if (value?.session !== record.session || value.generation !== record.generation || value.pipeName !== record.pipeName
     || value.state !== state || value.sampleRate !== RATE || value.channels !== 2 || value.bitDepth !== 32

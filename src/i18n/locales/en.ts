@@ -1,7 +1,7 @@
 
 
 export default {
- livePcmPrebuffer: {"title": "Spotify PCM prebuffer", "description": "25–1000 ms · Default 350 ms. Lower values may cause dropouts. Applies to Spotify PCM on WASAPI, ASIO and HQPlayer at the next play/resume, seek or track preparation; moving this slider does not interrupt playback.", "sharedHint": "Prebuffer is shared with WASAPI and ASIO. Adjust “Spotify PCM prebuffer” in native audio settings."},
+ livePcmPrebuffer: {"title": "Spotify PCM prebuffer", "description": "25–5000 ms · Default 350 ms. Lower values may cause dropouts. Applies to Spotify PCM on WASAPI, ASIO and HQPlayer at the next play/resume, seek or track preparation; moving this slider does not interrupt playback.", "sharedHint": "Prebuffer is shared with WASAPI and ASIO. Adjust “Spotify PCM prebuffer” in native audio settings."},
  spotifyCable: {
   "routeProbeFailed": "The audio-route check could not complete. Refresh and retry; this result alone does not establish a driver or capture failure.",
   "routeUnverified": "The Spotify-only route has not been verified. Check the selected cable and app routing, then retry.",
@@ -881,7 +881,7 @@ export default {
       "spotify-playback-start": {"title": "Connect Spotify audio cable", "description": "Verify the saved desktop and 44.1 kHz cable route"},
       "spotify-cable-probe": {"title": "Check Spotify audio route", "description": "Inspect the selected cable endpoints and actual audio format"},
       "spotify-playback-stop": {"title": "Stop Spotify audio cable", "description": "Stop the current capture connection or cancel verification"},
- "settings-live-pcm-prebuffer": {"title": "Spotify PCM prebuffer", "description": "Adjust the shared 25–1000 ms prebuffer for the next native stream"},
+ "settings-live-pcm-prebuffer": {"title": "Spotify PCM prebuffer", "description": "Adjust the shared 25–5000 ms prebuffer for the next native stream"},
  "hqplayer-silent-launch-toggle": {"title":"Launch HQPlayer in background","description":"Toggle startup window visibility"},
  "settings-hqplayer-component": {"title":"HQPlayer component","description":"Manage independent component installation, updates and rollback"},
  "hqplayer-dsp-panel": {"title":"HQPlayer upsampling","description":"Open the upsampling controls"},

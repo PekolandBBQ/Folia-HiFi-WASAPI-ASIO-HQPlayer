@@ -48,12 +48,13 @@ SessionObservation Scan(FakeFeed feed, int[]? candidates = null)
 Test("coherent empty set is complete but not process selection", () => Require(Scan(new()).CompleteForProcess));
 Test("other active Base writer invalidates complete result", () => Require(!Scan(new(Raw(101), Raw(900, state: AudioSessionState.Active))).CompleteForProcess));
 Test("other inactive Base row is not an active writer", () => Require(Scan(new(Raw(101), Raw(900))).CompleteForProcess));
-Test("orphan recovery excludes live owners, other applications and completed journals", () => {
+Test("orphan selection allows surviving exact Spotify but excludes other live processes and completed journals", () => {
     var record = new RouteRecord(1, 1, Guid.NewGuid(), process, process,
         new BaseRenderEndpoint("base", "policy", "owner", "driver", true, true, true), RouteStage.HeldPaused,
         [new RouteRole(RenderRole.Console, null, RoleStage.Applied)], null, DateTimeOffset.UtcNow);
     Require(OrphanRouteRecovery.Eligible(record, process, false));
-    Require(!OrphanRouteRecovery.Eligible(record, process, true));
+    Require(OrphanRouteRecovery.Eligible(record, process, true));
+    Require(!OrphanRouteRecovery.Eligible(record, process with { Pid = process.Pid + 1 }, true));
     Require(!OrphanRouteRecovery.Eligible(record, process with { PolicyIdentity = "different" }, false));
     Require(!OrphanRouteRecovery.Eligible(record with { Stage = RouteStage.Restored }, process, false));
 });

@@ -109,7 +109,7 @@ function qualified(value, { allowTrial = false } = {}) {
       && value.implementationAvailable === true && value.compatibilityProfile === COMPATIBILITY_PROFILE
     || allowTrial && value?.productionQualified === false && value.trialAuthorized === true
       && value.validationProfile === VALIDATION_PROFILE && value.implementationAvailable === true && value.canOperate === true;
-  return value?.protocolMajor === 1 && value.componentVersion === '0.19.0-dev.27' && value.platform === 'win32-x64' && value.contract === 'folia-owned-route-v1'
+  return value?.protocolMajor === 1 && value.componentVersion === '0.19.0-dev.28' && value.platform === 'win32-x64' && value.contract === 'folia-owned-route-v1'
     && admitted
     && value.heldPausedAcquire === true && value.completeSessionProof === true
     && value.notificationCoherent === true && value.retainedJournalRecovery === true && value.intervalIsolation === true

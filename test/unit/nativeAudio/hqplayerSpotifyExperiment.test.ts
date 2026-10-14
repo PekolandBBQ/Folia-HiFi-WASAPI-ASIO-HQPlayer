@@ -11,9 +11,9 @@ const settings = { enabled: true, prebufferMs: 2000, startupDelayMs: 1000 };
 const required = ['local-file', 'playback-control', 'dsp-settings', 'single-instance', 'launch-options'];
 function hostFixture(capabilities = ['pcm-streaming', 'pcm32-named-pipe']) {
     const request = vi.fn(async (action: string) => action === 'hello'
-        ? { id: 'hqplayer', protocolMajor: 1, componentVersion: '0.1.4-preview.5', capabilities: [...required, 'confirmed-stop-owner-v1', ...capabilities] } : { ok: true });
+        ? { id: 'hqplayer', protocolMajor: 1, componentVersion: '0.1.4-preview.6', capabilities: [...required, 'confirmed-stop-owner-v1', ...capabilities] } : { ok: true });
     const rpc = { request, dispose: vi.fn(async () => {}) };
-    const manager = { status: vi.fn(async () => ({ available: true, version: '0.1.4-preview.5', executable: 'unused.cjs' })) };
+    const manager = { status: vi.fn(async () => ({ available: true, version: '0.1.4-preview.6', executable: 'unused.cjs' })) };
     const host = createHQPlayerComponentHost({ manager, rpcFactory: () => rpc, configPath: 'unused.json' });
     return { host, request, rpc, manager };
 }
@@ -120,7 +120,7 @@ it('separates actual component queue from decoded lead and counts buffering, not
 });
 it('diagnostics omit extra data and invalid measurements, and remain inert when disabled', () => {
     const safe = projectEvent('native.hq-experiment', { phase: 'ready', queueDepthMs: Infinity, inputBytes: -1,
-        pcmFormat: 'SECRET', prebufferMs: 2001, startupDelayMs: 1001, url: 'SECRET', samples: new Int32Array([5]) });
+        pcmFormat: 'SECRET', prebufferMs: 5001, startupDelayMs: 1001, url: 'SECRET', samples: new Int32Array([5]) });
     expect(safe.fields).toEqual({ phase: 'ready' });
     const publish = vi.fn();
     const observed = createHQPlayerExperimentDiagnostics({ current: {}, source: {}, settings, enabled: () => false, publish });

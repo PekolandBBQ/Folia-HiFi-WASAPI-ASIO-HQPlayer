@@ -5,7 +5,8 @@ using NAudio.Wave;
 namespace Folia.Capture;
 
 // Capture stays initialized on the control STA. Render is active on its dedicated
-// owner STA and submits SILENT packets only. Both retain exact MATCH_FORMAT checks.
+// owner STA and submits SILENT packets only. Process capture keeps the endpoint's
+// natural format; legacy endpoint capture retains exact MATCH_FORMAT checks.
 internal sealed class NativeFormatLease : ISilentRenderFormatEndpoint
 {
     private IAudioClient3Native? client;
@@ -16,24 +17,25 @@ internal sealed class NativeFormatLease : ISilentRenderFormatEndpoint
     internal Guid GroupingId { get; }
     private readonly CaptureFormat requested;
     private readonly string? endpointRole;
-    private NativeFormatLease(IAudioClient3Native client, Guid groupingId, CaptureFormat requested, string? endpointRole)
-    { this.client = client; GroupingId = groupingId; this.requested = requested; this.endpointRole = endpointRole; }
+    private readonly bool preserveEndpointFormat;
+    private NativeFormatLease(IAudioClient3Native client, Guid groupingId, CaptureFormat requested, string? endpointRole, bool preserveEndpointFormat)
+    { this.client = client; GroupingId = groupingId; this.requested = requested; this.endpointRole = endpointRole; this.preserveEndpointFormat = preserveEndpointFormat; }
 
     internal static ITemporaryFormatEndpoint Acquire(string endpointId, CaptureFormat previous, Guid groupingId, bool trackRenderSession = false,
-        string? endpointRole = null) => trackRenderSession
-        ? ActiveRenderFormatLease.Acquire(ready => AcquireCore(endpointId, previous, groupingId, endpointRole, ready),
+        string? endpointRole = null, bool preserveEndpointFormat = false) => trackRenderSession
+        ? ActiveRenderFormatLease.Acquire(ready => AcquireCore(endpointId, previous, groupingId, endpointRole, ready, preserveEndpointFormat),
             thread => thread.SetApartmentState(ApartmentState.STA))
-        : AcquireCore(endpointId, previous, groupingId, endpointRole, null);
+        : AcquireCore(endpointId, previous, groupingId, endpointRole, null, preserveEndpointFormat);
 
     private static NativeFormatLease AcquireCore(string endpointId, CaptureFormat previous, Guid groupingId,
-        string? endpointRole, EventWaitHandle? bufferReady)
+        string? endpointRole, EventWaitHandle? bufferReady, bool preserveEndpointFormat)
     {
-        var selected = FormatLeasePolicy.Request(previous);
-        var lease = new NativeFormatLease(Activate(endpointId), groupingId, selected, endpointRole);
+        var selected = preserveEndpointFormat ? previous : FormatLeasePolicy.Request(previous);
+        var lease = new NativeFormatLease(Activate(endpointId), groupingId, selected, endpointRole, preserveEndpointFormat);
         try
         {
             var client = lease.client!;
-            var properties = new NativeAudioClientProperties { Size = 16, Offload = 0, Category = 0, Options = 2 };
+            var properties = new NativeAudioClientProperties { Size = 16, Offload = 0, Category = 0, Options = preserveEndpointFormat ? 0u : 2u };
             Check(client.SetClientProperties(ref properties));
             var bytes = selected.ToWaveFormatEx(); var pointer = Marshal.AllocHGlobal(bytes.Length);
             try
@@ -147,7 +149,7 @@ internal sealed class NativeFormatLease : ISilentRenderFormatEndpoint
         catch { Marshal.ReleaseComObject(native); throw; }
     }
 
-    private static CaptureFormat ReadCurrent(IAudioClient3Native client, CaptureFormat? requested = null, string? endpointRole = null)
+    private static CaptureFormat ReadCurrent(IAudioClient3Native client, CaptureFormat? requested = null, string? endpointRole = null, bool preserveEndpointFormat = false)
     {
         var pointer = IntPtr.Zero;
         try
@@ -155,12 +157,14 @@ internal sealed class NativeFormatLease : ISilentRenderFormatEndpoint
             FormatLeasePolicy.CheckResult(client.GetCurrentSharedModeEnginePeriod(out pointer, out var period),
                 "FORMAT_LEASE_READBACK_FAILED");
             if (pointer == IntPtr.Zero) throw new CaptureFailure("FORMAT_LEASE_READBACK_FAILED");
-            return FormatLeasePolicy.RequireReadback(EndpointInspector.Format(WaveFormat.MarshalFromPtr(pointer)), period, requested, endpointRole);
+            var observed = EndpointInspector.Format(WaveFormat.MarshalFromPtr(pointer));
+            if (preserveEndpointFormat) return observed;
+            return FormatLeasePolicy.RequireReadback(observed, period, requested, endpointRole);
         }
         finally { Marshal.FreeCoTaskMem(pointer); }
     }
 
-    public CaptureFormat ReadCurrent() => ReadCurrent(client ?? throw new CaptureFailure("FORMAT_LEASE_CLOSED"), requested, endpointRole);
+    public CaptureFormat ReadCurrent() => ReadCurrent(client ?? throw new CaptureFailure("FORMAT_LEASE_CLOSED"), requested, endpointRole, preserveEndpointFormat);
 
     internal static void Check(int result) => FormatLeasePolicy.CheckResult(result);
 

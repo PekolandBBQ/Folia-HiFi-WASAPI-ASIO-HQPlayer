@@ -348,12 +348,16 @@ function createCableAudioPreparation({ captureHost, control, vault, cooldown, ge
     });
   }
   function schedulePoll(record, read) {
-    read.poll = setTimeout(async () => {
+    if (read.finishing) return;
+    read.poll = setTimeout(() => { read.polling = (async () => {
       try {
+        if (read.finishing) return;
         readOwned(record, read);
         if(onExternalSelection && await observeExternalSelection(record))return;
         const facts = await control.readState(record.session); readOwned(record, read); requireFacts(facts, record, true);
+        if (read.finishing) return;
         if (read.capture.status) { await read.capture.status(); readOwned(record, read); }
+        if (read.finishing) return;
         if (read.routeAudio) { await read.routeAudio.verifyActive(); readOwned(record, read); }
         schedulePoll(record, read);
       } catch (error) {
@@ -361,7 +365,7 @@ function createCableAudioPreparation({ captureHost, control, vault, cooldown, ge
           read.failure = error; void revokeSession(record.session, error?.code || 'PLAYBACK_STATE_UNCONFIRMED');
         }
       }
-    }, pollMs);
+    })(); }, pollMs);
     read.poll.unref?.();
   }
   // One owned startup promise supports lazy ordinary readers and a combined
@@ -461,7 +465,13 @@ function createCableAudioPreparation({ captureHost, control, vault, cooldown, ge
           const accepted = Math.min(block.length, maximum - delivered);
           delivered += accepted;
           yield accepted === block.length ? block : Buffer.from(block.subarray(0, accepted));
-          if (delivered === maximum) { readOwned(record, read); complete = true; break; }
+          if (delivered === maximum) {
+            // Returning the capture iterator stops its native keeper. Finish an
+            // already dispatched active-route observation before that stop, so
+            // normal EOF cannot poison the retained route with a stale check.
+            read.finishing = true; clearTimeout(read.poll);
+            await read.polling; readOwned(record, read); complete = true; break;
+          }
         }
         if (!complete) throw fail('CAPTURE_PIPE_CLOSED');
       } catch (error) {

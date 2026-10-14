@@ -25,7 +25,7 @@ async function armCapture(lease: any) {
 
 afterEach(async () => { vi.useRealTimers(); for (const f of fixtures.splice(0)) await f.route.close().catch(() => {}); });
 it('accepts only the complete qualified service contract', () => {
-  const valid = { protocolMajor: 1, componentVersion: '0.19.0-dev.27', platform: 'win32-x64', contract: 'folia-owned-route-v1', supported: true,
+  const valid = { protocolMajor: 1, componentVersion: '0.19.0-dev.28', platform: 'win32-x64', contract: 'folia-owned-route-v1', supported: true,
     productionQualified: true, heldPausedAcquire: true, completeSessionProof: true, notificationCoherent: true, retainedJournalRecovery: true,
     intervalIsolation: true, providerRouteLifetime: true, boundedSeekPark: true, boundedPausedProofTransfer: true, indefiniteHeldPause: true, freshResumeInterval: true,
     ownedSilentRenderLease: true, preparedSelection: true, preparedTargetActivity: true, boundedPreparationObservation: true, boundedRestoreObservation: true,
@@ -212,6 +212,17 @@ async function suspendForTrackHandoff(lease: any) {
   await lease.authorizePreparedSelection(); await lease.verifyPreparedTargetActive(); await lease.completePreparedSelection();
   lease.confirmPaused(); lease.publicationStopped(); lease.captureStopped(); await lease.suspendPaused();
 }
+it('parks a failure after target observation and permits a fresh same-track preparation without rewriting the route', async () => {
+  const f = create(), lease = await f.route.acquire(input);
+  await lease.authorizePreparedSelection(); await lease.verifyPreparedTargetActive();
+  lease.confirmPaused(); lease.publicationStopped(); lease.captureStopped();
+  await lease.suspendPaused();
+  await lease.rebindPreparedSelection({ selectedTrackId: trackId, pausedTrackId: trackId });
+  await lease.verifyPreparedTargetActive(); await lease.completePreparedSelection();
+  expect(f.events.filter(value => value === 'route:acquire')).toHaveLength(1);
+  expect(f.events).not.toContain('route:release');
+  lease.confirmPaused(); lease.captureStopped(); await f.route.releaseRetained();
+});
 it('rebinds a retained owner only through a fresh authorized selection and the new URI reaches every proof command', async () => {
   const f = create(), lease = await f.route.acquire(input); await suspendForTrackHandoff(lease);
   const held = await f.route.inspect(selection); expect(held.held).toBe(true);

@@ -39,7 +39,7 @@ const spotifySetupCommand = (id: string, operation: ProviderPlaybackSetupAction,
 });
 
 export const settingsCommands: CommandPaletteCommand[] = [
-    createSettingsAnchorCommand('settings-live-pcm-prebuffer', 'Spotify PCM prebuffer', 'Adjust the shared 25–1000 ms target for the next native stream',
+    createSettingsAnchorCommand('settings-live-pcm-prebuffer', 'Spotify PCM prebuffer', 'Adjust the shared 25–5000 ms target for the next native stream',
         ['spotify pcm', 'prebuffer', '预缓冲'], 'nativeAudioOutput',
         { platform: ['win'], isAvailable: isNativeAudioSupported }),
     createSettingsAnchorCommand('settings-spotify', 'Spotify connection', 'Manage Spotify connection and local playback components',

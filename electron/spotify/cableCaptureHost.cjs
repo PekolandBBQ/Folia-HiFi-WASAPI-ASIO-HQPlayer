@@ -287,11 +287,12 @@ function createCableCaptureHost({ helperPath, platform = process.platform, spawn
         const configuration = value.ok && (item.operation === 'inspect-route' ? value.result
           : ['format-probe', 'capture-open'].includes(item.operation) ? value.result.configuration : undefined);
         controlDiagnostic('result', { operation: item.operation, ok,
-          ...(!ok ? { errorCode: failure(source.errorCode ?? (configurationFailure ? 'CAPTURE_CONFIGURATION_REQUIRED' : undefined)).code, hresult } : {}) }, configuration);
+          ...(!ok ? { errorCode: failure(source.errorCode ?? (configurationFailure ? 'CAPTURE_CONFIGURATION_REQUIRED' : undefined)).code,
+            hresult, formatLeaseReadback: projectFormatLeaseReadback(source.formatLeaseReadback) } : {}) }, configuration);
       }
       if (value.ok) item.resolve(value.result);
       else {
-        const error = failure(value.errorCode);
+        const error = failure(value.errorCode, value);
         // A failed unpublished position cut can close its pipe before its JSONL
         // rejection arrives. Retain only this exact command's native cause; a
         // retired generation cannot change the active generation's receipt.
@@ -424,7 +425,7 @@ function createCableCaptureHost({ helperPath, platform = process.platform, spawn
       const process = await ensure();
       if (!process.capabilities.includes('temporary-format-lease-v1')) throw failure('FORMAT_LEASE_UNSUPPORTED');
       const value = await command(process, { action: 'format-probe', ...fields });
-      if (value?.state === 'configuration-required') throw failure(value.errorCode || 'CAPTURE_CONFIGURATION_REQUIRED');
+      if (value?.state === 'configuration-required') throw failure(value.errorCode || 'CAPTURE_CONFIGURATION_REQUIRED', value);
       if (value?.state !== 'released' || value.verified !== true || value.formatLease?.state !== 'released'
         || value.formatLease.verified !== true || value.formatLease.persistentSettingsChanged !== false
         || value.configuration?.formatLease?.state !== 'released') throw failure('CAPTURE_PROTOCOL_INVALID');
@@ -572,6 +573,10 @@ function createCableCaptureHost({ helperPath, platform = process.platform, spawn
           stop: () => stop(record), snapshot: () => record.state,
           async stopVerified() {
             await stop(record);
+            // A confirmed exit of this exact child also proves capture and its
+            // silent render lease stopped; a dead command channel alone does not.
+            if (record.process?.exited) return;
+            if (record.process?.dead) { await requireExit(record.process); return; }
             if (record.nativeOpened && record.stopVerified !== true) throw failure('CAPTURE_STOP_TIMEOUT');
           },
         });

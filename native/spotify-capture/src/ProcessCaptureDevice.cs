@@ -25,7 +25,7 @@ internal sealed class ProcessCaptureDevice : ICaptureDevice
         EventWaitHandle? openedEvent = null;
         try
         {
-            Format = configuration.Capture.MixFormat;
+            Format = CaptureFormat.ProcessLoopback;
             Format.RequireSupported();
             client.Initialize(AudioClientShareMode.Shared,
                 AudioClientStreamFlags.Loopback | AudioClientStreamFlags.EventCallback | AudioClientStreamFlags.AutoConvertPcm,

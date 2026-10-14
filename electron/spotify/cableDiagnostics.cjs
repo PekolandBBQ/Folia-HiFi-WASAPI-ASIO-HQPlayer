@@ -24,7 +24,7 @@ const HELPER_FIELDS = Object.freeze(['phase', 'operation', 'ok', 'processPlatfor
   'protocolMajor', 'helperPlatform', 'helloCompatible', 'baseCableCapability', 'pcmPipeCapability',
   'routeObservationCapability', 'temporaryFormatLeaseCapability', 'captureEndpointCount', 'renderEndpointCount',
   'singleCaptureMixSampleRate', 'singleCaptureChannels', 'singleCaptureBits',
-  'singleRenderMixSampleRate', 'singleRenderChannels', 'singleRenderBits', 'hresult', 'configurationIssueCodes',
+  'singleRenderMixSampleRate', 'singleRenderChannels', 'singleRenderBits', 'hresult', 'configurationIssueCodes', 'formatLeaseReadback',
   'endpointInventoryState', 'endpointActiveCount', 'endpointDisabledCount', 'endpointNotPresentCount',
   'endpointUnpluggedCount', 'endpointUnreadableCount', 'endpointHresult', 'controlInterfaceState',
   'controlInterfaceCount', 'controlInterfaceActiveCount', 'controlInterfaceWin32Error', 'controlInterfaceFailureStage']);

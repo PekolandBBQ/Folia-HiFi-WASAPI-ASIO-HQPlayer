@@ -105,7 +105,7 @@ async function fixture(backend: NativeAudioBackend) {
     return { transport, request, source, pipes, readers, sessions, sender, push, url, helper, hqplayer };
 }
 
-it.each(backends.flatMap(backend => [25, 350, 1000].map(target => [backend, target] as const)))
+it.each(backends.flatMap(backend => [25, 350, 1000, 5000].map(target => [backend, target] as const)))
 ('waits for %s %i ms through the real renderer/main/live stream chain', async (backend, target) => {
     const f = await fixture(backend);
     useAudioSettingsStore.getState().handleSetLivePcmPrebufferMs(target);
@@ -160,13 +160,13 @@ it('freezes an in-flight preparation despite slider updates and rejects bad IPC 
     await vi.waitFor(() => expect(f.readers).toHaveLength(1));
     useAudioSettingsStore.getState().handleSetLivePcmPrebufferMs(25);
     await f.push(Math.ceil(25 * rate / 1000)); expect(f.transport.readyState).toBe(0);
-    for (const value of [null, '350', NaN, Infinity, 24, 1001, 25.5, {}, true]) {
+    for (const value of [null, '350', NaN, Infinity, 24, 5001, 25.5, {}, true]) {
         await expect(f.request({ action: 'begin', session: 'bad', backend: 'asio', deviceId: 'test', url: f.url, livePcmPrebufferMs: value })).rejects.toMatchObject({ code: 'INVALID_REQUEST' });
     }
     expect(f.readers[0].signal.aborted).toBe(false);
     await f.push(Math.ceil(325 * rate / 1000)); await vi.waitFor(() => expect(f.transport.readyState).toBe(3));
     const session = f.request.mock.calls.find(([request]) => request.action === 'begin')![0].session;
-    await expect(f.request({ action: 'seek', session, position: 12, livePcmPrebufferMs: 1001 })).rejects.toMatchObject({ code: 'INVALID_REQUEST' });
+    await expect(f.request({ action: 'seek', session, position: 12, livePcmPrebufferMs: 5001 })).rejects.toMatchObject({ code: 'INVALID_REQUEST' });
     expect(f.readers).toHaveLength(1);
 });
 

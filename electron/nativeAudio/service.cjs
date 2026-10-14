@@ -229,7 +229,7 @@ function registerNativeAudio({ app, ipcMain, isTrustedSender, helperFactory = cr
         // Older renderers may only send the HQ experimental target; new renderers always send the canonical value.
         const livePcmPrebufferMs = validateLivePcmPrebufferMs(request.livePcmPrebufferMs === undefined
             && request.backend === 'hqplayer' && hqplayerSpotifyExperiment.enabled
-            ? Math.min(1000, hqplayerSpotifyExperiment.prebufferMs) : request.livePcmPrebufferMs);
+            ? Math.min(5000, hqplayerSpotifyExperiment.prebufferMs) : request.livePcmPrebufferMs);
         const previous = active;
         const current = { id: request.session, sender, abort: new AbortController(), directory: null,
             backend: request.backend, deviceId: request.deviceId, processingMode, hqplayerGainDb, hqplayerSpotifyExperiment, livePcmPrebufferMs, hqplayerDefaults: request.hqplayerDefaults, compatibilityMode: request.compatibilityMode === true, sessionBoundAudio: request.sessionBoundAudio === true, trackKey: request.trackKey, sourceName: request.sourceName, sourceMimeType: request.mimeType, sourceMetadata, initialPosition: request.position || 0, durationHint: request.duration || 0, startedAt: Date.now(), bytes: 0, ready: false };

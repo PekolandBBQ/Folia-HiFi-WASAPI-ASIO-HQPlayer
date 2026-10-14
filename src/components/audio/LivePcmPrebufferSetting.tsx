@@ -19,7 +19,7 @@ export default function LivePcmPrebufferSetting({ disabled = false }: { disabled
             aria-valuetext={`${value} ms`} aria-describedby={`${id}-hint`}
             className="mt-3 h-6 w-full cursor-pointer accent-[var(--accent-color)] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--accent-color)] disabled:cursor-not-allowed disabled:opacity-60"
             onChange={event => setValue(event.currentTarget.valueAsNumber)} />
-        <div className="flex justify-between text-xs" style={{ color: 'var(--text-secondary)' }}><span>25 ms</span><span>1000 ms</span></div>
+        <div className="flex justify-between text-xs" style={{ color: 'var(--text-secondary)' }}><span>25 ms</span><span>5000 ms</span></div>
         <p id={`${id}-hint`} className="mt-2 text-xs leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
             {t('livePcmPrebuffer.description')}
         </p>

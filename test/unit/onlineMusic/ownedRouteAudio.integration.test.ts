@@ -224,6 +224,26 @@ it('keeps active-read PCM unpublished until complete native proof arrives after 
   proof.resolve(await real('status', {})); expect((await next).value).toEqual(Buffer.alloc(8, 7));
   await source.pause();
 });
+it('finishes an in-flight route poll before EOF stops capture and retains the route for the next song', async () => {
+  const f = create(), prepared = await f.prepare(), source = f.audio.lookup(prepared.url);
+  await source.seek(119990);
+  const opened = await source.openReadable({ positionMs: 119990 });
+  const reader = opened.stream[Symbol.asyncIterator](), first = reader.next(); await tick();
+  const real = f.host.request.getMockImplementation()!, entered = deferred(), release = deferred();
+  f.host.request.mockImplementation(async (command: string, payload: any) => {
+    if (command === 'status') { entered.resolve(undefined); await release.promise; f.events.push('poll:finished'); }
+    return real(command, payload);
+  });
+  await entered.promise;
+  f.captures[0].queue.push(Buffer.alloc(441 * 8, 7)); await first;
+  const end = reader.next(); await tick();
+  expect(f.captures[0].stop).not.toHaveBeenCalled();
+  expect(f.captures[0].stopVerified).not.toHaveBeenCalled();
+  release.resolve(undefined); await expect(end).resolves.toMatchObject({ done: true });
+  expect(f.events.indexOf('poll:finished')).toBeLessThan(f.events.indexOf('capture:stop'));
+  expect(f.lease().state).toBe('pausedHeld');
+  expect(f.events).not.toContain('route:release');
+}, 10000);
 it('discards the entire held prefix if sticky isolation fails after promotion but before any PCM publication', async () => {
   const f = create(), prepared = await f.prepare(), source = f.audio.lookup(prepared.url);
   const real = f.host.request.getMockImplementation()!; let activeChecks = 0;

@@ -449,7 +449,11 @@ public sealed class ProductRouteService : IDisposable
                         || (preparedSelectionTarget is not null && !interruptedPreparation)
                         || PositiveInteger(jsonElement, "intervalEpoch") != intervalEpoch)
                         throw new RouteBlockedException("PAUSED_ROUTE_STATE_INVALID");
-                    lifetime.ValidateApplyAuthority(); lifetime.ValidateOwnership(RequireRetention());
+                    // Cleanup must remain possible after the capture child has exited.
+                    // Keep parent/journal authority and require fresh pause + PCM-stop proof;
+                    // a seek park still requires its retained capture child to be live.
+                    if (boundedSeek) lifetime.ValidateApplyAuthority(); else lifetime.ValidatePausedOwnerLiveness();
+                    lifetime.ValidateOwnership(RequireRetention());
                     // Proof is freshly brokered and checked against native sessions;
                     // caller JSON cannot stand in for source pause or capture Stop ACK.
                     var paused = (interruptedPreparation ? preparedSelectionTarget! : playbackTarget).ForFreshRecovery()
@@ -496,7 +500,8 @@ public sealed class ProductRouteService : IDisposable
                         // Preserve the original 22-second host deadline and reserve
                         // the full two 6-second reads plus 2-second native scan.
                         if (monotonic() - suspendStarted > TimeSpan.FromSeconds(6)) throw;
-                        lifetime.ValidateApplyAuthority(); lifetime.ValidateOwnership(RequireRetention());
+                        if (boundedSeek) lifetime.ValidateApplyAuthority(); else lifetime.ValidatePausedOwnerLiveness();
+                        lifetime.ValidateOwnership(RequireRetention());
                         lifetime.VerifyPausedSource(paused);
                     }
                     pausedProofTransferId = null;

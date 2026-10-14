@@ -209,17 +209,15 @@ internal static class EndpointInspector
         {
             if (lease.CaptureId != captureId || lease.RenderId != renderId) throw new CaptureFailure("FORMAT_LEASE_ENDPOINT_MISMATCH");
             formatLease = lease.ReadEvidence();
-            captured = captured with { ConfiguredMixFormat = formatLease.Before.Capture, MixFormat = formatLease.After.Capture,
-                MixFormatKind = "current-engine-format" };
+            // The input pin is not opened by process capture. Keep its freshly
+            // observed descriptor instead of presenting an old lease snapshot as live.
             rendered = rendered with { ConfiguredMixFormat = formatLease.Before.Render, MixFormat = formatLease.After.Render,
                 MixFormatKind = "current-engine-format" };
         }
         var issues = new List<string>();
         if (!captured.SupportedBaseCable || !rendered.SupportedBaseCable
             || !BaseCableIdentity.SameOwner(captured.BaseIdentity, rendered.BaseIdentity)) issues.Add("BASE_CABLE_ENDPOINT_REQUIRED");
-        if (captured.MixFormat.ConfigurationIssue() is { } inputIssue) issues.Add(inputIssue);
-        if (rendered.MixFormat.SampleRate != 44100) issues.Add("RENDER_RATE_MISMATCH");
-        if (rendered.MixFormat.Channels != 2) issues.Add("RENDER_CHANNELS_MISMATCH");
+        // Process loopback supplies its own PCM format, independently of both VB pins.
         var defaults = Defaults(enumerator, displayMetadata: false);
         var siblings = RenderSiblings(enumerator, renderId, rendered.BaseIdentity!);
         var defaultRender = defaults.Any(item => item.Flow == "render" && item.Id != null && siblings.Ids.Contains(item.Id));

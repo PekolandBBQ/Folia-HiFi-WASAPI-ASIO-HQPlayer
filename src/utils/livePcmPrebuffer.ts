@@ -1,12 +1,12 @@
 // src/utils/livePcmPrebuffer.ts — one saved target for Spotify live PCM on every native output.
 export const LIVE_PCM_PREBUFFER_KEY = 'folia_live_pcm_prebuffer_ms';
 export const LIVE_PCM_PREBUFFER_DEFAULT_MS = 350;
-export const LIVE_PCM_PREBUFFER_RANGE = Object.freeze({ min: 25, max: 1000, step: 1 });
+export const LIVE_PCM_PREBUFFER_RANGE = Object.freeze({ min: 25, max: 5000, step: 1 });
 const legacyKey = 'folia_hqplayer_spotify_experiment';
 
 export const normalizeLivePcmPrebufferMs = (value: unknown): number =>
     typeof value === 'number' && Number.isFinite(value)
-        ? Math.round(Math.max(25, Math.min(1000, value))) : LIVE_PCM_PREBUFFER_DEFAULT_MS;
+        ? Math.round(Math.max(25, Math.min(5000, value))) : LIVE_PCM_PREBUFFER_DEFAULT_MS;
 
 // Promote a valid legacy HQ timing once. The canonical preference always wins, even after an HQ reset.
 export function readLivePcmPrebufferMs(): number {
@@ -14,7 +14,7 @@ export function readLivePcmPrebufferMs(): number {
         const saved = localStorage.getItem(LIVE_PCM_PREBUFFER_KEY);
         if (saved !== null) {
             const value = JSON.parse(saved);
-            return Number.isInteger(value) && value >= 25 && value <= 1000 ? value : LIVE_PCM_PREBUFFER_DEFAULT_MS;
+            return Number.isInteger(value) && value >= 25 && value <= 5000 ? value : LIVE_PCM_PREBUFFER_DEFAULT_MS;
         }
         const legacy = JSON.parse(localStorage.getItem(legacyKey) || 'null');
         const value = legacy && !Array.isArray(legacy) && typeof legacy === 'object'

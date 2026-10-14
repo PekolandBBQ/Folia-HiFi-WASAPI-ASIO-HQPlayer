@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "version": "0.1.0-preview.4",
-  "revision": 3,
+  "revision": 4,
   "platform": "win32-x64",
   "spicetify": {
     "version": "2.45.3",
@@ -19,12 +19,12 @@
     "entry": "VBCABLE_Setup_x64.exe"
   },
   "route": {
-    "version": "0.19.0-dev.27",
+    "version": "0.19.0-dev.28",
     "pairedCaptureRequired": true,
-    "sha256": "f38eda887629571ba5095dfed2ca6426afb8a827bb31c4dd2649abc8923d66ca"
+    "sha256": "e880223c0b28229a146d35756ac70fe849eb64e9d55a38539f7675b3a4eec63e"
   },
   "capture": {
-    "version": "0.1.5-capture.10",
-    "sha256": "d1547dbd7a0c3fd5613a93f3e1f06fc44a23d656f9e6eddb4be0dea73ea614a1"
+    "version": "0.1.5-capture.11",
+    "sha256": "f6ca1a6810bcf801a49da6511dd9f34baf5b9774853c3a79b95ef4f818e5e942"
   }
 }

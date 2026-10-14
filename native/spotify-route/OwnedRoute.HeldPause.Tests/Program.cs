@@ -165,6 +165,19 @@ Run("TTL plus "+mode+" never completes a fallback hold",()=>{
      bounded==2&&mode=="generation"?101:100,bounded==2&&mode=="epoch"?101:100,"selected",0);};
  Check(!f.Send("suspendPaused",new {intervalEpoch=1,reusePauseObservation=true}).Ok&&!f.Suspended&&fresh==0,"Non-age failure retried or exhausted budget extended");
 });
+Run("late active observation failure recovers only after fresh pause and PCM stop proof",()=>{
+ using var f=new Fixture();f.Prepare();f.Start(1);var writes=f.Writes;
+ f.IncompleteActiveObservation=true;
+ Check(!f.Send("status").Ok&&f.Latest!.Stage==RouteStage.RecoveryRequired,"Expected active observation failure");
+ Check(!f.Send("suspendPaused",new{intervalEpoch=1}).Ok&&!f.Suspended,"Playing source was accepted");
+ f.Paused=true;f.ResetReceipt();
+ Check(!f.Send("suspendPaused",new{intervalEpoch=1}).Ok&&!f.Suspended,"Running PCM was accepted");
+ f.PcmStopped=true;f.ResetReceipt();Ok(f.Send("suspendPaused",new{intervalEpoch=1}));
+ Check(f.Suspended&&f.Latest!.Stage==RouteStage.HeldPaused&&f.Writes==writes,"Recovery rewrote policy or remained failed");
+ f.IncompleteActiveObservation=false;
+ Ok(f.Send("resumePreparation",new{intervalEpoch=2,selectedSourceUri=Fixture.Track}));
+ Ok(f.Send("completePreparedSelection"));f.Start(2);Check(f.Send("status").Ready,"Fresh capture could not resume");
+});
 Console.WriteLine($"PASS {total} pure C# held-pause cases (mock policy only)");
 
 sealed class Fixture : IProductRouteBackend,IProductRouteLifetime,IVerifiedSpotifyResolver,IBoundSpotifyPolicy,ISelectedEndpointVerifier,ISessionObserver,IDurableRouteJournal,ISourcePlaybackControl,IDisposable
@@ -176,6 +189,7 @@ sealed class Fixture : IProductRouteBackend,IProductRouteLifetime,IVerifiedSpoti
  public ProductRouteService Service {get;}
  public TimeSpan Elapsed;
  public bool RealTime;
+ public bool IncompleteActiveObservation;
  readonly long realtimeStart=System.Diagnostics.Stopwatch.GetTimestamp();
  public TimeSpan Monotonic=>RealTime?System.Diagnostics.Stopwatch.GetElapsedTime(realtimeStart):Elapsed;
  public DateTimeOffset Now=>RealTime?DateTimeOffset.UtcNow:StartTime+Elapsed;
@@ -217,7 +231,7 @@ sealed class Fixture : IProductRouteBackend,IProductRouteLifetime,IVerifiedSpoti
  public SpotifyProcess CheckLiveIdentity()=>Identity;public string? Get(RenderRole role)=>values[(int)role];
  public void Set(RenderRole role,string? value){if(FailRestore&&value!="base")throw new RouteBlockedException("RESTORE_READBACK_MISMATCH");if(role==RenderRole.Communications)throw new Exception("Communications setter");values[(int)role]=value;Writes++;}
  public BaseRenderEndpoint VerifySelected(BaseRenderEndpoint e)=>e;
- public SessionObservation Observe(IBoundSpotifyPolicy process,TimeSpan budget){SessionScans++;if(ChangeDuringScan){ResetReceipt();}return new(true,Identity,Now,[new(Identity,"spotify",CurrentSelection.RenderDeviceId,!Paused)]);}
+ public SessionObservation Observe(IBoundSpotifyPolicy process,TimeSpan budget){SessionScans++;if(ChangeDuringScan){ResetReceipt();}return new(!(IncompleteActiveObservation&&!Paused),Identity,Now,[new(Identity,"spotify",CurrentSelection.RenderDeviceId,!Paused)]);}
  public RouteRecord? ReadLatest()=>Latest;public void Append(RouteRecord r)=>Latest=r;
  public PreparedRetention RetainAndAcknowledgePrepared(RouteRecord r)=>new(r.TransactionId,Identity,new string('a',64),1,"file",true,true,true);
  public void ValidateOwnership(PreparedRetention r){if(r.Process!=Identity||r.TransactionId!=Latest?.TransactionId)throw new JournalUnavailableException("BAD_RETAINED_OWNER");}

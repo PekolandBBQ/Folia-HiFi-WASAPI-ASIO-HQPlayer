@@ -1,6 +1,7 @@
 'use strict';
 // Preserve bounded machine codes across IPC; messages explain the failed operation without exposing account data.
 const descriptions = {
+ DEVICE_INACTIVE: 'Spotify 当前未把本机作为活动播放设备，或本机设备信息尚未就绪。请在 Spotify 的设备列表选择这台电脑；桥接连接成功不代表本机正在接收音频。',
  PROCESS_CAPTURE_UNSUPPORTED: '当前 Windows 不支持 Spotify 进程专属采集，需要系统内部版本 20348 及以上；无需重装组件。',
  SPOTIFY_SETUP_STOP_FAILED: '配置前无法退出所选 Spotify，组件文件尚未修改。',
  SPOTIFY_SETUP_STOP_TIMEOUT: '已请求退出所选 Spotify，但进程或桥接连接未在 10 秒内结束，组件文件尚未修改。',
@@ -28,9 +29,14 @@ const descriptions = {
  EXTERNAL_POLICY_CONFLICT: '其他程序或系统设置改变了 Spotify 的输出路由，当前路由操作未继续。',
  BOOTSTRAP_IDENTITY_UNCONFIRMED: '准备路由时未能确认 Spotify 本机音频进程。',
  CAPTURE_HELPER_UNAVAILABLE: '随 Folia 提供的音频采集程序无法启动。',
+ CAPTURE_STATE_INVALID: '音频采集设备与当前会话的格式或运行状态不一致，本次绑定未完成。',
+ CAPTURE_STOP_TIMEOUT: '音频采集停止指令未获得确认，当前会话尚未完成清理；已保存的连接和组件配置仍保留。',
+ CAPTURE_HELPER_CLOSED: '本轮 Spotify 音频采集进程已退出，音频传输中断；可重试播放以建立新的采集会话。',
  ROUTE_HELPER_UNAVAILABLE: '随 Folia 提供的音频路由程序无法启动。',
  PROTOCOL_INCOMPATIBLE: '采集组件协议与当前 Folia 不兼容，需要更新配套组件。',
  FORMAT_LEASE_READBACK_MISMATCH: '采集设备应用格式后的读回结果不一致，未建立音频采集。',
+ SESSION_OBSERVATION_UNTRUSTED: 'Windows 音频会话观察未能确认本轮 Spotify 路由或静音占位会话，当前采集未启动；这不表示桥接未连接。',
+ ROUTE_HELPER_CLOSED: '本轮音频路由进程已经退出，无法继续使用旧会话；已保存的组件配置与原路由备份仍保留。',
  SOURCE_EFFECT_UNKNOWN: '上一次 Spotify 控制指令未收到结果，尚不能确定播放状态。',
  CONTROL_TIMEOUT: 'Spotify 扩展未在规定时间内回应控制指令。',
  HQPLAYER_MULTIPLE_INSTANCES: '检测到多个 HQPlayer 实例，无法确定目标输出实例。',
@@ -43,6 +49,11 @@ function failureDetails(error, operation) {
  const code = causeCode || nativeCode;
  if (!code) return {};
  const text = descriptions[code] || 'Spotify 操作未完成，以下为组件返回的具体错误。';
- return { nativeCode, causeCode, stage, detail: text + ' [' + [stage, nativeCode, causeCode].filter(Boolean).join(' / ') + ']' };
+ const readback = code === 'FORMAT_LEASE_READBACK_MISMATCH'
+   ? require('../debug/privatePreviewDiagnosticSchema.cjs').projectFormatLeaseReadback(error?.formatLeaseReadback) : undefined;
+ const formatDetail = readback ? ` ${readback.endpointRole === 'render' ? '输出端' : '采集端'}请求 ${readback.requested.sampleRate} Hz／${readback.requested.channels} 声道，实际 ${readback.observed.sampleRate} Hz／${readback.observed.channels} 声道；差异字段：${readback.differingFields.join('、')}。` : '';
+ return { nativeCode, causeCode, stage, ...(readback ? { formatLeaseReadback: readback } : {}),
+   ...(Number.isInteger(error?.hresult) ? { hresult: error.hresult } : {}),
+   detail: text + formatDetail + ' [' + [stage, nativeCode, causeCode].filter(Boolean).join(' / ') + ']' };
 }
 module.exports = { failureDetails };

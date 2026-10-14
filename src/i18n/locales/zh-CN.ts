@@ -1,7 +1,7 @@
 
 
 export default {
- livePcmPrebuffer: {"title": "Spotify PCM 预缓冲", "description": "25–1000 毫秒，默认 350 毫秒。数值较低可能导致断音。WASAPI、ASIO 和 HQPlayer 的 Spotify PCM 共用此设置，下次播放／续播、拖动进度或准备曲目时生效；滑动不会打断当前播放。", "sharedHint": "预缓冲与 WASAPI、ASIO 共用，请在原生音频设置中调整“Spotify PCM 预缓冲”。"},
+ livePcmPrebuffer: {"title": "Spotify PCM 预缓冲", "description": "25–5000 毫秒，默认 350 毫秒。数值较低可能导致断音。WASAPI、ASIO 和 HQPlayer 的 Spotify PCM 共用此设置，下次播放／续播、拖动进度或准备曲目时生效；滑动不会打断当前播放。", "sharedHint": "预缓冲与 WASAPI、ASIO 共用，请在原生音频设置中调整“Spotify PCM 预缓冲”。"},
  spotifyCable: {
   "routeProbeFailed": "音频路由检查未能完成。请刷新后重试；仅凭此结果不能认定驱动或采集失败。",
   "routeUnverified": "尚未验证仅 Spotify 使用此音频线。请检查所选端点和应用路由后重试。",
@@ -881,7 +881,7 @@ export default {
       "spotify-playback-start": {"title": "连接 Spotify 音频线", "description": "验证已保存的桌面端与 44.1 kHz 音频路由"},
       "spotify-cable-probe": {"title": "检查 Spotify 音频路由", "description": "检查所选音频线端点和实际音频格式"},
       "spotify-playback-stop": {"title": "停止 Spotify 音频线", "description": "停止当前采集连接或取消验证"},
- "settings-live-pcm-prebuffer": {"title": "Spotify PCM 预缓冲", "description": "调整下一次原生音频流使用的 25–1000 毫秒预缓冲"},
+ "settings-live-pcm-prebuffer": {"title": "Spotify PCM 预缓冲", "description": "调整下一次原生音频流使用的 25–5000 毫秒预缓冲"},
  "hqplayer-silent-launch-toggle": {"title":"后台静默开启 HQPlayer","description":"切换新实例的启动显示方式"},
  "settings-hqplayer-component": {"title":"HQPlayer 组件管理","description":"管理独立的 HQPlayer 组件版本、安装、更新与回退"},
  "hqplayer-dsp-panel": {"title":"HQPlayer 升频设置","description":"打开升频设置悬浮面板"},

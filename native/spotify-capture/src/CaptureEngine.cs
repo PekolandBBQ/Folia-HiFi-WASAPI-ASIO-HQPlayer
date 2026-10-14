@@ -34,7 +34,7 @@ internal sealed class CaptureEngine(Action<object> emit, Func<ControlInterfaceEv
                 throw new CaptureFailure("PROCESS_CAPTURE_UNSUPPORTED");
             if (!request.TryGetProperty("protocolMajor", out var protocol) || protocol.GetInt32() != 1)
                 throw new CaptureFailure("PROTOCOL_INCOMPATIBLE");
-            return new { protocolMajor = 1, componentVersion = "0.1.5-capture.10", platform = "win32-x64",
+            return new { protocolMajor = 1, componentVersion = "0.1.5-capture.11", platform = "win32-x64",
                 capabilities = new[] { "windows-process-tree-loopback-v1", "base-vb-cable-capture-v1", "s32le-pipe-v1", "route-process-observation-v1", "temporary-format-lease-v1", "cable-interface-diagnostics-v1", "paused-source-bootstrap-v1", "active-silent-format-lease-v1", "bounded-bootstrap-buffer-v1", "post-start-route-proof-v1", "bounded-playing-seek-device-reuse-v1", "unpublished-position-epoch-v1" },
                 sampleRate = 44100, channels = 2, bitDepth = 32, sampleFormat = "s32le",
                 queueCapacityBytes = 705600, maximumPacketBytes = 352800,
@@ -212,7 +212,8 @@ internal sealed class CaptureEngine(Action<object> emit, Func<ControlInterfaceEv
         {
             var failure = FormatLeasePolicy.CleanupFailure(error, () => probe?.Dispose());
             if (failure.CleanupFailed) { lifetime.Poison(); throw new CaptureFailure("HELPER_RESTART_REQUIRED", failure.NativeHResult); }
-            return new { state = "configuration-required", verified = false, errorCode = failure.Code, hresult = failure.NativeHResult, configuration = initial };
+            return new { state = "configuration-required", verified = false, errorCode = failure.Code, hresult = failure.NativeHResult,
+                formatLeaseReadback = failure.FormatLeaseReadback, configuration = initial };
         }
         try { probe.Dispose(); }
         catch (Exception error)
@@ -290,7 +291,7 @@ internal sealed class CaptureEngine(Action<object> emit, Func<ControlInterfaceEv
         {
             ReleaseFormatLease();
             return new { state = "configuration-required", errorCode = failure.Code, hresult = failure.NativeHResult,
-                configuration = ReleasedEvidence(inspection) };
+                formatLeaseReadback = failure.FormatLeaseReadback, configuration = ReleasedEvidence(inspection) };
         }
         catch { ReleaseFormatLease(); throw; }
         lastRouteCheck = Environment.TickCount64;
@@ -345,7 +346,8 @@ internal sealed class CaptureEngine(Action<object> emit, Func<ControlInterfaceEv
             var inspection = EndpointInspector.Inspect(parked.Owner.CaptureDeviceId, parked.Owner.RenderDeviceId, output, formatLease);
             inspection = PausedBootstrap.Require(inspection, parked.Owner.SpotifyProcess,
                 EndpointInspector.SpotifyProcess(parked.Owner.SpotifyProcess.ProcessId));
-            if (inspection.Capture.MixFormat != parked.Owner.Configuration.Capture.MixFormat)
+            if (inspection.Route.EvidenceKind != "windows-process-tree-loopback"
+                && inspection.Capture.MixFormat != parked.Owner.Configuration.Capture.MixFormat)
                 throw new CaptureFailure("CAPTURE_FORMAT_CHANGED");
             if (Now - parked.ParkedAt is < 0 or >= SeekParkTimeoutMs) throw new CaptureFailure("CAPTURE_SEEK_EXPIRED");
             leases.Reserve(lease);
@@ -411,7 +413,8 @@ internal sealed class CaptureEngine(Action<object> emit, Func<ControlInterfaceEv
                         parked.Owner.RenderDeviceId, parked.Owner.OutputDeviceId, formatLease);
                     PausedBootstrap.Require(configuration, parked.Owner.SpotifyProcess,
                         EndpointInspector.SpotifyProcess(parked.Owner.SpotifyProcess.ProcessId));
-                    if (configuration.Capture.MixFormat != parked.Owner.Configuration.Capture.MixFormat)
+                    if (configuration.Route.EvidenceKind != "windows-process-tree-loopback"
+                        && configuration.Capture.MixFormat != parked.Owner.Configuration.Capture.MixFormat)
                         throw new CaptureFailure("CAPTURE_FORMAT_CHANGED");
                 }
                 catch { Stop(); }

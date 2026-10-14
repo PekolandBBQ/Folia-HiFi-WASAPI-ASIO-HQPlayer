@@ -90,6 +90,9 @@ function mappedError(error) {
 function publicError(error) {
   const result = mappedError(error);
   for (const key of ['nativeCode', 'failureCode', 'stage']) if (typeof error?.[key] === 'string') result[key] = error[key];
+  const details = captureFailure(error?.nativeCode || error?.code, error);
+  if (details.formatLeaseReadback) result.formatLeaseReadback = details.formatLeaseReadback;
+  if (details.hresult !== undefined) result.hresult = details.hresult;
   if (!result.nativeCode && /^[A-Z][A-Z0-9_]{1,127}$/.test(error?.code || '')) result.nativeCode = error.code;
   return result;
 }

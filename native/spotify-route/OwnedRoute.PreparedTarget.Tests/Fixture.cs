@@ -20,6 +20,7 @@ sealed class Fixture : IProductRouteBackend,IProductRouteLifetime,IVerifiedSpoti
  public string? BoundSession; public int BoundGeneration;
  public RouteSelection CurrentSelection=new("capture","render");
  public bool FailColdInspectionOnce;
+ public bool CaptureChildExited;
  public bool Paused=true,PcmStopped=true,Suspended,FailRestore=false,ChangeDuringScan=false;
  public string TrackUri=Track;
  public int SourceReads,SessionScans,Writes,PauseCommands,PolicyScans;
@@ -58,7 +59,7 @@ sealed class Fixture : IProductRouteBackend,IProductRouteLifetime,IVerifiedSpoti
  public RouteRecord? ReadLatest()=>Latest;public void Append(RouteRecord r)=>Latest=r;
  public PreparedRetention RetainAndAcknowledgePrepared(RouteRecord r)=>new(r.TransactionId,Identity,new string('a',64),1,"file",true,true,true);
  public void ValidateOwnership(PreparedRetention r){if(r.Process!=Identity||r.TransactionId!=Latest?.TransactionId)throw new JournalUnavailableException("BAD_RETAINED_OWNER");}
- public void ValidateApplyAuthority(){PolicyScans++;}
+ public void ValidateApplyAuthority(){PolicyScans++;if(CaptureChildExited)throw new RouteBlockedException("OWNED_SILENT_RENDER_LEASE_LOST");}
  public void ValidatePausedOwnerLiveness(){}
  public void VerifyPausedSource(OwnedPlaybackTarget target){readingTarget=target;new SourcePauseVerifier(this,this,this,()=>Now,ledger).RequirePaused(target);}
  public void VerifyRestoredTerminal(RouteRecord r,PreparedRetention p)=>CheckOriginals();

@@ -28,9 +28,9 @@ beforeEach(() => {
 afterEach(() => { act(() => root.unmount()); host.remove(); });
 const render = (disabled = false) => act(() => root.render(React.createElement(React.StrictMode, null,
     React.createElement(LivePcmPrebufferSetting, { disabled }), React.createElement(HQPlayerSpotifyExperimentSettings))));
-it.each([25, 350, 1000])('shows and persists %i ms without playback controls or output handoff', value => {
+it.each([25, 350, 1000, 5000])('shows and persists %i ms without playback controls or output handoff', value => {
     render(); const slider = host.querySelector<HTMLInputElement>('input[type=range]')!;
-    expect([slider.min, slider.max, slider.step]).toEqual(['25', '1000', '1']);
+    expect([slider.min, slider.max, slider.step]).toEqual(['25', '5000', '1']);
     expect(host.querySelectorAll('input[type=range]')).toHaveLength(1);
     expect(host.querySelectorAll('input[type=number]')).toHaveLength(1); // Only the independent HQ startup delay remains.
     const revision = useAudioSettingsStore.getState().nativeAudioOutputRevision;

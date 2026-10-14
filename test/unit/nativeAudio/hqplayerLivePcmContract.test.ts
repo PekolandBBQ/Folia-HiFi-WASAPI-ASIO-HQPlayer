@@ -16,7 +16,7 @@ const deferred = <T = any>() => { let resolve!: (value: T) => void;
     const promise = new Promise<T>(done => { resolve = done; }); return { promise, resolve }; };
 const cleanups: Array<() => Promise<void>> = [];
 afterEach(async () => { for (const close of cleanups.splice(0)) await close(); });
-function fixture({ version = '0.1.4-preview.5', capability = true, releaseCapability = true } = {}) {
+function fixture({ version = '0.1.4-preview.6', capability = true, releaseCapability = true } = {}) {
     let generation = 0, event: (value: any) => void = () => {};
     const reply = (extra = {}) => ({ session: 'live', generation, pipeName: spec.pipeName, transport,
         ready: false, receiverInput: null, ...extra });
@@ -34,7 +34,7 @@ function fixture({ version = '0.1.4-preview.5', capability = true, releaseCapabi
     return { host, request, reply, event: (value: any) => event(value) };
 }
 
-it.each([{ version: '0.1.4-preview.3' }, { version: '0.1.4-preview.4' }, { version: '0.1.4-preview.6' }, { capability: false }, { releaseCapability: false }])
+it.each([{ version: '0.1.4-preview.3' }, { version: '0.1.4-preview.4' }, { version: '0.1.4-preview.5' }, { version: '0.1.4-preview.7' }, { capability: false }, { releaseCapability: false }])
 ('requires the exact component version and live contract capability: %j', async options => {
     const f = fixture(options);
     expect(await f.host.supportsStreaming({ sourceKind: 'spotify-live' })).toBe(false);
