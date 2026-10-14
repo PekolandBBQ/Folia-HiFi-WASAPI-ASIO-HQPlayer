@@ -46,4 +46,14 @@ export const filterViewSurface: CommandPaletteSurface = {
         context.scope.filter?.setQuery('');
         return false;
     },
+    // ↓ hands the keyboard to the first result where the surface offers that (the bravais wall's rank 0); the
+    // filter itself stays. Handled means the palette prevents the default, and stopping it here keeps the same
+    // press from reaching the wall's own arrow handling as a second step. The palette already skips keys that
+    // are part of an IME composition before asking the surface.
+    onKeyDown: (event, { context }) => {
+        if (event.key !== 'ArrowDown' || event.shiftKey || event.altKey || event.ctrlKey || event.metaKey) return false;
+        if (!context.scope.filter?.focusResults?.()) return false;
+        event.stopPropagation();
+        return true;
+    },
 };

@@ -23,7 +23,7 @@ interface ScrollSpyOptions {
 
 interface ScrollSpyResult {
     activeAnchorId: string | null;
-    scrollToAnchor: (anchorId: string) => void;
+    scrollToAnchor: (anchorId: string, behavior?: ScrollBehavior) => void;
 }
 
 /**
@@ -123,7 +123,7 @@ export const useSettingsScrollSpy = ({ containerRef, anchors, enabled, reducedMo
         return () => observer.disconnect();
     }, [containerRef, anchors, enabled, resolveActiveId, applyActiveId]);
 
-    const scrollToAnchor = useCallback((anchorId: string) => {
+    const scrollToAnchor = useCallback((anchorId: string, behavior?: ScrollBehavior) => {
         const container = containerRef.current;
         const node = container?.querySelector<HTMLElement>(`[data-settings-anchor="${anchorId}"]`);
         if (!container || !node) {
@@ -151,7 +151,7 @@ export const useSettingsScrollSpy = ({ containerRef, anchors, enabled, reducedMo
 
         container.scrollTo({
             top: Math.max(0, offset - SCROLL_TOP_PADDING),
-            behavior: reducedMotion ? 'auto' : 'smooth',
+            behavior: behavior ?? (reducedMotion ? 'auto' : 'smooth'),
         });
     }, [containerRef, reducedMotion, applyActiveId]);
 

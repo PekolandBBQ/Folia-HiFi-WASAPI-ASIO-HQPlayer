@@ -111,6 +111,36 @@ describe('PonderSurfaceContents', () => {
         });
     });
 
+    it('bravais 墙是缝在正中的磁贴墙，每一次操作的结果层都预渲染在场', () => {
+        const markup = renderSurface('bravais-wall');
+        expect(markup).toContain('data-ponder-bravais-wall-structure');
+        expect(markup).toContain('data-ponder-bravais-seam="home"');
+        expect(markup).toContain('data-ponder-bravais-seam="collection"');
+        // 四种样子都在墙上：歌曲海报、集合（叠页边 + 「种类 · N」）、歌手人像、强调色底的特殊标签。
+        ['track', 'album', 'playlist', 'artist', 'folder', 'feed'].forEach(kind => {
+            expect(markup).toContain(`data-kind="${kind}"`);
+        });
+        expect(markup).toContain('data-ponder-bravais-badge="special"');
+        expect(markup).toContain('data-ponder-bravais-portrait="duotone"');
+        expect(markup).toContain('data-ponder-bravais-portrait="color"');
+        ['open', 'queued', 'playing'].forEach(state => {
+            expect(markup).toContain(`data-ponder-bravais-focus-card="${state}"`);
+        });
+        expect(markup).toContain('data-ponder-bravais-focus-enter');
+        ['solid', 'partial', 'clear'].forEach(look => {
+            expect(markup).toContain(`data-ponder-bravais-tools-panel="${look}"`);
+        });
+        expect(markup).toContain('data-ponder-bravais-window=');
+        expect(markup).toContain('data-ponder-bravais-lattice');
+        [
+            'wall-panned', 'wall-scrolled', 'tab-out', 'tab-seam', 'tab-in-0', 'artist-color', 'open-ring-0', 'open-seam',
+            'back-ring-0', 'focus-expanded', 'focus-playing', 'tools-dock', 'tools-open', 'look-windows', 'look-clear', 'look-solid',
+            'lattice-handoff',
+        ].forEach(state => {
+            expect(markup).toContain(`data-ponder-surface-state="${state}"`);
+        });
+    });
+
     it('底部界面设置画的是滑杆加「在播放页拖动调整」，不是泛化的下拉框', () => {
         const markup = renderSurface('bottom-ui-settings');
         expect(markup).toContain('data-ponder-bottom-ui-settings');

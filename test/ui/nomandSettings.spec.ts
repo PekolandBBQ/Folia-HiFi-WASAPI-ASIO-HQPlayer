@@ -7,6 +7,7 @@ import { APP_VERSION, waitForAppMounted } from '../helpers/appState';
 test('switches Nomand Paper effects and exposes matching tuning controls', async ({ page }) => {
     await page.addInitScript((version) => {
         localStorage.clear();
+        localStorage.setItem('library_suite_prompt_seen', 'true');
         localStorage.setItem('i18nextLng', 'en');
         localStorage.setItem('visualizer_mode', 'classic');
         localStorage.setItem('static_mode', 'true');

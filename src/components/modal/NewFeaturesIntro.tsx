@@ -1,5 +1,6 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import { Sparkles } from 'lucide-react';
 import { UserGuideFeatureCard } from './UserGuideFeatureCard';
 import { NEW_FEATURES_RELEASE } from './newFeaturesRelease';
 
@@ -20,9 +21,21 @@ export const NewFeaturesIntro: React.FC<NewFeaturesIntroProps> = ({ isDaylight, 
     const { t } = useTranslation();
     const { textPrimary, textSecondary, tipCardBg, iconTileBg, cardBg } = classes;
     const featureCardClasses = { iconTileBg, cardBg, textPrimary, textSecondary };
+    const majorUpdate = NEW_FEATURES_RELEASE.majorUpdate;
 
     return (
         <div className="flex flex-col">
+            {majorUpdate && (
+                <span
+                    data-testid="release-major-update"
+                    className={`mb-3 inline-flex items-center gap-1.5 self-start rounded-full border px-3 py-1 text-xs font-semibold ${isDaylight
+                        ? 'border-violet-200 bg-violet-50 text-violet-700'
+                        : 'border-violet-400/20 bg-violet-500/10 text-violet-300'}`}
+                >
+                    <Sparkles size={13} aria-hidden="true" />
+                    {t('help.majorUpdateLabel', { codename: majorUpdate.codename })}
+                </span>
+            )}
             <p className={`p-5 rounded-2xl text-sm leading-relaxed ${tipCardBg} ${textSecondary}`}>
                 {t(`${NEW_FEATURES_RELEASE.i18nKey}.intro`)}
             </p>

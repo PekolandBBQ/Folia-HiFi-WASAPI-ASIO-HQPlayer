@@ -213,3 +213,20 @@ export const createLineArt = (
         destroy: () => view.destroy({ children: true, context: true }),
     };
 };
+
+/**
+ * 线稿 / 图标组藏起来时从显示树上摘下，而不是只设 visible = false：Pixi 每帧会把动过的容器整棵子树
+ * （包括藏着的节点）的变换都走一遍，整首一个单元时几十组线稿、每组上百条线，大半在白走。
+ * 挂回去时按镜头顺序插回原位，叠放次序与一直挂着时相同。
+ */
+export const showLineArtLayer = (holder: Container, layers: readonly LineArtLayer[], index: number, shown: boolean) => {
+    const view = layers[index]!.view;
+    if (shown === (view.parent === holder)) return;
+    if (!shown) {
+        holder.removeChild(view);
+        return;
+    }
+    let position = 0;
+    for (let k = 0; k < index; k += 1) if (layers[k]!.view.parent === holder) position += 1;
+    holder.addChildAt(view, position);
+};

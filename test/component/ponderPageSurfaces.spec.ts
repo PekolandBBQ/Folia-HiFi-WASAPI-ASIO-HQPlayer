@@ -96,6 +96,77 @@ test('页面锚点和合成界面里的真实元素严丝合缝', async ({ page 
     await expectAligned(stage, 'back', '[data-ponder-grid-view-back]');
 });
 
+test('Bravais 墙：锚点和合成界面里的真实元素严丝合缝', async ({ page }) => {
+    await page.locator('[data-probe-open="bravais-wall-tiles"]').click();
+    let stage = page.locator('[data-testid="ponder-stage"]');
+    await expect(stage).toBeVisible();
+    await settled(stage);
+    await expectAligned(stage, 'seam', '[data-ponder-bravais-seam="home"]');
+    await expectAligned(stage, 'song', '[data-ponder-bravais-tile="left:0:0:1"]');
+    await expectAligned(stage, 'collection', '[data-ponder-bravais-tile="left:0:0:0"]');
+    await expectAligned(stage, 'artist', '[data-ponder-bravais-tile="left:0:0:2"]');
+    await expectAligned(stage, 'special', '[data-ponder-bravais-tile="right:0:0:2"]');
+    await expectAligned(stage, 'fm', '[data-ponder-bravais-tile="right:0:0:4"]');
+    await expectAligned(stage, 'tools', '[data-ponder-bravais-tools]');
+    // 种类各有各的样子：特殊卡是强调色标签，歌手是双色调人像。
+    await expect(stage.locator('[data-ponder-surface-state="base"] [data-ponder-bravais-tile="right:0:0:2"] [data-ponder-bravais-badge="special"]')).toHaveCount(1);
+    await expect(stage.locator('[data-ponder-surface-state="base"] [data-ponder-bravais-tile="left:0:0:2"] [data-ponder-bravais-portrait="duotone"]')).toHaveCount(1);
+    await expect(stage.getByTestId('ponder-related-targets').locator('button').first()).toBeVisible();
+    await page.keyboard.press('Escape');
+
+    await page.locator('[data-probe-open="bravais-wall-focus"]').click();
+    stage = page.locator('[data-testid="ponder-stage"]');
+    await expect(stage).toBeVisible();
+    await settled(stage);
+    await expectAligned(stage, 'focusSong', '[data-ponder-bravais-tile="left:0:0:3"]');
+    await expect(stage.locator('[data-ponder-surface-state="focus-expanded"]')).toHaveCSS('opacity', '1', { timeout: 6000 });
+    await expectAligned(stage, 'focusCard', '[data-ponder-bravais-focus-card="open"]');
+    await expectAligned(stage, 'focusPlay', '[data-ponder-bravais-focus-card="open"] [data-ponder-bravais-focus-play]');
+    await expectAligned(stage, 'focusQueue', '[data-ponder-bravais-focus-card="open"] [data-ponder-bravais-focus-queue]');
+    await expectAligned(stage, 'focusEnter', '[data-ponder-bravais-focus-card="playing"] [data-ponder-bravais-focus-enter]');
+    await page.keyboard.press('Escape');
+
+    await page.locator('[data-probe-open="bravais-wall-look"]').click();
+    stage = page.locator('[data-testid="ponder-stage"]');
+    await expect(stage).toBeVisible();
+    await settled(stage);
+    await expectAligned(stage, 'toolsPanel', '[data-ponder-bravais-tools-panel="solid"]');
+    await expectAligned(stage, 'toolsLook', '[data-ponder-bravais-look-row="solid"]');
+    await expectAligned(stage, 'toolsLattice', '[data-ponder-bravais-tools-panel="solid"] [data-ponder-bravais-quick="4"]');
+    await expectAligned(stage, 'window', '[data-ponder-bravais-window="left:0:0:1"]');
+});
+
+test('Bravais 墙：点集合原地翻成新层，被点的那张成为 01 号', async ({ page }) => {
+    await page.locator('[data-probe-open="bravais-wall-open"]').click();
+    const stage = page.locator('[data-testid="ponder-stage"]');
+    await expect(stage).toBeVisible();
+
+    const origin = stage.locator('[data-ponder-surface-state="open-ring-0"] [data-ponder-bravais-tile]');
+    await expect(origin).toHaveCount(1);
+    await expect(origin.locator('[data-ponder-bravais-badge="track"]')).toHaveText('01');
+    // 圈是依次放出来的：第一圈出来时最外圈还没出来。
+    await expect(stage.locator('[data-ponder-surface-state="open-ring-0"]')).toHaveCSS('opacity', '1', { timeout: 6000 });
+    await expect(stage.locator('[data-ponder-surface-state="open-ring-3"]')).toHaveCSS('opacity', '1', { timeout: 6000 });
+    await expect(stage.locator('[data-ponder-surface-state="open-seam"]')).toHaveCSS('opacity', '1');
+    // 返回之后键盘焦点落回当初点的那张。
+    await expect(stage.locator('[data-ponder-surface-state="back-ring-2"]')).toHaveCSS('opacity', '1', { timeout: 20000 });
+    await expect(stage.locator('[data-ponder-surface-state^="back-ring-"] [data-ponder-bravais-tile][data-focused]')).toHaveCount(1);
+});
+
+test('Bravais 墙的末章能播完：透光三档轮一圈，最后翻进 Lattice', async ({ page }) => {
+    await page.locator('[data-probe-open="bravais-wall-look"]').click();
+    const stage = page.locator('[data-testid="ponder-stage"]');
+    await expect(stage).toBeVisible();
+
+    await expect(stage.locator('[data-ponder-surface-state="look-windows"]')).toHaveCSS('opacity', '1', { timeout: 15000 });
+    await expect(stage.locator('[data-ponder-surface-state="base"]')).toHaveCSS('opacity', '0');
+    await expect(stage.locator('[data-ponder-surface-state="look-clear"]')).toHaveCSS('opacity', '1', { timeout: 15000 });
+    await expect(stage.locator('[data-ponder-surface-state="look-windows"]')).toHaveCSS('opacity', '0');
+    await expect(stage.locator('[data-ponder-surface-state="look-solid"]')).toHaveCSS('opacity', '1', { timeout: 15000 });
+    await expect(stage.locator('[data-ponder-surface-state="lattice-handoff"]')).toHaveCSS('opacity', '1', { timeout: 15000 });
+    await expect(page.locator('[data-testid="ponder-chapters-done"]')).toBeVisible({ timeout: 15000 });
+});
+
 test('页面区域只提供几何，不再在合成界面上叠第二层描边框', async ({ page }) => {
     await page.locator('[data-probe-open="lattice-poster"]').click();
     const stage = page.locator('[data-testid="ponder-stage"]');

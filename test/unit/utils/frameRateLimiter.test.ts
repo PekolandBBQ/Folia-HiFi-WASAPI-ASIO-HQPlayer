@@ -99,6 +99,52 @@ describe('frameRateLimiter', () => {
         }
     });
 
+    it('lets an earlier callback cancel a self-scheduling callback in the same frame', () => {
+        const nativeCallbacks: FrameRequestCallback[] = [];
+        const limiter = createFrameRateLimitedRaf(callback => {
+            nativeCallbacks.push(callback);
+            return nativeCallbacks.length;
+        }, () => undefined);
+        const processed: string[] = [];
+        limiter.requestAnimationFrame(() => {
+            processed.push('cancel');
+            limiter.cancelAnimationFrame(rendererHandle);
+        });
+        const rendererHandle = limiter.requestAnimationFrame(() => {
+            processed.push('renderer');
+            limiter.requestAnimationFrame(() => processed.push('orphan'));
+        });
+        nativeCallbacks[0](1000);
+        expect(processed).toEqual(['cancel']);
+        expect(nativeCallbacks).toHaveLength(1);
+    });
+
+    it('cancels the native frame when the last queued callback is removed', () => {
+        const cancelled: number[] = [];
+        let requests = 0;
+        const limiter = createFrameRateLimitedRaf(() => ++requests, handle => cancelled.push(handle));
+        const first = limiter.requestAnimationFrame(() => undefined);
+        const second = limiter.requestAnimationFrame(() => undefined);
+        limiter.cancelAnimationFrame(first);
+        expect(cancelled).toEqual([]);
+        limiter.cancelAnimationFrame(second);
+        expect(cancelled).toEqual([1]);
+        limiter.requestAnimationFrame(() => undefined);
+        expect(requests).toBe(2);
+    });
+
+    it('defers callbacks scheduled during a flush until the next frame', () => {
+        const nativeCallbacks: FrameRequestCallback[] = [];
+        const limiter = createFrameRateLimitedRaf(callback => { nativeCallbacks.push(callback); return nativeCallbacks.length; }, () => undefined);
+        const processed: string[] = [];
+        limiter.requestAnimationFrame(() => {
+            processed.push('first');
+            limiter.requestAnimationFrame(() => processed.push('next'));
+        });
+        nativeCallbacks[0](1000); expect(processed).toEqual(['first']);
+        nativeCallbacks[1](1016); expect(processed).toEqual(['first', 'next']);
+    });
+
     it('restores native requestAnimationFrame when disabled globally', () => {
         const previousWindow = (globalThis as { window?: Window; }).window;
         const originalRequestAnimationFrame = () => 1;

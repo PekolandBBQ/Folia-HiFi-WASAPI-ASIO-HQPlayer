@@ -104,12 +104,15 @@ export const useElectronWindowChrome = () => {
             syncToggleHotspot(false);
         };
 
+        // `mouseleave` never fires on `window`; the document gets it when the pointer exits the
+        // viewport. On Wayland the main process can't poll the cursor, so this is the only signal
+        // that drops the unlock when the pointer leaves straight from the hotspot.
         window.addEventListener('mousemove', handleMouseMove);
-        window.addEventListener('mouseleave', handleMouseLeave);
+        document.addEventListener('mouseleave', handleMouseLeave);
 
         return () => {
             window.removeEventListener('mousemove', handleMouseMove);
-            window.removeEventListener('mouseleave', handleMouseLeave);
+            document.removeEventListener('mouseleave', handleMouseLeave);
             syncToggleHotspot(false);
         };
     }, [isElectronWindow, isMainWindowClickThroughEnabled]);

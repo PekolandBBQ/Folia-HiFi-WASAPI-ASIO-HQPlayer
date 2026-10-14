@@ -35,6 +35,7 @@
 | 目标 ID | 目标标题 key | 类别 | 目标定义文件 | 真实组件定位 | 合成演示组件 | 场景 ID |
 | --- | --- | --- | --- | --- | --- | --- |
 | `audio-equalizer` | `ponder.targets.audioEqualizer` | playback | `src/components/ponder/targets/audioEqualizer.target.ts` | 见目标文件 hoverSelector / 页面级入口 | src/components/ponder/surfaces/PonderAudioEqualizerSurface.tsx | `audio-equalizer-presets`<br>`audio-equalizer-silent-write`<br>`audio-equalizer-effects` |
+| `bravais-seam` | `ponder.targets.bravaisSeam` | browsing | `src/components/ponder/targets/bravaisSeam.target.ts` | 悬停命中 `[data-bravais-seam]`、`[data-bravais-seam-tab]`（bravais 的缝与折叠后的侧边标签） | src/components/ponder/surfaces/PonderBravaisStripSurface.tsx<br>src/components/ponder/surfaces/PonderBravaisHomeSeamSurface.tsx | `bravais-seam-levels`<br>`bravais-seam-collection`<br>`bravais-seam-home-navigation`<br>`bravais-seam-home-dock`<br>`bravais-seam-filter`<br>`bravais-seam-tools` |
 | `command-palette` | `ponder.targets.commandPalette` | basics | `src/components/ponder/targets/commandPalette.target.ts` | 见目标文件 hoverSelector / 页面级入口 | src/components/ponder/PonderSurfaceContents.tsx → PaletteContents | `command-palette-search`<br>`command-palette-argument`<br>`command-palette-execute-mode` |
 | `custom-shortcut-settings` | `ponder.targets.customShortcutSettings` | basics | `src/components/ponder/targets/customShortcutSettings.target.ts` | 见目标文件 hoverSelector / 页面级入口 | src/components/ponder/surfaces/PonderCommandSettingsSurfaces.tsx → PonderCustomShortcutSurface | `custom-shortcut-key`<br>`custom-shortcut-command` |
 | `folia-desktop` | `ponder.targets.foliaDesktop` | desktop | `src/components/ponder/targets/foliaDesktop.target.ts` | 见目标文件 hoverSelector / 页面级入口 | src/components/ponder/surfaces/PonderDesktopFeaturesSurface.tsx | `folia-desktop-wallpaper`<br>`folia-desktop-tray`<br>`folia-desktop-remote` |
@@ -42,6 +43,7 @@
 | `folia-transport` | `ponder.targets.foliaTransport` | playback | `src/components/ponder/targets/foliaTransport.target.ts` | 见目标文件 hoverSelector / 页面级入口 | src/components/ponder/surfaces/PonderPlayerPageSurface.tsx | `help-page-transport` |
 | `grid3d-card-style` | `ponder.targets.grid3dCardStyle` | appearance | `src/components/ponder/targets/grid3dCardStyle.target.ts` | 见目标文件 hoverSelector / 页面级入口 | src/components/ponder/surfaces/PonderAppearanceSettingsSurfaces.tsx → PonderGrid3dCardStyleSurface | `grid3d-card-style-options` |
 | `grid-action-button` | `ponder.targets.gridActionButton` | browsing | `src/components/ponder/targets/gridActionButton.target.ts` | 见目标文件 hoverSelector / 页面级入口 | src/components/ponder/surfaces/PonderGridViewSurfaces.tsx → PonderGridActionButtonSurface | `grid-action-button-list`<br>`grid-action-button-slide` |
+| `bravais-wall` | `ponder.targets.bravaisWall` | browsing | `src/components/ponder/targets/bravaisWall.target.ts` | 页面级入口：bravais 首页 / 集合 / 歌手页的 `data-ponder-page-scope="bravais-wall"` | src/components/ponder/surfaces/PonderBravaisWallSurface.tsx | `bravais-wall-structure`<br>`bravais-wall-pan`<br>`bravais-wall-tiles`<br>`bravais-wall-open`<br>`bravais-wall-focus`<br>`bravais-wall-look` |
 | `grid-page` | `ponder.targets.gridPage` | browsing | `src/components/ponder/targets/gridPage.target.ts` | 见目标文件 hoverSelector / 页面级入口 | src/components/ponder/surfaces/PonderGridPageSurface.tsx | `grid-page-structure`<br>`grid-page-tabs`<br>`grid-page-cards`<br>`grid-page-map`<br>`grid-page-search`<br>`grid-page-keyboard` |
 | `grid-palette-hotkey` | `ponder.targets.gridPaletteHotkey` | browsing | `src/components/ponder/targets/gridPaletteHotkey.target.ts` | 见目标文件 hoverSelector / 页面级入口 | src/components/ponder/surfaces/PonderPlaybackSettingsSurfaces.tsx → PonderGridHotkeySurface | `grid-palette-hotkey-owner` |
 | `grid-view-card-settings` | `ponder.targets.gridViewCardSettings` | appearance | `src/components/ponder/targets/gridViewCardSettings.target.ts` | 见目标文件 hoverSelector / 页面级入口 | src/components/ponder/surfaces/PonderAppearanceSettingsSurfaces.tsx → PonderGridViewCardSurface | `grid-view-card-cover`<br>`grid-view-card-falloff` |
@@ -94,6 +96,7 @@
       "seen": "已看过"
     },
     "summaries": {
+      "bravais_seam": "墙中间那道缝：三档开合、首页的页签与工具格、过滤和搜索的区别。",
       "audio_equalizer": "十段均衡和效果链；拖动推子会改写自定义槽。",
       "vis_playground": "预览上的三块隐藏点击区。",
       "theme_park": "全屏配色编辑器，以及保存条件。",
@@ -197,9 +200,48 @@
       "openGridActionButton": "去改滑动目标",
       "openGrid3dCardStyle": "打开首页卡片样式",
       "openGridViewCard": "打开网格卡片设置",
-      "openLatticeSettings": "打开队列拼贴设置"
+      "openLatticeSettings": "打开拼贴墙外观设置"
     },
     "anchors": {
+      "bravaisSeam": {
+        "collectionPage": "集合页",
+        "strip": "完整信息条",
+        "crumbs": "返回与面包屑",
+        "title": "标题区域",
+        "about": "说明",
+        "actions": "播放与收藏",
+        "list": "列表",
+        "more": "⋯ 更多",
+        "menuFold": "折叠信息条",
+        "spine": "书脊",
+        "spineTitle": "竖排标题",
+        "edgeTab": "侧边标签",
+        "panel": "列表面板",
+        "hoverRow": "悬停的一行",
+        "linkedTile": "墙上同一首",
+        "homePage": "首页",
+        "homeSeam": "首页窄缝",
+        "tabs": "一级页签",
+        "tabLocal": "本地",
+        "sections": "二级切换",
+        "shortcuts": "直达入口",
+        "account": "账户入口",
+        "accountPopup": "平台列表",
+        "tools": "工具格",
+        "searchTool": "搜索在线平台",
+        "homeMore": "⋯",
+        "menuPopup": "⋯ 菜单",
+        "stageRow": "舞台",
+        "filter": "过滤输入位",
+        "wall": "墙",
+        "searchSeam": "搜索",
+        "searchBox": "搜索框",
+        "toolsButton": "墙面工具",
+        "toolsPanel": "工具面板",
+        "toolsQuick": "一次性动作",
+        "toolsVolume": "音量",
+        "toolsAppearance": "墙面外观"
+      },
       "audioEqualizer": {
         "panel": "音频效果",
         "enable": "总开关",
@@ -413,7 +455,7 @@
         "reset": "恢复默认衰减"
       },
       "latticeStyle": {
-        "panel": "设置 · 队列拼贴",
+        "panel": "设置 · 拼贴墙外观",
         "vignette": "暗角",
         "tint": "海报叠色",
         "customColor": "使用固定颜色",
@@ -506,6 +548,7 @@
       }
     },
     "targets": {
+      "bravaisSeam": "Bravais 信息条",
       "audioEqualizer": "音频效果对话框",
       "visPlayground": "歌词动画调参台",
       "themePark": "Theme Park",
@@ -530,7 +573,7 @@
       "localTrackSorting": "本地曲目排序",
       "grid3dCardStyle": "首页卡片样式",
       "gridViewCardSettings": "网格卡片设置",
-      "latticeStyleSettings": "队列拼贴样式",
+      "latticeStyleSettings": "拼贴墙外观",
       "panelCoverActions": "封面上的四颗按钮",
       "panelCoverTab": "面板 · 封面页",
       "panelSourceTab": "面板 · 来源页",
@@ -552,6 +595,12 @@
       "settingsPage": "设置页面"
     },
     "scenes": {
+      "bravaisSeamLevels": "三档：完整、书脊、折叠",
+      "bravaisSeamCollection": "集合与歌手页的信息条",
+      "bravaisSeamHomeNavigation": "首页：页签、二级切换与直达",
+      "bravaisSeamHomeDock": "账户入口与工具格",
+      "bravaisSeamFilter": "过滤当前页，和搜索不是一回事",
+      "bravaisSeamTools": "右下角的墙面工具",
       "visPlaygroundCommon": "四页各管什么，以及「通用」里有什么",
       "visPlaygroundVisuals": "动画与背景",
       "visPlaygroundSubtitle": "字幕",
@@ -666,6 +715,32 @@
       "panelSlideKeyboard": "用键盘打开"
     },
     "captions": {
+      "bravaisSeam": {
+        "levelsIntro": "信息条是墙中间裂开的那道缝，这一层的标题、说明和操作都在里面。它有三档：完整、书脊、折叠。",
+        "levelsSpine": "点标题区域（引号连同竖排大标题）收成窄窄的书脊，两边的墙跟着合拢；在书脊上点竖排标题，又展开回完整信息条。",
+        "levelsFold": "要整条让开，点「⋯ 更多」的最后一项「折叠信息条」。书脊顶上那颗向中间合拢的图标也是折叠。",
+        "levelsHidden": "折叠之后墙合成一整面，侧边只留一枚竖排标签，写着这一层的标题。点它回到折叠前那一档。",
+        "levelsGlobal": "档位是全局的：收起之后再进别的歌单，信息条照样收着。窗口窄于 900px 时默认是书脊；三档在命令面板里也各有一条命令。",
+        "collectionCrumbs": "最上面是 ‹ 返回和面包屑：书库 › 歌手 › 专辑……点哪一项就退回哪一层，中间层多了会折成「…」。下面那道下划线是当前页过滤。",
+        "collectionAbout": "大标题下面是这一层的说明：歌单简介、专辑介绍。歌手页这一块是头像、名字和简介，排得像书勒口上的作者简介。正文长了会截断，点一下展开。",
+        "collectionActions": "播放全部、加入队列，行尾的星标是收藏（能收藏的集合才有）。歌手页上这两颗只管热门歌曲。",
+        "collectionList": "「列表」把信息条加宽成歌曲列表，面包屑多出一级「列表」。悬停一行，墙上同一首的磁贴跟着亮起；单击转到它，双击播放。返回先关列表。",
+        "homeTabs": "首页的信息条是一道窄缝：最上面是「书库」和折叠，下面竖排着一级页签——歌单、电台、专辑、本地、Navidrome。",
+        "homeFlip": "换页签时整条信息条翻一次，墙也整面换成那一页的内容。键盘上 F6 / Shift + F6 轮换页签。",
+        "homeSections": "本地和 Navidrome 多一列二级切换（文件夹、专辑、艺术家、歌单……）。只有选中的那项竖着写出名字，其余只留图标，悬停看全名。切换只换墙上的内容，不进新的一层。",
+        "homeShortcuts": "下面那几列竖排小字是直达入口：我喜欢的音乐、私人 FM、全部歌曲……点它和点墙上那张卡一样，私人 FM 直接开播。地方不够时，它们挪进「⋯」。",
+        "dockAccount": "工具格正上方是账户入口：登录了是头像和昵称，没登录时是「连接在线平台」。",
+        "dockPlatforms": "点它，平台列表从入口往上弹出。点一行切到那个平台；当前那行右侧的小图标是登出。需要登录的平台，二维码就在信息条里扫。",
+        "dockTools": "最底下四格：搜索在线平台、设置、队列拼贴（进入 Lattice）和「⋯」。",
+        "dockMenu": "其余的都在「⋯」里：这一页签的项在前（过滤当前页、目录、管理隐藏、导入……），分隔线之后是「回到播放页」这类去处。",
+        "dockStage": "开着舞台模式时，工具格最上面多一整行「舞台」，点它打开舞台播放器。",
+        "filterType": "想在这面墙里找东西，直接在墙上打字：信息条里冒出一道过滤输入位，墙收成以信息条为中心、只剩匹配项的一小片。",
+        "filterKeys": "过滤不联网，只收窄眼前这面墙。Esc 有词先清空，再按一次结束输入；↓ 或 Enter 把焦点交给墙上第一张。",
+        "filterSearch": "放大镜才是搜索在线平台（首页上也可以按 /）：整条信息条换成带框的搜索框，提交之后去搜索页看结果。",
+        "toolsQuick": "右下角那颗是墙面工具。顶上一排图标是一次性动作：定位正在播放、打乱队列、为当前歌曲生成主题、播放队列、前往 Lattice、前往播放页；指针停在图标上能看到名字和快捷键。",
+        "toolsVolume": "中间是音量，和播放条上的是同一份；点左边的图标静音。",
+        "toolsAppearance": "最下面是墙面外观：透光在三档之间轮换，还有海报叠色和开灯 / 关灯。向左滑这颗按钮，直接打开命令面板。"
+      },
       "audioEqualizer": {
         "enable": "音量行右端打开均衡器。左上角可关闭整条效果链；关闭后设置保留，但不再生效。",
         "presets": "顶上一排是六个内置预设。每一个同时带着一条均衡曲线和一整套效果链，所以点一下是两样一起换。它们不可编辑。",
@@ -766,7 +841,7 @@
         "gridMap": "点顶部「全部」打开 GridMap 查看所有集合；{{mod}} + F 或直接输入可筛选集合。",
         "gridSearchResult": "提交右上角搜索后会打开独立搜索工作台，结果按歌曲列出，可播放、打开艺人/专辑或加入队列。",
         "gridCardKeys": "← / → 切换中央海报，Enter 打开当前集合；滚轮和水平拖动执行同样的焦点移动。",
-        "gridPageKeys": "{{mod}} + K 命令；{{mod}} + B 进 Lattice（需有队列）；Ctrl + G 本页 Ponder。",
+        "gridPageKeys": "Tab / Shift + Tab 切换页签；{{mod}} + K 命令；{{mod}} + B 进 Lattice（需有队列）；Ctrl + G 本页 Ponder。",
         "gridView": "集合网格展示刚才打开的卡片所包含的歌曲、专辑或艺人。返回时会回到上一级，并保留原来的位置。",
         "gridViewActions": "选中卡片可以播放或继续进入。页面操作区还会按集合能力提供全部播放、加入队列、编辑等动作。",
         "gridViewBack": "左上角返回按钮退出当前集合，并清理这次进入使用的导航记录。Esc 在没有更内层状态时也会返回。",
@@ -799,7 +874,7 @@
         "latticeFocusKeys": "方向键从视口中央选择最近海报，再按空间方向移动焦点，并自动平移相机让目标可见。",
         "latticePosterOpen": "点击或按 Enter 展开海报。当前歌曲展开后显示同步歌词；其他歌曲展开后显示标题与播放入口，队列本身不会被重排。",
         "latticeChrome": "展开海报显示播放、额外槽位、时间、进度和返回 Player；触屏点海报，键盘按 Space 显示或隐藏控制条。",
-        "latticeTools": "右下角工具依次提供：聚焦当前歌曲、切歌时自动跟随、打开队列命令、灯光开关与快捷键说明；向左滑这个按钮会打开命令面板。",
+        "latticeTools": "右下角工具和资料库墙是同一套：顶上一排图标是聚焦当前歌曲、打乱队列、生成主题、播放队列、回到主页和前往播放页，下面是音量、切歌时自动跟随、灯光开关与快捷键说明；向左滑这个按钮会打开命令面板。",
         "latticeLights": "灯光关闭后海报退暗，只保留必要层次；这是显示设置，不会暂停播放或修改队列。",
         "latticePosterKeys": "收起时 Enter/Space 展开；展开后 Enter 播放/暂停，Space 显示控制，Esc 收起。",
         "latticePageKeys": ": + C 当前歌曲；{{mod}} + P 队列；{{mod}} + B 返回；{{mod}} + K 命令；方向键移动。",
@@ -1030,6 +1105,30 @@
 | `audio-equalizer` | `audio-equalizer-silent-write` | 拖一下就覆写一个槽 | `ponder.captions.audioEqualizer.reset` | 清空当前自定义槽，恢复平直曲线和中性效果。内置预设不能编辑，所以选中时按钮是灰的。 | reset：清空这个槽 | `ponder.anchors.audioEqualizer.reset` |
 | `audio-equalizer` | `audio-equalizer-effects` | 底下那条效果链 | `ponder.captions.audioEqualizer.effects` | 推子下方是高低切、饱和、压缩、抖晃、噪声、立体声宽度、空间和冲击。同一自定义槽共用这套效果链。 | effects：效果链 | `ponder.anchors.audioEqualizer.effects` |
 | `audio-equalizer` | `audio-equalizer-effects` | 底下那条效果链 | `ponder.captions.audioEqualizer.noise` | 带这个徽章的效果会加入噪声；它不代表当前已经打开。 | noiseBadge：会加噪 | `ponder.anchors.audioEqualizer.noiseBadge` |
+| `bravais-seam` | `bravais-seam-levels` | 三档：完整、书脊、折叠 | `ponder.captions.bravaisSeam.levelsIntro` | 信息条是墙中间裂开的那道缝，这一层的标题、说明和操作都在里面。它有三档：完整、书脊、折叠。 | strip：完整信息条 | `ponder.anchors.bravaisSeam.strip` |
+| `bravais-seam` | `bravais-seam-levels` | 三档：完整、书脊、折叠 | `ponder.captions.bravaisSeam.levelsSpine` | 点标题区域（引号连同竖排大标题）收成窄窄的书脊，两边的墙跟着合拢；在书脊上点竖排标题，又展开回完整信息条。 | spineTitle：竖排标题 | `ponder.anchors.bravaisSeam.spineTitle` |
+| `bravais-seam` | `bravais-seam-levels` | 三档：完整、书脊、折叠 | `ponder.captions.bravaisSeam.levelsFold` | 要整条让开，点「⋯ 更多」的最后一项「折叠信息条」。书脊顶上那颗向中间合拢的图标也是折叠。 | menuFold：折叠信息条 | `ponder.anchors.bravaisSeam.menuFold` |
+| `bravais-seam` | `bravais-seam-levels` | 三档：完整、书脊、折叠 | `ponder.captions.bravaisSeam.levelsHidden` | 折叠之后墙合成一整面，侧边只留一枚竖排标签，写着这一层的标题。点它回到折叠前那一档。 | edgeTab：侧边标签 | `ponder.anchors.bravaisSeam.edgeTab` |
+| `bravais-seam` | `bravais-seam-levels` | 三档：完整、书脊、折叠 | `ponder.captions.bravaisSeam.levelsGlobal` | 档位是全局的：收起之后再进别的歌单，信息条照样收着。窗口窄于 900px 时默认是书脊；三档在命令面板里也各有一条命令。 | bottom（不指向区域） | — |
+| `bravais-seam` | `bravais-seam-collection` | 集合与歌手页的信息条 | `ponder.captions.bravaisSeam.collectionCrumbs` | 最上面是 ‹ 返回和面包屑：书库 › 歌手 › 专辑……点哪一项就退回哪一层，中间层多了会折成「…」。下面那道下划线是当前页过滤。 | crumbs：返回与面包屑 | `ponder.anchors.bravaisSeam.crumbs` |
+| `bravais-seam` | `bravais-seam-collection` | 集合与歌手页的信息条 | `ponder.captions.bravaisSeam.collectionAbout` | 大标题下面是这一层的说明：歌单简介、专辑介绍。歌手页这一块是头像、名字和简介，排得像书勒口上的作者简介。正文长了会截断，点一下展开。 | about：说明 | `ponder.anchors.bravaisSeam.about` |
+| `bravais-seam` | `bravais-seam-collection` | 集合与歌手页的信息条 | `ponder.captions.bravaisSeam.collectionActions` | 播放全部、加入队列，行尾的星标是收藏（能收藏的集合才有）。歌手页上这两颗只管热门歌曲。 | actions：播放与收藏 | `ponder.anchors.bravaisSeam.actions` |
+| `bravais-seam` | `bravais-seam-collection` | 集合与歌手页的信息条 | `ponder.captions.bravaisSeam.collectionList` | 「列表」把信息条加宽成歌曲列表，面包屑多出一级「列表」。悬停一行，墙上同一首的磁贴跟着亮起；单击转到它，双击播放。返回先关列表。 | linkedTile：墙上同一首 | `ponder.anchors.bravaisSeam.linkedTile` |
+| `bravais-seam` | `bravais-seam-home-navigation` | 首页：页签、二级切换与直达 | `ponder.captions.bravaisSeam.homeTabs` | 首页的信息条是一道窄缝：最上面是「书库」和折叠，下面竖排着一级页签——歌单、电台、专辑、本地、Navidrome。 | tabs：一级页签 | `ponder.anchors.bravaisSeam.tabs` |
+| `bravais-seam` | `bravais-seam-home-navigation` | 首页：页签、二级切换与直达 | `ponder.captions.bravaisSeam.homeFlip` | 换页签时整条信息条翻一次，墙也整面换成那一页的内容。键盘上 F6 / Shift + F6 轮换页签。 | tabLocal：本地 | `ponder.anchors.bravaisSeam.tabLocal` |
+| `bravais-seam` | `bravais-seam-home-navigation` | 首页：页签、二级切换与直达 | `ponder.captions.bravaisSeam.homeSections` | 本地和 Navidrome 多一列二级切换（文件夹、专辑、艺术家、歌单……）。只有选中的那项竖着写出名字，其余只留图标，悬停看全名。切换只换墙上的内容，不进新的一层。 | sections：二级切换 | `ponder.anchors.bravaisSeam.sections` |
+| `bravais-seam` | `bravais-seam-home-navigation` | 首页：页签、二级切换与直达 | `ponder.captions.bravaisSeam.homeShortcuts` | 下面那几列竖排小字是直达入口：我喜欢的音乐、私人 FM、全部歌曲……点它和点墙上那张卡一样，私人 FM 直接开播。地方不够时，它们挪进「⋯」。 | shortcuts：直达入口 | `ponder.anchors.bravaisSeam.shortcuts` |
+| `bravais-seam` | `bravais-seam-home-dock` | 账户入口与工具格 | `ponder.captions.bravaisSeam.dockAccount` | 工具格正上方是账户入口：登录了是头像和昵称，没登录时是「连接在线平台」。 | account：账户入口 | `ponder.anchors.bravaisSeam.account` |
+| `bravais-seam` | `bravais-seam-home-dock` | 账户入口与工具格 | `ponder.captions.bravaisSeam.dockPlatforms` | 点它，平台列表从入口往上弹出。点一行切到那个平台；当前那行右侧的小图标是登出。需要登录的平台，二维码就在信息条里扫。 | accountPopup：平台列表 | `ponder.anchors.bravaisSeam.accountPopup` |
+| `bravais-seam` | `bravais-seam-home-dock` | 账户入口与工具格 | `ponder.captions.bravaisSeam.dockTools` | 最底下四格：搜索在线平台、设置、队列拼贴（进入 Lattice）和「⋯」。 | tools：工具格 | `ponder.anchors.bravaisSeam.tools` |
+| `bravais-seam` | `bravais-seam-home-dock` | 账户入口与工具格 | `ponder.captions.bravaisSeam.dockMenu` | 其余的都在「⋯」里：这一页签的项在前（过滤当前页、目录、管理隐藏、导入……），分隔线之后是「回到播放页」这类去处。 | menuPopup：⋯ 菜单 | `ponder.anchors.bravaisSeam.menuPopup` |
+| `bravais-seam` | `bravais-seam-home-dock` | 账户入口与工具格 | `ponder.captions.bravaisSeam.dockStage` | 开着舞台模式时，工具格最上面多一整行「舞台」，点它打开舞台播放器。 | stageRow：舞台 | `ponder.anchors.bravaisSeam.stageRow` |
+| `bravais-seam` | `bravais-seam-filter` | 过滤当前页，和搜索不是一回事 | `ponder.captions.bravaisSeam.filterType` | 想在这面墙里找东西，直接在墙上打字：信息条里冒出一道过滤输入位，墙收成以信息条为中心、只剩匹配项的一小片。 | filter：过滤输入位 | `ponder.anchors.bravaisSeam.filter` |
+| `bravais-seam` | `bravais-seam-filter` | 过滤当前页，和搜索不是一回事 | `ponder.captions.bravaisSeam.filterKeys` | 过滤不联网，只收窄眼前这面墙。Esc 有词先清空，再按一次结束输入；↓ 或 Enter 把焦点交给墙上第一张。 | filter：过滤输入位 | `ponder.anchors.bravaisSeam.filter` |
+| `bravais-seam` | `bravais-seam-filter` | 过滤当前页，和搜索不是一回事 | `ponder.captions.bravaisSeam.filterSearch` | 放大镜才是搜索在线平台（首页上也可以按 /）：整条信息条换成带框的搜索框，提交之后去搜索页看结果。 | searchBox：搜索框 | `ponder.anchors.bravaisSeam.searchBox` |
+| `bravais-seam` | `bravais-seam-tools` | 右下角的墙面工具 | `ponder.captions.bravaisSeam.toolsQuick` | 右下角那颗是墙面工具。顶上一排图标是一次性动作：定位正在播放、打乱队列、为当前歌曲生成主题、播放队列、前往 Lattice、前往播放页；指针停在图标上能看到名字和快捷键。 | toolsQuick：一次性动作 | `ponder.anchors.bravaisSeam.toolsQuick` |
+| `bravais-seam` | `bravais-seam-tools` | 右下角的墙面工具 | `ponder.captions.bravaisSeam.toolsVolume` | 中间是音量，和播放条上的是同一份；点左边的图标静音。 | toolsVolume：音量 | `ponder.anchors.bravaisSeam.toolsVolume` |
+| `bravais-seam` | `bravais-seam-tools` | 右下角的墙面工具 | `ponder.captions.bravaisSeam.toolsAppearance` | 最下面是墙面外观：透光在三档之间轮换，还有海报叠色和开灯 / 关灯。向左滑这颗按钮，直接打开命令面板。 | toolsAppearance：墙面外观 | `ponder.anchors.bravaisSeam.toolsAppearance` |
 | `command-palette` | `command-palette-search` | 搜出来，回车执行 | `ponder.captions.commandPalette.type` | 命令是搜出来的，不是翻出来的。窗口一开就打字，它按名字、别名和关键词一起筛；记不住全名，记得一半也找得到。 | input：输入行 | `ponder.anchors.commandPalette.input` |
 | `command-palette` | `command-palette-search` | 搜出来，回车执行 | `ponder.captions.commandPalette.run` | ↑↓ 在结果里移动，Enter 执行当前这条。最近用过的会排在前面，常用的那几条越用越靠上。 | firstResult：当前结果 | `ponder.anchors.commandPalette.firstResult` |
 | `command-palette` | `command-palette-argument` | 给命令带参数 | `ponder.captions.commandPalette.pill` | 需要参数的命令：输入命令名后按空格，命令会收成标签，继续输入参数。 | input：输入行 | `ponder.anchors.commandPalette.input` |
@@ -1071,7 +1170,7 @@
 | `grid-page` | `grid-page-map` | 用地图总览全部集合 | `ponder.captions.pages.gridMap` | 点顶部「全部」打开 GridMap 查看所有集合；{{mod}} + F 或直接输入可筛选集合。 | map：全部集合地图 | `ponder.anchors.grid.map` |
 | `grid-page` | `grid-page-search` | 搜索歌曲而不是筛选海报 | `ponder.captions.pages.gridSearchResult` | 提交右上角搜索后会打开独立搜索工作台，结果按歌曲列出，可播放、打开艺人/专辑或加入队列。 | search：歌曲搜索 | `ponder.anchors.grid.search` |
 | `grid-page` | `grid-page-keyboard` | Grid3D 的全部页面快捷键 | `ponder.captions.pages.gridCardKeys` | ← / → 切换中央海报，Enter 打开当前集合；滚轮和水平拖动执行同样的焦点移动。 | shelf：3D 海报轨道 | `ponder.anchors.grid.shelf` |
-| `grid-page` | `grid-page-keyboard` | Grid3D 的全部页面快捷键 | `ponder.captions.pages.gridPageKeys` | {{mod}} + K 命令；{{mod}} + B 进 Lattice（需有队列）；Ctrl + G 本页 Ponder。 | page：海报墙 | `ponder.anchors.pages.grid` |
+| `grid-page` | `grid-page-keyboard` | Grid3D 的全部页面快捷键 | `ponder.captions.pages.gridPageKeys` | Tab / Shift + Tab 切换页签；{{mod}} + K 命令；{{mod}} + B 进 Lattice（需有队列）；Ctrl + G 本页 Ponder。 | page：海报墙 | `ponder.anchors.pages.grid` |
 | `grid-palette-hotkey` | `grid-palette-hotkey-owner` | 网格上的 S 归谁 | `ponder.captions.gridHotkey.off` | 在海报墙和集合页，按字母直接筛选；默认按 S 也是筛选，不会打开命令窗口。 | toggle：S 归命令窗口 | `ponder.anchors.gridHotkey.toggle` |
 | `grid-palette-hotkey` | `grid-palette-hotkey-owner` | 网格上的 S 归谁 | `ponder.captions.gridHotkey.on` | 打开后，S 用于打开命令窗口，其他字母仍用于筛选。 | toggle：S 归命令窗口 | `ponder.anchors.gridHotkey.toggle` |
 | `grid-view-card-settings` | `grid-view-card-cover` | 封面怎么占这张卡 | `ponder.captions.gridStyle.fullBleed` | 全画幅封面让集合页封面铺满卡片，歌名和歌手显示在渐变遮罩上。 | fullBleed：全画幅封面 | `ponder.anchors.gridViewCard.fullBleed` |
@@ -1116,7 +1215,7 @@
 | `lattice-page` | `lattice-page-navigation` | 在无限墙上移动焦点 | `ponder.captions.pages.latticeFocusKeys` | 方向键从视口中央选择最近海报，再按空间方向移动焦点，并自动平移相机让目标可见。 | pannedPoster：队列海报 | `ponder.anchors.lattice.poster` |
 | `lattice-page` | `lattice-page-poster` | 展开海报并控制播放 | `ponder.captions.pages.latticePosterOpen` | 点击或按 Enter 展开海报。当前歌曲展开后显示同步歌词；其他歌曲展开后显示标题与播放入口，队列本身不会被重排。 | expanded：展开的歌曲 | `ponder.anchors.lattice.expanded` |
 | `lattice-page` | `lattice-page-poster` | 展开海报并控制播放 | `ponder.captions.pages.latticeChrome` | 展开海报显示播放、额外槽位、时间、进度和返回 Player；触屏点海报，键盘按 Space 显示或隐藏控制条。 | chrome：播放控制 | `ponder.anchors.lattice.chrome` |
-| `lattice-page` | `lattice-page-tools` | 聚焦、跟随、队列与灯光 | `ponder.captions.pages.latticeTools` | 右下角工具依次提供：聚焦当前歌曲、切歌时自动跟随、打开队列命令、灯光开关与快捷键说明；向左滑这个按钮会打开命令面板。 | toolsPanel：工具面板 | `ponder.anchors.lattice.toolsPanel` |
+| `lattice-page` | `lattice-page-tools` | 聚焦、跟随、队列与灯光 | `ponder.captions.pages.latticeTools` | 右下角工具和资料库墙是同一套：顶上一排图标是聚焦当前歌曲、打乱队列、生成主题、播放队列、回到主页和前往播放页，下面是音量、切歌时自动跟随、灯光开关与快捷键说明；向左滑这个按钮会打开命令面板。 | toolsPanel：工具面板 | `ponder.anchors.lattice.toolsPanel` |
 | `lattice-page` | `lattice-page-tools` | 聚焦、跟随、队列与灯光 | `ponder.captions.pages.latticeLights` | 灯光关闭后海报退暗，只保留必要层次；这是显示设置，不会暂停播放或修改队列。 | wall：播放队列海报墙 | `ponder.anchors.lattice.wall` |
 | `lattice-page` | `lattice-page-keyboard` | Lattice 的完整键盘操作 | `ponder.captions.pages.latticePosterKeys` | 收起时 Enter/Space 展开；展开后 Enter 播放/暂停，Space 显示控制，Esc 收起。 | poster：队列海报 | `ponder.anchors.lattice.poster` |
 | `lattice-page` | `lattice-page-keyboard` | Lattice 的完整键盘操作 | `ponder.captions.pages.latticePageKeys` | : + C 当前歌曲；{{mod}} + P 队列；{{mod}} + B 返回；{{mod}} + K 命令；方向键移动。 | page：Lattice | `ponder.anchors.pages.lattice` |

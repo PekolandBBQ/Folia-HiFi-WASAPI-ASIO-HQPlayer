@@ -18,12 +18,18 @@ async function expandBar(page: Page): Promise<Locator> {
     return titleArea;
 }
 
-/** 把指针移到标题区右侧感应区（箭头附近但不在箭头上） */
-async function hoverNextZone(page: Page, titleArea: Locator): Promise<void> {
-    // The expanded bar can still be moving. Locator hover waits for its actual hit area to settle.
-    const zone = titleArea.getByRole('button', { name: 'Next track' }).locator('..');
-    const box = (await zone.boundingBox())!;
-    await zone.hover({ position: { x: box.width - 8, y: box.height / 2 } });
+/** 把指针移到标题区右侧感应区（右缘往里 8px，落在 next 箭头上，同样在感应区内） */
+async function hoverNextZone(titleArea: Locator): Promise<void> {
+    // 不能在标题区一可见就量 boundingBox 再 mouse.move：胶囊展开是 framer-motion 的 layout 弹簧
+    // （transform 缩放，约 0.7s 才落定，会过冲），那一刻量到的是动画中途缩小的盒子。指针按它落下时
+    // 还在感应区里，动画落定后感应区从指针下移走，浏览器补发 mouseleave，预览随之熄灭。
+    // locator.hover 会先等盒子连续两帧不变再落指针；偏移取不受 transform 影响的布局尺寸，
+    // 落点与原来的「右缘往里 8px、垂直居中」相同。
+    const { width, height } = await titleArea.evaluate(el => ({
+        width: (el as HTMLElement).offsetWidth,
+        height: (el as HTMLElement).offsetHeight,
+    }));
+    await titleArea.hover({ position: { x: width - 8, y: height / 2 } });
 }
 
 /** 采样当前标题层在一段时间内出现过的横向位移，用来判断有没有播方向性入场动画 */
@@ -49,7 +55,7 @@ test.beforeEach(async ({ mount }) => {
 
 test('箭头可命中：文字层不得吞掉指针事件', async ({ page }) => {
     const titleArea = await expandBar(page);
-    await hoverNextZone(page, titleArea);
+    await hoverNextZone(titleArea);
 
     const nextArrow = page.getByRole('button', { name: 'Next track' });
     await expect(nextArrow).toBeVisible();
@@ -69,7 +75,7 @@ test('箭头可命中：文字层不得吞掉指针事件', async ({ page }) => 
 
 test('悬浮感应区预览相邻曲名，移开还原', async ({ page }) => {
     const titleArea = await expandBar(page);
-    await hoverNextZone(page, titleArea);
+    await hoverNextZone(titleArea);
 
     const preview = page.locator(PREVIEW_LAYER);
     await expect(preview).toHaveText('Charlie Song');
@@ -98,7 +104,7 @@ test('仅展开播放条不播入场动画（StrictMode 下 effect 会跑两次�
 
 test('点箭头切歌时不闪回旧曲名', async ({ page }) => {
     const titleArea = await expandBar(page);
-    await hoverNextZone(page, titleArea);
+    await hoverNextZone(titleArea);
     await expect(page.locator(PREVIEW_LAYER)).toHaveText('Charlie Song');
     // 必须等交叉淡入走完再点，否则采样到的是 hover 淡出途中的旧标题，与点击行为无关
     await expect
@@ -130,7 +136,7 @@ test('点箭头切歌时不闪回旧曲名', async ({ page }) => {
 
 test('切歌确认窗口：先亮新曲名，指针未动则窗口结束后恢复预览', async ({ page }) => {
     const titleArea = await expandBar(page);
-    await hoverNextZone(page, titleArea);
+    await hoverNextZone(titleArea);
 
     const preview = page.locator(PREVIEW_LAYER);
     await page.getByRole('button', { name: 'Next track' }).click();

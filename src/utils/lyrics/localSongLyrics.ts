@@ -20,6 +20,8 @@ export const selectLocalSongLyricsSource = (
         return null;
     }
 
+    // 用户标记的纯音乐：没有显式选本地 / 内嵌时一律按纯音乐（空歌词），「不使用在线数据」等把来源清回自动也不例外。
+    if (song.markedPureMusic) return 'online';
     if (priority === 'online' && song.matchedLyrics) return 'online';
     if (song.hasLocalLyrics && song.localLyricsContent) return 'local';
     if (song.hasEmbeddedLyrics && song.embeddedLyricsContent) return 'embedded';

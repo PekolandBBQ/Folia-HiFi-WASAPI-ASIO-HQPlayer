@@ -36,6 +36,8 @@ import { useTypographySettingsStore } from '../../../stores/useTypographySetting
 import { usePlayerChromeSettingsStore } from '../../../stores/usePlayerChromeSettingsStore';
 import { useThemeSettingsStore } from '../../../stores/useThemeSettingsStore';
 import { useStageSettingsStore } from '../../../stores/useStageSettingsStore';
+import { useLibraryWallLookStore } from '../../../stores/useLibraryWallLookStore';
+import { isLibraryWallSeamStyle } from '../../../utils/libraryWallSeamStyle';
 
 // src/components/modal/settings/AppearanceSettingsSubview.tsx
 // Visual settings subview for theme presets, lyric renderer entry, layout settings, and configurations import/export.
@@ -595,6 +597,23 @@ const AppearanceSettingsSubview: React.FC<AppearanceSettingsSubviewProps> = ({
             if (has('stageTrackPillOnHome')) {
                 onToggleStageTrackPillOnHome(Boolean(config.stageTrackPillOnHome));
             }
+            // bravais 的集合叠页边（界面设置的「Bravais 墙面」分组里那个开关的同一个 setter）。
+            if (has('libraryWallStackEdges')) {
+                useLibraryWallLookStore.getState().setCollectionStackEdges(Boolean(config.libraryWallStackEdges));
+            }
+            // 同一分组里信息条的材质与墙后的画面。样式只认已知的预设（与导入计划的 truthy 守卫一致）。
+            if (has('libraryWallSeamClear')) {
+                useLibraryWallLookStore.getState().setSeamClear(Boolean(config.libraryWallSeamClear));
+            }
+            if (has('libraryWallSeamStyle') && isLibraryWallSeamStyle(config.libraryWallSeamStyle)) {
+                useLibraryWallLookStore.getState().setSeamStyle(config.libraryWallSeamStyle);
+            }
+            if (has('libraryWallBackdropLyrics')) {
+                useLibraryWallLookStore.getState().setBackdropLyrics(Boolean(config.libraryWallBackdropLyrics));
+            }
+            if (has('libraryWallBackdropBlur')) {
+                useLibraryWallLookStore.getState().setBackdropBlur(Boolean(config.libraryWallBackdropBlur));
+            }
 
             setStatusMessage({ type: 'success', text: t('options.importSuccess') });
             setImportText('');
@@ -940,7 +959,7 @@ const AppearanceSettingsSubview: React.FC<AppearanceSettingsSubviewProps> = ({
                 </div>
             </SettingsAnchor>
 
-            {/* Section 5: Queue collage */}
+            {/* Section 5: Tile wall appearance (queue collage + bravais library wall) */}
             <SettingsAnchor anchorId="latticeSettings" label={t('options.latticeSettings')}>
                 <SettingsSectionHeading icon={PanelsTopLeft} label={t('options.latticeSettings')} />
                 <LatticeSettingsSection

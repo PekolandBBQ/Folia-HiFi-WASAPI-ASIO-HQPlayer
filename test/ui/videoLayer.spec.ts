@@ -15,6 +15,7 @@ const QUEUE_FIXTURE = [
 const seedAndOpen = async (page: Page, storage: Record<string, string>) => {
     await page.addInitScript(([version, guideKey, entries]) => {
         localStorage.clear();
+        localStorage.setItem('library_suite_prompt_seen', 'true');
         localStorage.setItem('i18nextLng', 'en');
         localStorage.setItem(guideKey, version);
         for (const [key, value] of Object.entries(entries)) localStorage.setItem(key, value);

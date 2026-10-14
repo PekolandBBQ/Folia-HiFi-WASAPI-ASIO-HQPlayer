@@ -21,7 +21,7 @@ import {
     resolveGradientEnergy,
     resolveTextLife,
     shouldResetDioramaUnitState,
-} from '@/components/visualizer/diorama/DioramaScene';
+} from '@/components/visualizer/diorama/dioramaSceneUnits';
 import {
     getDioramaKeywordDisplayedContrastRatio,
     prepareDioramaKeywordMatchers,

@@ -5,12 +5,11 @@ import { createFakeFadeGraph, type FakeFadeGraph } from '../services/fakeFadeGra
 // test/unit/hooks/usePlaybackTransportFade.test.ts
 // pausePlayback / resumePlayback wired to the real fade controller: what the transport does with the
 // element, the player state and the pending pause across quick toggles, track changes and blends.
-// Same node-environment approach as usePersonalFmModeController.test.ts - the hook only needs
-// callback/ref/effect hooks; the fixture creates a single transport instance per action sequence.
+// Keep refs scoped to each transport instance; lifecycle cleanup is covered by the mounted-hook tests.
 
 vi.mock('react', () => ({
     useCallback: (callback: unknown) => callback,
-    useRef: (initial: unknown) => ({ current: initial }),
+    useRef: (value: unknown) => ({ current: value }),
     useEffect: () => {},
 }));
 // Provider restoration has dedicated joined IPC/renderer coverage; fade assertions use a settled barrier.
@@ -88,7 +87,7 @@ const buildTransport = () => usePlaybackTransportController({
     syncOutputGain: syncOutputGain as (targetVolume: number, smoothing?: number) => void,
     getTargetPlaybackVolume: () => 0.8,
     shouldRefreshCurrentOnlineAudioSource: () => false,
-    recoverOnlinePlaybackSource: vi.fn(async () => false),
+    recoverOnlinePlaybackSource: vi.fn(async () => ({ status: 'not-attempted' as const })),
     getSyntheticStageLyricsTime: () => 0,
     syncStageLyricsClock: vi.fn(),
     pauseDuringTransition: pauseDuringTransition as () => boolean,

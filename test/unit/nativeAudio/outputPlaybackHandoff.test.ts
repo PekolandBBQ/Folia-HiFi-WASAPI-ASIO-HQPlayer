@@ -18,6 +18,44 @@ vi.mock('@/services/nativeAudio/loadOnlineSource', () => ({
 let root: Root | undefined, host: HTMLDivElement;
 afterEach(() => { if (root) act(() => root!.unmount()); host?.remove(); root = undefined; state.audioSrc = 'blob:track'; });
 describe('output playback handoff', () => {
+  it.each([
+    { autoplay: true, request: 'none', expected: true },
+    { autoplay: false, request: 'none', expected: false },
+    { autoplay: true, request: 'pause', expected: false },
+    { autoplay: false, request: 'play', expected: true },
+  ])('preserves initial preparation intent during an output change (autoplay=$autoplay, request=$request)', async ({ autoplay, request: control, expected }) => {
+    Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true }); state.playerState = 'IDLE';
+    let completePreparation!: () => void;
+    const preparation = new Promise<void>(resolve => { completePreparation = resolve; });
+    const request = vi.fn(async (input: Parameters<NativeAudioApi['request']>[0]) => {
+      if (input.action === 'begin') await preparation;
+      return { session: input.session!, position: 0, duration: 120, playing: false, ended: false,
+        sampleRate: 44100, channels: 2, latency: 0, backend: 'hqplayer', deviceId: 'test' } as NativeAudioState;
+    });
+    const previous = new NativeAudioTransport({ supported: true, request, onEvent: () => () => {} },
+      'hqplayer', 'test', 'compatibility', async () => null);
+    const browser = document.createElement('audio'); browser.setAttribute('src', state.audioSrc);
+    Object.defineProperty(browser, 'readyState', { value: 1 }); Object.defineProperty(browser, 'duration', { value: 120 });
+    const play = vi.spyOn(browser, 'play').mockResolvedValue();
+    const audioRef = { current: previous.asMediaElement() }, resume = { current: null as number | null }, autoPlay = { current: autoplay };
+    function Probe({ backend }: { backend: NativeAudioBackend }) {
+      useOutputPlaybackHandoff(audioRef, backend, backend === 'hqplayer' ? 'test' : '', state.audioSrc, resume, autoPlay); return null;
+    }
+    host = document.createElement('div'); document.body.append(host); root = createRoot(host);
+    try {
+      previous.setSource(state.audioSrc);
+      await vi.waitFor(() => expect(request).toHaveBeenCalledWith(expect.objectContaining({ action: 'begin' })));
+      if (control === 'pause') previous.pause();
+      if (control === 'play') void previous.play().catch(() => {});
+      expect(previous.readyState).toBe(0);
+      await act(async () => root!.render(React.createElement(Probe, { backend: 'hqplayer' })));
+      await act(async () => { prepareOutputHandoff('browser', ''); state.playerState = 'PAUSED'; });
+      previous.dispose('handoff'); audioRef.current = browser;
+      await act(async () => root!.render(React.createElement(Probe, { backend: 'browser' })));
+      expect(play).toHaveBeenCalledTimes(expected ? 1 : 0);
+      expect(resume.current).toBeNull(); expect(autoPlay.current).toBe(false);
+    } finally { previous.dispose(); await act(async () => { completePreparation(); }); }
+  });
   it.each([{ playing: true, pending: 'seek', requestBeforeSwitch: 'none' }, { playing: false, pending: 'seek', requestBeforeSwitch: 'none' },
     { playing: true, pending: 'play', requestBeforeSwitch: 'none' }, { playing: true, pending: 'seek', requestBeforeSwitch: 'pause' },
     { playing: true, pending: 'play', requestBeforeSwitch: 'pause' }, { playing: false, pending: 'seek', requestBeforeSwitch: 'play' },

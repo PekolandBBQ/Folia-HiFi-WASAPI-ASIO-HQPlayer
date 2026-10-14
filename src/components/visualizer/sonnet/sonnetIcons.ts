@@ -1,13 +1,21 @@
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import * as LucideIcons from 'lucide-react';
-import { resolveLucideIconNames } from '../../../utils/lucideIconResolver';
+import { loadLucideIcons, resolveLucideIcon, resolveLucideIconNames } from '../../../services/lucideIconResolver';
 
 // src/components/visualizer/sonnet/sonnetIcons.ts
 // Validates theme icon names and produces cacheable SVG data URLs for Pixi.
-export const resolveSonnetIconNames = (names: string[] | undefined): string[] => {
+const SONNET_FALLBACK_ICON = 'Flower';
+
+/**
+ * Loads the theme's icons and returns the usable ones, or the Lucide flower when none is - loaded
+ * too, so buildSonnetIconDataUrl can draw every returned name right away.
+ */
+export const loadSonnetIconNames = async (names: string[] | undefined): Promise<string[]> => {
+    await loadLucideIcons(names);
     const resolved = resolveLucideIconNames(names);
-    return resolved.length > 0 ? resolved : ['Flower'];
+    if (resolved.length > 0) return resolved;
+    await loadLucideIcons([SONNET_FALLBACK_ICON]);
+    return [SONNET_FALLBACK_ICON];
 };
 
 // Spreads icon particles through the scene while guaranteeing every available theme icon is used.
@@ -77,7 +85,7 @@ export const buildSonnetIconDataUrl = (
     strokeWidth: number,
     size: number,
 ) => {
-    const Icon = LucideIcons[name as keyof typeof LucideIcons] as React.ElementType | undefined;
+    const Icon = resolveLucideIcon(name);
     if (!Icon) return null;
     const markup = renderToStaticMarkup(React.createElement(Icon, {
         size,

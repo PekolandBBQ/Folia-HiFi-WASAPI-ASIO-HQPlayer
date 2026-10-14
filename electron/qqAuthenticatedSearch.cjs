@@ -7,6 +7,7 @@ const { randomInt } = require('node:crypto');
 // The embedded main process keeps device/credentials here.
 const PACKAGE = '@yakult-green-tea/qq-music-api';
 const PINNED_VERSION = '3.1.2';
+const SUPPORTED_VERSIONS = new Set(['3.1.2', '3.1.4']);
 const ROUTE = '/user/search';
 const UPSTREAM = 'https://u.y.qq.com/cgi-bin/musicu.fcg';
 
@@ -156,7 +157,7 @@ function installQqAuthenticatedSearch(qqApi, { packageJsonPath, loadModule = req
   const app = qqApi?.default;
   if (typeof app?.use !== 'function') return false;
   const manifestPath = packageJsonPath || require.resolve(`${PACKAGE}/package.json`);
-  if (loadModule(manifestPath).version !== PINNED_VERSION) return false;
+  if (!SUPPORTED_VERSIONS.has(loadModule(manifestPath).version)) return false;
   // These paths are a version-pinned adapter. Never derive a module or upstream URL from a request.
   const root = path.dirname(manifestPath);
   const nodeAuth = loadModule(path.join(root, 'dist/src/services/auth/qrLogin.node.js'));

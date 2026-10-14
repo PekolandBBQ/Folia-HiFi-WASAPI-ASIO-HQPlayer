@@ -17,9 +17,9 @@ import type { UrlBackgroundItem } from '../types';
 // auto-switch value can also flip "prefer custom theme" — a setting that is not in the config at
 // all and would otherwise change with no warning.
 
-export type ImportGroup = 'theme' | 'visualizer' | 'fonts' | 'background' | 'songTheme' | 'trackCard';
+export type ImportGroup = 'theme' | 'visualizer' | 'fonts' | 'background' | 'songTheme' | 'trackCard' | 'libraryWall';
 
-export const IMPORT_GROUPS: ImportGroup[] = ['theme', 'visualizer', 'fonts', 'background', 'songTheme', 'trackCard'];
+export const IMPORT_GROUPS: ImportGroup[] = ['theme', 'visualizer', 'fonts', 'background', 'songTheme', 'trackCard', 'libraryWall'];
 
 export interface ImportChange {
     group: ImportGroup;
@@ -134,6 +134,15 @@ const FIELD_GROUPS: Record<string, ImportGroup> = {
     stageTrackPillMode: 'trackCard',
     stageTrackPillTimeoutSec: 'trackCard',
     stageTrackPillOnHome: 'trackCard',
+
+    // The bravais wall's collection stack edges. Its own group: it styles the library wall, not the
+    // picture or the card, and someone taking a look for its colours has a reason to leave it alone.
+    libraryWallStackEdges: 'libraryWall',
+    // The info strip's material and the picture behind the wall: same group, same reason.
+    libraryWallSeamClear: 'libraryWall',
+    libraryWallSeamStyle: 'libraryWall',
+    libraryWallBackdropLyrics: 'libraryWall',
+    libraryWallBackdropBlur: 'libraryWall',
 };
 
 // Fields the import applies only when the incoming value is truthy, so an incoming null means "the
@@ -172,6 +181,8 @@ const TRUTHY_GUARDED_FIELDS = new Set([
     // applyImportedConfig only applies the card's mode for the three known values, all truthy
     // strings, so an absent one is skipped there the same as here.
     'stageTrackPillMode',
+    // applyImportedConfig only applies a known info strip preset, all of which are truthy strings.
+    'libraryWallSeamStyle',
 ]);
 
 // Per-renderer tunings the import skips whenever the visualizerTunings bundle is present. The three

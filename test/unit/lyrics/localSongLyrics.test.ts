@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { LocalSong } from '@/types';
 import { resolveLocalSongLyrics, selectLocalSongLyricsSource } from '@/utils/lyrics/localSongLyrics';
+import { buildUnifiedLocalSong } from '@/services/playbackAdapters';
 
 // test/unit/lyrics/localSongLyrics.test.ts
 // Verifies automatic priority and explicit per-song selections resolve to the actual loaded source.
@@ -41,5 +42,18 @@ describe('local song lyric resolution', () => {
 
     it('keeps an explicit local selection ahead of the automatic online priority', () => {
         expect(selectLocalSongLyricsSource(buildSong({ lyricsSource: 'local' }), 'online')).toBe('local');
+    });
+
+    it('a song marked as instrumental shows no lyrics unless local or embedded is picked explicitly', async () => {
+        // 「不使用在线数据」会把 lyricsSource 清回自动；标记仍然生效，同目录与内嵌歌词不会自己回来。
+        const marked = buildSong({ markedPureMusic: true, matchedIsPureMusic: true, matchedLyrics: undefined });
+
+        expect(selectLocalSongLyricsSource(marked, 'local')).toBe('online');
+        expect(selectLocalSongLyricsSource(marked, 'online')).toBe('online');
+        await expect(resolveLocalSongLyrics(marked, 'local')).resolves.toEqual({ lyrics: null, source: 'online' });
+        expect(buildUnifiedLocalSong({ localSong: marked, matchedSong: null, coverUrl: null, preferOnlineMetadata: false }).isPureMusic).toBe(true);
+
+        expect(selectLocalSongLyricsSource({ ...marked, lyricsSource: 'embedded' }, 'local')).toBe('embedded');
+        expect(buildUnifiedLocalSong({ localSong: { ...marked, lyricsSource: 'embedded' }, matchedSong: null, coverUrl: null, preferOnlineMetadata: false }).isPureMusic).toBe(false);
     });
 });

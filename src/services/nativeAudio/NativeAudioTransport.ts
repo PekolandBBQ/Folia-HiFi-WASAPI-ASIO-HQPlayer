@@ -77,6 +77,7 @@ export class NativeAudioTransport extends EventTarget {
     private streamingControls: Promise<unknown> = Promise.resolve();
     private intent = 0;
     private playbackIntent: Readonly<{ playing: boolean }> = Object.freeze({ playing: false });
+    private requestedPlayback: boolean | null = null;
     private seekIntent: Readonly<{ position: number }> | null = null;
     private revision = 0;
     private disposed = false;
@@ -90,6 +91,8 @@ export class NativeAudioTransport extends EventTarget {
     get currentSrc() { return this.src; }
     // Request identities stay stable during refill; an explicit seek is independent of play/pause.
     getPlaybackIntent() { return Object.freeze({ playback: this.playbackIntent, seek: this.seekIntent }); }
+    // A newly preparing deck has no playback request yet; it is not a listener Pause.
+    getRequestedPlaybackIntent() { return this.requestedPlayback; }
     // Output transfer uses acknowledged native frames, never the lyric interpolation clock.
     getOutputPosition() {
         if (!this.loading) return this.initialPosition ?? this.position;
@@ -139,7 +142,7 @@ export class NativeAudioTransport extends EventTarget {
 
     setSource(src: string, initialPosition?: number, deferLoad = false) {
         if (this.src === src) return;
-        this.cancel(); this.src = src; this.duration = NaN;
+        this.cancel(); this.src = src; this.duration = NaN; this.requestedPlayback = null;
         this.initialPosition = Number.isFinite(initialPosition) && initialPosition! >= 0 ? initialPosition : undefined;
         this.deferredLoad = deferLoad; this.outputReleased = false; this.preparationRevision = 0; this.pausedPreparationRevision = 0;
         this.position = deferLoad ? this.initialPosition ?? 0 : 0; this.nativePosition = this.position;
@@ -195,6 +198,7 @@ export class NativeAudioTransport extends EventTarget {
     }
     async play() {
         if (this.recoverySession === this.session && this.recoveryTask) {
+            this.requestedPlayback = true;
             this.playbackIntent = Object.freeze({ playing: true });
             const source = this.src; this.recoveryPlaying = true;
             await this.recoveryTask;
@@ -208,7 +212,7 @@ export class NativeAudioTransport extends EventTarget {
         }
         const deferredPosition = this.deferredLoad ? this.initialPosition ?? this.position : null;
         if (!this.loading) this.load();
-        this.playbackIntent = Object.freeze({ playing: true });
+        this.playbackIntent = Object.freeze({ playing: true }); this.requestedPlayback = true;
         const intent = ++this.intent;
         const session = this.session;
         const assertPlayIntent = () => {
@@ -243,6 +247,7 @@ export class NativeAudioTransport extends EventTarget {
         this.emit(this.buffer.buffering ? 'waiting' : 'playing');
     }
     pause() {
+        this.requestedPlayback = false;
         this.playbackIntent = Object.freeze({ playing: false });
         if (this.recoverySession === this.session) this.recoveryPlaying = false;
         endPlaybackLoad(this.session);
@@ -467,6 +472,7 @@ export class NativeAudioTransport extends EventTarget {
         await this.resumeFrom(position, playing);
     }
     async resumeFrom(position: number, playing: boolean) {
+        this.requestedPlayback = playing;
         if (!this.loading && !playing) {
             this.currentTime = position; this.paused = true; return;
         }

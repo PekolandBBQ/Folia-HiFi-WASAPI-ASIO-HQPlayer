@@ -11,6 +11,11 @@ describe('now playing toast visibility', () => {
         expect(shouldShowNowPlayingToast({ mode: 'auto', view, showOnHome: false })).toBe(true);
     });
 
+    it('shows on a wall library home (bravais) without the opt-in, like Lattice; never still wins', () => {
+        expect(shouldShowNowPlayingToast({ mode: 'auto', view: 'home', showOnHome: false, homeIsWall: true })).toBe(true);
+        expect(shouldShowNowPlayingToast({ mode: 'never', view: 'home', showOnHome: true, homeIsWall: true })).toBe(false);
+    });
+
     it('keeps home opt-in and never mode semantics', () => {
         expect(shouldShowNowPlayingToast({ mode: 'auto', view: 'home', showOnHome: false })).toBe(false);
         expect(shouldShowNowPlayingToast({ mode: 'always', view: 'home', showOnHome: true })).toBe(true);

@@ -210,6 +210,48 @@ const measureOpenMilestones = async (page: Page, timeoutMs = 6000) => (
     }, timeoutMs)
 );
 
+/**
+ * 页内 rAF 采样：嵌套返回时，形变外框从出现到「位置和比例都落到卡片外框上」用了多少毫秒。
+ * 落点就是探针里那张卡的外框：(620,420) 尺寸 200×260，中心 (720,550)。
+ *
+ * 不能在测试进程里用 expect.poll 读 boundingBox：外框落定之后只停留约 400ms 就随整层卸载，
+ * 而 expect.poll 的默认间隔是 100/250/500/1000ms，1.2s 里只有四次采样 —— 第三次（约 350ms）
+ * 常常还在落定之前，第四次（约 850ms）时层已经卸载，boundingBox 会一直等元素重新出现直到超时。
+ * 那样量到的是「采样碰巧有没有踩进那个窗口」，不是落点本身。
+ */
+const measureNestedLanding = async (page: Page, timeoutMs = 6000) => (
+    page.evaluate(async (limit: number) => {
+        const start = performance.now();
+        let appearedAt: number | null = null;
+        let landedAt: number | null = null;
+        let maxFrames = 0;
+        while (performance.now() - start < limit) {
+            const frames = document.querySelectorAll('[data-folia-collection-morph="frame"]');
+            maxFrames = Math.max(maxFrames, frames.length);
+            const element = frames[0];
+            const now = performance.now();
+            if (element) {
+                if (appearedAt === null) appearedAt = now;
+                const box = element.getBoundingClientRect();
+                const centerDistance = Math.hypot(box.x + box.width / 2 - 720, box.y + box.height / 2 - 550);
+                if (centerDistance < 8 && Math.abs(box.width / box.height - 200 / 260) < 0.03) {
+                    landedAt = now;
+                    break;
+                }
+            } else if (appearedAt !== null) {
+                // 没落定就卸载了：整层收掉之前一直没到卡片外框上。
+                break;
+            }
+            await new Promise(resolve => requestAnimationFrame(() => resolve(null)));
+        }
+        return {
+            appeared: appearedAt !== null,
+            maxFrames,
+            landedAfterMs: appearedAt !== null && landedAt !== null ? landedAt - appearedAt : null,
+        };
+    }, timeoutMs)
+);
+
 test('a cold hero cover must not stretch the open animation', async ({ mount, page }) => {
     // hero 封面延迟 1.2s 才到达 —— 就是「首次打开」时那张还没解码的封面。
     await page.route('**/slow-cover.png', async (route) => {
@@ -344,21 +386,22 @@ test('the artist flight never squeezes the cover through a non-uniform scale', a
 
 test('a nested back flies onto the card while the card is still flying in', async ({ mount, page }) => {
     const root = await mount('collectionMorph');
-    await root.locator('[data-probe-action="nested-back"]').click();
 
-    const frame = page.locator(FRAME);
-    await expect(frame).toHaveCount(1);
+    // 采样先起，再点按钮：外框落定后只停留约 400ms 就随整层卸载，必须在页内逐帧看（见
+    // measureNestedLanding）。
+    const landing = measureNestedLanding(page);
+    await root.locator('[data-probe-action="nested-back"]').click();
+    const result = await landing;
 
     // 落点卡片的外框在 (620,420) 尺寸 200×260（中心 720,550），它自己还在做 1.4s 的飞入；
     // hero 起点是 (500,300) 的 232×232 圆形头像。旧实现要等内层封面落定才肯起飞，hero 会僵在
     // 原地直到 1.8s 的放弃线 —— 也就是「歌手页退出动画严重滞后」。现在靠外框（挂载即在最终
     // 槽位）判定，两拍就起飞，位置和比例都在 1.2s 内落到卡片的外框上。
-    await expect.poll(async () => {
-        const box = await frame.boundingBox();
-        if (!box) return false;
-        const centerDistance = Math.hypot(box.x + box.width / 2 - 720, box.y + box.height / 2 - 550);
-        return centerDistance < 8 && Math.abs(box.width / box.height - 200 / 260) < 0.03;
-    }, { timeout: 1200, intervals: [16] }).toBe(true);
+    expect(result.appeared).toBe(true);
+    // 原来的 toHaveCount(1) 顺带保证同一时刻只有一个外框，这里保留这层检查。
+    expect(result.maxFrames).toBe(1);
+    expect(result.landedAfterMs).not.toBeNull();
+    expect(result.landedAfterMs!).toBeLessThan(1200);
 });
 
 test('only the incoming grid carries the active mark while two grids overlap', async ({ mount, page }) => {

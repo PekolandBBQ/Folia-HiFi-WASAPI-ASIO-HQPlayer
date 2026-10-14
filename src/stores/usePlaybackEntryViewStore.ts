@@ -8,21 +8,56 @@
 import { create } from 'zustand';
 import { getStoredBoolean, getStoredString, setStoredBoolean } from './storagePrimitives';
 
-/** The two surfaces a song can start on. `player` is the visualizer page. */
-export type PlaybackEntryView = 'player' | 'lattice';
+/**
+ * Where pressing play lands. `player` is the visualizer page, `lattice` the queue collage, and
+ * `stay` leaves the listener where they pressed it (the library card or wall just shows that the
+ * song is playing). `stay` was added later (fb3, 2026-10-07): stored values from before still read
+ * back as what they were, and anything unknown falls back to `player`.
+ */
+export type PlaybackEntryView = 'player' | 'lattice' | 'stay';
+
+export const PLAYBACK_ENTRY_VIEWS: readonly PlaybackEntryView[] = ['player', 'lattice', 'stay'];
+
+export const isPlaybackEntryView = (value: unknown): value is PlaybackEntryView => (
+    typeof value === 'string' && (PLAYBACK_ENTRY_VIEWS as readonly string[]).includes(value)
+);
+
+/**
+ * The surface an explicit "open the playback view" lands on (the player capsule, the startup view,
+ * bravais' enter button on the playing card). `stay` has no surface of its own, so it opens the
+ * player — the listener asked to go somewhere, and the visualizer is the default somewhere.
+ */
+export const resolvePlaybackSurface = (view: PlaybackEntryView): 'player' | 'lattice' => (
+    view === 'lattice' ? 'lattice' : 'player'
+);
 
 const ENTRY_VIEW_KEY = 'playback_entry_view';
 const ENTRY_VIEW_CHOSEN_KEY = 'playback_entry_view_chosen';
+/**
+ * The library-interface page (grid / bravais) of the startup prompt has been shown once on this install.
+ * Its own flag, not tied to any version: everyone sees that page exactly once (2026-10-10), including installs
+ * that answered the older single-page prompt — and it must not ride on the release-notes version, which moves
+ * every release.
+ */
+const LIBRARY_SUITE_PROMPT_SEEN_KEY = 'library_suite_prompt_seen';
 
-const readEntryView = (): PlaybackEntryView => (
-    getStoredString(ENTRY_VIEW_KEY, 'player') === 'lattice' ? 'lattice' : 'player'
-);
+/** The pages the startup prompt can show, in order. */
+export type StartupPromptPage = 'library-suite' | 'playback-entry-view';
+
+const readEntryView = (): PlaybackEntryView => {
+    const stored = getStoredString(ENTRY_VIEW_KEY, 'player');
+    return isPlaybackEntryView(stored) ? stored : 'player';
+};
 
 export type PlaybackEntryViewState = {
     playbackEntryView: PlaybackEntryView;
     /** True once the listener has answered the prompt, or changed the setting by hand. */
     hasChosenPlaybackEntryView: boolean;
+    /** True once the library-interface page has been shown (see LIBRARY_SUITE_PROMPT_SEEN_KEY). */
+    hasSeenLibrarySuitePrompt: boolean;
     isPlaybackEntryViewPromptOpen: boolean;
+    /** The pages of the prompt that is open (empty while closed); fixed for one opening. */
+    promptPages: readonly StartupPromptPage[];
     /**
      * Non-zero while the "Lattice cannot host Personal FM" notice is up, and a different value on
      * every raise so a repeat restarts its own timer.
@@ -33,9 +68,13 @@ export type PlaybackEntryViewState = {
     latticeFmNoticeToken: number;
 
     setPlaybackEntryView: (view: PlaybackEntryView) => void;
-    /** Opens the prompt, unless it has already been answered. Returns whether it opened. */
-    requestPlaybackEntryViewPrompt: () => boolean;
-    /** Closes the prompt and records it as answered, so it never opens again. */
+    /**
+     * Opens the prompt with the pages still unanswered: the library-interface page when `withLibrarySuite`
+     * (both suites exist in this build) and it has not been shown yet, the playback page when that has not been
+     * chosen. Returns whether it opened (nothing left to ask → false).
+     */
+    requestPlaybackEntryViewPrompt: (options?: { withLibrarySuite?: boolean }) => boolean;
+    /** Closes the prompt and records both questions as answered, so it never opens again. */
     closePlaybackEntryViewPrompt: () => void;
     /** Raises the FM notice, restarting it if one is already showing. */
     showLatticeFmNotice: () => void;
@@ -45,7 +84,9 @@ export type PlaybackEntryViewState = {
 export const usePlaybackEntryViewStore = create<PlaybackEntryViewState>((set, get) => ({
     playbackEntryView: readEntryView(),
     hasChosenPlaybackEntryView: getStoredBoolean(ENTRY_VIEW_CHOSEN_KEY, false),
+    hasSeenLibrarySuitePrompt: getStoredBoolean(LIBRARY_SUITE_PROMPT_SEEN_KEY, false),
     isPlaybackEntryViewPromptOpen: false,
+    promptPages: [],
     latticeFmNoticeToken: 0,
 
     // Picking a view *is* answering the question, wherever it is picked, so this also retires the
@@ -57,16 +98,24 @@ export const usePlaybackEntryViewStore = create<PlaybackEntryViewState>((set, ge
         setStoredBoolean(ENTRY_VIEW_CHOSEN_KEY, true);
         set({ playbackEntryView: view, hasChosenPlaybackEntryView: true });
     },
-    requestPlaybackEntryViewPrompt: () => {
-        if (get().hasChosenPlaybackEntryView || get().isPlaybackEntryViewPromptOpen) {
+    requestPlaybackEntryViewPrompt: ({ withLibrarySuite = false } = {}) => {
+        const state = get();
+        if (state.isPlaybackEntryViewPromptOpen) {
             return false;
         }
-        set({ isPlaybackEntryViewPromptOpen: true });
+        const pages: StartupPromptPage[] = [];
+        if (withLibrarySuite && !state.hasSeenLibrarySuitePrompt) pages.push('library-suite');
+        if (!state.hasChosenPlaybackEntryView) pages.push('playback-entry-view');
+        if (pages.length === 0) {
+            return false;
+        }
+        set({ isPlaybackEntryViewPromptOpen: true, promptPages: pages });
         return true;
     },
     closePlaybackEntryViewPrompt: () => {
         setStoredBoolean(ENTRY_VIEW_CHOSEN_KEY, true);
-        set({ isPlaybackEntryViewPromptOpen: false, hasChosenPlaybackEntryView: true });
+        setStoredBoolean(LIBRARY_SUITE_PROMPT_SEEN_KEY, true);
+        set({ isPlaybackEntryViewPromptOpen: false, hasChosenPlaybackEntryView: true, hasSeenLibrarySuitePrompt: true });
     },
     // Date.now() rather than a counter so the token also changes when the notice is raised again
     // while still on screen, which is what restarts the dismissal timer.
@@ -75,8 +124,8 @@ export const usePlaybackEntryViewStore = create<PlaybackEntryViewState>((set, ge
 }));
 
 /** Module-level handle for the assembly layer; it is an action, so it needs no subscription. */
-export const requestPlaybackEntryViewPrompt = () => (
-    usePlaybackEntryViewStore.getState().requestPlaybackEntryViewPrompt()
+export const requestPlaybackEntryViewPrompt = (options?: { withLibrarySuite?: boolean }) => (
+    usePlaybackEntryViewStore.getState().requestPlaybackEntryViewPrompt(options)
 );
 
 /** Module-level handle for the playback controller, which is not a component. */

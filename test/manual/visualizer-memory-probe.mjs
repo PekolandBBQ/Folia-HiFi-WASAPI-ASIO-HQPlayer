@@ -1,8 +1,8 @@
-import { execFileSync } from 'node:child_process';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { chromium } from 'playwright';
+import { createProcessSampler, sampleByType } from './chromiumProcessMemory.mjs';
 
 // test/manual/visualizer-memory-probe.mjs
 
@@ -60,48 +60,7 @@ const parseArgs = () => {
     return options;
 };
 
-/**
- * 按 user-data-dir 的唯一名字圈出这次启动的整棵 Chromium 进程树，
- * 避免把机器上其它 Chrome 也算进来。
- */
-const createProcessSampler = (marker) => {
-    if (process.platform === 'win32') {
-        const script = `Get-CimInstance Win32_Process`
-            + ` | Where-Object { $_.CommandLine -like '*${marker}*' }`
-            + ` | ForEach-Object {`
-            + ` $m = [regex]::Match($_.CommandLine, '--type=([a-zA-Z-]+)');`
-            + ` $t = if ($m.Success) { $m.Groups[1].Value } else { 'browser' };`
-            + ` '{0}|{1}' -f $_.WorkingSetSize, $t }`;
-        return () => execFileSync('powershell', ['-NoProfile', '-Command', script], { encoding: 'utf8' });
-    }
-
-    return () => {
-        const out = execFileSync('ps', ['-eo', 'rss=,args='], { encoding: 'utf8' });
-        return out
-            .split('\n')
-            .filter(line => line.includes(marker))
-            .map(line => {
-                const rssKb = Number(line.trim().split(/\s+/)[0]);
-                const type = /--type=([a-zA-Z-]+)/.exec(line)?.[1] ?? 'browser';
-                return `${rssKb * 1024}|${type}`;
-            })
-            .join('\n');
-    };
-};
-
-const sampleByType = (readRaw) => {
-    const byType = {};
-    let total = 0;
-    for (const line of readRaw().trim().split(/\r?\n/)) {
-        if (!line) continue;
-        const [bytes, type] = line.split('|');
-        const mb = Number(bytes) / 1048576;
-        if (!Number.isFinite(mb)) continue;
-        byType[type || 'browser'] = (byType[type || 'browser'] ?? 0) + mb;
-        total += mb;
-    }
-    return { total, byType };
-};
+// createProcessSampler / sampleByType 在 ./chromiumProcessMemory.mjs（按 user-data-dir 圈出本次启动的进程树、按 --type= 分类汇总）。
 
 const options = parseArgs();
 const userDataDir = mkdtempSync(path.join(tmpdir(), 'folia-vismem-'));

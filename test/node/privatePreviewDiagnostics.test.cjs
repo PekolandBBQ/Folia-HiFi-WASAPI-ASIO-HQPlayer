@@ -47,6 +47,11 @@ test('IPC admits only exact local topframe including the fixed transparent-windo
         f.frame.url = url; assert.equal((await f.invoke({ action: 'export' })).errorCode, 'UNTRUSTED_CALLER');
     }
     f.frame.url = `${f.url}?splash=0`; assert.equal((await f.invoke({ action: 'status' })).available, true);
+    for (const fragment of ['#player', '#home', '#lattice', '#search/test',
+        '#collection/online/spotify/playlist/spotify-liked-songs', '?splash=0#collection/local/playlist/test']) {
+        f.frame.url = `${f.url}${fragment}`;
+        assert.equal((await f.invoke({ action: 'record', event: 'output.handoff', fields: { phase: 'requested', toBackend: 'hqplayer' } })).ok, true);
+    }
     assert.equal(f.saves(), 0);
 });
 test('renderer records are a narrow handoff allowlist, with fields reprojected and no file destination from IPC', async t => {

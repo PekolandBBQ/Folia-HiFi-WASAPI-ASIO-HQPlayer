@@ -72,3 +72,37 @@ describe('filter view surface', () => {
         expect(setQuery).not.toHaveBeenCalled();
     });
 });
+
+// B7：bravais 的过滤框里按 ↓，把键盘焦点交给墙上的 rank 0（过滤词保留）；处理了才吞掉这次按键并停止冒泡，
+// 否则同一次按键还会落到墙的方向键上多走一格。没提供 focusResults 的 surface（网格）保持原样。
+describe('filter view surface: arrow down into the results', () => {
+    const keyEvent = (key: string, modifiers: Partial<KeyboardEvent> = {}) => ({
+        key,
+        shiftKey: false,
+        altKey: false,
+        ctrlKey: false,
+        metaKey: false,
+        stopPropagation: vi.fn(),
+        ...modifiers,
+    }) as unknown as KeyboardEvent;
+    const argsWith = (focusResults?: () => boolean) => ({
+        context: { scope: { view: 'home', filter: { getQuery: () => 'a', setQuery: vi.fn(), getAnchor: () => null, focusResults }, grid: null } },
+    }) as unknown as CommandSurfaceArgs;
+
+    it('hands ↓ to the surface and stops it there when the surface took it', () => {
+        const focusResults = vi.fn(() => true);
+        const event = keyEvent('ArrowDown');
+        expect(filterViewSurface.onKeyDown?.(event, argsWith(focusResults))).toBe(true);
+        expect(focusResults).toHaveBeenCalledTimes(1);
+        expect(event.stopPropagation).toHaveBeenCalled();
+    });
+
+    it('leaves other keys, modified arrows and surfaces without focusResults alone', () => {
+        const focusResults = vi.fn(() => true);
+        expect(filterViewSurface.onKeyDown?.(keyEvent('ArrowUp'), argsWith(focusResults))).toBe(false);
+        expect(filterViewSurface.onKeyDown?.(keyEvent('ArrowDown', { shiftKey: true }), argsWith(focusResults))).toBe(false);
+        expect(focusResults).not.toHaveBeenCalled();
+        expect(filterViewSurface.onKeyDown?.(keyEvent('ArrowDown'), argsWith())).toBe(false);
+        expect(filterViewSurface.onKeyDown?.(keyEvent('ArrowDown'), argsWith(() => false))).toBe(false);
+    });
+});

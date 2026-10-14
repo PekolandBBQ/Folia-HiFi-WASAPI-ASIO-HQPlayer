@@ -1,8 +1,9 @@
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 import { createRng } from '@/components/visualizer/lumiere/lumiereRandom';
 import type { IconNode } from 'lucide-react';
 import { ICON_VIEWBOX, iconNodeToPolylines, lucideIconPolylines, svgPathToPolylines } from '@/components/visualizer/lumiere/lineart/iconPaths';
 import { buildShotIconArts, buildThemeIconArt, placeThemeIcons } from '@/components/visualizer/lumiere/lineart/themeIcons';
+import { loadLucideIcons } from '@/services/lucideIconResolver';
 
 // test/unit/visualizer/lumiere/lumiereThemeIcons.test.ts
 // 绘光的主题图标：lucide 图标的 SVG 节点展平成折线（圆、直线段、压缩写法的弧），未知名字忽略；
@@ -10,6 +11,9 @@ import { buildShotIconArts, buildThemeIconArt, placeThemeIcons } from '@/compone
 const inViewBox = (points: Array<[number, number]>, tolerance = 0.05) => points.every(([x, y]) => (
     x >= -tolerance && x <= ICON_VIEWBOX + tolerance && y >= -tolerance && y <= ICON_VIEWBOX + tolerance
 ));
+
+// 图标按需加载：绘光的宿主在建场景前加载主题图标，这里同样先加载用到的。
+beforeAll(() => loadLucideIcons(['Sun', 'Moon', 'Star', 'Flower', 'Square', 'Music', 'Heart']));
 
 describe('图标 → 折线', () => {
     it('path 的直线段与相对命令', () => {
@@ -52,6 +56,13 @@ describe('图标 → 折线', () => {
         }
         const petals = lucideIconPolylines('Flower')!.reduce((most, polyline) => Math.max(most, polyline.points.length), 0);
         expect(petals).toBeGreaterThan(40);
+    });
+
+    it('还没加载的图标返回 null 但不缓存，加载完再取就有', async () => {
+        expect(lucideIconPolylines('Cloud')).toBeNull();
+        expect(buildShotIconArts({ icons: ['Cloud'], enabled: true, shotKinds: ['zenith-a'], seed: 's', aspect: 16 / 9, avoid: { cx: 0.89, cy: 0.5, w: 0.8, h: 0.35 } })).toEqual([]);
+        await loadLucideIcons(['Cloud']);
+        expect(lucideIconPolylines('Cloud')).not.toBeNull();
     });
 
     it('未知图标名返回 null，结果按名字缓存', () => {

@@ -9,11 +9,12 @@ import {
     type Bounds,
     type ReflowTile,
     type WallMetrics,
-} from './layout';
-import { useWallCameraPan, type LatticeCamera } from './useWallCameraPan';
+} from '../../wall/layout';
+import { useWallCameraPan, type LatticeCamera } from '../../wall/useWallCameraPan';
 import { useLatticePosterSelection } from './useLatticePosterSelection';
 import { useWallKeyboardFocus } from './useWallKeyboardFocus';
-import { useWallPointerPan } from './useWallPointerPan';
+import { useWallPointerPan } from '../../wall/useWallPointerPan';
+import { formatWorldTransform } from '../../wall/wallView';
 import type { LatticeTile } from './latticeModel';
 import LatticePoster from './LatticePoster';
 import { countRender } from '../../../dev/renderCount';
@@ -24,9 +25,14 @@ import { setLatticeCurrentSongPosterVisible } from '../../../stores/useLatticeCo
 import { getPlaybackSongKey } from '../../../utils/appPlaybackGuards';
 import { useDevicePixelRatio } from '../../../hooks/useMediaQuery';
 import { useReducedMotionFor } from '../../../hooks/useReducedMotionFor';
-import { EXPANSION_SPAN } from './blockTemplates';
+import { EXPANSION_SPAN } from '../../wall/blockTemplates';
+import { useLatticeSettingsStore } from '../../../stores/useLatticeSettingsStore';
+import { resolveWallHandoffRole, useWallHandoffStore } from '../../../stores/useWallHandoffStore';
+import { useLatticeWallHandoff } from './useLatticeWallHandoff';
 
 // Draggable poster field: one greedily packed block template repeats over the queue.
+// 翻牌交接（设计稿 §7「进入队列」）：从资料库墙进来时不跑自己的入场波次，海报侧立着等资料库墙翻出、再按到起点的距离翻进；
+// 回资料库墙时海报按距离翻出（useLatticeWallHandoff）。
 
 type PosterWallProps = {
     tiles: LatticeTile[];
@@ -92,6 +98,9 @@ export default function PosterWall({
     // width breakpoints, so this settles after the first measure and then only moves on a resize.
     const [cameraScale, setCameraScale] = useState(() => cameraRef.current.scale);
     const reducedMotion = useReducedMotionFor('lattice');
+    // 从资料库墙翻牌交接进来（或淡入交叉）：入场由交接代替，不跑抬起落下的波次。
+    const entranceSuppressed = useWallHandoffStore(state => resolveWallHandoffRole(state.session, 'lattice') === 'in');
+    const autoFocusOnSongChange = useLatticeSettingsStore(state => state.autoFocusOnSongChange);
     const devicePixelRatio = useDevicePixelRatio();
     const pixelScale = cameraScale * devicePixelRatio;
 
@@ -111,7 +120,7 @@ export default function PosterWall({
     const applyCamera = useCallback((next: LatticeCamera, updateBounds = false) => {
         cameraRef.current = next;
         if (worldRef.current) {
-            worldRef.current.style.transform = `translate3d(${next.x}px, ${next.y}px, 0) scale(${next.scale})`;
+            worldRef.current.style.transform = formatWorldTransform(next.x, next.y, next.scale);
         }
         publishCurrentPosterVisibility(next);
         if (!updateBounds || frameRef.current !== null) return;
@@ -167,21 +176,21 @@ export default function PosterWall({
 
     useEffect(() => {
         if (!measured || entranceDone) return;
-        if (reducedMotion) {
+        if (reducedMotion || entranceSuppressed) {
             setEntranceDone(true);
             return;
         }
         const timer = setTimeout(() => setEntranceDone(true), ENTRANCE_WINDOW);
         return () => clearTimeout(timer);
-    }, [entranceDone, measured, reducedMotion]);
+    }, [entranceDone, entranceSuppressed, measured, reducedMotion]);
 
     // Posters landing in the opening wave are held back by their distance from that corner; once
     // the wave is over every poster mounts in place, so panning never replays it.
     const getEntranceDelay = useCallback((rect: { x: number; y: number }) => {
-        if (entranceDone || reducedMotion) return null;
+        if (entranceDone || reducedMotion || entranceSuppressed) return null;
         const steps = Math.max(0, rect.x - bounds.left) + Math.max(0, rect.y - bounds.top);
         return Math.min(ENTRANCE_MAX_DELAY, (steps / (CELL_SIZE + GAP)) * ENTRANCE_STAGGER);
-    }, [bounds.left, bounds.top, entranceDone, reducedMotion]);
+    }, [bounds.left, bounds.top, entranceDone, entranceSuppressed, reducedMotion]);
 
     // The entry wave reaches the top-left first; leaving reverses that order while cards retrace
     // their upward flight, so the wall empties back toward the corner it entered from.
@@ -299,6 +308,19 @@ export default function PosterWall({
         setFocused,
         panTo,
     });
+    const currentSongKey = currentSong ? getPlaybackSongKey(currentSong) : null;
+    const handoff = useLatticeWallHandoff({
+        containerRef,
+        cameraRef,
+        applyCamera,
+        measured,
+        metrics: METRICS,
+        activePoster,
+        layout,
+        focused,
+        waitingForFocus: autoFocusOnSongChange && !activePoster && currentSongKey !== null
+            && tiles.some(tile => tile.id === currentSongKey),
+    });
     return (
         <div
             ref={containerRef}
@@ -335,6 +357,7 @@ export default function PosterWall({
                             expandedSize={EXPANDED_SIZE}
                             entranceDelay={getEntranceDelay(rect)}
                             getExitDelay={getExitDelay}
+                            handoff={handoff.getPosterHandoff(instance.instanceId, rect)}
                             expanded={expanded}
                             reducedMotion={reducedMotion}
                             didDragRef={didDragRef}

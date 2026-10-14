@@ -7,6 +7,8 @@
 
 ## 构建输入
 
+2026-10-14 的源码候选以最新稳定上游 `v0.7.19`（`607771d593e5b50e39defcb964928672b48310cb`）为基线；上游尚未发布的 `main` 改动不混入本轮。当前公开下载仍为 `folia-hifi-v0.7.12-r4`，不会因源码同步而替换旧标签或发行附件。候选须通过本轮单测、类型检查、音乐库/HiFi 界面、完整 Folia 实播及上游 CI 后才能合入正式分支。
+
 - `package-lock.json` 固定宿主依赖。Node 24+；安装时遵循仓库 `.npmrc` 及供应链设置。
 - `packaging/exclusive/release.json` 固定版本、FFmpeg 二进制 SHA-256 和允许的组件 ZIP SHA-256。
 - `FOLIA_COMPONENT_CATALOG` 指向组件构建生成的开发目录 JSON；每个条目的 `localPath` 指向其 ZIP。构建程序只接受固定哈希对应的组件。
@@ -23,7 +25,7 @@ $env:FOLIA_FFMPEG_DIR='C:\build\ffmpeg\win-x64'
 node packaging/exclusive/build.cjs
 ```
 
-默认同时生成 Windows x64 NSIS 安装 EXE 和免安装 ZIP；应用名称与专版版本取自 `packaging/exclusive/release.json`。应用标识保持不变，配置目录为 `Folia HiFi`；卸载默认保留配置。软件版本始终与所基于的上游版本一致，本版为 0.7.12。专版 Git 标签使用 `hifi-v0.7.12`，同一上游版本的后续专版修订用 `hifi-v0.7.12-r2`、`-r3` 等独立标签，应用版本保持 0.7.12，避免覆盖已发布标签或上游 `v0.7.12`；GitHub Release 标记为正式版。
+默认同时生成 Windows x64 NSIS 安装 EXE 和免安装 ZIP；应用名称与专版版本取自 `packaging/exclusive/release.json`。应用标识保持不变，配置目录为 `Folia HiFi`；卸载默认保留配置。软件版本与所基于的上游版本一致：本轮源码候选为 0.7.19，现有公开 r4 发行件仍为 0.7.12。后续标签沿用 `folia-hifi-v<上游版本>-r<修订号>`；不覆盖旧标签或上游标签。只有通过发行验收的包才标记为正式版。
 
 可用 `FOLIA_EXCLUSIVE_OUTPUT` 指定新输出目录。开发机器有共享依赖目录时，`FOLIA_BUILD_ROOT` 只指定依赖与公共构建资源所在项目；实际 renderer、Electron 和 shared 源码始终来自本脚本所在专版 checkout。不能将旧集成分支的构建产物当作最新专版。
 

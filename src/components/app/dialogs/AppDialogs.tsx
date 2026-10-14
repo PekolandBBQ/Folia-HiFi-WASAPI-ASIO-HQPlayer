@@ -18,7 +18,7 @@ type AppDialogsProps = {
 
 const AppDialogs: React.FC<AppDialogsProps> = ({ model }) => {
     countRender('AppDialogs');
-    const { statusToast, lyricMatchDialog, naviLyricMatchDialog, onlineLyricMatchDialog, unavailableReplacementDialog, settingsDialog, providerSwitchConfirmDialog, wallpaperEntryConfirmDialog } = model;
+    const { statusToast, lyricMatchDialog, naviLyricMatchDialog, onlineLyricMatchDialog, unavailableReplacementDialog, settingsDialog, wallpaperEntryConfirmDialog } = model;
 
     return (
         <>
@@ -67,10 +67,6 @@ const AppDialogs: React.FC<AppDialogsProps> = ({ model }) => {
             {naviLyricMatchDialog && <NaviLyricMatchModal {...naviLyricMatchDialog} />}
             {onlineLyricMatchDialog && <OnlineLyricMatchModal {...onlineLyricMatchDialog} />}
             {unavailableReplacementDialog && <UnavailableReplacementDialog {...unavailableReplacementDialog} />}
-            {/* Connection completion may request a provider switch; keep its confirmation above the connection portal. */}
-            {providerSwitchConfirmDialog?.isOpen && createPortal(
-                <div className="fixed inset-0 z-[2300]"><ConfirmDialog {...providerSwitchConfirmDialog} /></div>, document.body,
-            )}
             {wallpaperEntryConfirmDialog && <ConfirmDialog {...wallpaperEntryConfirmDialog} />}
             <AnimatePresence>
                 {settingsDialog && <SettingsModal {...settingsDialog} />}

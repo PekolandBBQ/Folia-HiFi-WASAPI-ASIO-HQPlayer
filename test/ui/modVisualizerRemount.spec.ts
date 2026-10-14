@@ -12,6 +12,7 @@ const SONG = { id: 1, name: 'Instrumental', artists: [{ id: 10, name: 'Alpha' }]
 test('does not remount a mod visualizer when the player UI changes on a lyric-less song', async ({ page }) => {
     await page.addInitScript(([version, guideKey]) => {
         localStorage.clear();
+        localStorage.setItem('library_suite_prompt_seen', 'true');
         localStorage.setItem('i18nextLng', 'en');
         localStorage.setItem('open_player_on_launch', 'true');
         localStorage.setItem('static_mode', 'true');

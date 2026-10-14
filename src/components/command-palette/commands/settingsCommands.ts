@@ -9,10 +9,12 @@ import type { CommandPaletteCommand } from '../types';
 import { createToggleCommand, createAppLanguageCommand, createSettingsCommand, createSettingsAnchorCommand, defineCommand } from '../commandFactories';
 import { sleepTimerCommand } from './sleepTimerCommand';
 import { lyricExportCommands } from './lyricExportCommands';
-import { Gauge, Images, Layers3 } from 'lucide-react';
+import { Gauge, Images, Layers3, Library } from 'lucide-react';
 import { latticePosterTintSurface } from '../surfaces/latticePosterTintSurface';
 import { gridViewCardsSurface } from '../surfaces/gridViewCardsSurface';
 import { reduceMotionSurface } from '../surfaces/reduceMotionSurface';
+import { librarySuitePickerSurface } from '../surfaces/librarySuitePickerSurface';
+import { libraryWallLookCommands } from './libraryWallLookCommands';
 import { openCurrentPagePonder } from '../../../services/ponder/pagePonderTarget';
 import { toggleHQPlayerOutput, toggleHQPlayerRememberGain, chooseHQPlayerPath } from '../../../services/nativeAudio/hqplayerSettings';
 import { isNativeAudioSupported } from '../../../services/nativeAudio/capabilities';
@@ -135,6 +137,45 @@ export const settingsCommands: CommandPaletteCommand[] = [
             return true;
         },
     },
+    // fb3：第三个值「留在原处」——点播放只开始播放、不跳转（资料库卡片 / 墙上的按钮变成暂停 / 继续）。
+    {
+        id: 'playback-entry-view-stay',
+        isAvailable: context => (context ? context.settings.playbackEntryView !== 'stay' : true),
+        group: 'settings',
+        title: 'Play opens: Stay here',
+        description: 'Pressing play only starts the song and leaves you where you are',
+        keywords: ['entry view stay', 'stay on play', 'play in place', 'do not navigate', '播放后留在原处', '原地播放', '不跳转'],
+        execute: (_input, context) => {
+            if (context.settings.playbackEntryView === 'stay') return false;
+            context.settings.setPlaybackEntryView('stay');
+            return true;
+        },
+    },
+    // 资料库界面（Library UI suite）：锚点跳到界面设置里的那一节，picker 直接切换。两条都只在可用的 suite 不止一套时出现，
+    // 与设置节用同一个判断（hasLibrarySuiteChoice，经 context 透出）。
+    createSettingsAnchorCommand(
+        'settings-library-suite',
+        'Library interface',
+        'Jump to which interface the library uses',
+        ['library ui', 'library suite', 'library view', '资料库界面', '集合界面', '界面套件'],
+        'librarySuite',
+        { isAvailable: context => context?.settings.canChooseLibrarySuite() ?? true },
+    ),
+    defineCommand({
+        id: 'library-suite-picker',
+        group: 'settings',
+        title: 'Pick a library interface',
+        description: 'Switch the interface the library is browsed in',
+        keywords: ['library ui picker', 'switch library suite', 'library suite', '切换资料库界面', '选择资料库界面'],
+        icon: Library,
+        isAvailable: context => context?.settings.canChooseLibrarySuite() ?? true,
+        requiresInput: true,
+        surface: librarySuitePickerSurface,
+        placeholder: context => context.shared.t('commandPalette.pickerFilterPlaceholder', 'Type to filter, then click or press Enter'),
+        execute: () => false,
+    }),
+    // bravais 的透光档位与每块窗数：只在生效 suite 是 bravais 时可用（与设置分区同一个谓词）。
+    ...libraryWallLookCommands,
     createSettingsAnchorCommand('settings-pinned-commands', 'Pinned command slots', 'Choose the three commands pinned in the palette', ['pinned commands', 'quick slots', '固定命令'], 'pinnedCommands'),
     createSettingsCommand('settings-interaction', 'Interaction settings', 'Open keyboard, shortcut and grid interaction settings', ['interaction', 'keyboard', 'hotkey', '交互', '快捷键设置'], 'options', 'interaction'),
     createSettingsAnchorCommand('settings-custom-shortcut', 'Custom shortcuts', 'Jump to the custom keyboard shortcut bindings', ['keybinding', 'rebind', 'hotkey', '自定义快捷键'], 'customShortcut'),
@@ -584,7 +625,7 @@ export const settingsCommands: CommandPaletteCommand[] = [
     createToggleCommand('settings-toggle-transparent', 'settings', 'Toggle transparency', 'Toggle transparent player background', ['transparent', 'transparency', '透明', '透明化'], context => context.settings.toggleTransparentBackground()),
     createToggleCommand('settings-toggle-daylight', 'settings', 'Toggle light/dark', 'Toggle theme daylight/midnight mode', ['daylight', 'midnight', 'light', 'dark', '明暗', '切换明暗', '日夜', '日间', '夜间'], context => context.settings.toggleDaylightMode(), { executeShortcut: 'd' }),
     createToggleCommand('settings-toggle-player-back-button', 'settings', 'Always show player back button', 'Toggle whether the player page back button stays visible', ['always show back button', 'player back button', 'back button', '返回按钮', '始终显示返回按钮', '播放页返回按钮', 'fanhui annniu', 'bofangye fanhui annniu', 'fh', 'bfyfh'], context => context.settings.toggleAlwaysShowPlayerBackButton()),
-    createToggleCommand('settings-toggle-lattice-vignette', 'settings', 'Lattice vignette', 'Turn the edge vignette on the queue collage on or off', ['lattice', 'vignette', 'queue collage vignette', 'collage vignette', 'poster wall vignette', '暗角', '边缘暗角', '队列拼贴', '队列拼贴暗角', '拼贴暗角'], context => context.settings.toggleLatticeVignette()),
+    createToggleCommand('settings-toggle-lattice-vignette', 'settings', 'Poster wall vignette', 'Turn the edge vignette on the queue collage (Lattice) and the library wall on or off', ['lattice', 'vignette', 'lattice vignette', 'queue collage vignette', 'collage vignette', 'library wall vignette', 'tile wall appearance', 'bravais', '暗角', '边缘暗角', '队列拼贴', '队列拼贴暗角', '拼贴暗角', '资料库墙', '海报墙暗角', '拼贴墙外观'], context => context.settings.toggleLatticeVignette()),
     createToggleCommand('settings-toggle-lattice-auto-focus', 'settings', 'Lattice auto-focus', 'Toggle whether the queue collage follows the playing song when tracks change', ['lattice', 'lattice auto focus', 'queue collage', 'follow playing song', 'follow track changes', 'poster wall follow', '队列拼贴', '切歌自动聚焦', '自动聚焦当前歌曲', '海报墙跟随'], context => context.settings.toggleLatticeAutoFocusOnSongChange()),
     defineCommand({
         id: 'settings-gridview-cards',
@@ -613,9 +654,9 @@ export const settingsCommands: CommandPaletteCommand[] = [
     defineCommand({
         id: 'lattice-poster-tint',
         group: 'settings',
-        title: 'Lattice poster tint',
-        description: 'Adjust the overlay that quiets posters outside the current queue collage focus',
-        keywords: ['lattice', 'lattice tint', 'poster overlay', 'focus tint', 'queue collage', 'queue collage tint', '队列拼贴', '海报叠色', '聚焦叠层', '队列拼贴叠层'],
+        title: 'Poster wall tint',
+        description: 'Adjust the overlay that quiets posters outside the focus on the queue collage (Lattice) and the library wall',
+        keywords: ['lattice', 'lattice tint', 'lattice poster tint', 'poster overlay', 'focus tint', 'queue collage', 'queue collage tint', 'library wall tint', 'tile wall appearance', 'bravais', '队列拼贴', '海报叠色', '聚焦叠层', '队列拼贴叠层', '资料库墙', '海报墙叠色', '拼贴墙外观'],
         icon: Layers3,
         requiresInput: true,
         surface: latticePosterTintSurface,

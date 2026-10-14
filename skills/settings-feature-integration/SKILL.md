@@ -44,6 +44,13 @@ subview 只是调用方；新增字段要同时改这两处，光改 subview 不
 
 不要只把视觉设置写进 localStorage 或 store；如果用户会把它理解成“外观配置的一部分”，它就必须能随 shortcode / JSON 一起导入导出。
 
+已知例外（用户明确决定，不要按上面的规则补进导入导出）：
+
+- bravais 资料库墙的「透光」偏好（`src/stores/useLibraryWallLookStore.ts` 的 `look` 与 `windowsPerBlock`，设置在界面设置「Bravais 墙面」分组的 `LibraryWallLookSettings`）。它影响视觉，但用户决定不进外观配置的短码 / JSON（2026-10-06），store 头部的 `@note` 写明了这一点。它照常接命令面板（`library-wall-look-picker` / `library-wall-windows-picker`）与 bravais 的外观动作。同一 store 的集合叠页边开关 `collectionStackEdges`、信息条的材质 `seamClear` / `seamStyle` 与墙后画面的 `backdropLyrics` / `backdropBlur` **不在**这个例外里，照规则进了导入导出（`libraryWallStackEdges` / `libraryWallSeamClear` / `libraryWallSeamStyle` / `libraryWallBackdropLyrics` / `libraryWallBackdropBlur`）。
+- 资料库界面（UI suite）的选择（`useLibrarySuiteStore`）是界面偏好，不是视觉调参，同样不进导入导出。
+
+新增类似的例外时，必须是用户明确的决定，并在 store 或设置组件的注释里写明，防止后来者按规则补回去。
+
 ## Functional Settings Must Join Command Palette
 
 功能性设置（如 Electron 更新通道 `updateChannel`选择、桌面端 Acrylic 背景确认防护、实验室设置）或可执行动作必须评估并注册到 command palette：
@@ -56,7 +63,7 @@ subview 只是调用方；新增字段要同时改这两处，光改 subview 不
 - 复杂语法：需要 `--flag` / `@facet:value` 时声明 `syntax`，解析复用 `src/components/command-palette/syntax/`，不要另写正则。
 - 执行模式：明确判断要不要给 `executeShortcut`。危险、不可撤销、要花钱或需要确认的操作不给；给了就必须与现有快捷键保持 prefix-free，冲突会在构建时抛错。
 - 命令文案：同步 `src/i18n/locales/en.ts`、`zh-CN.ts` 和 `in.ts` 的 `commandPalette.commands.<id>`，缺任何一份都会让 `test/unit/command-palette/commandRegistryContract.test.ts` 失败。
-- 关键词：至少包含英文、中文和常用拼音缩写，同样由上面的契约测试校验。
+- 关键词：写英文与中文，**不要手写拼音**。拼音（全拼 / 首字母）由构建期插件 `dev/pinyin/commandPinyinPlugin.mjs` 从中文关键词与 zh-CN 的 `commandPalette.commands` 文案生成（虚拟模块 `virtual:folia-command-pinyin`）；契约测试 `commandRegistryContract.test.ts` 禁止手写能被生成出来的拼音，也禁止纯 ASCII 关键词照抄标题，并检查每条命令只用拉丁字符也能搜到。早先「关键词带常用拼音缩写」的要求已过时。资料库 suite 的外观动作（manifest 的 `chromeActions`）只能声明在 `suites/<id>/entry.ts` 或同目录的 `chromeActions.ts`，插件只扫这两种文件。
 - 落地列表：命令是否出现在面板刚打开时的首屏，由 `commands/index.ts` 的 `DEFAULT_LANDING_COMMAND_IDS` 显式决定，不取决于它在数组里的位置。
 
 当前同步服务已经有两类命令入口：`settings-r2-sync` 打开存储设置中的同步服务区域，`sync-now` 触发 AI 主题同步；新增同步动作时优先复用 `src/services/sync/syncCoordinator.ts`，不要在命令里直接发请求。
@@ -74,6 +81,7 @@ subview 只是调用方；新增字段要同时改这两处，光改 subview 不
 - 外观 / 视觉：`src/components/modal/settings/AppearanceSettingsSubview.tsx`
 - 播放：`src/components/modal/settings/PlaybackSettingsSubview.tsx`
 - 通用：`src/components/modal/settings/GeneralSettingsSubview.tsx`
+  bravais 独有的设置（只在 bravais 是生效 suite 时有意义的）一律放进其中的「Bravais 墙面」分组 `BravaisSettingsSection.tsx`（用户要求，2026-10-09），锚点 `bravaisSettings`（`requiresBravaisSuite`），分组的锚点命令 `settings-bravais`；suite 的选择本身留在「资料库界面」。
 - 集成：`src/components/modal/settings/IntegrationSettingsSubview.tsx`
 - 存储：`src/components/modal/settings/StorageSettingsSection.tsx`
   缓存、同步服务配置、主题/视觉设置同步，以及 zip 导入导出动作。
@@ -93,11 +101,11 @@ subview 只是调用方；新增字段要同时改这两处，光改 subview 不
 ## Review Checklist
 
 - 这个设置是视觉相关、功能性，还是两者都是？
-- 视觉设置是否进入 `buildCurrentConfig`、`compressConfig`、`decompressConfig`、`validKeys` 和 `handleImportConfig`？
+- 视觉设置是否进入 `buildCurrentConfig`、`compressConfig`、`decompressConfig`、`validKeys` 和 `handleImportConfig`？（用户明确决定的例外见上，例如 bravais 透光）
 - 功能性设置或动作是否进入对应的 `commands/<group>Commands.ts`？
 - 平台限定用了 `platform` 而不是 id 判断？需要界面的用了 `surface` 而不是外壳里的特例？
 - 是否明确决定过要不要给 `executeShortcut`？
-- 命令是否有 en / zh-CN / in 三份 i18n、中文关键词和拼音缩写？
+- 命令是否有 en / zh-CN / in 三份 i18n、中英文关键词（拼音由构建期生成，不手写）？
 - store、localStorage key、默认值、resetter、导入恢复是否一致？
 - 同步相关设置是否同时接入 `sync/settingsSnapshot.ts`、`StorageSettingsSection.tsx` 和对应 command palette 命令？
 - 新增用户可见文案是否同步中英文？

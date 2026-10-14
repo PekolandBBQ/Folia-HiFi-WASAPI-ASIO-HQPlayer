@@ -46,6 +46,7 @@ const show = (label: string, counts: Counts) => {
 const openApp = async (page: import('@playwright/test').Page, view: 'player' | 'home') => {
     await page.addInitScript(([version, guideKey, startView]) => {
         localStorage.clear();
+        localStorage.setItem('library_suite_prompt_seen', 'true');
         localStorage.setItem('i18nextLng', 'zh-CN');
         localStorage.setItem('open_player_on_launch', startView === 'player' ? 'true' : 'false');
         localStorage.setItem('visualizer_mode', 'classic');
@@ -216,6 +217,7 @@ test('a day/night switch reaches every surface', async ({ page }) => {
 const openWall = async (page: import('@playwright/test').Page) => {
     await page.addInitScript(([version, guideKey]) => {
         localStorage.clear();
+        localStorage.setItem('library_suite_prompt_seen', 'true');
         localStorage.setItem('i18nextLng', 'en');
         localStorage.setItem('static_mode', 'true');
         localStorage.setItem(guideKey, version);

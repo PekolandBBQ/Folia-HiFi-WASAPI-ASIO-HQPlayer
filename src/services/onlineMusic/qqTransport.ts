@@ -68,13 +68,32 @@ export const resetQqTransportRuntimeCache = (): void => {
     electronApiBase = null;
 };
 
+// 内嵌后端没在监听时，把主进程报的状态与故障原因带进错误：时间线里直接能看到它为什么没起来。
+const describeEmbeddedStatus = async (): Promise<string> => {
+    try {
+        const status = await window.electron?.getQqApiStatus?.();
+        return status ? ` (status ${status.status}${status.error ? `: ${status.error}` : ''})` : '';
+    } catch {
+        return '';
+    }
+};
+
 const resolveApiBase = async (): Promise<string> => {
     const readPort = getElectronQqPortReader();
     if (readPort) {
         if (electronApiBase) return electronApiBase;
         const port = await readPort();
         if (!port) {
-            throw new OnlineProviderError('unavailable', 'Embedded QQMusicApi is not running', 'qq');
+            // 内嵌后端可能还在启动或刚崩溃重启，持久与否证实不了，所以不写 transient。
+            throw new OnlineProviderError(
+                'unavailable',
+                `Embedded QQMusicApi is not running${await describeEmbeddedStatus()}`,
+                'qq',
+                undefined,
+                undefined,
+                undefined,
+                { stage: 'backend' },
+            );
         }
         electronApiBase = `http://127.0.0.1:${port}`;
         return electronApiBase;
@@ -82,7 +101,16 @@ const resolveApiBase = async (): Promise<string> => {
 
     const base = getWebApiBase();
     if (!base) {
-        throw new OnlineProviderError('unavailable', 'VITE_QQ_API_BASE is not configured', 'qq');
+        // 网页版没配后端地址：重试不会变好，transient:false 让播放侧显示「未配置」而不是「稍后再试」。
+        throw new OnlineProviderError(
+            'unavailable',
+            'VITE_QQ_API_BASE is not configured',
+            'qq',
+            undefined,
+            undefined,
+            undefined,
+            { stage: 'config', transient: false },
+        );
     }
     return base;
 };
@@ -115,12 +143,49 @@ export const canUseEmbeddedQqSearch = (): boolean => Boolean(getElectronQqPortRe
 
 export const clearQqSession = (): void => removeProviderSessionValue('qq', 'cookie');
 
+// 后端的退避时长（qq-music-api 在 429 的响应体里给 retryAfterMs，同时带 Retry-After 头，单位是秒）。
+// 只收非负安全整数，读不出就不给，调用方按普通失败处理。
+const readRetryAfterMs = (body: unknown, response: Response): number | undefined => {
+    const fromBody = body && typeof body === 'object' ? (body as { retryAfterMs?: unknown }).retryAfterMs : undefined;
+    if (typeof fromBody === 'number' && Number.isSafeInteger(fromBody) && fromBody >= 0) return fromBody;
+    const raw = response.headers?.get?.('Retry-After')?.trim();
+    if (!raw || !/^\d+$/.test(raw)) return undefined;
+    const seconds = Number(raw);
+    return Number.isSafeInteger(seconds * 1000) ? seconds * 1000 : undefined;
+};
+
 const readJsonBody = async (response: Response): Promise<any> => {
     try {
         return await response.json();
     } catch {
         return undefined;
     }
+};
+
+// 后端失败正文的原文：多数路由写在 `message`，播放等路由的 500 只给 `{ error }`（observability.js），两处都认。
+const readBackendMessage = (failure: any): string => {
+    for (const candidate of [failure?.message, failure?.error]) {
+        if (typeof candidate === 'string' && candidate.trim()) return candidate.trim();
+    }
+    return '';
+};
+
+// 后端对没配好的能力回 501（serverless 入口缺少配置），重试不会变好，与普通 5xx 分开。
+const HTTP_NOT_IMPLEMENTED = 501;
+
+// qq-music-api 的 QqProtocolError 模板（dist/src/services/auth/qrLogin.js 的 callMusicu）：musicu 已经应答（HTTP 2xx），
+// 只是带了非零的全局码或 req_0 码，后端的 handleControllerError 一律把它包成 500 `{ error }`。
+const QQ_PROTOCOL_REFUSAL = /\bfailed \(HTTP 2\d\d, global=(-?\d+), code=(-?\d+|unknown)\)/;
+
+// 从 500 正文里认出「上游有应答、只是业务拒绝」，返回诊断用的上游码：req_0 的码优先，缺失时退回全局码，
+// 两者都没有（应答里没有 req_0）记作 'missing'。认不出就返回 undefined，按普通 5xx 处理。
+const readUpstreamRefusalCode = (backendText: string): number | string | undefined => {
+    const match = QQ_PROTOCOL_REFUSAL.exec(backendText);
+    if (!match) return undefined;
+    const [, globalCode, requestCode] = match;
+    if (requestCode !== 'unknown' && Number(requestCode) !== 0) return Number(requestCode);
+    if (Number(globalCode) !== 0) return Number(globalCode);
+    return 'missing';
 };
 
 // 曲库三条路由被上游拒收时仍然回 HTTP 200，状态码藏在响应体里，而且层级还不一样：
@@ -165,6 +230,9 @@ const persistConfirmedSession = (operation: QqOperation, body: any): void => {
     const cookie = body?.cookie;
     if (typeof cookie === 'string' && cookie) writeProviderSessionValue('qq', 'cookie', cookie);
 };
+
+/** 网页版配置的远端 API 地址（自检与诊断报告用）；桌面版走内嵌后端，返回 null。 */
+export const getQqRemoteApiBase = (): string | null => (getElectronQqPortReader() ? null : getWebApiBase() || null);
 
 export const getQqTransportAvailability = () => {
     if (getElectronQqPortReader()) return { configured: true } as const;
@@ -233,9 +301,22 @@ export const requestQq = async <T = unknown>(operation: QqOperation, params: QqP
     // Same-origin serverless calls must retain deployment-protection cookies; external qq-music-api instances
     // answer with `Access-Control-Allow-Origin: *`, so those requests still omit browser credentials.
     const credentials: RequestCredentials = isSameOriginBase(base) ? 'same-origin' : 'omit';
-    const response = await fetch(`${base}${endpoint.path}?${query}`, { credentials, headers });
+    let response: Response;
+    try {
+        response = await fetch(`${base}${endpoint.path}?${query}`, { credentials, headers });
+    } catch (error) {
+        // 连后端本身都没连上（内嵌后端退出、远端不可达），与后端回了错误码分开。
+        throw new OnlineProviderError(
+            'network',
+            `QQMusicApi ${operation} unreachable: ${error instanceof Error ? error.message : String(error)}`,
+            'qq',
+            error,
+        );
+    }
     if (!response.ok) {
         const failure = await readJsonBody(response);
+        const backendText = readBackendMessage(failure);
+        const backendMessage = backendText ? ` (${backendText})` : '';
         if (operation === 'search_songs' && failure?.code === 'QQ_SEARCH_UPSTREAM_REJECTED'
             && Number.isSafeInteger(failure.upstreamCode)) {
             throw new OnlineProviderError(
@@ -248,7 +329,7 @@ export const requestQq = async <T = unknown>(operation: QqOperation, params: QqP
         // A missing, expired, rejected, or non-persisted backend session is surfaced uniformly as 401.
         if (response.status === 401) {
             clearQqSession();
-            throw new OnlineProviderError('auth-required', 'QQMusicApi login required', 'qq', failure);
+            throw new OnlineProviderError('auth-required', 'QQMusicApi login required', 'qq', failure, response.status);
         }
         // 404 是「这个后端没有这条路由」，不是网络故障 —— 用户可以自行部署任意版本的后端，
         // 新路由在旧后端上必然 404。报成 `unsupported`，调用方才能据此回落到旧路径，
@@ -259,9 +340,32 @@ export const requestQq = async <T = unknown>(operation: QqOperation, params: QqP
                 `QQMusicApi has no ${operation} route`,
                 'qq',
                 failure,
+                response.status,
             );
         }
-        throw new OnlineProviderError('network', `QQMusicApi request failed: ${response.status}`, 'qq', failure);
+        const upstreamCode = response.status === 500 ? readUpstreamRefusalCode(backendText) : undefined;
+        if (upstreamCode !== undefined) {
+            // 这个 500 只是后端的外壳，上游其实应答了：与酷狗 Web 端的 502 同理不传 httpStatus、带上 upstreamCode，
+            // 分类器读成 unknown（暂时无法播放），汇总也不把它算作服务异常，不触发 provider 冷却。
+            throw new OnlineProviderError(
+                'network',
+                `QQMusicApi ${operation} failed: HTTP ${response.status}${backendMessage}`,
+                'qq',
+                failure,
+                undefined,
+                readRetryAfterMs(failure, response),
+                { stage: 'upstream', upstreamCode },
+            );
+        }
+        throw new OnlineProviderError(
+            'network',
+            `QQMusicApi ${operation} failed: HTTP ${response.status}${backendMessage}`,
+            'qq',
+            failure,
+            response.status,
+            readRetryAfterMs(failure, response),
+            response.status === HTTP_NOT_IMPLEMENTED ? { stage: 'config', transient: false } : undefined,
+        );
     }
 
     const body = await readJsonBody(response);

@@ -29,7 +29,6 @@ export type AppDialogsModel = {
     onlineLyricMatchDialog?: OnlineLyricMatchDialogProps | null;
     unavailableReplacementDialog?: UnavailableReplacementDialogProps | null;
     settingsDialog?: SettingsDialogProps | null;
-    providerSwitchConfirmDialog?: ConfirmDialogProps | null;
     wallpaperEntryConfirmDialog?: ConfirmDialogProps | null;
 };
 
@@ -50,6 +49,7 @@ export type AppDialogsDeps = {
     setShowNaviLyricMatchModal: React.Dispatch<React.SetStateAction<boolean>>;
     setShowOnlineLyricMatchModal: React.Dispatch<React.SetStateAction<boolean>>;
     handleLyricMatchComplete: () => Promise<void>;
+    handleLyricMatchPureMusicMarkChanged: (marked: boolean) => Promise<void>;
     handleNaviLyricMatchComplete: () => Promise<void>;
     handleOnlineLyricMatchComplete: () => Promise<void>;
     pendingUnavailableReplacement: {
@@ -60,7 +60,6 @@ export type AppDialogsDeps = {
     setPendingUnavailableReplacement: React.Dispatch<React.SetStateAction<any>>;
     handleUnavailableReplacementConfirm: () => Promise<void>;
     settingsDialog?: SettingsDialogProps | null;
-    providerSwitchConfirmDialog?: ConfirmDialogProps | null;
 };
 
 type BuildAppDialogsModelParams = AppDialogsAmbient & AppDialogsDeps;
@@ -79,13 +78,13 @@ export const buildAppDialogsModel = ({
     setShowNaviLyricMatchModal,
     setShowOnlineLyricMatchModal,
     handleLyricMatchComplete,
+    handleLyricMatchPureMusicMarkChanged,
     handleNaviLyricMatchComplete,
     handleOnlineLyricMatchComplete,
     pendingUnavailableReplacement,
     setPendingUnavailableReplacement,
     handleUnavailableReplacementConfirm,
     settingsDialog = null,
-    providerSwitchConfirmDialog = null,
 }: BuildAppDialogsModelParams): AppDialogsModel => ({
     statusToast: statusMsg
         ? {
@@ -102,6 +101,7 @@ export const buildAppDialogsModel = ({
             song: localSongs.find(song => song.id === currentSong.localRef.songId)!,
             onClose: () => setShowLyricMatchModal(false),
             onMatch: handleLyricMatchComplete,
+            onPureMusicMarkChanged: handleLyricMatchPureMusicMarkChanged,
             isDaylight,
         }
         : null,
@@ -131,6 +131,5 @@ export const buildAppDialogsModel = ({
         onConfirm: handleUnavailableReplacementConfirm,
     },
     settingsDialog,
-    providerSwitchConfirmDialog,
     wallpaperEntryConfirmDialog,
 });

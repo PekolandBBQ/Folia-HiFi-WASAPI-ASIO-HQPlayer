@@ -46,6 +46,20 @@ describe('foliaLyricDocument', () => {
         expect(parsed?.isWordByWord).toBe(true);
     });
 
+    it('keeps icu-folia’s derived split out of the file, on export and on import', () => {
+        const lyrics = sampleLyrics();
+        lyrics.lines[0].autoWordSegments = ['你好', '世界'];
+        const document = buildFoliaLyricDocument(lyrics);
+        expect(document.lyrics.lines[0].autoWordSegments).toBeUndefined();
+        // The user's saved split is not derived and still goes into the file.
+        expect(document.lyrics.lines[0].wordSegments).toEqual(['你好', '世界']);
+
+        // A file that carries one anyway (hand-edited, third-party) does not bring it in.
+        document.lyrics.lines[0].autoWordSegments = ['你', '好世界'];
+        const parsed = parseFoliaLyricDocument(serializeFoliaLyricDocument(document));
+        expect(parsed?.lines[0].autoWordSegments).toBeUndefined();
+    });
+
     it('omits a zero offset', () => {
         expect(buildFoliaLyricDocument(sampleLyrics(), { offsetMs: 0 }).offsetMs).toBeUndefined();
     });

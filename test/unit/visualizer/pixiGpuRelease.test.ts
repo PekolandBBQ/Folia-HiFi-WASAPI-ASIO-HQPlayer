@@ -6,7 +6,10 @@ import {
     unloadPixiDisplayTree,
 } from '@/components/visualizer/pixiDisplayResources';
 import { SonnetPixiRuntime } from '@/components/visualizer/sonnet/createSonnetPixiRuntime';
+import { SonnetOutroBlur } from '@/components/visualizer/sonnet/sonnetOutroBlur';
 import { TemperaPixiRuntime } from '@/components/visualizer/tempera/createTemperaPixiRuntime';
+import { TemperaOverlay } from '@/components/visualizer/tempera/temperaOverlay';
+import type { TemperaTuning, Theme } from '@/types';
 
 // test/unit/visualizer/pixiGpuRelease.test.ts
 // 场景 / 画框 / 片尾卡被丢掉时，Graphics 自建的 GraphicsContext 要当场销毁，不能留给 Pixi 的 GC（空闲 60 秒才收）。
@@ -70,7 +73,7 @@ describe('商籁 / 凝彩运行时丢场景时放掉 Graphics 的 context', () =
         const tree = buildTree();
         const sceneContainer = new pixi.Container();
         sceneContainer.addChild(tree.root);
-        const runtime = Object.assign(Object.create(SonnetPixiRuntime.prototype), { sceneContainer, outroBlurScene: null });
+        const runtime = Object.assign(Object.create(SonnetPixiRuntime.prototype), { sceneContainer, outroBlur: new SonnetOutroBlur(pixi) });
         const scene = { container: tree.root, shots: [{ haloLayer: tree.branch }], postProcessFilters: [] };
         (runtime as unknown as { destroyScene: (value: unknown) => void }).destroyScene(scene);
         expect(sceneContainer.children).toHaveLength(0);
@@ -82,7 +85,7 @@ describe('商籁 / 凝彩运行时丢场景时放掉 Graphics 的 context', () =
         const tree = buildTree();
         const sceneContainer = new pixi.Container();
         sceneContainer.addChild(tree.root);
-        const runtime = Object.assign(Object.create(TemperaPixiRuntime.prototype), { sceneContainer });
+        const runtime = Object.assign(Object.create(TemperaPixiRuntime.prototype), { sceneContainer, pixi });
         const scene = { container: tree.root, shots: [{ textLayer: tree.branch }], postProcessFilters: [] };
         (runtime as unknown as { destroyScene: (value: unknown) => void }).destroyScene(scene);
         expect(sceneContainer.children).toHaveLength(0);
@@ -90,18 +93,35 @@ describe('商籁 / 凝彩运行时丢场景时放掉 Graphics 的 context', () =
         expect(tree.shared.destroyed).toBe(false);
     });
 
+    it('凝彩 destroyScene：渐变模式的填充纹理随场景销毁，同一个渐变只销毁一次', () => {
+        const gradient = new pixi.FillGradient({ type: 'linear', start: { x: 0, y: 0 }, end: { x: 1, y: 0 }, colorStops: [{ offset: 0, color: '#000000' }, { offset: 1, color: '#ffffff' }], textureSpace: 'local' });
+        // 测试环境没有 document，渐变自己画不了 canvas，换成一张空纹理。
+        vi.spyOn(gradient, 'buildGradient').mockImplementation(() => {
+            gradient.texture ??= new pixi.Texture();
+            gradient.transform ??= new pixi.Matrix();
+        });
+        const destroy = vi.spyOn(gradient, 'destroy');
+        const root = new pixi.Container();
+        const group = new pixi.Container();
+        group.addChild(new pixi.Graphics().rect(0, 0, 10, 10).fill({ fill: gradient }));
+        root.addChild(new pixi.Graphics().rect(0, 0, 20, 20).fill({ fill: gradient }), group);
+        const sceneContainer = new pixi.Container();
+        sceneContainer.addChild(root);
+        const runtime = Object.assign(Object.create(TemperaPixiRuntime.prototype), { sceneContainer, pixi });
+        (runtime as unknown as { destroyScene: (value: unknown) => void }).destroyScene({ container: root, shots: [], postProcessFilters: [] });
+        expect(destroy).toHaveBeenCalledTimes(1);
+        expect(gradient.texture).toBeNull();
+    });
+
     it('凝彩重画画框：上一版的角标与擦除块的 context 一起销毁', () => {
-        const overlayContainer = new pixi.Container();
-        const runtime = Object.assign(Object.create(TemperaPixiRuntime.prototype), {
-            pixi,
-            overlayContainer,
-            options: { tuning: { showCornerMarks: true }, theme: { primaryColor: '#ff8800' } },
-        }) as unknown as { drawOverlay: (width: number, height: number) => void };
-        runtime.drawOverlay(1600, 900);
-        const first = (overlayContainer.children as pixi.Graphics[]).map(graphics => graphics.context);
+        const overlay = new TemperaOverlay(pixi);
+        const tuning = { showCornerMarks: true } as TemperaTuning;
+        const theme = { primaryColor: '#ff8800' } as Theme;
+        overlay.draw(1600, 900, tuning, theme);
+        const first = (overlay.container.children as pixi.Graphics[]).map(graphics => graphics.context);
         expect(first).toHaveLength(2);
-        runtime.drawOverlay(1600, 900);
+        overlay.draw(1600, 900, tuning, theme);
         expect(first.every(context => context.destroyed)).toBe(true);
-        expect(overlayContainer.children).toHaveLength(2);
+        expect(overlay.container.children).toHaveLength(2);
     });
 });

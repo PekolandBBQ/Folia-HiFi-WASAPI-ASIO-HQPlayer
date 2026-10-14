@@ -12,6 +12,7 @@ const LATTICE_POSTER_TINT_ENABLED_KEY = 'lattice_poster_tint_enabled';
 const LATTICE_POSTER_TINT_USE_CUSTOM_COLOR_KEY = 'lattice_poster_tint_use_custom_color';
 const LATTICE_POSTER_TINT_COLOR_KEY = 'lattice_poster_tint_color';
 const LATTICE_POSTER_TINT_INTENSITY_KEY = 'lattice_poster_tint_intensity';
+const WALL_TOOLS_QUEUE_ISLAND_OPEN_KEY = 'wall_tools_queue_island_open';
 const DEFAULT_POSTER_TINT_COLOR = '#161419';
 
 const clampPosterTintIntensity = (value: number) => Math.max(0, Math.min(1, value));
@@ -32,6 +33,12 @@ export type LatticeSettingsState = {
     latticePosterTintUseCustomColor: boolean;
     latticePosterTintColor: string;
     latticePosterTintIntensity: number;
+    /**
+     * 墙面工具面板（bravais 与 Lattice 共用）上方的队列浮岛上次是否展开着：下次打开面板时照旧。
+     * 这是面板的开合状态，不是设置——不进外观导入导出，也不注册命令面板（完整的队列编辑已经有 Ctrl+P 的队列命令）。
+     * 放在这个 store 里，bravais ↔ Lattice 交接时两面墙读同一份。
+     */
+    wallToolsQueueIslandOpen: boolean;
     handleToggleLatticeVignette: (enabled: boolean) => void;
     handleToggleAutoFocusOnSongChange: (enabled: boolean) => void;
     handleToggleLatticeLights: (enabled: boolean) => void;
@@ -39,6 +46,7 @@ export type LatticeSettingsState = {
     handleToggleLatticePosterTintCustomColor: (enabled: boolean) => void;
     handleSetLatticePosterTintColor: (color: string) => void;
     handleSetLatticePosterTintIntensity: (intensity: number) => void;
+    setWallToolsQueueIslandOpen: (open: boolean) => void;
 };
 
 export const useLatticeSettingsStore = create<LatticeSettingsState>(set => ({
@@ -49,6 +57,7 @@ export const useLatticeSettingsStore = create<LatticeSettingsState>(set => ({
     latticePosterTintUseCustomColor: getStoredBoolean(LATTICE_POSTER_TINT_USE_CUSTOM_COLOR_KEY, false),
     latticePosterTintColor: normalizePosterTintColor(getStoredString(LATTICE_POSTER_TINT_COLOR_KEY, DEFAULT_POSTER_TINT_COLOR)),
     latticePosterTintIntensity: getStoredPosterTintIntensity(),
+    wallToolsQueueIslandOpen: getStoredBoolean(WALL_TOOLS_QUEUE_ISLAND_OPEN_KEY, false),
     handleToggleLatticeVignette: (enabled) => {
         set({ latticeVignette: enabled });
         setStoredBoolean(LATTICE_VIGNETTE_KEY, enabled);
@@ -78,5 +87,9 @@ export const useLatticeSettingsStore = create<LatticeSettingsState>(set => ({
         const normalized = clampPosterTintIntensity(intensity);
         set({ latticePosterTintIntensity: normalized });
         if (typeof window !== 'undefined') localStorage.setItem(LATTICE_POSTER_TINT_INTENSITY_KEY, String(normalized));
+    },
+    setWallToolsQueueIslandOpen: (open) => {
+        set({ wallToolsQueueIslandOpen: open });
+        setStoredBoolean(WALL_TOOLS_QUEUE_ISLAND_OPEN_KEY, open);
     },
 }));

@@ -26,6 +26,8 @@ export interface SlideActionButtonProps {
     onSlide: () => void;
     isDaylight: boolean;
     accentColor: string;
+    /** 拖满时按钮变成强调色底，上面图标的颜色（缺省白色；强调色可能本身就很浅，例如墙面工具按钮读 --text-on-accent）。 */
+    accentForeground?: string;
     disabled?: boolean;
 }
 
@@ -38,6 +40,7 @@ export const SlideActionButton: React.FC<SlideActionButtonProps> = ({
     onSlide,
     isDaylight,
     accentColor,
+    accentForeground = '#ffffff',
     disabled = false,
 }) => {
     const [showGuideLine, setShowGuideLine] = useState(false);
@@ -86,7 +89,7 @@ export const SlideActionButton: React.FC<SlideActionButtonProps> = ({
         }
         if (progress >= 1) {
             button.style.backgroundColor = accentColor;
-            button.style.color = '#ffffff';
+            button.style.color = accentForeground;
             button.style.boxShadow = `0 0 16px ${accentColor}66, 0 18px 42px rgba(0, 0, 0, ${0.24 + progress * 0.16})`;
         } else {
             button.style.backgroundColor = '';

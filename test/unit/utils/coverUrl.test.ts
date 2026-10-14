@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { COVER_SIZE_STEPS, describeCoverUrl, getOriginalCoverUrl, getSizedCoverUrl, resolveCoverSizeStep } from '@/utils/coverUrl';
+import { COVER_SIZE_STEPS, describeCoverUrl, getCoverIdentity, getOriginalCoverUrl, getSizedCoverUrl, resolveCoverSizeStep } from '@/utils/coverUrl';
 
 // test/unit/utils/coverUrl.test.ts
 
@@ -150,5 +150,30 @@ describe('coverUrl utilities', () => {
         expect(describeCoverUrl('not a url')).toBeNull();
         expect(describeCoverUrl('https://example.test/art.jpg'))
             .toEqual({ provider: 'other', requestedSize: null });
+    });
+
+    it('gives one identity to the same artwork however the CDN names it', () => {
+        const same = (...urls: string[]) => expect(new Set(urls.map(getCoverIdentity)).size).toBe(1);
+        same(
+            'https://p2.music.126.net/A8cekRECAnzfAG1TbKWoew==/109951171002613452.jpg',
+            'https://p1.music.126.net/A8cekRECAnzfAG1TbKWoew==/109951171002613452.jpg?param=128y128',
+            'http://p3.music.126.net/A8cekRECAnzfAG1TbKWoew==/109951171002613452.jpg#x',
+        );
+        same(
+            'https://y.gtimg.cn/music/photo_new/T002R300x300M000album-mid.jpg?max_age=2592000',
+            'https://y.gtimg.cn/music/photo_new/T002R800x800M000album-mid.jpg',
+            'https://y.qq.com/music/photo_new/T002M000album-mid.jpg',
+        );
+        same('https://imge.kugou.com/stdmusic/400/20251014/cover.jpg', 'https://c1.kgimg.com/stdmusic/1024/20251014/cover.jpg');
+        same('https://img1.kuwo.cn/star/albumcover/240/12/34/cover.jpg', 'https://img4.kuwo.cn/star/albumcover/800/12/34/cover.jpg');
+        same('/__folia_cover/abc?size=512', '/__folia_cover/abc?size=1024');
+    });
+
+    it('keeps different artwork apart', () => {
+        expect(getCoverIdentity('https://p1.music.126.net/a/1.jpg')).not.toBe(getCoverIdentity('https://p1.music.126.net/a/2.jpg'));
+        expect(getCoverIdentity('https://y.gtimg.cn/music/photo_new/T002R300x300M000a.jpg'))
+            .not.toBe(getCoverIdentity('https://y.gtimg.cn/music/photo_new/T001R300x300M000a.jpg'));
+        expect(getCoverIdentity('https://example.test/a.jpg')).not.toBe(getCoverIdentity('https://other.test/a.jpg'));
+        expect(getCoverIdentity(undefined)).toBe('');
     });
 });

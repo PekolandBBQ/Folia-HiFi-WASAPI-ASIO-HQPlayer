@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowUpRight, ChevronLeft, Command, Crosshair, Focus, ListMusic, Pause, Settings2 } from 'lucide-react';
+import { ArrowUpRight, ChevronLeft, Command, Crosshair, Disc3, Focus, House, ListMusic, Pause, Settings2, Shuffle, Sparkles, Volume2 } from 'lucide-react';
 import PonderSurfaceStateLayer, { PonderSurfaceBase, type PonderSurfaceStateRegistrar } from './PonderSurfaceStateLayer';
 import { LATTICE_FOCUSED_POSTER, LATTICE_GEOMETRY as G, LATTICE_PAN, LATTICE_POSTERS, relativeRectStyle } from './ponderSurfaceGeometry';
 
@@ -131,20 +131,25 @@ const PonderLatticePageSurface: React.FC<PonderLatticePageSurfaceProps> = ({
                 className="flex flex-col gap-[3%] rounded-[7%] border bg-zinc-950/95 p-[4%]"
                 style={{ ...relativeRectStyle(G.toolsPanel), borderColor: outline }}
             >
-                {[
-                    [Crosshair, '46%'],
-                    [Focus, '72%'],
-                    [ListMusic, '58%'],
-                ].map(([Icon, width], index) => {
-                    const ToolIcon = Icon as typeof Crosshair;
-                    return (
-                        <div key={index} className="flex min-h-0 flex-1 items-center gap-[5%] border-b" style={{ borderColor: outline }}>
-                            <ToolIcon className="h-4 w-4 opacity-55" />
-                            <span className="h-1.5 rounded-full" style={{ width: width as string, backgroundColor: line }} />
-                            {index === 1 ? <span className="ml-auto h-3 w-6 rounded-full" style={{ backgroundColor: accent, opacity: 0.6 }} /> : null}
-                        </div>
-                    );
-                })}
+                {/* 与资料库墙同一套：一排纯图标（聚焦、洗牌、主题、队列、主页、播放页）、音量、切歌自动聚焦。 */}
+                <div className="grid min-h-0 flex-1 grid-cols-6 gap-[3%]">
+                    {[Crosshair, Shuffle, Sparkles, ListMusic, House, Disc3].map((Icon, index) => (
+                        <span key={index} className="flex items-center justify-center rounded-[6px]" style={{ backgroundColor: line }}>
+                            <Icon className="h-3 w-3 opacity-60" />
+                        </span>
+                    ))}
+                </div>
+                <div className="flex min-h-0 flex-1 items-center gap-[5%] border-b" style={{ borderColor: outline }}>
+                    <Volume2 className="h-4 w-4 opacity-55" />
+                    <span className="relative h-1 flex-1 rounded-full" style={{ backgroundColor: line }}>
+                        <span className="absolute inset-y-0 left-0 w-[60%] rounded-full" style={{ backgroundColor: accent, opacity: 0.7 }} />
+                    </span>
+                </div>
+                <div className="flex min-h-0 flex-1 items-center gap-[5%] border-b" style={{ borderColor: outline }}>
+                    <Focus className="h-4 w-4 opacity-55" />
+                    <span className="h-1.5 rounded-full" style={{ width: '62%', backgroundColor: line }} />
+                    <span className="ml-auto h-3 w-6 rounded-full" style={{ backgroundColor: accent, opacity: 0.6 }} />
+                </div>
                 <div className="flex min-h-0 flex-1 items-center justify-between rounded-full border px-[5%]" style={{ borderColor: outline }}>
                     <span className="text-[8px] opacity-50">ON</span>
                     <span className="text-[8px] opacity-35">OFF</span>

@@ -477,6 +477,7 @@ const LUMIERE_SHORT_KEYS = {
     lineArt: 'la',
     frontBokeh: 'fb',
     trails: 'tr',
+    hideTrails: 'ht',
     seamlessTransitions: 'st',
     overlayFrame: 'of',
     textOnly: 'txo',
@@ -558,6 +559,11 @@ export const compressConfig = (config: any): string => {
     if (config.stageTrackPillMode !== undefined) minified.stp = config.stageTrackPillMode;
     if (config.stageTrackPillTimeoutSec !== undefined) minified.stpt = config.stageTrackPillTimeoutSec;
     if (config.stageTrackPillOnHome !== undefined) minified.stph = config.stageTrackPillOnHome;
+    if (config.libraryWallStackEdges !== undefined) minified.lwse = config.libraryWallStackEdges;
+    if (config.libraryWallSeamClear !== undefined) minified.lwsc = config.libraryWallSeamClear;
+    if (config.libraryWallSeamStyle !== undefined) minified.lwss = config.libraryWallSeamStyle;
+    if (config.libraryWallBackdropLyrics !== undefined) minified.lwbl = config.libraryWallBackdropLyrics;
+    if (config.libraryWallBackdropBlur !== undefined) minified.lwbb = config.libraryWallBackdropBlur;
 
     const jsonStr = JSON.stringify(minified);
     const bytes = new TextEncoder().encode(jsonStr);
@@ -618,7 +624,13 @@ export const decompressConfig = (str: string): any => {
         // the long-name branch, where none of them is a valid key.
         || parsed.stp !== undefined
         || parsed.stpt !== undefined
-        || parsed.stph !== undefined;
+        || parsed.stph !== undefined
+        // The bravais wall's collection stack edges, info strip and backdrop, for the same reason.
+        || parsed.lwse !== undefined
+        || parsed.lwsc !== undefined
+        || parsed.lwss !== undefined
+        || parsed.lwbl !== undefined
+        || parsed.lwbb !== undefined;
     if (isMinified) {
         const decompressed: any = {};
         if (parsed.t) {
@@ -684,6 +696,11 @@ export const decompressConfig = (str: string): any => {
         if (parsed.stp !== undefined) decompressed.stageTrackPillMode = parsed.stp;
         if (parsed.stpt !== undefined) decompressed.stageTrackPillTimeoutSec = parsed.stpt;
         if (parsed.stph !== undefined) decompressed.stageTrackPillOnHome = parsed.stph;
+        if (parsed.lwse !== undefined) decompressed.libraryWallStackEdges = parsed.lwse;
+        if (parsed.lwsc !== undefined) decompressed.libraryWallSeamClear = parsed.lwsc;
+        if (parsed.lwss !== undefined) decompressed.libraryWallSeamStyle = parsed.lwss;
+        if (parsed.lwbl !== undefined) decompressed.libraryWallBackdropLyrics = parsed.lwbl;
+        if (parsed.lwbb !== undefined) decompressed.libraryWallBackdropBlur = parsed.lwbb;
 
         return decompressed;
     } else {
@@ -702,6 +719,8 @@ export const decompressConfig = (str: string): any => {
             'urlBackgroundList', 'urlBackgroundSelectedId',
             'songThemeAutoSwitchEnabled', 'songThemeAutoGenerateEnabled', 'themeGenerationSource', 'followSystemTheme',
             'stageTrackPillMode', 'stageTrackPillTimeoutSec', 'stageTrackPillOnHome',
+            'libraryWallStackEdges',
+            'libraryWallSeamClear', 'libraryWallSeamStyle', 'libraryWallBackdropLyrics', 'libraryWallBackdropBlur',
         ];
         const hasValidKey = validKeys.some(k => parsed[k] !== undefined);
         if (!hasValidKey) {

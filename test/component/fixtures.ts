@@ -36,6 +36,8 @@ export const test = base.extend<{ seededStorage: void }>({
             localStorage.setItem('i18nextLng', 'en');
             localStorage.setItem('static_mode', 'true');
             localStorage.setItem(guideKey, version);
+            // 首启提问的「资料库界面」页每个安装问一次、不看版本：种成已问过。
+            localStorage.setItem('library_suite_prompt_seen', 'true');
         }, [APP_VERSION, GUIDE_VERSION_STORAGE_KEY]);
         await use();
     }, { auto: true }],

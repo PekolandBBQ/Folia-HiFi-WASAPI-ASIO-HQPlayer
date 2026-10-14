@@ -1,7 +1,7 @@
 // Copyright (c) 2026 chthollyphile
 import type { LineArtSpec, LineNode, LinePath, Point } from './lineArt';
 import { ICON_VIEWBOX, lucideIconPolylines, type IconPolyline } from './iconPaths';
-import { resolveLucideIconNames } from '../../../../utils/lucideIconResolver';
+import { resolveLucideIconNames } from '../../../../services/lucideIconResolver';
 import { createRng } from '../lumiereRandom';
 
 // 图标留白的测量参考。
@@ -146,6 +146,7 @@ export const buildThemeIconArt = (options: ThemeIconOptions): LineArtSpec => {
 /**
  * 场景单元里每个镜头的主题图标线稿（与镜头一一对应）。开关关掉、主题没有图标或图标名都无效时返回空数组——
  * 不退回默认图标。每个镜头按 `${seed}:${镜头序号}:${光位}:icons` 播种，并轮到不同的图标。
+ * 只画已加载的图标：VisualizerLumiere 在建运行时与换歌前先 loadLucideIcons。
  */
 export const buildShotIconArts = (options: {
     icons: readonly string[] | undefined;

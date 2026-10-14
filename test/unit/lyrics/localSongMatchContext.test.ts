@@ -90,4 +90,13 @@ describe('localSongMatchContext', () => {
             hasManualLyricSelection: true,
         }))).toBe(false);
     });
+
+    it('never refreshes a song the user marked as instrumental, even after an automatic selection reset', () => {
+        expect(shouldRefreshLocalSongLyricsFromMetadata(song({
+            onlineMetadata: { source: 'netease', songId: 321, artists: [], matchMode: 'manual', matchedAt: 1 },
+            matchedIsPureMusic: true,
+            markedPureMusic: true,
+            hasManualLyricSelection: false,
+        }))).toBe(false);
+    });
 });

@@ -1,4 +1,6 @@
 // @vitest-environment jsdom
+import type { OnlineRecoveryResult } from '@/types/playbackFailure';
+import { classifyPlaybackError } from '@/services/playbackRecovery/onlinePlaybackFailure';
 import { cableStatus } from '../onlineMusic/spotifyCableFixture';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import React, { act } from 'react';
@@ -76,7 +78,7 @@ function mount(render: (controller: ReturnType<typeof usePlaybackQueueController
         restoreCachedThemeForSong: vi.fn(), interruptStagePlaybackForMainTransition: vi.fn(),
         onPlayLocalSong: vi.fn(), onPlayNavidromeSong: vi.fn(), onAddLocalSongToQueue: vi.fn(),
         onAddNavidromeSongsToQueue: vi.fn(), searchDeps: { submitSearch: vi.fn(), loadMoreSearchResults: vi.fn() },
-        audioRef: ref(null), blobUrlRef: ref(null), shouldAutoPlayRef: ref(false), currentSongRef: ref(null),
+        audioRef: ref(null), blobUrlRef: ref(null), shouldAutoPlayRef: ref(false), currentSongRef: ref(null), playbackGenerationRef: ref(0),
         mainPlaybackSnapshotRef: ref(null), playbackAutoSkipCountRef: ref(0), pendingResumeTimeRef: ref(null),
         currentOnlineAudioUrlFetchedAtRef: ref(null), lastAudioRecoverySourceRef: ref(null),
     } as unknown as Parameters<typeof usePlaybackQueueController>[0];
@@ -117,7 +119,7 @@ describe('Spotify playback failure presentation', () => {
         ['invalid-response', 'track-metadata-mismatch', '有效'],
     ])('preserves %s through IPC → Omni → loader and does not skip the track', async (code, reason, expectedText) => {
         bridge.mockResolvedValue({ spotifyError: { code, message: `Spotify: ${reason}` } });
-        await expect(loadOnlineSongAudioSource(song, 'high', null)).rejects.toMatchObject({ code, providerId: 'spotify' });
+        await expect(loadOnlineSongAudioSource(song, 'high', null)).resolves.toMatchObject({ kind: 'failed', failure: { providerId: 'spotify', cause: expect.objectContaining({ code, providerId: 'spotify' }) } });
         bridge.mockClear();
         usePlaybackStore.setState({ currentSong: nextSong, audioSrc: 'https://example.invalid/previous.mp3', playerState: PlayerState.PLAYING });
         const props = mount();
@@ -218,7 +220,7 @@ describe('Spotify playback failure presentation', () => {
             const props = mount(); props.audioRef.current = transport.asMediaElement(); props.shouldAutoPlayRef.current = true;
             bridge.mockResolvedValue({ spotifyError: { code: 'auth-required', message: 'Spotify: playback-scope-required' } });
             await act(async () => queue.playSong(song, [song, nextSong]));
-            expect(request).toHaveBeenCalledWith({ action: 'stop', session: oldSession });
+            expect(request).toHaveBeenCalledWith(expect.objectContaining({ action: 'stop', session: oldSession }));
             expect(request.mock.calls.filter(([input]) => input.action === 'stop')).toHaveLength(1);
             expect(request.mock.calls.some(([input]) => ['volume', 'gain', 'replaygain'].includes(input.action))).toBe(false);
             expect(transport.currentSrc).toBe(''); expect(transport.paused).toBe(true);
@@ -243,7 +245,7 @@ describe('Spotify playback failure presentation', () => {
     });
     it('does not infer removal from a missing Spotify audio URL', async () => {
         bridge.mockResolvedValue({});
-        await expect(loadOnlineSongAudioSource(song, 'high', null)).rejects.toMatchObject({ code: 'invalid-response', providerId: 'spotify' });
+        await expect(loadOnlineSongAudioSource(song, 'high', null)).resolves.toMatchObject({ kind: 'failed', failure: { reason: 'unknown', providerId: 'spotify' } });
     });
     it('keeps an explicit not-playable result neutral and allows the existing bounded skip prompt', async () => {
         bridge.mockResolvedValue({ spotifyError: { code: 'not-playable', message: 'Spotify: track-unavailable' } });
@@ -276,7 +278,7 @@ describe('Spotify playback failure presentation', () => {
     it('lets a later retry obtain a fresh source after an initial setup failure', async () => {
         bridge.mockResolvedValueOnce({ spotifyError: { code: 'setup-required', message: 'Spotify: playback-setup-required' } })
             .mockResolvedValueOnce({ url: 'http://127.0.0.1:12345/synthetic-pcm', playbackTransport: 'soloist-pcm' });
-        await expect(loadOnlineSongAudioSource(song, 'high', null)).rejects.toMatchObject({ code: 'setup-required' });
+        await expect(loadOnlineSongAudioSource(song, 'high', null)).resolves.toMatchObject({ kind: 'failed', failure: { cause: expect.objectContaining({ code: 'setup-required' }) } });
         await expect(loadOnlineSongAudioSource(song, 'high', null)).resolves.toMatchObject({ kind: 'ok' });
         expect(bridge).toHaveBeenCalledTimes(2);
     });
@@ -292,7 +294,7 @@ describe('Spotify playback failure presentation', () => {
 });
 
 describe('Spotify source recovery keeps actionable failures retryable', () => {
-    function mountTransport(recover: () => Promise<boolean>, refresh: boolean) {
+    function mountTransport(recover: () => Promise<OnlineRecoveryResult>, refresh: boolean) {
         let transport: ReturnType<typeof usePlaybackTransportController>;
         const audio = { paused: true, ended: false, currentTime: 12, currentSrc: 'http://127.0.0.1:12345/old',
             play: vi.fn().mockRejectedValue(new Error('Synthetic expired stream')) } as unknown as HTMLAudioElement;
@@ -315,8 +317,8 @@ describe('Spotify source recovery keeps actionable failures retryable', () => {
         const audioRef = ref({ currentTime: 12, currentSrc: 'http://127.0.0.1:12345/old' } as HTMLAudioElement);
         usePlaybackStore.setState({ currentSong: song, audioSrc: audioRef.current.currentSrc });
         const controller = createOnlineRecoveryController({ audioQuality: 'high', currentSong: song,
-            audioSrc: audioRef.current.currentSrc, audioRef, currentSongRef: current, blobUrlRef: ref(null),
-            shouldAutoPlayRef: autoPlay, pendingResumeTimeRef: ref(null), onlinePlaybackRecoveryRef: ref(null),
+            audioSrc: audioRef.current.currentSrc, audioRef, currentSongRef: current, playbackGenerationRef: ref(0), blobUrlRef: ref(null),
+            shouldAutoPlayRef: autoPlay, pendingResumeTimeRef: ref(null), onlinePlaybackRecoveryRef: ref(new Map<string, Promise<OnlineRecoveryResult>>()),
             lastAudioRecoverySourceRef: lastSource, currentOnlineAudioUrlFetchedAtRef: ref(null),
             persistLastPlaybackCache: vi.fn(), playQueue: [song], onlineAudioUrlTtlMs: 1000, onlineAudioUrlRefreshBufferMs: 100 });
         return { controller, current, lastSource, autoPlay };
@@ -324,11 +326,11 @@ describe('Spotify source recovery keeps actionable failures retryable', () => {
     it.each(['setup-required', 'auth-required', 'unsupported', 'network', 'unavailable'])('preserves %s instead of returning a skippable track failure', async code => {
         bridge.mockResolvedValue({ spotifyError: { code, message: 'Spotify: request-failed' } });
         const { controller, lastSource, autoPlay } = recovery();
-        await expect(controller.recoverOnlinePlaybackSource({ autoplay: true })).rejects.toMatchObject({ code, providerId: 'spotify' });
+        await expect(controller.recoverOnlinePlaybackSource({ autoplay: true })).resolves.toMatchObject({ status: 'failed', failure: { cause: expect.objectContaining({ code, providerId: 'spotify' }) } });
         expect(lastSource.current).toBeNull();
         expect(autoPlay.current).toBe(false);
         bridge.mockResolvedValue({ url: 'http://127.0.0.1:12345/fresh', playbackTransport: 'soloist-pcm' });
-        await expect(controller.recoverOnlinePlaybackSource({ autoplay: true })).resolves.toBe(true);
+        await expect(controller.recoverOnlinePlaybackSource({ autoplay: true })).resolves.toEqual({ status: 'recovered' });
     });
     it.each(['setup-required', 'auth-required', 'unsupported', 'network', 'unavailable'])('joins concurrent same-source recovery callers for %s without returning a skip result', async code => {
         let finish!: (value: unknown) => void;
@@ -341,8 +343,8 @@ describe('Spotify source recovery keeps actionable failures retryable', () => {
         finish({ spotifyError: { code, message: 'Spotify: request-failed' } });
         const results = await settled;
         expect(results).toEqual([
-            { status: 'rejected', reason: expect.objectContaining({ code, providerId: 'spotify' }) },
-            { status: 'rejected', reason: expect.objectContaining({ code, providerId: 'spotify' }) },
+            { status: 'fulfilled', value: expect.objectContaining({ status: 'failed', failure: expect.objectContaining({ cause: expect.objectContaining({ code, providerId: 'spotify' }) }) }) },
+            { status: 'fulfilled', value: expect.objectContaining({ status: 'failed', failure: expect.objectContaining({ cause: expect.objectContaining({ code, providerId: 'spotify' }) }) }) },
         ]);
         expect(bridge).toHaveBeenCalledOnce();
         expect(lastSource.current).toBeNull();
@@ -356,8 +358,8 @@ describe('Spotify source recovery keeps actionable failures retryable', () => {
         const second = controller.recoverOnlinePlaybackSource({ autoplay: true });
         await vi.waitFor(() => expect(bridge).toHaveBeenCalledOnce());
         finish({ url: 'http://127.0.0.1:12345/old', playbackTransport: 'soloist-pcm' });
-        await expect(Promise.all([first, second])).resolves.toEqual([true, true]);
-        await expect(controller.recoverOnlinePlaybackSource({ autoplay: true })).resolves.toBe(false);
+        await expect(Promise.all([first, second])).resolves.toEqual([{ status: 'recovered' }, { status: 'recovered' }]);
+        await expect(controller.recoverOnlinePlaybackSource({ autoplay: true })).resolves.toEqual({ status: 'not-attempted' });
         expect(bridge).toHaveBeenCalledOnce();
     });
     it('marks a superseded recovery as cancellation so callers do not skip or publish an old failure', async () => {
@@ -365,21 +367,21 @@ describe('Spotify source recovery keeps actionable failures retryable', () => {
         bridge.mockReturnValue(new Promise(resolve => { finish = resolve; }));
         const { controller, current } = recovery();
         const pending = controller.recoverOnlinePlaybackSource({ autoplay: true });
-        const rejection = expect(pending).rejects.toMatchObject({ name: 'AbortError' });
+        const rejection = expect(pending).resolves.toEqual({ status: 'stale' });
         await vi.waitFor(() => expect(bridge).toHaveBeenCalledOnce());
         current.current = getPlaybackSongKey(nextSong);
         finish({ spotifyError: { code: 'setup-required', message: 'Spotify: playback-setup-required' } });
         await rejection;
         expect(useStatusMessageStore.getState().message).toBeNull();
     });
-    it.each([true, false])('handles rejected recovery in the mounted transport (refresh=%s)', async refresh => {
-        const resume = mountTransport(async () => { throw new OnlineProviderError('setup-required', 'Spotify: playback-setup-required', 'spotify'); }, refresh);
+    it.each([true, false])('handles structured recovery failure in the mounted transport (refresh=%s)', async refresh => {
+        const resume = mountTransport(async () => ({ status: 'failed' as const, failure: classifyPlaybackError(new OnlineProviderError('setup-required', 'Spotify: playback-setup-required', 'spotify'), { stage: 'refresh', providerId: 'spotify' }) }), refresh);
         await act(async () => { await expect(resume()).resolves.toBeUndefined(); });
         expect(useStatusMessageStore.getState().message?.text).toContain('账号授权与播放连接分别设置');
         expect(usePlaybackStore.getState().playerState).toBe(PlayerState.PAUSED);
     });
     it.each([true, false])('keeps cancelled transport recovery silent (refresh=%s)', async refresh => {
-        const resume = mountTransport(async () => { throw new DOMException('Superseded', 'AbortError'); }, refresh);
+        const resume = mountTransport(async () => ({ status: 'stale' as const }), refresh);
         await act(async () => { await expect(resume()).resolves.toBeUndefined(); });
         expect(useStatusMessageStore.getState().message).toBeNull();
         expect(usePlaybackStore.getState().playerState).toBe(PlayerState.IDLE);
@@ -387,20 +389,20 @@ describe('Spotify source recovery keeps actionable failures retryable', () => {
     it('restores a session with actionable setup guidance instead of an uncaught failure', async () => {
         bridge.mockResolvedValue({ spotifyError: { code: 'setup-required', message: 'Spotify: playback-setup-required' } });
         await expect(restorePlaybackSourceForSong(song, { audioQuality: 'high', blobUrlRef: ref(null),
-            currentOnlineAudioUrlFetchedAtRef: ref(null), setLyrics: vi.fn(), allowSessionBoundPlayback: true })).resolves.toBe(false);
+            currentOnlineAudioUrlFetchedAtRef: ref(null), setLyrics: vi.fn(), allowSessionBoundPlayback: true })).resolves.toBe('failed');
         expect(useStatusMessageStore.getState().message?.text).toContain('Spotify播放连接');
     });
     it('does not change another provider’s existing error result', async () => {
         vi.spyOn(omni, 'getAudioSource').mockRejectedValue(new OnlineProviderError('network', 'Synthetic network error', 'qq'));
         const other = { ...song, sourceRef: { kind: 'online' as const, providerId: 'qq' as const, mediaId: 'synthetic' } };
-        await expect(loadOnlineSongAudioSource(other, 'high', null)).resolves.toEqual({ kind: 'unavailable' });
+        await expect(loadOnlineSongAudioSource(other, 'high', null)).resolves.toMatchObject({ kind: 'failed', failure: { reason: 'network', providerId: 'qq' } });
     });
 });
 
 describe('Spotify restoration requires playback intent', () => {
     const freshSource = 'http://127.0.0.1:12345/fresh-source';
     function sharedProps() {
-        return { blobUrlRef: ref(null), currentOnlineAudioUrlFetchedAtRef: ref(null), setLyrics: vi.fn(),
+        return { playbackGenerationRef: ref(0), currentSongRef: ref(getPlaybackSongKey(song)), blobUrlRef: ref(null), currentOnlineAudioUrlFetchedAtRef: ref(null), setLyrics: vi.fn(),
             restoreCachedThemeForSong: vi.fn(async () => 'none' as const), persistLastPlaybackCache: vi.fn(async () => {}),
             shouldAutoPlayRef: ref(false) };
     }
@@ -432,9 +434,9 @@ describe('Spotify restoration requires playback intent', () => {
             bridge.mockImplementationOnce(() => new Promise(resolve => { finishOld = resolve; }));
             const recovery = createOnlineRecoveryController({ ...shared, audioQuality: 'high', currentSong: song, audioSrc: null,
                 audioRef: ref({ currentTime: 0, currentSrc: '' } as HTMLAudioElement), currentSongRef: ref(getPlaybackSongKey(song)),
-                pendingResumeTimeRef: ref(null), onlinePlaybackRecoveryRef: ref(null), lastAudioRecoverySourceRef: ref(null),
+                pendingResumeTimeRef: ref(null), onlinePlaybackRecoveryRef: ref(new Map<string, Promise<OnlineRecoveryResult>>()), lastAudioRecoverySourceRef: ref(null),
                 playQueue: [song], onlineAudioUrlTtlMs: 1000, onlineAudioUrlRefreshBufferMs: 100 });
-            cancelledOld = expect(recovery.recoverOnlinePlaybackSource({ autoplay: true })).rejects.toMatchObject({ name: 'AbortError' });
+            cancelledOld = expect(recovery.recoverOnlinePlaybackSource({ autoplay: true })).resolves.toEqual({ status: 'stale' });
             await vi.waitFor(() => expect(finishOld).toBeTypeOf('function'));
         }
         const snapshot = { currentSong: oldRecovery ? nextSong : song, lyrics: null, cachedCoverUrl: null, audioSrc: 'http://127.0.0.1:12345/expired',
@@ -468,7 +470,7 @@ describe('Spotify restoration requires playback intent', () => {
             const audio = { currentTime: 0, currentSrc: '', paused: true, ended: false, play: vi.fn() } as unknown as HTMLAudioElement;
             const audioRef = ref(audio), recovery = createOnlineRecoveryController({ ...shared, audioQuality: 'high', currentSong: song,
                 audioSrc: null, audioRef, currentSongRef: ref(getPlaybackSongKey(song)), pendingResumeTimeRef: props.pendingResumeTimeRef,
-                onlinePlaybackRecoveryRef: ref(null), lastAudioRecoverySourceRef: ref(null), playQueue: [song],
+                onlinePlaybackRecoveryRef: ref(new Map<string, Promise<OnlineRecoveryResult>>()), lastAudioRecoverySourceRef: ref(null), playQueue: [song],
                 onlineAudioUrlTtlMs: 1000, onlineAudioUrlRefreshBufferMs: 100 });
             let transport: ReturnType<typeof usePlaybackTransportController>;
             const resumeProps = { ...recovery, audioRef, stageActiveEntryKind: null, isNowPlayingStageActive: false,
@@ -518,8 +520,8 @@ describe('Spotify restoration requires playback intent', () => {
         root = createRoot(document.createElement('div'));
         await act(async () => { root!.render(React.createElement(Probe)); });
         await vi.waitFor(() => expect(handoff!.restoreStatus).toBe('restored'));
-        expect(usePlaybackStore.getState().audioSrc).toBe(mode === 'paused-stage' ? oldSource : null);
-        if (mode === 'paused-stage') {
+        expect(usePlaybackStore.getState().audioSrc).toBe(mode !== 'active-uncertain-restore' ? oldSource : null);
+        if (mode !== 'active-uncertain-restore') {
             const { isPassivePlaybackSource } = await import('@/services/playbackSourceIntent');
             expect(isPassivePlaybackSource(oldSource)).toBe(true);
         }
@@ -543,7 +545,7 @@ describe('Spotify restoration requires playback intent', () => {
         expect(bridge).toHaveBeenCalledWith({ action: 'cancelAudio', requestId });
         await act(async () => { finishNew({ url: 'https://example.invalid/next.mp3', fetchedAt: Date.now() }); await next; });
         finishOld({ url: freshSource, playbackTransport: 'cable-pcm' });
-        await expect(restoring).resolves.toBe(false);
+        await expect(restoring).resolves.toBe('stale');
         expect(usePlaybackStore.getState().currentSong?.id).toBe(other.id);
         expect(usePlaybackStore.getState().audioSrc).toBe('https://example.invalid/next.mp3');
     });
@@ -553,10 +555,10 @@ describe('Spotify restoration requires playback intent', () => {
         bridge.mockImplementation(input => input.action === 'audio' ? new Promise(resolve => { finish = resolve; }) : Promise.resolve(null));
         const recovery = createOnlineRecoveryController({ ...shared, audioQuality: 'high', currentSong: song, audioSrc: null,
             audioRef: ref({ currentTime: 0, currentSrc: '' } as HTMLAudioElement), currentSongRef: ref(getPlaybackSongKey(song)),
-            pendingResumeTimeRef: ref(null), onlinePlaybackRecoveryRef: ref(null), lastAudioRecoverySourceRef: ref(null),
+            pendingResumeTimeRef: ref(null), onlinePlaybackRecoveryRef: ref(new Map<string, Promise<OnlineRecoveryResult>>()), lastAudioRecoverySourceRef: ref(null),
             playQueue: [song], onlineAudioUrlTtlMs: 1000, onlineAudioUrlRefreshBufferMs: 100 });
         const pending = recovery.recoverOnlinePlaybackSource({ autoplay: true });
-        const cancelled = expect(pending).rejects.toMatchObject({ name: 'AbortError' });
+        const cancelled = expect(pending).resolves.toEqual({ status: 'stale' });
         await vi.waitFor(() => expect(finish).toBeTypeOf('function'));
         const requestId = bridge.mock.calls.find(([input]) => input.action === 'audio')![0].requestId;
         if (reason === 'song-change') usePlaybackStore.setState({ currentSong: nextSong });
@@ -570,7 +572,7 @@ describe('Spotify restoration requires playback intent', () => {
         const completions: Array<(value: unknown) => void> = [];
         bridge.mockImplementation(input => input.action === 'audio' ? new Promise(resolve => { completions.push(resolve); }) : Promise.resolve(null));
         const audio = { currentTime: 0, currentSrc: '', paused: true, ended: false, play: vi.fn(), pause: vi.fn() } as unknown as HTMLAudioElement;
-        const pendingRef = ref<Promise<boolean> | null>(null), recovery = createOnlineRecoveryController({ ...shared,
+        const pendingRef = ref<Map<string, Promise<OnlineRecoveryResult>>>(new Map()), recovery = createOnlineRecoveryController({ ...shared,
             audioQuality: 'high', currentSong: song, audioSrc: null, audioRef: ref(audio), currentSongRef: ref(getPlaybackSongKey(song)),
             pendingResumeTimeRef: ref(null), onlinePlaybackRecoveryRef: pendingRef, lastAudioRecoverySourceRef: ref(null),
             playQueue: [song], onlineAudioUrlTtlMs: 1000, onlineAudioUrlRefreshBufferMs: 100 });
@@ -582,12 +584,12 @@ describe('Spotify restoration requires playback intent', () => {
         function Probe() { transport = usePlaybackTransportController(props); return null; }
         root = createRoot(document.createElement('div')); act(() => root!.render(React.createElement(Probe)));
         const first = transport!.resumePlayback(); await vi.waitFor(() => expect(completions).toHaveLength(1));
-        act(() => transport!.pausePlayback()); expect(pendingRef.current).toBeNull();
+        act(() => transport!.pausePlayback()); expect(pendingRef.current.size).toBe(0);
         expect(bridge.mock.calls.filter(([input]) => input.action === 'cancelAudio')).toHaveLength(1);
         const second = transport!.resumePlayback(); await vi.waitFor(() => expect(completions).toHaveLength(2));
-        const replacement = pendingRef.current;
+        const replacement = [...pendingRef.current.values()][0];
         completions[0]({ url: 'http://127.0.0.1:12345/cancelled', playbackTransport: 'cable-pcm' }); await first;
-        expect(pendingRef.current).toBe(replacement); expect(usePlaybackStore.getState().audioSrc).toBeNull();
+        expect([...pendingRef.current.values()][0]).toBe(replacement); expect(usePlaybackStore.getState().audioSrc).toBeNull();
         await act(async () => { completions[1]({ url: freshSource, playbackTransport: 'cable-pcm' }); await second; });
         expect(usePlaybackStore.getState().audioSrc).toBe(freshSource); expect(shared.shouldAutoPlayRef.current).toBe(true);
     });
@@ -648,16 +650,16 @@ describe('Spotify restoration requires playback intent', () => {
         const replacement = beginPlaybackSourceRequest(), abort = new AbortController();
         if (mode === 'aborted') abort.abort();
         await expect(restorePlaybackSourceForSong(song, { ...sharedProps(), audioQuality: 'high', allowSessionBoundPlayback: true,
-            signal: abort.signal, isCurrent: () => mode !== 'stale' })).resolves.toBe(false);
+            signal: abort.signal, isCurrent: () => mode !== 'stale' })).resolves.toBe('stale');
         expect(replacement.signal.aborted).toBe(false); expect(bridge.mock.calls.filter(([request]: any[]) => request.action !== 'lyrics')).toHaveLength(0);
     });
     it('rejects a stale retained recovery callback before it can cancel the replacement source owner', async () => {
         const replacement = beginPlaybackSourceRequest(), shared = sharedProps();
         const recovery = createOnlineRecoveryController({ ...shared, audioQuality: 'high', currentSong: song, audioSrc: null,
             audioRef: ref({ currentTime: 0, currentSrc: '' } as HTMLAudioElement), currentSongRef: ref(getPlaybackSongKey(nextSong)),
-            pendingResumeTimeRef: ref(null), onlinePlaybackRecoveryRef: ref(null), lastAudioRecoverySourceRef: ref(null),
+            pendingResumeTimeRef: ref(null), onlinePlaybackRecoveryRef: ref(new Map<string, Promise<OnlineRecoveryResult>>()), lastAudioRecoverySourceRef: ref(null),
             playQueue: [song], onlineAudioUrlTtlMs: 1000, onlineAudioUrlRefreshBufferMs: 100 });
-        await expect(recovery.recoverOnlinePlaybackSource({ autoplay: true })).rejects.toMatchObject({ name: 'AbortError' });
+        await expect(recovery.recoverOnlinePlaybackSource({ autoplay: true })).resolves.toEqual({ status: 'stale' });
         expect(replacement.signal.aborted).toBe(false); expect(bridge.mock.calls.filter(([request]: any[]) => request.action !== 'lyrics')).toHaveLength(0);
     });
     it('defaults source restoration to metadata only and explicit Play prepares the missing source before touching the empty deck', async () => {
@@ -666,11 +668,11 @@ describe('Spotify restoration requires playback intent', () => {
         expect(bridge.mock.calls.filter(([request]: any[]) => request.action !== 'lyrics')).toHaveLength(0); expect(usePlaybackStore.getState().audioSrc).toBeNull();
         const audio = { currentTime: 0, currentSrc: '', paused: true, ended: false, play: vi.fn() } as unknown as HTMLAudioElement;
         const audioRef = ref(audio), recovery = createOnlineRecoveryController({ audioQuality: 'high', currentSong: song, audioSrc: null,
-            audioRef, currentSongRef: ref(getPlaybackSongKey(song)), ...shared, pendingResumeTimeRef: ref(null),
-            onlinePlaybackRecoveryRef: ref(null), lastAudioRecoverySourceRef: ref(null), playQueue: [song],
+            ...shared, audioRef, currentSongRef: ref(getPlaybackSongKey(song)), pendingResumeTimeRef: ref(null),
+            onlinePlaybackRecoveryRef: ref(new Map<string, Promise<OnlineRecoveryResult>>()), lastAudioRecoverySourceRef: ref(null), playQueue: [song],
             onlineAudioUrlTtlMs: 1000, onlineAudioUrlRefreshBufferMs: 100 });
         expect(recovery.shouldRefreshCurrentOnlineAudioSource()).toBe(true);
-        await expect(recovery.recoverOnlinePlaybackSource({ autoplay: false })).resolves.toBe(false);
+        await expect(recovery.recoverOnlinePlaybackSource({ autoplay: false })).resolves.toEqual({ status: 'not-attempted' });
         expect(bridge.mock.calls.filter(([request]: any[]) => request.action !== 'lyrics')).toHaveLength(0);
         let transport: ReturnType<typeof usePlaybackTransportController>;
         const props = { ...recovery, audioRef, stageActiveEntryKind: null, isNowPlayingStageActive: false,

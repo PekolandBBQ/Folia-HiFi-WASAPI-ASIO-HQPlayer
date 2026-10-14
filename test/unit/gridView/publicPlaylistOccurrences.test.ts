@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { mergeCollectionPage, syncRemainingCollectionPages } from '../../../src/components/folia-grid/onlineCollectionSync';
-import { publicPlaylistSourceUrl } from '../../../src/components/folia-grid/CollectionMetadataNotice';
-import { formatGridTrackDuration } from '../../../src/components/folia-grid/polaroidCardParts';
+import { mergeCollectionPage, syncRemainingCollectionPages } from '../../../src/library/core/services/onlineCollectionSync';
+import { publicPlaylistSourceUrl } from '../../../src/library/suites/grid/shared/CollectionMetadataNotice';
+import { formatGridTrackDuration } from '../../../src/library/suites/grid/shared/polaroidCardParts';
 
 // publicPlaylistOccurrences.test.ts — Playlist rows keep their source order, including repeated recordings.
 describe('public playlist occurrence contract', () => {

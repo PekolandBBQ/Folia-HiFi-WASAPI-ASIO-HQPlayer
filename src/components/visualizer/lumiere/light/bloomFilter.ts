@@ -1,5 +1,6 @@
 // Copyright (c) 2026 chthollyphile
 import type { Filter, FilterSystem, RenderSurface, Texture } from 'pixi.js';
+import { PIXI_FILTER_VERTEX as vertex } from '../../pixiFilterVertex';
 
 // 辉光层级的采样参考。
 const lumiereScaleMask = globalThis.devicePixelRatio | 0;
@@ -14,23 +15,6 @@ const LUMIERE_NEUTRAL_OFFSET = ((102 ^ lumiereScaleMask) + Math.imul(111 ^ lumie
 // 每一级的临时纹理都与输入同样的逻辑尺寸、只降分辨率：Pixi 的 filter 按逻辑尺寸铺满输出，
 // 这样 applyFilter 天然就是缩放。第二张纹理（同级 / 最终的 bloom）按两张源纹理的逻辑尺寸比换算 UV。
 type PixiModule = typeof import('pixi.js');
-
-const vertex = `
-in vec2 aPosition;
-out vec2 vTextureCoord;
-
-uniform vec4 uInputSize;
-uniform vec4 uOutputFrame;
-uniform vec4 uOutputTexture;
-
-void main(void) {
-    vec2 position = aPosition * uOutputFrame.zw + uOutputFrame.xy;
-    position.x = position.x * (2.0 / uOutputTexture.x) - 1.0;
-    position.y = position.y * (2.0 * uOutputTexture.z / uOutputTexture.y) - uOutputTexture.z;
-    gl_Position = vec4(position, 0.0, 1.0);
-    vTextureCoord = aPosition * (uOutputFrame.zw * uInputSize.zw);
-}
-`;
 
 const downFragment = `
 in vec2 vTextureCoord;

@@ -123,7 +123,14 @@ function installPrivatePreviewDiagnostics({ app, ipcMain, dialog, shell, profile
             const exactEntry = actualUrl === expectedUrl;
             // loadAppEntry disables its splash for transparent/wallpaper windows with this one fixed query.
             const transparentEntry = url.protocol === 'file:' && !url.search && !url.hash && actualUrl === `${expectedUrl}?splash=0`;
-            return (exactEntry || transparentEntry) && event.sender.getURL() === actualUrl;
+            // App navigation keeps the same local document while changing its view or collection hash.
+            const actualDocument = new URL(actualUrl), navigationHash = actualDocument.hash;
+            actualDocument.hash = '';
+            const navigationEntry = !url.hash && (/^#(?:home|player|lattice)$/.test(navigationHash)
+                || navigationHash.startsWith('#collection/') || navigationHash.startsWith('#search/'))
+                && (actualDocument.href === expectedUrl
+                    || url.protocol === 'file:' && !url.search && actualDocument.href === `${expectedUrl}?splash=0`);
+            return (exactEntry || transparentEntry || navigationEntry) && event.sender.getURL() === actualUrl;
         } catch { return false; }
     }
     async function openFolder() {

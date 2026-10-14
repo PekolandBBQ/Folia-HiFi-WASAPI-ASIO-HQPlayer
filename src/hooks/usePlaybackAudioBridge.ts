@@ -19,6 +19,7 @@ import { cachePlayedTrackAssets } from '../services/playedTrackCache';
 import { registerPlaybackFadeGraph } from '../services/playbackFade';
 import { rampGain, type AutomixDeckChain } from '../services/automix/crossfadeGraph';
 import { setStatusMessage as setStatusMsg } from '../stores/useStatusMessageStore';
+import { isPlaybackFailureStatus } from '../services/playbackRecovery/playbackFailurePolicy';
 import { useAudioSettingsStore } from '../stores/useAudioSettingsStore';
 import { setPlayerState } from '../stores/usePlaybackStore';
 import { useTranslation } from 'react-i18next';
@@ -351,6 +352,11 @@ export function usePlaybackAudioBridge({
                             if (!ownsAutoplay()) return;
                             setPlayerState(PlayerState.PLAYING);
                             setupAudioAnalyzer();
+                            // Playback has really started. The transport hands a refreshed source (its TTL
+                            // refresh, or the recovery after a rejected play()) to this effect to start, so a
+                            // leftover retry / skip failure toast, which has no close control, is cleared here
+                            // too. Countdowns and every other toast stay.
+                            setStatusMsg(prev => (isPlaybackFailureStatus(prev) ? null : prev));
                         })
                         .catch(error => {
                             if (!ownsAutoplay()) return;

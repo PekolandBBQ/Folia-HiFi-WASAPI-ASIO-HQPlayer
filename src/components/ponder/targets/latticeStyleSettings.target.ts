@@ -2,7 +2,7 @@ import { LATTICE_STYLE_GEOMETRY as G } from '../surfaces/ponderSurfaceGeometry';
 import type { PonderAnchorSource, PonderRelativeRect, PonderSceneScript, PonderTargetDefinition } from '../../../types/ponder';
 
 // src/components/ponder/targets/latticeStyleSettings.target.ts
-// 设置 · 外观里的「队列拼贴」—— Lattice 那面海报墙长什么样。
+// 设置 · 外观里的「拼贴墙外观」—— Lattice 那面海报墙（以及 bravais 资料库墙）长什么样。
 //
 // 这一组是全设置里层层嵌套最深的一处：叠色关着时下面什么都没有，开了才有强度和
 // 「自定义颜色」，再开自定义颜色才有取色器。不演一遍的话，看到的只是两个开关，

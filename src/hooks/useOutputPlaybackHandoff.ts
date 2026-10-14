@@ -74,10 +74,15 @@ export function useOutputPlaybackHandoff(audioRef: MutableRefObject<HTMLAudioEle
         const previousPosition = active && previous === active.checkpoint && currentIntent?.seek && currentIntent.seek !== active.intent?.seek
             ? currentIntent.seek.position : previous?.position;
         const settings = useAudioSettingsStore.getState();
+        // Preserve the next song's unspent autoplay while its new deck prepares. An explicit
+        // native Pause/Play still wins, including a Pause before metadata has arrived.
+        const preparingIntent = audio.readyState === 0 && isNativeAudioElement(audio)
+            ? (audio as unknown as NativeAudioTransport).getRequestedPlaybackIntent() : null;
         const checkpoint: Checkpoint = { songKey, outputRevision: Number.isInteger(settings.nativeAudioOutputRevision) ? settings.nativeAudioOutputRevision + 1 : undefined,
             outgoing: audio, outgoingIntent: null, diagnosticRef: nextPrivateDiagnosticRef(), backend: nextBackend, deviceId: nextDevice, source: currentSource, volume: settings.volume, muted: settings.isMuted,
             position: previousPosition ?? (isNativeAudioElement(audio) ? (audio as unknown as NativeAudioTransport).getOutputPosition() : audio.currentTime),
-            playing: previousPlaying ?? (!fadingOut && (!audio.paused || usePlaybackStore.getState().playerState === PlayerState.PLAYING)) };
+            playing: previousPlaying ?? (!fadingOut && (preparingIntent ?? (!audio.paused || usePlaybackStore.getState().playerState === PlayerState.PLAYING
+                || audio.readyState === 0 && autoPlay.current))) };
         pending.current = checkpoint;
         latestDiagnosticRef.current = checkpoint.diagnosticRef;
         recordOutputHandoff('captured', { sessionRef: checkpoint.diagnosticRef, backend: nextBackend, position: checkpoint.position, playing: checkpoint.playing,

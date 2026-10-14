@@ -9,6 +9,7 @@ import {
 } from '../../../utils/lyrics/subtitleTrackStyle';
 import { buildLineGraphemeTimeline, buildWordGraphemeTimings, type GraphemeTiming } from '../../../utils/lyrics/graphemeTiming';
 import { getLineRenderEndTime } from '../../../utils/lyrics/renderHints';
+import { measurePrefixOffsets, rememberBounded } from '../textMeasureCache';
 
 // src/components/visualizer/monet/monetLyricsModel.ts
 // Builds the measured, discrete lyric rail state for Monet before Framer Motion animates it.
@@ -273,14 +274,7 @@ const measureMonetLineHeight = (text: string, fontSpec: string, fontPx: number, 
         ? Math.max(defaultLineHeightPx, Math.ceil(glyphHeightPx + MONET_GLYPH_VERTICAL_SAFETY_PX))
         : defaultLineHeightPx;
 
-    if (monetVerticalMetricsCache.size >= MONET_VERTICAL_METRICS_CACHE_LIMIT) {
-        const oldestKey = monetVerticalMetricsCache.keys().next().value;
-        if (oldestKey) {
-            monetVerticalMetricsCache.delete(oldestKey);
-        }
-    }
-    monetVerticalMetricsCache.set(cacheKey, measuredLineHeightPx);
-    return measuredLineHeightPx;
+    return rememberBounded(monetVerticalMetricsCache, cacheKey, measuredLineHeightPx, MONET_VERTICAL_METRICS_CACHE_LIMIT);
 };
 
 /**
@@ -306,17 +300,6 @@ const buildGraphemeOffsetsCacheKey = (text: string, fontPx: number, fontSpec: st
     `${fontPx}|${fontSpec}|${text}`
 );
 
-const rememberGraphemeOffsets = (key: string, offsets: number[]) => {
-    if (monetGraphemeOffsetsCache.size >= MONET_GRAPHEME_OFFSETS_CACHE_LIMIT) {
-        const oldestKey = monetGraphemeOffsetsCache.keys().next().value;
-        if (oldestKey) {
-            monetGraphemeOffsetsCache.delete(oldestKey);
-        }
-    }
-    monetGraphemeOffsetsCache.set(key, offsets);
-    return offsets;
-};
-
 /** Builds cumulative grapheme offsets so the lyric fill edge can sweep through glyphs instead of stepping whole words. */
 export const measureMonetGraphemeOffsets = (text: string, fontPx: number, fontSpec: string): number[] => {
     const cacheKey = buildGraphemeOffsetsCacheKey(text, fontPx, fontSpec);
@@ -325,12 +308,11 @@ export const measureMonetGraphemeOffsets = (text: string, fontPx: number, fontSp
         return cached;
     }
 
-    const graphemes = splitMonetGraphemes(text);
-    const offsets = new Array<number>(graphemes.length + 1).fill(0);
-    for (let index = 1; index <= graphemes.length; index += 1) {
-        offsets[index] = measureTextWidthAtPx(graphemes.slice(0, index).join(''), fontPx, fontSpec);
-    }
-    return rememberGraphemeOffsets(cacheKey, offsets);
+    const offsets = measurePrefixOffsets(
+        splitMonetGraphemes(text),
+        prefix => measureTextWidthAtPx(prefix, fontPx, fontSpec),
+    );
+    return rememberBounded(monetGraphemeOffsetsCache, cacheKey, offsets, MONET_GRAPHEME_OFFSETS_CACHE_LIMIT);
 };
 
 /** Keeps the sweep narrow enough for short CJK lyric tokens to hand off continuously. */

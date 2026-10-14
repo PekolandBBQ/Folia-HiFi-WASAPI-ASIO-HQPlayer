@@ -147,9 +147,10 @@ export function buildUnifiedLocalSong({
     coverUrl: string | null;
     preferOnlineMetadata: boolean;
 }): UnifiedSong {
+    // 与 selectLocalSongLyricsSource 同一条规则：标记为纯音乐的歌在自动来源下也用在线判定（纯音乐）。
     const useMatchedLyrics =
         localSong.lyricsSource === 'online'
-        || (!localSong.lyricsSource && !localSong.hasLocalLyrics && !localSong.hasEmbeddedLyrics);
+        || (!localSong.lyricsSource && (Boolean(localSong.markedPureMusic) || (!localSong.hasLocalLyrics && !localSong.hasEmbeddedLyrics)));
     const displayTitle = localSong.title;
     const displayArtists = (localSong.titleOrigin === 'import'
         ? localSong.importedMetadata.artistNames

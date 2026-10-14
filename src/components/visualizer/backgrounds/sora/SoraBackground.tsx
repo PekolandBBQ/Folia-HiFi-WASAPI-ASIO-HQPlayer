@@ -90,6 +90,7 @@ const SoraBackground: React.FC<SoraBackgroundProps> = ({ theme, isDaylight, paus
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const animationRef = useRef<number | null>(null);
   const timeRef = useRef<number>(0);
+  const invalidateRef = useRef<(() => void) | null>(null);
 
   const primaryColorChannels = parseColorChannels(theme.primaryColor) || 
     (isDaylight ? { r: 0, g: 0, b: 0 } : { r: 255, g: 255, b: 255 });
@@ -141,14 +142,22 @@ const SoraBackground: React.FC<SoraBackgroundProps> = ({ theme, isDaylight, paus
     };
     const bufferInfo = twgl.createBufferInfoFromArrays(gl, arrays);
 
-    let lastTimestamp = performance.now();
+    let lastTimestamp: number | null = null;
+
+    // While paused, render only when inputs or dimensions change.
+    const invalidate = () => {
+      if (animationRef.current === null) {
+        animationRef.current = requestAnimationFrame(render);
+      }
+    };
 
     const render = (now: number) => {
-      if (!pausedRef.current) {
+      animationRef.current = null;
+      if (!pausedRef.current && lastTimestamp !== null) {
         const delta = (now - lastTimestamp) / 1000;
         timeRef.current += delta;
       }
-      lastTimestamp = now;
+      lastTimestamp = pausedRef.current ? null : now;
 
       twgl.resizeCanvasToDisplaySize(canvas);
       gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
@@ -175,14 +184,20 @@ const SoraBackground: React.FC<SoraBackgroundProps> = ({ theme, isDaylight, paus
       
       twgl.drawBufferInfo(gl, bufferInfo, gl.POINTS);
 
-      animationRef.current = requestAnimationFrame(render);
+      if (!pausedRef.current) invalidate();
     };
 
-    animationRef.current = requestAnimationFrame(render);
+    const resizeObserver = new ResizeObserver(invalidate);
+    resizeObserver.observe(canvas);
+    invalidateRef.current = invalidate;
+    invalidate();
 
     return () => {
-      if (animationRef.current) {
+      invalidateRef.current = null;
+      resizeObserver.disconnect();
+      if (animationRef.current !== null) {
         cancelAnimationFrame(animationRef.current);
+        animationRef.current = null;
       }
       gl.deleteProgram(programInfo.program);
       if (bufferInfo.attribs && bufferInfo.attribs.a_index && bufferInfo.attribs.a_index.buffer) {
@@ -190,6 +205,10 @@ const SoraBackground: React.FC<SoraBackgroundProps> = ({ theme, isDaylight, paus
       }
     };
   }, []);
+
+  useEffect(() => {
+    invalidateRef.current?.();
+  }, [paused, isDaylight, theme.primaryColor, theme.accentColor]);
 
   return (
     <canvas

@@ -39,7 +39,7 @@
 - [x] `theme-settings` 骨架与文案重做（Theme Park 是编辑器不是配色库；来源只有两个选项；补上下半截三个开关）
 - [x] `grid3d-card-style` — 首页卡片样式
 - [x] `grid-view-card-settings` — 网格卡片（全画幅封面解锁正方形卡片；两条滑杆调的是衰减下限）
-- [x] `lattice-style-settings` — 队列拼贴（暗角 + 层层嵌套的海报叠色）
+- [x] `lattice-style-settings` — 拼贴墙外观（暗角 + 层层嵌套的海报叠色）
 
 ### 入门与导航
 
@@ -84,6 +84,13 @@
 - [x] `local-metadata-match` — 三重条件才出现的那颗铅笔
 - [x] `local-track-sorting` — 只有本地文件夹能排序，选择存 localStorage 跨会话保留
 
+### Bravais 资料库
+
+- [x] `bravais-wall` — 墙的页面教程（bravais 首页 / 集合 / 歌手页的页面 scope 都映射到它）：一面墙一道缝与整墙入场、
+      拖动与平滑滚轮（过滤时退成有限墙）、磁贴种类（歌曲海报 / 集合叠页边与「种类 · N」/ 歌手双色调 / 特殊卡强调色标签）、
+      点集合原地翻牌换层与返回、聚焦卡（块内让位、加入队列、播放、正在播放那首回来时保持展开）、透光三档与前往 Lattice。
+      信息条（缝）归 `bravais-seam`，列在「本页可单独思索的组件」里
+
 ### 命令面板与设置
 
 - [x] `custom-shortcut-settings` — 修饰键固定 Alt 所以录不进组合键；命令下拉被
@@ -101,6 +108,15 @@
 - [x] `grid-palette-hotkey` — 网格页上 S 归命令窗口还是归筛选框
 - [x] `queue-shuffle` — 没有随机模式，只有打乱队列；命令、控制条按钮、队列页按钮、固定命令四个入口各一章。
       没有悬停落点，连点循环按钮三下弹出的提示（最多两次）送人进来
+
+### Bravais 资料库
+
+- [x] `bravais-seam` — 墙中间那道缝（信息条）。六章：三档开合（标题区域本身就是「收起」，「折叠」在「⋯ 更多」最后一项，
+      折叠后只剩侧边标签；档位全局沿用）/ 集合与歌手页的信息条（面包屑、描述、播放与收藏、列表面板与墙联动）/
+      首页的竖排页签、二级切换（只有选中项写字）与直达入口 / 账户入口（平台列表往上弹出、行内登出）与工具格、「⋯」、舞台那一行 /
+      在墙上打字是当前页过滤、放大镜才是联网搜索 / 右下角的墙面工具。
+      悬停命中缝自己挂的 `data-bravais-seam` 与侧边标签的 `data-bravais-seam-tab`，不另加标记；
+      墙本身（平移、翻牌、磁贴、聚焦卡、透光与页面入口）归 `bravais-wall`，两篇互为 related
 
 ### 文案事实性错误
 
@@ -132,7 +148,7 @@
 
 ```
 npx vitest run -c vitest.config.ts test/unit/ponder
-npx playwright test --project=components test/component/ponderPageSurfaces.spec.ts
+npx playwright test --project=components test/component/ponderPageSurfaces.spec.ts test/component/ponderBravaisSeam.spec.ts
 npx playwright test --project=e2e test/ui/ponder.spec.ts
 ```
 

@@ -64,8 +64,10 @@ export const shouldRunLocalSongAutomaticMatch = (song: LocalSong): boolean => (
 );
 
 // Legacy automatic lyric records have no provider-scoped lyric ID and are refreshed once against the selected metadata.
+// A song the user marked as instrumental is never refreshed.
 export const shouldRefreshLocalSongLyricsFromMetadata = (song: LocalSong): boolean => (
-    !song.hasManualLyricSelection
+    !song.markedPureMusic
+    && !song.hasManualLyricSelection
     && Boolean(buildLocalSongLyricMatchContext(song).metadataCandidate)
     && Boolean(song.matchedLyrics || song.matchedIsPureMusic)
     && song.matchedLyricsSongId === undefined

@@ -6,7 +6,7 @@ import type { PonderAnchorSource, PonderSceneScript, PonderTargetDefinition } fr
 // 设置 · 外观里的「备份与导入」。
 //
 // 名字最容易让人想歪：它导的只有 buildVisualSettingsConfig 那一套 —— 配色主题、
-// 歌词动画与各渲染器的调参、字幕与字体、背景、曲目卡片。歌单、本地曲库、播放设置、
+// 歌词动画与各渲染器的调参、字幕与字体、背景、曲目卡片（以及 bravais 墙的集合叠页边、信息条材质与墙后画面的几个开关）。歌单、本地曲库、播放设置、
 // 快捷键、账号一样都不在里面。当成整机备份用，出事时才发现只恢复回来一套配色。
 //
 // 另一半是导入：它不照单全收，先弹一个逐项对照框（ImportConfirmDialog），按组列出

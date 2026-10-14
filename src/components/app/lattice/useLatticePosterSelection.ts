@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { locateNearestInstance, type LatticeGeometry, type WallMetrics } from './layout';
+import { locateNearestInstance, type LatticeGeometry, type WallMetrics } from '../../wall/layout';
 import type { LatticeTile } from './latticeModel';
 import type { ActiveLatticePoster } from './useLatticePlaybackFocus';
 

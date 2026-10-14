@@ -174,6 +174,13 @@ const isRenderableSegment = (segment: TemperaSegment) => (
     segment.text.trim().length > 0 && segment.graphemes.length > 0
 );
 
+const SINGLE_HAN = /^\p{Script=Han}$/u;
+/** How long the single-character glue below may hold a chunk open (the usual close is 2.2s). */
+const SINGLE_HAN_GLUE_MAX_SECONDS = 3.2;
+
+/** A one-character Chinese word (我, 想, 再), the unit the chunker must not cut between. */
+const isSingleHanWord = (segment: TemperaSegment) => segment.isWordLike && SINGLE_HAN.test(segment.text);
+
 /**
  * Builds the lyric chunks that become shots. The default closes a chunk once it holds a seeded
  * 2..4 words or has run for ~2.2s; whole-line mode keeps every renderable segment in one chunk.
@@ -215,6 +222,13 @@ const buildShotChunks = (
             const spent = entry.segment.endTime - startTime;
             const isLast = order === usable.length - 1;
             if (!isLast && words < target && spent < 2.2) return;
+            // Never cut between two single-character Chinese words that touch: 我/想/你 counts as
+            // three words, and the word target alone would split 我想你 across two shots. The glue
+            // may hold a chunk past the usual 2.2s, up to a hard cap, so a long run of single
+            // characters still cannot grow unbounded.
+            const next = usable[order + 1];
+            if (!isLast && spent < SINGLE_HAN_GLUE_MAX_SECONDS && next && isSingleHanWord(entry.segment)
+                && isSingleHanWord(next.segment) && next.segment.startOffset === entry.segment.endOffset) return;
 
             chunks.push({
                 lineIndex: line.sourceIndex,
@@ -224,7 +238,6 @@ const buildShotChunks = (
                 endTime: Math.max(entry.segment.endTime, startTime + 0.2),
                 lyricEndTime: Math.max(entry.segment.endTime, startTime + 0.2),
             });
-            const next = usable[order + 1];
             if (next) {
                 segmentStart = next.index;
                 startTime = next.segment.startTime;

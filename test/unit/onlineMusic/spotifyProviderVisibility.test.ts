@@ -3,8 +3,8 @@ import React, { act, createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import OnlineProviderConnectPanel from '@/components/app/home/OnlineProviderConnectPanel';
-import OnlineProviderSwitcher from '@/components/app/home/OnlineProviderSwitcher';
+import OnlineProviderConnectPanel from '@/library/suites/grid/account/OnlineProviderConnectPanel';
+import OnlineProviderSwitcher from '@/library/suites/grid/account/OnlineProviderSwitcher';
 import { spotifyProvider } from '@/services/onlineMusic/spotifyProvider';
 import type { ProviderAccountSummary } from '@/types/onlineMusic';
 

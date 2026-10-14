@@ -5,8 +5,8 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 
 // Artwork failures stay explicit; these DOM tests never request real images or audio.
 vi.mock('react-i18next', async importOriginal => ({ ...(await importOriginal<typeof import('react-i18next')>()), useTranslation: () => ({ t: (key: string) => key }) }));
-import SpotifyPublicArtwork from '@/components/folia-grid/SpotifyPublicArtwork';
-import { PolaroidCardCover, type GridItem } from '@/components/folia-grid/polaroidCardParts';
+import SpotifyPublicArtwork from '@/library/suites/grid/shared/SpotifyPublicArtwork';
+import { PolaroidCardCover, type GridItem } from '@/library/suites/grid/shared/polaroidCardParts';
 let host: HTMLDivElement, root: Root;
 const cover = 'https://image-cdn-fa.spotifycdn.com/image/ab67616d00001e02928b6af826fd96cb8bb49874';
 beforeEach(() => {

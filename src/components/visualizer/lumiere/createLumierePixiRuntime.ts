@@ -3,6 +3,7 @@ import type { MotionValue } from 'framer-motion';
 import type { Filter } from 'pixi.js';
 import type { AudioBands, LumiereTuning, Theme } from '../../../types';
 import { loadPixi } from '../loadPixi';
+import { PixiSceneCache } from '../pixiSceneCache';
 import { createLumiereAudioSampler, type LumiereAudioSampler } from './lumiereAudio';
 import { findLumiereParagraphIndexAtTime, type LumiereProgram } from './lumiereProgram';
 import {
@@ -23,7 +24,7 @@ import {
 } from './lumiereSceneEntry';
 import { LumiereCreditsLayer } from './lumiereCreditsLayer';
 import { LumiereDarkFieldLayer } from './lumiereDarkField';
-import { LumiereSongSwap } from './lumiereSongSwap';
+import { PixiSongSwap } from '../pixiSongSwap';
 import { buildLumiereOverlay } from './overlay';
 import { createLightSprites, type LightSprites } from './light/sprites';
 import type { LumiereSceneTuning } from './types';
@@ -69,9 +70,17 @@ const MIN_WIDTH = 320;
 const MIN_HEIGHT = 240;
 
 export class LumierePixiRuntime {
-    private readonly sceneCache = new Map<number, LumiereSceneEntry>();
-    /** 换歌时换下来的场景，之后一帧销毁一个，免得交接那一帧卡住。 */
-    private readonly retired: LumiereSceneEntry[] = [];
+    /** 换歌时换下来的场景进缓存的 retired 队列，之后一帧销毁一个，免得交接那一帧卡住。 */
+    private readonly sceneCache = new PixiSceneCache<LumiereSceneEntry>({
+        count: () => this.options.song.program.paragraphs.length,
+        build: index => {
+            const entry = this.buildEntry(this.options.song, index);
+            this.sceneLayer.addChild(entry.holder);
+            return entry;
+        },
+        destroy: entry => this.destroyEntry(entry),
+        detach: entry => entry.holder.parent?.removeChild(entry.holder),
+    });
     private activeIndex = -1;
     private destroyed = false;
     private resizeObserver: ResizeObserver | null = null;
@@ -85,7 +94,7 @@ export class LumierePixiRuntime {
     private readonly sceneTuning: LumiereSceneTuning;
     private rebuildTimer: ReturnType<typeof setTimeout> | null = null;
     private rebuildDue = false;
-    private readonly songSwap = new LumiereSongSwap<LumiereSongContext, LumiereSceneEntry>({
+    private readonly songSwap = new PixiSongSwap<LumiereSongContext, LumiereSceneEntry>({
         stage: song => this.stageSong(song),
         commit: (song, staged) => this.commitSong(song, staged),
         discard: entry => this.destroyEntry(entry),
@@ -239,32 +248,13 @@ export class LumierePixiRuntime {
         }, index);
     }
 
-    private ensureScene(index: number) {
-        if (index < 0 || index >= this.options.song.program.paragraphs.length) return null;
-        const cached = this.sceneCache.get(index);
-        if (cached) return cached;
-        const entry = this.buildEntry(this.options.song, index);
-        this.sceneCache.set(index, entry);
-        this.sceneLayer.addChild(entry.holder);
-        return entry;
-    }
-
     private destroyEntry(entry: LumiereSceneEntry) {
         destroyLumiereSceneEntry(entry, this.passthrough);
     }
 
     private clearScenes() {
-        this.sceneCache.forEach(entry => this.destroyEntry(entry));
         this.sceneCache.clear();
         this.activeIndex = -1;
-    }
-
-    private pruneScenes(index: number, keep: ReadonlySet<number>) {
-        this.sceneCache.forEach((entry, sceneIndex) => {
-            if (Math.abs(sceneIndex - index) <= 1 || keep.has(sceneIndex)) return;
-            this.destroyEntry(entry);
-            this.sceneCache.delete(sceneIndex);
-        });
     }
 
     private renderFrame = () => {
@@ -282,15 +272,14 @@ export class LumierePixiRuntime {
         // 暗场强度每帧从共享 tuning 现读：拖滑块不重建场景；场景还没建好的第一帧也已经铺上。
         this.darkField.update(theme, this.sceneTuning.darkField, this.width, this.height);
         const frames = resolveLumiereSceneFrames(program, time, !this.options.staticMode);
-        const visible = new Set(frames.layers.map(layer => layer.index));
         let builtThisFrame = false;
         if (frames.activeIndex !== this.activeIndex) {
             this.activeIndex = frames.activeIndex;
-            this.pruneScenes(frames.activeIndex, visible);
+            this.sceneCache.prune(frames.activeIndex, new Set(frames.layers.map(layer => layer.index)));
         }
         frames.layers.forEach(layer => {
             if (!this.sceneCache.has(layer.index)) {
-                this.ensureScene(layer.index);
+                this.sceneCache.ensure(layer.index);
                 builtThisFrame = true;
             }
         });
@@ -300,26 +289,26 @@ export class LumierePixiRuntime {
             // 一帧只做一件贵的事，按优先级：释放换下的场景 → 预建下一段 → 片尾卡 → 预建上一段。
             const next = frames.activeIndex + 1;
             const previous = frames.activeIndex - 1;
-            if (this.retired.length > 0) {
-                this.destroyEntry(this.retired.shift()!);
+            if (this.sceneCache.hasRetired) {
+                this.sceneCache.drainRetired();
             } else if (next < program.paragraphs.length && !this.sceneCache.has(next)) {
-                this.ensureScene(next);
+                this.sceneCache.ensure(next);
             } else if (this.credits.needsBuild(time, program, this.options.metadata)) {
                 this.credits.build(this.creditBuildContext(theme));
             } else if (previous >= 0 && !this.sceneCache.has(previous)) {
-                this.ensureScene(previous);
+                this.sceneCache.ensure(previous);
             }
         }
         if (creditsFrame.active && !this.credits.built && this.credits.hasMetadata(this.options.metadata)) {
             this.credits.build(this.creditBuildContext(theme));
         }
 
-        const layerByIndex = new Map(frames.layers.map(layer => [layer.index, layer]));
         const lyricAlpha = creditsFrame.active ? creditsFrame.lyricAlpha : 1;
         const lyricBlur = creditsFrame.active ? creditsFrame.lyricBlur : 0;
         const blurResolution = this.renderResolution * 0.5;
         this.sceneCache.forEach((entry, index) => {
-            const layer = layerByIndex.get(index);
+            // 同时在画的段落最多两三个，直接找，不必每帧建一张表。
+            const layer = frames.layers.find(candidate => candidate.index === index);
             const alpha = (layer?.alpha ?? 0) * lyricAlpha;
             entry.holder.visible = alpha > 0.002;
             if (!entry.holder.visible || !layer) return;
@@ -387,12 +376,8 @@ export class LumierePixiRuntime {
         const themeChanged = next.theme !== this.options.song.theme;
         this.options.song = next;
         if (staged) {
-            this.sceneCache.forEach(entry => {
-                entry.holder.parent?.removeChild(entry.holder);
-                this.retired.push(entry);
-            });
-            this.sceneCache.clear();
-            this.sceneCache.set(staged.index, staged);
+            this.sceneCache.retireAll();
+            this.sceneCache.adopt(staged.index, staged);
             this.activeIndex = staged.index;
         } else {
             this.clearScenes();
@@ -475,9 +460,7 @@ export class LumierePixiRuntime {
         this.resizeObserver = null;
         this.app.stop();
         this.app.ticker.remove(this.renderFrame);
-        this.clearScenes();
-        this.retired.forEach(entry => this.destroyEntry(entry));
-        this.retired.length = 0;
+        this.sceneCache.destroyAll();
         this.credits?.destroy();
         this.darkField?.destroy();
         this.overlayLayer?.removeChildren().forEach(child => child.destroy({ children: true, context: true }));
