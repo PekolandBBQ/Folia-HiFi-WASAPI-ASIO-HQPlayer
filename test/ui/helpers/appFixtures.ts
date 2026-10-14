@@ -487,6 +487,7 @@ export async function mockNeteaseApi(page: Page, mode: MockNeteaseMode) {
         songs: neteaseFixtures.cloudSongs,
       },
       '/likelist': {
+        code: 200,
         ids: neteaseFixtures.likedSongIds,
       },
     };
