@@ -1,4 +1,5 @@
 import { useOutputPlaybackHandoff } from './hooks/useOutputPlaybackHandoff';
+import { applyPlaybackMetadataCheckpoint } from './services/nativeAudio/metadataCheckpoint';
 import NativeAudioRecoveryDialog from './components/audio/NativeAudioRecoveryDialog';
 import { useNativeAudioRecovery } from './hooks/useNativeAudioRecovery';
 import { useState, useRef, useEffect, useCallback, useMemo, lazy, Suspense } from 'react';
@@ -2639,7 +2640,7 @@ export default function App() {
                     const nextTime = Math.min(pendingResumeTime, safeDuration);
                     // Output handoff owns its one seek/play transaction. Setting native currentTime
                     // here as well resets the PCM producer while its volume/play controls start.
-                    if (!hasPendingOutputHandoff()) audioElement.currentTime = nextTime;
+                    applyPlaybackMetadataCheckpoint(audioElement, nextTime, hasPendingOutputHandoff());
                     currentTime.set(nextTime);
                     pendingResumeTimeRef.current = null;
                     return;
