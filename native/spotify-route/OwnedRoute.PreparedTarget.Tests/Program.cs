@@ -49,6 +49,17 @@ Test("inactive and expired historical rows elsewhere do not reject current targe
  using var f=new Fixture();f.BeginPreparation();f.Paused=false;
  f.AlterObservation=o=>o with{Sessions=[..o.Sessions,new(Fixture.Identity,"old","physical",false)]};Ok(Witness(f));
 });
+Test("slow admission does not expire a session observation that has not happened yet",()=>{
+ using var f=new Fixture();f.BeginPreparation();f.Paused=false;int checks=0;
+ f.OnValidateAuthority=()=>{if(++checks==1)Thread.Sleep(2100);};
+ var scans=f.SessionScans;Ok(Witness(f));
+ Check(checks==2&&f.SessionScans==scans+1,"Repeated admission or native observation after fresh evidence");
+});
+Test("evidence that actually ages during final ownership confirmation still expires",()=>{
+ using var f=new Fixture();f.BeginPreparation();f.Paused=false;int checks=0;
+ f.OnValidateAuthority=()=>{if(++checks==2)f.Advance(TimeSpan.FromSeconds(3));};
+ var result=Witness(f);Check(!result.Ok&&result.Code=="PREPARED_TARGET_ACTIVITY_EXPIRED","Stale session evidence accepted");
+});
 Test("incomplete evidence fails immediately and retains owned cleanup",()=>{
  using var f=new Fixture();f.BeginPreparation();f.Paused=false;int scans=0;f.AlterObservation=o=>{scans++;return o with{CompleteForProcess=false};};
  var r=Witness(f);Check(!r.Ok&&r.Code=="SESSION_OBSERVATION_UNTRUSTED"&&scans==1&&f.Service.HasLease&&!r.Ready,"Incomplete evidence retried or lost ownership");

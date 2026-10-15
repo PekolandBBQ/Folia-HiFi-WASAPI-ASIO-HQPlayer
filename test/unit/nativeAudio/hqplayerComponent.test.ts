@@ -84,7 +84,11 @@ it('does not launch a worker when absent and refuses a mismatched protocol', asy
     const rpcFactory = vi.fn(); const host = createHQPlayerComponentHost({ manager, rpcFactory });
     expect(await host.configuration()).toMatchObject({ available: false, component: { installed: false } });
     await expect(host.prepare()).rejects.toMatchObject({ code: 'COMPONENT_UNAVAILABLE' }); expect(rpcFactory).not.toHaveBeenCalled();
+    await expect(host.shutdown()).resolves.toBeUndefined();
+    expect(rpcFactory).not.toHaveBeenCalled();
     manager.status.mockResolvedValue({ available: true, executable: 'verified.cjs', version: '0.1.0' } as any);
     const rpc = { request: vi.fn(async () => ({ id: 'hqplayer', protocolMajor: 2 })), dispose: vi.fn(async () => {}) }; rpcFactory.mockReturnValue(rpc);
     await expect(host.prepare()).rejects.toMatchObject({ code: 'COMPONENT_INCOMPATIBLE' }); expect(rpc.dispose).toHaveBeenCalledOnce();
+    manager.status.mockResolvedValue({ available: false, installed: true, errorCode: 'COMPONENT_INCOMPATIBLE' } as any);
+    await expect(host.shutdown()).rejects.toMatchObject({ code: 'COMPONENT_INCOMPATIBLE' });
 });

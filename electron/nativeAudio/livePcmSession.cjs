@@ -55,8 +55,10 @@ function createLivePcmSession({ source, experiment, connectPipe = name => net.cr
     let parked = null, lastState = null, closed = false, intent = 0, queueSamplePending = false, lastQueueSample = -Infinity;
     let retirement = null, outputReleased = false, closeTask = null, preparing = null;
     const parkedControls = new Map();
-    const observations = experiment?.enabled && options.current?.backend === 'hqplayer'
-        ? createHQPlayerExperimentDiagnostics({ current: options.current, source, settings: experiment }) : null;
+    // Observe the shipping live path too; the legacy diagnostic event name does not enable an experiment.
+    const observations = options.current?.backend === 'hqplayer'
+        ? createHQPlayerExperimentDiagnostics({ current: options.current, source, settings: experiment?.enabled ? experiment
+            : { prebufferMs: options.current.livePcmPrebufferMs ?? 350, startupDelayMs: 0 } }) : null;
     const verifiedLive = options.current?.backend === 'hqplayer' && !experiment?.enabled;
     const memorySource = { state: { complete: false, available: 0 }, downloaded: Promise.resolve() };
     async function decode({ signal, position, onFormat, preparationRevision, prebufferMs }) {
@@ -133,7 +135,7 @@ function createLivePcmSession({ source, experiment, connectPipe = name => net.cr
     }
     const base = createStreamSession({ ...options, sourceFactory: () => memorySource, decode, freshFormatOnReset: true,
         retireAction: verifiedLive ? 'stream-retire' : 'pause',
-        ...(observations ? { startupDelayMs: experiment.startupDelayMs,
+        ...(observations ? { startupDelayMs: experiment?.enabled ? experiment.startupDelayMs : 0,
             onBufferState: (...args) => observations.observe(...args) } : {}) });
     const assertIntent = own => { if (closed || own !== intent || options.current.abort.signal.aborted) throw audioError('CANCELLED'); };
     function pauseAtHeardCheckpoint() {

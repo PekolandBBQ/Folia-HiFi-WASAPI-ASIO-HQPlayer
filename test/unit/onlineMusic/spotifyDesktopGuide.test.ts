@@ -53,9 +53,10 @@ it('distinguishes failed detection from a missing installation', async () => {
     status.installations = []; status.detectionFailed = true; await mount();
     expect(document.body.textContent).toContain('安装检测失败，尚不能确定是否安装');
 });
-it.each(['cable', 'unknown'] as const)('guides Windows output selection for %s then rechecks', async state => {
+it.each(['cable', 'unknown'] as const)('keeps system output selection optional for process capture (%s)', async state => {
     status.systemOutput = { state, names: ['CABLE Input'] }; await mount();
-    expect(document.body.textContent).toContain('在“输出”中选择你平时使用的设备');
+    expect(document.body.textContent).toContain('这不是 Spotify 播放的前置步骤');
+    expect(button('② 一键配置').disabled).toBe(false);
     await act(async () => button('打开系统声音设置').click());
     expect(request).toHaveBeenLastCalledWith({ action: 'desktopSetup', operation: 'open', component: 'sound' });
     status.systemOutput = { state: 'ready', names: ['Real DAC'] };

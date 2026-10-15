@@ -17,7 +17,8 @@ function createRpc(entry, { fork = (...args) => require('electron').utilityProce
         if (message?.event) { onEvent(message); return; }
         const item = pending.get(message?.id); if (!item) return;
         pending.delete(message.id); clearTimeout(item.timer);
-        if (message.ok) item.resolve(message.result); else item.reject(audioError(message.errorCode));
+        if (message.ok) item.resolve(message.result);
+        else item.reject(audioError(message.errorCode, typeof message.errorDetail === 'string' ? message.errorDetail.slice(0, 1024) : undefined));
     });
     child.on('exit', () => fail(closing ? 'CANCELLED' : 'COMPONENT_CRASHED', !closing));
     child.on('error', () => { fail('COMPONENT_CRASHED'); child.kill(); });

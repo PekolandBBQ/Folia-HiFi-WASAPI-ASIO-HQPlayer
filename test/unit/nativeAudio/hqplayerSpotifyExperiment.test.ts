@@ -11,9 +11,9 @@ const settings = { enabled: true, prebufferMs: 2000, startupDelayMs: 1000 };
 const required = ['local-file', 'playback-control', 'dsp-settings', 'single-instance', 'launch-options'];
 function hostFixture(capabilities = ['pcm-streaming', 'pcm32-named-pipe']) {
     const request = vi.fn(async (action: string) => action === 'hello'
-        ? { id: 'hqplayer', protocolMajor: 1, componentVersion: '0.1.4-preview.6', capabilities: [...required, 'confirmed-stop-owner-v1', ...capabilities] } : { ok: true });
+        ? { id: 'hqplayer', protocolMajor: 1, componentVersion: '0.1.4-preview.7', capabilities: [...required, 'confirmed-stop-owner-v1', ...capabilities] } : { ok: true });
     const rpc = { request, dispose: vi.fn(async () => {}) };
-    const manager = { status: vi.fn(async () => ({ available: true, version: '0.1.4-preview.6', executable: 'unused.cjs' })) };
+    const manager = { status: vi.fn(async () => ({ available: true, version: '0.1.4-preview.7', executable: 'unused.cjs' })) };
     const host = createHQPlayerComponentHost({ manager, rpcFactory: () => rpc, configPath: 'unused.json' });
     return { host, request, rpc, manager };
 }

@@ -19,9 +19,9 @@
     "entry": "VBCABLE_Setup_x64.exe"
   },
   "route": {
-    "version": "0.19.0-dev.28",
+    "version": "0.19.0-dev.29",
     "pairedCaptureRequired": true,
-    "sha256": "e880223c0b28229a146d35756ac70fe849eb64e9d55a38539f7675b3a4eec63e"
+    "sha256": "6e17670667a15eda5c9881afb6830114613e2cc0db56c9e1bdc7f67d7c44f740"
   },
   "capture": {
     "version": "0.1.5-capture.11",

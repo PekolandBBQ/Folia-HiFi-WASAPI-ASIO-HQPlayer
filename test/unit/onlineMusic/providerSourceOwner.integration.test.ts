@@ -63,11 +63,12 @@ it('provider exit restores once, joins concurrent exits and blocks entry during 
   hold.resolve(null); await a; expect(count(f, 'route:release')).toBe(1);
   await play(f, oldTrack); expect(count(f, 'route:acquire')).toBe(2);
 });
-it('account invalidation blocks reuse without restoring or creating a replacement owner', async () => {
+it('an invalidation with unchanged account can retry after confirmed hold without replacing the owner', async () => {
   const f = create(), active = await play(f);
   await f.audio.invalidate('SESSION_CHANGED');
   expect(active.capture.stopVerified).toHaveBeenCalledOnce(); expect(count(f, 'route:release')).toBe(0);
-  await expect(f.audio.prepare(oldTrack, randomUUID())).rejects.toThrow();
+  await play(f, oldTrack);
+  expect(count(f, 'route:validateHeld')).toBeGreaterThan(0);
   expect(count(f, 'route:acquire')).toBe(1); await f.audio.leaveProvider(); expect(count(f, 'route:release')).toBe(1);
 });
 it('a changed external track is rejected before a retained-owner request sends Pause or Select', async () => {
@@ -110,7 +111,7 @@ it('natural EOF retires only capture and retains the same owner for the next tra
   f.intercept(operation => { if (operation === 'select') f.state.item.duration_ms = 120000; }); await play(f, oldTrack);
   expect(count(f, 'route:acquire')).toBe(1);
 });
-it('held identity validation failure blocks track commands and further reuse until explicit exit', async () => {
+it('held identity validation failure blocks commands until a new request obtains a fresh valid proof', async () => {
   const f = create(), active = await play(f); await active.source.stop();
   const real = f.host.request.getMockImplementation()!, selects = count(f, 'control:select');
   f.host.request.mockImplementation(async (command: string, payload: any) => {
@@ -118,9 +119,12 @@ it('held identity validation failure blocks track commands and further reuse unt
     return real(command, payload);
   });
   await expect(f.audio.prepare(oldTrack, randomUUID())).rejects.toThrow();
+  expect(count(f, 'control:select')).toBe(selects);
   f.host.request.mockImplementation(real);
-  await expect(f.audio.prepare(oldTrack, randomUUID())).rejects.toThrow();
-  expect(count(f, 'control:select')).toBe(selects); expect(count(f, 'route:release')).toBe(0);
+  await play(f, oldTrack);
+  expect(count(f, 'route:validateHeld')).toBeGreaterThan(0);
+  expect(count(f, 'control:select')).toBe(selects + 1); expect(count(f, 'route:release')).toBe(0);
+  expect(count(f, 'route:acquire')).toBe(1);
 });
 it('a failed old Stop becomes harmless after native-authoritative provider exit recovery', async () => {
   const f = create({ recoverOnRelease: true }), active = await play(f); let failures = 0;
