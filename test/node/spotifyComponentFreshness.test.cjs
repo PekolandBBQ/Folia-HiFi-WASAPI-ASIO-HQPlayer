@@ -61,9 +61,10 @@ test('same-version release replacement cannot silently retain the old native pai
 });
 
 test('same-version candidate keeps its newer revision until release replacement; old apps detect the update',async()=>{
-  const older={...bundle,revision:0,route:{...bundle.route,sha256:'b'.repeat(64)}};
-  assert.equal((await latestComponentBundle({fetcher:releaseFetcher(older).fetcher})).bundle.revision,1);
-  await assert.rejects(latestComponentBundle({fetcher:releaseFetcher(bundle).fetcher,bundled:older}),{code:'SPOTIFY_COMPONENT_APP_UPDATE_REQUIRED'});
+  const candidate={...bundle,revision:7};
+  const older={...candidate,revision:6,route:{...candidate.route,sha256:'b'.repeat(64)}};
+  assert.equal((await latestComponentBundle({fetcher:releaseFetcher(older).fetcher,bundled:candidate})).bundle.revision,7);
+  await assert.rejects(latestComponentBundle({fetcher:releaseFetcher(candidate).fetcher,bundled:older}),{code:'SPOTIFY_COMPONENT_APP_UPDATE_REQUIRED'});
 });
 test('a newer validated pin is selected; a native ABI change requires matching Folia',async()=>{
   const newer={...bundle,version:'0.1.0-preview.5',spicetify:{...bundle.spicetify,version:'2.46.0'}};
