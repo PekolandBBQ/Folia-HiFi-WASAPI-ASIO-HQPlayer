@@ -26,9 +26,9 @@ describe('settings section anchors', () => {
 
         expect(ids.length).toBeGreaterThan(20);
 
-        // stageMode is declared twice on purpose: the Electron and web panels are mutually exclusive.
+        // stageMode has mutually exclusive Electron/web panels; Spotify has mutually exclusive Wrapper/OAuth panels.
         const duplicates = ids.filter((id, index) => ids.indexOf(id) !== index);
-        expect(duplicates).toEqual(['stageMode']);
+        expect(duplicates.sort()).toEqual(['spotifyConnection', 'stageMode']);
     });
 
     // A settings command that names an anchor also names, through this table, the page to open it
