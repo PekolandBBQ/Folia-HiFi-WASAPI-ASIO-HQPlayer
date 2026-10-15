@@ -347,16 +347,15 @@ public sealed class ProductRouteService : IDisposable
                         Text(jsonElement, "selectedSourceUri") != preparedSelectionTarget.TrackUri)
                         throw new RouteBlockedException("PREPARED_TARGET_ACTIVITY_INVALID_STATE");
                     preparedTargetActivity = null;
+                    var route = ValidateOwnershipAndPolicy();
+                    if (route.Stage != RouteStage.HeldPaused) return StageReply(obj, route);
                     var timer = Stopwatch.StartNew();
                     var budget = TimeSpan.FromSeconds(2);
                     SessionObservation observation;
-                    RouteRecord route;
                     // Complete but not-yet-migrated sessions may settle within this
                     // one read-only window. Incomplete/foreign/identity failures never retry.
                     for (;;)
                     {
-                        route = ValidateOwnershipAndPolicy();
-                        if (route.Stage != RouteStage.HeldPaused) return StageReply(obj, route);
                         var remaining = budget - timer.Elapsed;
                         if (remaining <= TimeSpan.Zero) throw new RouteBlockedException("SPOTIFY_ACTIVE_SESSION_NOT_ON_TARGET");
                         try { observation = transaction.ObserveHeldTargetActivity(remaining); break; }
@@ -366,11 +365,11 @@ public sealed class ProductRouteService : IDisposable
                             System.Threading.Thread.Sleep((int)Math.Min(25, Math.Max(1, (budget - timer.Elapsed).TotalMilliseconds)));
                         }
                     }
-                    if (timer.Elapsed >= budget) throw new RouteBlockedException("PREPARED_TARGET_ACTIVITY_EXPIRED");
+                    // ObserveHeldTargetActivity checks the bound process, endpoint and
+                    // applied policy both before and after its fresh session scan.
+                    // Do not repeat that scan or age the evidence from before it existed.
                     lifetime.ValidateApplyAuthority(); lifetime.ValidateOwnership(RequireRetention());
-                    route = ValidateOwnershipAndPolicy();
-                    if (route.Stage != RouteStage.HeldPaused) return StageReply(obj, route);
-                    if (timer.Elapsed >= budget) throw new RouteBlockedException("PREPARED_TARGET_ACTIVITY_EXPIRED");
+                    if (now() - observation.ObservedAtUtc >= budget) throw new RouteBlockedException("PREPARED_TARGET_ACTIVITY_EXPIRED");
                     preparedTargetActivity = new(route.TransactionId, leaseId!, generation, route.CurrentProcess,
                         preparedSelectionTarget.TrackUri!, route.Target.Id, intervalEpoch, observation.ObservedAtUtc,
                         observation.Sessions.Where(row => row.Active).Select(row => row.SessionInstanceId).ToArray());

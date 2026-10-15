@@ -125,6 +125,7 @@ export function audioFixture(options: any = {}) {
     ...(sourceHarness ? { createSourceApi: () => sourceHarness.source } : {}),
     readRoutePcmEvidence: (session: string, generation: number) => routes.route.pcmStopped(session, generation),
     wait: async (ms: number) => { clock += ms; }, settleIntervalMs: 100, settleTimeoutMs: 400,
+    ...(options.selectionTimeoutMs ? { selectionTimeoutMs: options.selectionTimeoutMs } : {}),
     onRevoke: (value: any) => { events.push('control:revoked'); void audio?.revokeSession(value.session, value.code).catch(() => {}); } });
   const controlPrepare = vi.spyOn(control, 'prepare');
   const nativeRequest = routes.host.request.getMockImplementation()!;

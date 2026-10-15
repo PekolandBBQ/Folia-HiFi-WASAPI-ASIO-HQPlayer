@@ -100,6 +100,19 @@ it('selects an inactive saved target with exact native identity without changing
   expect(f.events).not.toContain('control:volume'); expect(f.events).not.toContain('control:transfer');
   expect(f.state).toMatchObject({ is_playing: false, device: { is_active: true, volume_percent: 63 } });
 });
+it('lets late cold audio-session creation use the selection budget without repeating Select', async () => {
+  const f = create({ selectionTimeoutMs: 1200 }), native = f.host.request.getMockImplementation()!;
+  let checks = 0;
+  f.host.request.mockImplementation(async (command: string, payload: any) => {
+    if (command === 'inspect' && ++checks <= 7)
+      throw Object.assign(new Error(), { code: 'EXACT_SPOTIFY_AUDIO_PROCESS_UNPROVEN' });
+    return native(command, payload);
+  });
+  await f.prepare();
+  expect(checks).toBeGreaterThan(7);
+  expect(f.events).toContain('route:acquire');
+  expect(f.events).not.toContain('control:volume');
+});
 it('uses a targeted Select from an active remote device without a separate Transfer or volume change', async () => {
   const f = create(); f.state.device.is_active = false;
   let selected = false;

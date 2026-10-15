@@ -523,7 +523,9 @@ function createDesktopPlaybackControl({ onRevoke = () => {}, onFailureDiagnostic
       // A source Play ACK can precede creation of its CoreAudio session. Keep
       // this exact selection playing until native identity exists, then park.
       // Pausing first can prevent the session from ever materializing.
-      const window = beginConfirmation(record); inspecting = true;
+      // Wrapper cold loading has a 30 s selection budget; the CoreAudio session can
+      // appear after the bridge ACK. Do not shrink that same startup to the 4 s control budget.
+      const window = beginConfirmation(record, undefined, 1, selectionTimeoutMs); inspecting = true;
       for (;;) {
         checkConfirmation(record, window, 'BOOTSTRAP_IDENTITY_UNCONFIRMED');
         try { await withinConfirmation(window, () => inspect(active)); break; }

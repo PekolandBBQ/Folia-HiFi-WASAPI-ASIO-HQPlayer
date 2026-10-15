@@ -25,7 +25,7 @@ async function armCapture(lease: any) {
 
 afterEach(async () => { vi.useRealTimers(); for (const f of fixtures.splice(0)) await f.route.close().catch(() => {}); });
 it('accepts only the complete qualified service contract', () => {
-  const valid = { protocolMajor: 1, componentVersion: '0.19.0-dev.28', platform: 'win32-x64', contract: 'folia-owned-route-v1', supported: true,
+  const valid = { protocolMajor: 1, componentVersion: '0.19.0-dev.29', platform: 'win32-x64', contract: 'folia-owned-route-v1', supported: true,
     productionQualified: true, heldPausedAcquire: true, completeSessionProof: true, notificationCoherent: true, retainedJournalRecovery: true,
     intervalIsolation: true, providerRouteLifetime: true, boundedSeekPark: true, boundedPausedProofTransfer: true, indefiniteHeldPause: true, freshResumeInterval: true,
     ownedSilentRenderLease: true, preparedSelection: true, preparedTargetActivity: true, boundedPreparationObservation: true, boundedRestoreObservation: true,

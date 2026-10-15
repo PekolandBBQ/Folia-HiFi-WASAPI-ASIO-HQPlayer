@@ -11,6 +11,7 @@ function createHQPlayerComponentHost({ app, configPath, onState = () => {}, onEr
     let streamAuthority = null, pendingStream = null, streamRevision = 0;
     const closingStreams = new Map();
     let componentVersion, reportedInput;
+    let workerStarted = false;
     const revokeStream = () => { streamAuthority = null; pendingStream = null; reportedInput = null; ++streamRevision; };
     function reportInput(result, phase, errorCode) {
         if (!isPreviewDiagnosticsEnabled()) return;
@@ -38,6 +39,7 @@ function createHQPlayerComponentHost({ app, configPath, onState = () => {}, onEr
         starting = (async () => {
             const installed = await manager.status();
             if (!installed.available) throw audioError(installed.errorCode || 'COMPONENT_UNAVAILABLE');
+            workerStarted = true;
             const next = rpcFactory(installed.executable, { onEvent: event => {
                 if (ticket !== generation) return;
                 if (event.event === 'diagnostic' && event.detail?.event === 'live-pcm-input') {
@@ -204,6 +206,10 @@ function createHQPlayerComponentHost({ app, configPath, onState = () => {}, onEr
         ...Object.fromEntries(['device', 'prepare', 'checkExisting', 'authorizeExisting', 'load', 'command', 'stop', 'shutdown', 'dspSettings', 'validateExecutable']
             .map(action => [action, (...args) => {
                 if (['load', 'shutdown'].includes(action) || (action === 'stop' && (streamAuthority?.session === args[0] || pendingStream?.session === args[0]))) revokeStream();
+                // A failed availability check never acquired HQPlayer output. Let
+                // the user leave that backend without starting an unavailable worker.
+                // Keep recovery mandatory once a worker may have owned output.
+                if (action === 'shutdown' && !workerStarted && !rpc && !starting) return Promise.resolve();
                 return action === 'stop' && !rpc && !starting ? Promise.resolve() : invoke(action, args);
             }])) };
 }
