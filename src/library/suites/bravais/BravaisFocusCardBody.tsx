@@ -1,4 +1,6 @@
+import { useLibraryCardLyrics } from '../../core/bindings/LibraryCardLyrics';
 import React, { useState, type MouseEvent } from 'react';
+import { selectionTrace, withSelectionOrigin } from '../../../services/playbackSelectionTrace';
 import { Check, Maximize2, MoreHorizontal, Pause, Play, Plus } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { WallTitle } from '../../../components/wall/WallTitle';
@@ -10,8 +12,8 @@ import type { BravaisEntryMenuItem } from './bravaisSeamModels';
 
 // src/library/suites/bravais/BravaisFocusCardBody.tsx
 // 聚焦卡（6×6 就地展开的歌曲卡，设计稿 §7「聚焦卡」）的文字区：大标题，可点的歌手 / 专辑链接与时长，底部两个按钮
-// 「立即播放」「加入队列」（已在队列时是「✓ 已在队列」）。立即播放之后去哪由 folia 的「播放进入视图」决定
-// （宿主的播放端口），这里不另做原地播放。链接能不能点由 surface 判定（core 的 trackLinks 规则）。
+// 「立即播放」「加入队列」（已在队列时是「✓ 已在队列」）。集合卡播放留在原处，复用拼贴歌词；
+// 「进入」仍是显式导航入口。链接能不能点由 surface 判定（core 的 trackLinks 规则）。
 // 实测反馈 1：「立即播放」改成与 Lattice 展开海报同样的纯图标按钮（无文字，可访问名与 title 仍是「立即播放」）；
 // 队列按钮在「已在队列」时悬停 / 键盘聚焦显示「插入队列」——点它走的是应用的入队规则（applyQueueAddBehavior），
 // 已在队列里的歌会被挪到队尾或下一首（按播放设置里的「加入队列的默认位置」），并不是什么都不做。正在播放的那首点了不动，不换文案。
@@ -20,8 +22,8 @@ import type { BravaisEntryMenuItem } from './bravaisSeamModels';
 // 播放状态与那项设置（离散值，暂停 / 继续时才重渲染）。
 
 export type BravaisFocusCardActions = {
-    play: (slotKey: string) => void;
-    enqueue: (slotKey: string) => void;
+    play: (slotKey: string, renderedKey?: string) => void;
+    enqueue: (slotKey: string, renderedKey?: string) => void;
     canOpenAlbum: (itemKey: string) => boolean;
     openAlbum: (slotKey: string) => void;
     canOpenArtist: (itemKey: string, index: number) => boolean;
@@ -55,6 +57,7 @@ const handled = (run: () => void) => (event: MouseEvent<HTMLButtonElement>) => {
 
 const BravaisFocusCardBody: React.FC<BravaisFocusCardBodyProps> = ({ slotKey, item, queued, current, titleWidth, actions }) => {
     const { t } = useTranslation();
+    const lyrics = useLibraryCardLyrics(current ? item.playbackKey : undefined);
     const artists = item.artists ?? [];
     const canOpenAlbum = Boolean(item.album) && actions.canOpenAlbum(item.key);
     // B7：右上角「⋯」——条目动作（声明 ∩ 控制器能力，由 surface 给出；没有就不显示）。
@@ -69,6 +72,7 @@ const BravaisFocusCardBody: React.FC<BravaisFocusCardBodyProps> = ({ slotKey, it
     const enterLabel = t(entersLattice ? 'libraryBravais.enterLattice' : 'libraryBravais.enterPlayer');
     return (
         <>
+        {lyrics}
         {menu.length > 0 && (
             <span className="bravais-focus-more">
                 <button
@@ -142,7 +146,10 @@ const BravaisFocusCardBody: React.FC<BravaisFocusCardBodyProps> = ({ slotKey, it
                     disabled={item.unavailable && !toggles}
                     aria-label={playLabel}
                     title={playLabel}
-                    onClick={handled(() => actions.play(slotKey))}
+                    onClick={handled(() => withSelectionOrigin('bravais-card', undefined, () => {
+                        selectionTrace('card-visible', null, { slotKey, renderedKey: item.key, visibleTitle: item.title });
+                        actions.play(slotKey, item.key);
+                    }))}
                 >
                     {toggles && isPlaying ? <Pause fill="currentColor" aria-hidden /> : <Play fill="currentColor" aria-hidden />}
                 </button>
@@ -165,7 +172,7 @@ const BravaisFocusCardBody: React.FC<BravaisFocusCardBodyProps> = ({ slotKey, it
                     data-bravais-action="enqueue"
                     data-bravais-queued={queued || undefined}
                     disabled={item.unavailable}
-                    onClick={handled(() => actions.enqueue(slotKey))}
+                    onClick={handled(() => actions.enqueue(slotKey, item.key))}
                 >
                     {queued && !current ? (
                         // 两种文案叠在同一格里（宽度取两者较宽的），悬停 / 聚焦时换显示；藏着的那份 visibility:hidden，不进可访问名。

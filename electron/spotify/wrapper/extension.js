@@ -19,7 +19,7 @@
   // Use the installed client's own color-lyrics contract. Never retry a 429 in this session.
   async function nativeLyrics(args){
     if(!/^[A-Za-z0-9]{22}$/.test(args.trackId||''))throw Error('INVALID_TRACK');
-    if(lyricsCache.has(args.trackId))return lyricsCache.get(args.trackId);
+    if(lyricsCache.has(args.trackId))return {...await lyricsCache.get(args.trackId),cacheHit:true};
     if(lyricsRateLimited)throw Error('LYRICS_RATE_LIMITED');
     const pending=(async()=>{
       try{
@@ -27,17 +27,28 @@
         const body=await Spicetify.CosmosAsync.get('https://spclient.wg.spotify.com/color-lyrics/v2/track/'
           +encodeURIComponent(args.trackId)+'/image/'+encodeURIComponent(image)+'?format=json&vocalRemoval=false');
         const lyrics=body?.lyrics;
+        const validObject=lyrics!==null&&typeof lyrics==='object';
+        const validLines=Array.isArray(lyrics?.lines);
+        const lines=validLines?lyrics.lines.filter(line=>line&&typeof line.words==='string'&&line.words.trim()).map(line=>({
+          startTimeMs:line.startTimeMs,endTimeMs:line.endTimeMs,words:line.words})):[];
+        const reason=lines.length?'received':!validObject?'missing-lyrics':!validLines?'invalid-lines':lyrics.lines.length?'blank-lines':'empty-lines';
         return {trackId:args.trackId,source:'spotify-native',syncType:lyrics?.syncType||'UNSYNCED',
-          provider:lyrics?.provider||null,lines:Array.isArray(lyrics?.lines)?lyrics.lines.map(line=>({
-            startTimeMs:line.startTimeMs,endTimeMs:line.endTimeMs,words:line.words})):[]};
+          provider:lyrics?.provider||null,lines,reason,cacheHit:false,
+          responseShape:{hasLyrics:validObject,hasLines:validLines,rawLineCount:validLines?lyrics.lines.length:null}};
       }catch(error){
         const status=Number(error?.status??error?.statusCode??error?.response?.status??error?.error?.status);
         if(status===429){lyricsRateLimited=true;throw Error('LYRICS_RATE_LIMITED');}
-        if(status===404)return {trackId:args.trackId,source:'spotify-native',syncType:'UNSYNCED',lines:[]};
+        if(status===404)return {trackId:args.trackId,source:'spotify-native',syncType:'UNSYNCED',lines:[],reason:'http-not-found',httpStatus:404,cacheHit:false};
+        if(status===401)throw Error('LYRICS_AUTH_REQUIRED');
+        if(status===403)throw Error('LYRICS_ACCESS_DENIED');
         throw Error('LYRICS_UNAVAILABLE');
       }
     })();
-    lyricsCache.set(args.trackId,pending);return pending;
+    lyricsCache.set(args.trackId,pending);
+    // Only positive results survive completion. Empty/404/malformed results must not poison later playback.
+    const evict=()=>{if(lyricsCache.get(args.trackId)===pending)lyricsCache.delete(args.trackId);};
+    void pending.then(result=>{if(!result.lines.length)evict();},evict);
+    return pending;
   }
   async function snapshot(){
     const snapshotStarted=performance.now();

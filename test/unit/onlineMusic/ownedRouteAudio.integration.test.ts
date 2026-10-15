@@ -1,3 +1,4 @@
+import { createRequire } from 'node:module';
 import { afterEach, expect, it, vi } from 'vitest';
 import { audioFixture, deferred, oldTrack, requestId, tick, trackId } from './ownedRouteFixture';
 
@@ -361,14 +362,16 @@ it('blocks restore and further playback when source pause is unconfirmed', async
   expect(f.audio.lookup(active.prepared.url)).toBeNull(); expect(f.state.is_playing).toBe(true);
   await expect(f.route.close()).rejects.toMatchObject({ code: 'ROUTE_RESTORE_UNCONFIRMED' });
 });
-it('retains exact-source broker authority for bounded native recovery after ordinary pause revoked playback', async () => {
+it('retains exact-source authority until cleanup succeeds before native restoration', async () => {
   const f = create({ recoverOnRelease: true }), active = await start(f); f.captures[0].queue.push(Buffer.alloc(8)); await active.next;
   let failures = 0;
   f.intercept(operation => operation === 'pause' && failures++ < 2 ? new Response(null, { status: 503 }) : undefined);
   await expect(active.source.pause()).rejects.toThrow(); await f.audio.clear();
   expect(f.state.is_playing).toBe(false); expect(f.events.filter(value => value === 'route:release')).toHaveLength(1);
   const revoked = f.events.lastIndexOf('control:revoked'), proof = f.events.lastIndexOf('native:release-proof');
-  expect(proof).toBeGreaterThan(revoked); expect(f.events.indexOf('control:pause', proof)).toBeGreaterThan(proof);
+  expect(proof).toBeGreaterThan(revoked);
+  const paused = f.events.lastIndexOf('observed:paused', proof); expect(paused).toBeGreaterThan(-1);
+  expect(f.events.lastIndexOf('control:pause', paused)).toBeGreaterThan(-1);
   expect(f.audio.lookup(active.prepared.url)).toBeNull();
 });
 it('does not retain source proof authority across a changed account grant', async () => {
@@ -436,4 +439,74 @@ it('parks the old source and retains its route across a new-song authorization f
   expect(f.events).not.toContain('route:acquire'); expect(f.events).not.toContain('control:volume');
   expect(f.events).not.toContain('capture:open'); expect(f.events).not.toContain('media:publish');
   expect(f.audio.lookup(active.prepared.url)).toBeNull();
+});
+
+for (const failureCode of ['PLAYBACK_STATE_UNCONFIRMED', 'CAPTURE_STOP_TIMEOUT', 'UNRECOGNIZED_CLEANUP_FAILURE']) it('retries retained cleanup by state, not error allowlist: ' + failureCode, async () => {
+  const f = create(), active = await start(f); f.captures[0].queue.push(Buffer.alloc(8, 9)); await active.next;
+  const native = f.host.request.getMockImplementation()!;
+  let rejectHold = true, holdAttempts = 0;
+  f.host.request.mockImplementation(async (command: string, payload: any) => {
+    if (command === 'suspendPaused') {
+      holdAttempts++;
+      if (rejectHold) throw Object.assign(new Error('native pause incomplete'), { code: failureCode });
+    }
+    return native(command, payload);
+  });
+  const close = vi.spyOn(f.control, 'close');
+  await expect(active.source.revoke()).rejects.toMatchObject({ code: failureCode });
+  const retiredSession = (f.controlPrepare.mock.calls[0][0] as any).session;
+  const ids = [trackId, oldTrack, '5P4EQaoX8QEyL59fUhLeR9', '0qUId2i13vDDWsQejz8Vrb'];
+  for (let i = 0; i < 7; i++) {
+    const before = holdAttempts;
+    await expect(f.audio.prepare(ids[i % ids.length], `22345678-1234-1234-1234-${String(i).padStart(12, '0')}`))
+      .rejects.toMatchObject({ nativeCode: failureCode });
+    expect(holdAttempts).toBeGreaterThan(before);
+  }
+  expect(close.mock.calls.some(call => call[0] === retiredSession)).toBe(false);
+  expect(f.captures).toHaveLength(1); expect(f.events).not.toContain('route:release');
+  rejectHold = false;
+  const prepared = await f.audio.prepare(oldTrack, '32345678-1234-1234-1234-123456789abc');
+  expect(prepared.url).toBeTruthy(); expect(close).toHaveBeenCalledWith(retiredSession);
+  const source = f.audio.lookup(prepared.url), opened = await source.openReadable();
+  const next = opened.stream[Symbol.asyncIterator]().next(); await tick();
+  f.captures.at(-1).queue.push(Buffer.alloc(8, 3)); expect((await next).value).toEqual(Buffer.alloc(8, 3));
+  expect(f.events.filter(event => event === 'route:acquire')).toHaveLength(1);
+  expect(f.events).not.toContain('route:release');
+  await source.pause();
+  const replacement = await source.openReadable(); const resumed = replacement.stream[Symbol.asyncIterator]().next(); await tick();
+  f.captures.at(-1).queue.push(Buffer.alloc(8, 4)); expect((await resumed).value).toEqual(Buffer.alloc(8, 4));
+  await source.stop(); await f.audio.leaveProvider(); expect(f.lease().state).toBe('restored');
+});
+
+it('recovers actual source Pause rejection across retries, a new track, and output replacement', async () => {
+ const f=create(), active=await start(f); f.captures[0].queue.push(Buffer.alloc(8));await active.next;
+ let refused=true, attempts=0;
+ f.intercept(operation=>{if(operation==='pause'){attempts++;if(refused)return new Response(null,{status:503});}});
+ await expect(active.source.pause()).rejects.toThrow();await tick();
+ const failedSession=(f.controlPrepare.mock.calls[0][0] as any).session;
+ await expect(f.control.play(failedSession)).rejects.toMatchObject({code:'PLAYBACK_STATE_UNCONFIRMED',stage:'cleanup-required'});
+ await expect(f.control.seek(failedSession,1000)).rejects.toMatchObject({code:'PLAYBACK_STATE_UNCONFIRMED',stage:'cleanup-required'});
+ for(let i=0;i<3;i++){const before=attempts;await expect(f.audio.prepare(oldTrack,'42345678-1234-1234-1234-'+String(i).padStart(12,'0'))).rejects.toThrow();expect(attempts).toBeGreaterThan(before);}
+ refused=false;
+ const prepared=await f.audio.prepare(oldTrack,'52345678-1234-1234-1234-123456789abc');const source=f.audio.lookup(prepared.url);
+ let opened=await source.openReadable();let next=opened.stream[Symbol.asyncIterator]().next();await tick();f.captures.at(-1).queue.push(Buffer.alloc(8,5));await next;
+ await source.pause();opened=await source.openReadable();next=opened.stream[Symbol.asyncIterator]().next();await tick();f.captures.at(-1).queue.push(Buffer.alloc(8,6));await next;
+ await source.stop();await f.audio.leaveProvider();expect(f.lease().state).toBe('restored');
+});
+
+it('three silent preparation retries actually retire the old route owner before publishing replacement PCM', async () => {
+ const {retryPlayback}=createRequire(import.meta.url)('../../../electron/spotify/playbackRetry.cjs');
+ const f=create(), active=await start(f);f.captures[0].queue.push(Buffer.alloc(8,1));await active.next;
+ const native=f.host.request.getMockImplementation()!;let attempts=0;
+ f.host.request.mockImplementation(async(command:string,payload:any)=>{
+   if(command==='suspendPaused'&&++attempts<=3)throw Object.assign(Error('temporary hold'),{code:'PLAYBACK_STATE_UNCONFIRMED'});
+   return native(command,payload);
+ });
+ const reports:any[]=[];
+ const prepared=await retryPlayback(()=>f.audio.prepare(oldTrack,'62345678-1234-1234-1234-123456789abc'),{wait:async()=>{},report:(v:any)=>reports.push(v)});
+ expect(reports.filter(v=>v.phase==='retry')).toHaveLength(3);
+ expect(attempts).toBe(4);expect(f.captures).toHaveLength(1);expect(f.events).not.toContain('route:release');
+ const source=f.audio.lookup(prepared.url),opened=await source.openReadable();const next=opened.stream[Symbol.asyncIterator]().next();await tick();
+ f.captures.at(-1).queue.push(Buffer.alloc(8,7));expect((await next).value).toEqual(Buffer.alloc(8,7));
+ await source.stop();await f.audio.leaveProvider();expect(f.lease().state).toBe('restored');
 });

@@ -79,6 +79,19 @@ export const useBravaisPlayingCard = ({
         pendingSeqRef.current = seq !== null && kind !== null && RESTORING_SHIFTS.has(kind) ? seq : null;
     }, [kind, seq]);
 
+    // Track changes within the same layer need the same reveal as re-entering it.
+    const playingRef = useRef({ layer: display?.layer.key, entry: display?.layer.nowPlayingKey });
+    useEffect(() => {
+        const previous = playingRef.current;
+        playingRef.current = { layer: display?.layer.key, entry: display?.layer.nowPlayingKey };
+        if (display?.layer.isInteractive && previous.layer === display.layer.key
+            && previous.entry !== display.layer.nowPlayingKey && display.layer.nowPlayingKey
+            && (previous.entry || readBravaisPlayingCard()?.layerKey === display.layer.key)) {
+            armBravaisPlayingCard(display.layer.key, display.layer.nowPlayingKey);
+            pendingSeqRef.current = seq;
+        }
+    }, [display, seq]);
+
     useEffect(() => {
         if (!display || isSettling || seq === null || pendingSeqRef.current !== seq) return;
         const memory = readBravaisPlayingCard();

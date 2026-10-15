@@ -158,13 +158,8 @@ function createCableAudioPreparation({ captureHost, control, vault, cooldown, ge
   }
   // Retiring a track closes only its controller/PCM generation. The provider lease
   // and immutable native journal survive until an explicit provider exit or Quit.
-  const retryablePauseCleanup = error => ['PAUSED_SOURCE_COMPLETE_SESSION_PROOF_REQUIRED',
-    'PAUSED_SOURCE_SESSIONS_STILL_ACTIVE', 'PAUSED_SOURCE_OBSERVATION_INVALID', 'PAUSED_SOURCE_OBSERVATION_TIMEOUT',
-    'PAUSED_SOURCE_SCAN_INCOMPLETE', 'PAUSED_SOURCE_OBSERVATION_STALE', 'PAUSED_SOURCE_OBSERVATION_IN_FUTURE',
-    'SOURCE_NOT_PAUSED', 'SOURCE_RESUMED_DURING_PAUSE_PROOF', 'SOURCE_STATUS_DEVICE_OR_FRESHNESS_MISMATCH',
-    'PREPARATION_OBSERVATION_CHANGED_DURING_SCAN', 'SOURCE_BROKER_UNAVAILABLE', 'SOURCE_BROKER_FAILED',
-    'SESSION_OBSERVATION_UNTRUSTED', 'OWNED_SILENT_RENDER_LEASE_NOT_STOPPED',
-    'CONTROL_TIMEOUT'].includes(error?.failureCode || error?.nativeCode || error?.code);
+  // Cleanup ownership is state, not an error-code allowlist. Failed attempts
+  // keep the source controller and route; only in-flight work is shared.
   function release(record) {
     if (!record || record.sourceOwner?.released === true || record.sourceOwner?.route?.restored === true) return Promise.resolve();
     if (record.releasing) return record.releasing;
@@ -172,6 +167,7 @@ function createCableAudioPreparation({ captureHost, control, vault, cooldown, ge
     record.terminalCleanup = null;
     cleanupRecords.add(record);
     const retry = !!record.cleanupFailure;
+    let cleanupStage = 'cleanup-wait';
     if (retry) console.info('[SpotifyCleanup]', JSON.stringify({ stage: 'cleanup-retry', session: record.session,
       previousCode: diagnosticCode(record.cleanupFailure) }));
     void cancelPlayingSeek(record);
@@ -187,11 +183,12 @@ function createCableAudioPreparation({ captureHost, control, vault, cooldown, ge
           || terminalCleanupCompleted(record, terminal, retiringIntent, retiringOwner);
         if (record.prepared && !completed) {
           if (record.automaticRouting) {
+            cleanupStage = 'cleanup-source-pause';
             const paused = await control.pause(record.session);
             requireFacts(paused, record, false); confirmRoutePaused(record);
           } else await boundedCleanup(Promise.resolve().then(() => control.pause(record.session)));
         }
-        if (record.automaticRouting && !completed) await holdRoutes(record);
+        if (record.automaticRouting && !completed) { cleanupStage = 'cleanup-route-hold'; await holdRoutes(record); }
         // A failed playback attempt is not a permanent provider failure once
         // native hold has confirmed the same lease paused with capture stopped.
         if (record.sourceOwner === providerOwner && providerOwner?.route?.heldPaused === true)
@@ -202,10 +199,12 @@ function createCableAudioPreparation({ captureHost, control, vault, cooldown, ge
         // Keep this controller and the exact route journal alive for a fresh
         // paused-hold attempt. Closing them here made every later click replay
         // the first failed Promise instead of recovering its session.
-        retainForRetry = retryablePauseCleanup(error);
+        retainForRetry = record.automaticRouting === true;
+        error.stage ||= cleanupStage;
         throw error;
       } finally {
         if (!retainForRetry) {
+          cleanupStage = 'cleanup-controller-close';
           await boundedCleanup(Promise.resolve().then(() => control.close(record.session)));
           record.controlController.abort();
           if (record.sourceOwner === providerOwner && !providerOwner?.route) {
@@ -226,8 +225,9 @@ function createCableAudioPreparation({ captureHost, control, vault, cooldown, ge
       if (record.sourceOwner) record.sourceOwner.failure ||= error;
       console.warn('[SpotifyCleanup]', JSON.stringify({ stage: 'cleanup-failed', session: record.session,
         nativeCode: error?.nativeCode || diagnosticCode(error), causeCode: error?.failureCode,
-        retryable: retryablePauseCleanup(error) }));
-      if (record.releasing === attempt && retryablePauseCleanup(error)) record.releasing = null;
+        retryable: record.automaticRouting === true, operation: cleanupStage,
+        routeHeld: record.sourceOwner?.route?.heldPaused === true, controllerRetained: !record.controlController.signal.aborted }));
+      if (record.releasing === attempt) record.releasing = null;
     });
     return record.releasing;
   }
@@ -381,7 +381,7 @@ function createCableAudioPreparation({ captureHost, control, vault, cooldown, ge
         if (read.finishing) return;
         readOwned(record, read);
         if(onExternalSelection && await observeExternalSelection(record))return;
-        const facts = await control.readState(record.session); readOwned(record, read); requireFacts(facts, record, true);
+        const facts = await control.readState(record.session, { expectedPlaying: true }); readOwned(record, read); requireFacts(facts, record, true);
         if (read.finishing) return;
         if (read.capture.status) { await read.capture.status(); readOwned(record, read); }
         if (read.finishing) return;
@@ -401,7 +401,7 @@ function createCableAudioPreparation({ captureHost, control, vault, cooldown, ge
     return read.starting ||= enqueue(record, () => readOwned(record, read), async () => {
       // Output creation can take seconds. Recheck the parked official identity
       // before opening capture; no native queue is started during that wait.
-      let parked = await control.readState(record.session, { forPreparation: true }); readOwned(record, read); requireFacts(parked, record, false);
+      let parked = await control.readState(record.session, { forPreparation: true, expectedPlaying: false }); readOwned(record, read); requireFacts(parked, record, false);
       if (parked.positionMs !== (read.pendingStart ? read.observedPausedPositionMs : read.positionMs)) throw fail('PLAYBACK_STATE_UNCONFIRMED');
       const onFailure = error => {
         if (record.read !== read) return;
@@ -484,6 +484,8 @@ function createCableAudioPreparation({ captureHost, control, vault, cooldown, ge
         const maximum = read.maximumBytes;
         read.routeAudio?.publicationStarted();
         read.playing = true;
+        console.info('[SpotifyAudioRequest]', JSON.stringify({ phase: 'pcm-publication', trackId: record.trackId,
+          requestId: record.requestId, session: record.session }));
         if (record.playingSeek?.newRead === read) record.playingSeek = null;
         let delivered = 0;
         for await (const block of read.capture.stream) {
@@ -770,7 +772,16 @@ function createCableAudioPreparation({ captureHost, control, vault, cooldown, ge
     };
   }
   async function run(id, requestId, onProgress = () => {}, quality = 'high') {
-    if (!validTrack(id) || !sessionId(requestId) || !['standard', 'high', 'lossless'].includes(quality)) throw publicError(fail('INVALID_AUDIO_REQUEST'));
+    // This is Folia's preference, not a command to change the Spotify client's encoding.
+    const qualityValid = ['standard', 'high', 'lossless', 'hires'].includes(quality);
+    const requestError = !validTrack(id) ? 'INVALID_AUDIO_TRACK_ID'
+      : !sessionId(requestId) ? 'INVALID_AUDIO_REQUEST_ID' : !qualityValid ? 'INVALID_AUDIO_QUALITY' : null;
+    if (requestError) {
+      console.warn('[SpotifyAudioRequest]', JSON.stringify({ phase: 'rejected', nativeCode: requestError,
+        requestedQuality: qualityValid ? quality : 'unknown', trackIdValid: validTrack(id), requestIdValid: sessionId(requestId) }));
+      throw publicError(Object.assign(fail(requestError), { stage: 'request-validation' }));
+    }
+    console.info('[SpotifyAudioRequest]', JSON.stringify({ phase: 'accepted', trackId: id, requestId, requestedQuality: quality }));
     if (disposed || leaving || jobs.has(requestId)) throw publicError(fail('CANCELLED'));
     const previous = current;
     const record = { revision: ++revision, session: randomUUID(), requestId, trackId: id, controller: new AbortController(),
@@ -781,7 +792,7 @@ function createCableAudioPreparation({ captureHost, control, vault, cooldown, ge
     current = record; jobs.set(requestId, record);
     const retiring = release(previous);
     void retiring.catch(() => {});
-    let stage = 'scope';
+    let stage = 'cleanup-previous-session';
     const reads = prefetchSelection && (!officialMetadata || typeof officialMetadata.isCurrent === 'function')
       ? beginPreparationReads(record) : null;
     try {
@@ -789,8 +800,10 @@ function createCableAudioPreparation({ captureHost, control, vault, cooldown, ge
       await retiring;
       // Failed retirement remains an ownership barrier; a new track never hides it.
       for (const retained of [...cleanupRecords]) await release(retained);
+      stage = 'retained-provider-state';
       if (providerOwner?.failure) throw providerOwner.failure;
       own(record); onProgress({ stage: 'connect' });
+      stage = 'scope';
       let facts, readPreparation;
       let result = reads ? await reads : null; own(record);
       // Restoration may outlast the token's no-refresh window even when both
@@ -893,10 +906,16 @@ function createCableAudioPreparation({ captureHost, control, vault, cooldown, ge
         // Local restored metadata can be rounded. Re-read after real selection;
         // accept only the duration also witnessed by the prepared playback state.
         const refreshed = await metadata(record); own(record);
-        if (refreshed.durationMs !== prepared.durationMs) throw fail('PLAYBACK_STATE_UNCONFIRMED');
-        record.durationMs = refreshed.durationMs;
+        if (!require('./durationFacts.cjs').durationsAgree(refreshed.durationMs, prepared.durationMs))
+          throw Object.assign(fail('PLAYBACK_STATE_UNCONFIRMED'), { stage: 'playback-facts', stateMismatch: 'duration-mismatch',
+            expectedDurationMs: refreshed.durationMs, actualDurationMs: prepared.durationMs });
+        // Keep the selected player's duration as the source/output boundary;
+        // refreshing rounded catalog metadata must not shorten the live source.
+        record.durationMs = prepared.durationMs;
       }
       record.prepared = true; own(record); requireFacts(prepared, record, false); record.originMs = prepared.positionMs;
+      console.info('[SpotifyAudioRequest]', JSON.stringify({ phase: 'prepared', trackId: record.trackId,
+        actualTrackId: prepared.trackId, requestId, session: record.session, positionMs: record.originMs }));
       record.preparedPendingStart = prepared.pendingStart;
       confirmRoutePaused(record);
       // Keep this exact route/journal through the first live reader; no restore/reacquire gap.
@@ -937,7 +956,7 @@ function createCableAudioPreparation({ captureHost, control, vault, cooldown, ge
       // A failed source stays blocked under its retained provider owner. Keep
       // the initiating failure visible; only explicit exit may restore it.
       if (error?.code === 'ROUTE_SOURCE_PAUSE_UNCONFIRMED' && error.cause
-        && (!record.failure || record.failure.code === error.code)) throw publicError(error.cause);
+        && (!record.failure || record.failure.code === error.code)) throw publicError(Object.assign(error.cause, { stage: error.stage || stage }));
       throw failure;
     } finally { if (jobs.get(requestId) === record) jobs.delete(requestId); finishPreparation(); }
   }

@@ -204,7 +204,7 @@ const BravaisCollection: React.FC<LibraryCollectionSurfaceProps> = ({
                 const track = trackOf(key);
                 if (!track || !declared('play')) return;
                 latest.current.focus.persistFocus(key);
-                latest.current.actions.playTrack(track);
+                latest.current.actions.playTrack(track, { shouldNavigateToPlayer: false });
             },
             onEnqueueItem: (key: string) => {
                 const track = trackOf(key);

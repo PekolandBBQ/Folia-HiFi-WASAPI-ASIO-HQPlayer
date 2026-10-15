@@ -44,6 +44,8 @@ import { buildHomeSurfacePresentation } from './components/app/presentation/buil
 import { shouldMountPlayerVisualizer } from './components/app/presentation/playerVisualizerMount';
 import { resolveWallHandoffPresentation } from './components/app/presentation/wallHandoffPresentation';
 import { useWallHandoffDirector } from './components/app/presentation/wallHandoffDirector';
+import NoLyricsNotice from './components/app/NoLyricsNotice';
+import LibraryCardLyricsHost from './components/app/home/LibraryCardLyricsHost';
 import WallToolsDockHost from './components/wall/WallToolsDock';
 import { buildPlayerViewFlags } from './components/app/presentation/buildPlayerViewFlags';
 import { buildVisualizerTheme } from './components/app/presentation/buildVisualizerTheme';
@@ -151,6 +153,7 @@ import { audioBands, audioPower, bass, currentTime, lowMid, lyricCurrentTime, mi
 import { useAppChromeStore } from './stores/useAppChromeStore';
 import { useAppViewStore } from './stores/useAppViewStore';
 import { selectDisplayCoverUrl, selectDisplayDuration, selectDisplayLyrics, selectDisplayPlayerState, selectDisplaySong, selectIsShowingTail, usePlaybackStore } from './stores/usePlaybackStore';
+import { selectionTrace } from './services/playbackSelectionTrace';
 import { useLibraryStore } from './stores/useLibraryStore';
 import { selectLibraryOccludesPlayer, selectLibraryPlayerBackdrop, useLibraryPlayerOcclusionStore } from './stores/useLibraryPlayerOcclusionStore';
 import { resolveVisualizerBackdropBlur, visualizerBackdropStyle } from './components/app/presentation/playerVisualizerBackdrop';
@@ -705,6 +708,7 @@ export default function App() {
         backCollection,
     } = useAppNavigation();
     const reduceLatticeMotion = useReducedMotionFor('lattice');
+    const activeLibrarySuiteId = useActiveLibrarySuiteId();
     const [hasLatticeExited, setHasLatticeExited] = useState(currentView !== 'lattice');
 
     useEffect(() => {
@@ -1069,7 +1073,7 @@ export default function App() {
         clearQueue,
     } = usePlaybackQueueController({
         isNowPlayingStageActive,
-        shouldNavigateToPlayerOnTrackChange: currentView !== 'lattice',
+        shouldNavigateToPlayerOnTrackChange: currentView !== 'lattice' && !(currentView === 'home' && isWallLibrarySuite(activeLibrarySuiteId)),
         localSongs,
         localLibraryCatalog,
         userId: user?.id,
@@ -1273,7 +1277,7 @@ export default function App() {
      * whole rule: how the app arrived at the home page does not enter into it, so a cold start that
      * lands there and a walk back from another page behave the same.
      */
-    const activeLibrarySuiteId = useActiveLibrarySuiteId();
+
     const stageTrackPillOnScreen = shouldShowNowPlayingToast({
         mode: stageTrackPillMode,
         view: currentView,
@@ -2502,6 +2506,7 @@ export default function App() {
             }}
             onPlaying={(e) => {
                 if (!automix.isActiveDeck(e.currentTarget)) return;
+                selectionTrace('deck-playing', currentSong, { position: e.currentTarget.currentTime, native: nativePlayback });
                 shouldAutoPlay.current = false;
                 if (!isShowingTail) currentTime.set(e.currentTarget.currentTime);
                 setupAudioAnalyzer();
@@ -2615,7 +2620,7 @@ export default function App() {
                 // If single loop is active, native loop handles it.
                 // If not, we handle queue logic.
                 if (effectiveLoopMode !== 'one') {
-                    void handleNextTrack({ allowStopOnMissing: true, shouldNavigateToPlayer: false });
+                    void handleNextTrack({ trigger: 'ended', allowStopOnMissing: true, shouldNavigateToPlayer: false });
                 }
             }}
             onDurationChange={(e) => {
@@ -2684,7 +2689,7 @@ export default function App() {
                         return;
                     }
 
-                    void handleNextTrack({ allowStopOnMissing: true, shouldNavigateToPlayer: false });
+                    void handleNextTrack({ trigger: 'ended', allowStopOnMissing: true, shouldNavigateToPlayer: false });
                     return;
                 }
 
@@ -2747,6 +2752,7 @@ export default function App() {
 
             {/* 首页层、Lattice 与两面墙共用的右下角工具按钮（WallToolsDock：交接时按钮节点不重建）。 */}
             <WallToolsDockHost host={wallToolsHost}>
+            <LibraryCardLyricsHost song={displaySong} source={visualizerRendererModel} keywordColoringEnabled={visualizerRendererModel.visualizerTunings.monet.keywordColoringEnabled}>
             {/* Home Mount Point */}
             <div
                 className="absolute inset-0 z-10"
@@ -2827,6 +2833,7 @@ export default function App() {
                     </motion.div>
                 )}
             </AnimatePresence>
+            </LibraryCardLyricsHost>
             </WallToolsDockHost>
 
             {/* --- VISUALIZER (Background Layer & Main Click Target) --- */}
@@ -2842,6 +2849,7 @@ export default function App() {
             >
                 <PlayerBottomBarLayoutContext.Provider value={currentView === 'player'}>
                     {shouldMountVisualizer && <VisualizerRenderer {...visualizerRendererModel} />}
+                    {currentView === 'player' && displaySong && !visualizerRendererModel.lines.length && <NoLyricsNotice songKey={getPlaybackSongKey(displaySong)} />}
                 </PlayerBottomBarLayoutContext.Provider>
             </div>
 

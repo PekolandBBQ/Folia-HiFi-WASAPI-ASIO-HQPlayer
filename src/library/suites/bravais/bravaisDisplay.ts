@@ -131,6 +131,14 @@ export const resolveSlotItem = (display: BravaisDisplay | null, slot: Pick<WallS
 
 export const resolveSlotItemKey = (display: BravaisDisplay | null, slot: WallSlot) => resolveSlotItem(display, slot)?.key ?? null;
 
+// Mouse actions belong to the face the listener saw, not the slot's next animation target.
+// Keyboard navigation has no retained face and can resolve the current slot normally.
+export const resolveBravaisActionItem = (display: BravaisDisplay | null,
+    slot: Pick<WallSlot, 'column' | 'row' | 'slotIndex'>, renderedKey?: string): BravaisItem | null => (
+    renderedKey === undefined ? resolveSlotItem(display, slot)
+        : display?.layer.items.find(item => item.key === renderedKey) ?? null
+);
+
 /** 一个 slot 的内容与种类（透光：没有内容的 slot 是窗还是空画框）。 */
 export const resolveSlotFace = (
     display: BravaisDisplay | null,

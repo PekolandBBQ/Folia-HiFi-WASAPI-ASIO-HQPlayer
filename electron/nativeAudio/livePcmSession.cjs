@@ -137,6 +137,7 @@ function createLivePcmSession({ source, experiment, connectPipe = name => net.cr
         retireAction: verifiedLive ? 'stream-retire' : 'pause',
         ...(observations ? { startupDelayMs: experiment?.enabled ? experiment.startupDelayMs : 0,
             onBufferState: (...args) => observations.observe(...args) } : {}) });
+    let requestedPlaying = false;
     const assertIntent = own => { if (closed || own !== intent || options.current.abort.signal.aborted) throw audioError('CANCELLED'); };
     function pauseAtHeardCheckpoint() {
         // A drained end is not a valid source seek checkpoint. The source already
@@ -187,14 +188,40 @@ function createLivePcmSession({ source, experiment, connectPipe = name => net.cr
         async prepare(position = 0) {
             if (retirement) await retirement;
             if (closed) throw audioError('CANCELLED');
-            lastState = savedState(await base.prepare(position)); outputReleased = false; return lastState;
+            const own = intent, work = base.prepare(position); preparing = work;
+            try {
+                const state = await work; assertIntent(own);
+                lastState = savedState(state); outputReleased = false; return lastState;
+            } finally { if (preparing === work) preparing = null; }
         },
         async command(action, args = {}) {
             if (closed) throw audioError('CANCELLED');
             // The source accepts checkpoints before its duration, including a
             // playing drag to the progress bar's exact endpoint.
             if (action === 'seek') args = { ...args, position: Math.max(0, Math.min(args.position, source.durationMs / 1000 - 0.001)) };
+            if (action === 'play') requestedPlaying = true;
+            else if (action === 'pause') requestedPlaying = false;
             const own = ['pause', 'seek', 'play'].includes(action) ? ++intent : intent;
+            if (action === 'seek' && preparing) {
+                // Initial buffer preparation has no acknowledged output reader yet.
+                // Retire its producer before asking HQPlayer to inspect/pause a reader.
+                await retireOutput(own); assertIntent(own);
+                parked = args.position;
+                lastState = { ...lastState, position: parked, playing: false, ended: false };
+                await source.seek?.(Math.round(parked * 1000)); assertIntent(own);
+                if (requestedPlaying) {
+                    const work = base.prepare(parked, false, true); preparing = work;
+                    try { lastState = await work; assertIntent(own); }
+                    finally { if (preparing === work) preparing = null; }
+                    outputReleased = false; parked = null;
+                    for (const [control, values] of parkedControls) {
+                        lastState = await base.command(control, values); assertIntent(own);
+                    }
+                    parkedControls.clear();
+                    lastState = await base.command('play'); assertIntent(own);
+                }
+                return savedState(lastState);
+            }
             if (action === 'pause') {
                 if (retirement) { await retirement; assertIntent(own); return savedState(lastState); }
                 if (preparing) { await retireOutput(own); assertIntent(own); return savedState(lastState); }

@@ -10,7 +10,7 @@ const require = createRequire(import.meta.url);
 const { createOwnedRouteHost, resolveOwnedRouteComponent } = require('../../../electron/spotify/ownedRouteHost.cjs');
 const { installPreviewDiagnosticSink } = require('../../../electron/debug/privatePreviewDiagnosticBus.cjs');
 const { physicalOwnerDiagnostic } = require('../../../electron/spotify/ownedRouteProtocol.cjs');
-const capabilities = { protocolMajor: 1, componentVersion: '0.19.0-dev.30', platform: 'win32-x64', contract: 'folia-owned-route-v1', supported: true,
+const capabilities = { protocolMajor: 1, componentVersion: '0.19.0-dev.31', platform: 'win32-x64', contract: 'folia-owned-route-v1', supported: true,
   productionQualified: true, heldPausedAcquire: true, completeSessionProof: true, notificationCoherent: true, retainedJournalRecovery: true,
   intervalIsolation: true, providerRouteLifetime: true, boundedSeekPark: true, boundedPausedProofTransfer: true, boundedPausedHoldObservation: true,
   indefiniteHeldPause: true, freshResumeInterval: true, ownedSilentRenderLease: true, preparedSelection: true, preparedTargetActivity: true,
@@ -179,7 +179,7 @@ it('physical-owner evidence ignores getters, unknown fields, invalid numbers and
   expect(getterCalls).toBe(0);
 });
 it('requires an exact qualified single-file component manifest and binary digest', async () => {
-  const bytes = Buffer.from('mock executable bytes'), manifest: any = { schema: 1, version: '0.19.0-dev.30', protocolMajor: 1,
+  const bytes = Buffer.from('mock executable bytes'), manifest: any = { schema: 1, version: '0.19.0-dev.31', protocolMajor: 1,
     executable: 'folia-route-service.exe', sha256: createHash('sha256').update(bytes).digest('hex'),
     distribution: 'self-contained-single-file', productionQualified: true, lengthBytes: bytes.length };
   const io = { readFile: vi.fn(async (file: string) => file.endsWith('.json') ? JSON.stringify(manifest) : bytes),
@@ -221,7 +221,7 @@ it('rejects unavailable native routing interfaces without sending policy command
 });
 it('accepts a pinned public runtime-adaptive manifest without a personal validation opt-in', async () => {
   const bytes = Buffer.from('public runtime adapter');
-  const manifest = { schema: 1, version: '0.19.0-dev.30', protocolMajor: 1, executable: 'folia-route-service.exe',
+  const manifest = { schema: 1, version: '0.19.0-dev.31', protocolMajor: 1, executable: 'folia-route-service.exe',
     sha256: createHash('sha256').update(bytes).digest('hex'), lengthBytes: bytes.length,
     distribution: 'self-contained-single-file', builtFor: 'win-x64', productionQualified: false,
     runtimeAdaptation: true, compatibilityProfile: 'folia-owned-route-runtime-abi-x64-v1' };
@@ -230,7 +230,7 @@ it('accepts a pinned public runtime-adaptive manifest without a personal validat
   expect(await resolveOwnedRouteComponent('/component', io)).toBe(path.join('/component', 'folia-route-service.exe'));
 });
 it('will not admit a trial manifest through a production or ad-hoc profile path', async () => {
-  const bytes = Buffer.from('fixed private build'), manifest: any = { schema: 1, version: '0.19.0-dev.30', protocolMajor: 1, executable: 'folia-route-service.exe',
+  const bytes = Buffer.from('fixed private build'), manifest: any = { schema: 1, version: '0.19.0-dev.31', protocolMajor: 1, executable: 'folia-route-service.exe',
     sha256: createHash('sha256').update(bytes).digest('hex'), lengthBytes: bytes.length, distribution: 'self-contained-single-file',
     productionQualified: false, trialAuthorized: true, validationProfile: 'folia-r19-owned-route-28000-x64-v1' };
   const io = { readFile: async (file: string) => file.endsWith('.json') ? JSON.stringify(manifest) : bytes,
@@ -329,3 +329,18 @@ it('old callback URI is retired after completed selection even inside current so
 
 
 
+
+it('preserves the preparation stage and bounded facts for concrete Chinese errors', async () => {
+  const log = vi.spyOn(console, 'info').mockImplementation(() => {});
+  const f = fixture({}, { code: 0 }, { handle(input: any, reply: any) {
+    if (input.command !== 'completePreparedSelection') return false;
+    reply({ ok: false, code: 'PREPARED_TARGET_ACTIVITY_REQUIRED', preparationDiagnostic: {
+      mode: 'process', epoch: 2, pendingProof: false, completedProof: false, activeSessionCount: 0, privateTrack: 'secret' } }); return true;
+  } });
+  try {
+    await expect(f.host.request('completePreparedSelection', {})).rejects.toMatchObject({ nativeCode: 'PREPARED_TARGET_ACTIVITY_REQUIRED', stage: 'route-complete-prepared-selection' });
+    const entry = log.mock.calls.find(call => call[0] === '[SpotifyRoutePreparation]');
+    expect(entry).toBeDefined(); expect(JSON.parse(String(entry![1]))).toMatchObject({ mode: 'process', epoch: 2, pendingProof: false, activeSessionCount: 0 });
+    expect(String(entry![1])).not.toContain('secret');
+  } finally { await f.host.close(); log.mockRestore(); }
+});

@@ -33,18 +33,18 @@ async function fixture({ streaming = true, portable = false, hqPrepare = async (
     // process, driver, decoder or device is invoked by these injected factories.
     const platform = Object.getOwnPropertyDescriptor(process, 'platform')!;
     if (portable) Object.defineProperty(process, 'platform', { ...platform, value: 'win32' });
-    let service: any;
+    let service: any, hqCallbacks: any;
     try { service = registerNativeAudio({ app, ipcMain: { handle: vi.fn() }, isTrustedSender: (value: unknown) => value === sender,
         componentManager: { status: async () => ({ available: true, executable: 'helper.exe' }) }, helperFactory: () => helper,
         decoderResolver: async () => 'decoder.exe', decode, download, resolveLivePcmSource, liveStreamFactory,
-        hqplayerFactory: () => ({ dispose: vi.fn(), prepare: hqPrepare, supportsStreaming: async () => true, stop: vi.fn() }) }); }
+        hqplayerFactory: (callbacks: any) => (hqCallbacks = callbacks, { dispose: vi.fn(), prepare: hqPrepare, supportsStreaming: async () => true, stop: vi.fn() }) }); }
     finally { if (portable) Object.defineProperty(process, 'platform', platform); }
     const request = (payload: Record<string, unknown>) => service.handle({ sender, senderFrame: sender.mainFrame }, payload);
     cleanups.push(async () => {
         app.emit('before-quit'); await new Promise(resolve => setTimeout(resolve, 25));
         await rm(directory, { recursive: true, force: true });
     });
-    return { request, app, source, live, liveStreamFactory, decode, download, mkdtempSpy, writeFile, directory, helper, url };
+    return { request, app, source, live, liveStreamFactory, hqCallbacks, decode, download, mkdtempSpy, writeFile, directory, helper, url };
 }
 
 it('waits for Desktop connection before starting the bounded live producer', async () => {
@@ -128,4 +128,20 @@ it('Stop still restores the exact active source after its late producer failure 
     await expect(f.request({ action: 'stop', session: 'failed-owner' })).resolves.toMatchObject({ ok: true });
     expect(f.live.close).toHaveBeenCalledOnce();
     expect(f.live.close).toHaveBeenCalledWith({ retainSource: false });
+});
+
+it('a replaced live reader cancellation does not fail or abort the current output, but a real fault still does', async () => {
+ const f=await fixture({portable:true});await f.request({action:'begin',session:'known',backend:'asio',deviceId:'test',url:f.url});await f.request({action:'finish',session:'known'});
+ const options=f.liveStreamFactory.mock.calls[0][0];const send=options.current.sender.send;send.mockClear();
+ for(const error of [Object.assign(Error('cancel'),{code:'CANCELLED'}),new DOMException('aborted','AbortError'),Object.assign(Error('Spotify: request-cancelled'),{code:'unavailable'})])options.onError(error);
+ expect(options.current.abort.signal.aborted).toBe(false);expect(send).not.toHaveBeenCalled();
+ await expect(f.request({action:'seek',session:'known',position:15})).resolves.toBeDefined();
+ options.onError(Object.assign(Error('real failure'),{code:'SOURCE_UNAVAILABLE'}));expect(options.current.abort.signal.aborted).toBe(true);expect(send).toHaveBeenCalled();
+});
+
+it('HQPlayer callback cancellation is silent while genuine control rejection is still sent',async()=>{
+ const f=await fixture({portable:true});await f.request({action:'begin',session:'known',backend:'hqplayer',deviceId:'hqplayer-local',url:f.url});await f.request({action:'finish',session:'known'});
+ const send=f.liveStreamFactory.mock.calls[0][0].current.sender.send;send.mockClear();
+ f.hqCallbacks.onError(Object.assign(Error('retired'),{code:'CANCELLED'}));expect(send).not.toHaveBeenCalled();
+ f.hqCallbacks.onError(Object.assign(Error('rejected'),{code:'HQPLAYER_COMMAND_REJECTED'}));expect(send).toHaveBeenCalledWith('native-audio:event',expect.objectContaining({errorCode:'HQPLAYER_COMMAND_REJECTED'}));
 });

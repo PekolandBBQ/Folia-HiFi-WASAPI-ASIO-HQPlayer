@@ -7,7 +7,7 @@ import type { LocalGridViewCollectionDescriptor } from './collection';
 
 /** 把「播放 / 入队」交给应用现有的播放控制器；核心层不知道队列怎么构造。 */
 export interface LibraryPlaybackPort {
-    playTrack(track: SongResult, queue: SongResult[]): void;
+    playTrack(track: SongResult, queue: SongResult[], options?: { shouldNavigateToPlayer?: boolean }): void;
     playAll(tracks: SongResult[]): void;
     enqueueTrack(track: SongResult): void;
     /**

@@ -112,4 +112,34 @@ Test("a failed restoration attempt invalidates activity history while retaining 
  Check(!r.Ok&&r.Code=="PREPARED_TARGET_ACTIVITY_REQUIRED","Failed release retained preparation witness");
  Ok(f.Send("release"));f.CheckOriginals();
 });
+foreach (var empty in new[] { true, false }) Test("process preparation/resume/output replacement without active endpoint: " + empty, () => {
+ using var f=new Fixture { RequiresTargetEndpointActivity=false };
+ f.AlterObservation=o=>o with { Sessions=empty ? [] : [new(Fixture.Identity,"inactive","physical",false)] };
+ f.Prepare();f.Start(1);f.Pause();f.Epoch=2;
+ Ok(f.Send("resumePreparation",new {intervalEpoch=2,selectedSourceUri=Fixture.Track}));
+ Ok(f.Send("completePreparedSelection"));f.Start(2);f.Pause();Ok(f.Send("release"));f.CheckOriginals();
+});
+Test("interrupted process preparation recovers with fresh proof and no endpoint history",()=>{
+ using var f=new Fixture { RequiresTargetEndpointActivity=false };f.BeginPreparation();
+ f.AlterObservation=o=>o with {Sessions=[]};f.Paused=true;f.PcmStopped=true;f.ResetReceipt();
+ Ok(f.Send("suspendPaused",new {intervalEpoch=1}));f.Epoch=2;
+ Ok(f.Send("resumePreparation",new {intervalEpoch=2,selectedSourceUri=Fixture.Track}));
+ Ok(f.Send("completePreparedSelection"));f.Start(2);f.Pause();Ok(f.Send("release"));f.CheckOriginals();
+});
+Test("process proof rejects incomplete scans and reused process identity then recovers",()=>{
+ using var f=new Fixture { RequiresTargetEndpointActivity=false };f.BeginPreparation();
+ f.AlterObservation=o=>o with {CompleteForProcess=false,Sessions=[]};
+ Check(!Witness(f).Ok,"Incomplete process proof accepted");
+ f.AlterObservation=o=>o with {Sessions=[]};Ok(Witness(f));
+ f.Live=Fixture.Identity with {StartTimeUtcTicks=Fixture.Identity.StartTimeUtcTicks+1};
+ Check(!f.Send("completePreparedSelection").Ok,"Reused PID accepted");
+ // Identity replacement retires this route; retry must acquire a new exact owner.
+ Check(!f.Send("armCaptureInterval").Ok,"Changed process admitted capture");
+});
+Test("process proof cannot be reused after capture mode changes",()=>{
+ using var f=new Fixture {RequiresTargetEndpointActivity=false};f.BeginPreparation();
+ f.AlterObservation=o=>o with {Sessions=[]};Ok(Witness(f));f.RequiresTargetEndpointActivity=true;
+ Check(!f.Send("completePreparedSelection").Ok,"Cross-mode proof accepted");
+ f.RequiresTargetEndpointActivity=false;f.AlterObservation=null;f.Paused=true;f.ResetReceipt();Ok(f.Send("release"));
+});
 Console.WriteLine($"PASS {count} prepared-target tests; no Windows/audio execution.");

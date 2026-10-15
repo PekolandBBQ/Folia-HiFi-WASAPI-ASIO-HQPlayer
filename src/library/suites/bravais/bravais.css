@@ -557,3 +557,9 @@
 .lattice-poster.bravais-tile-face.is-see-through {
     background: var(--bravais-window-glow);
 }
+
+/* Keep the existing title fallback until the shared lyric canvas is actually ready. */
+.bravais-root .lattice-poster.is-expanded:has(.lattice-lyrics.is-ready) .bravais-focus-copy { top: 60px; bottom: 28px; justify-content: flex-start; }
+.bravais-root .lattice-poster.is-expanded:has(.lattice-lyrics.is-ready) .bravais-focus-copy > :first-child { font-size: 22px; line-height: 1.2; max-height: 54px; overflow: hidden; }
+.bravais-root .lattice-poster.is-expanded:has(.lattice-lyrics.is-ready) .bravais-focus-actions { margin-top: auto; }
+.bravais-root .lattice-lyrics { inset: 150px 24px 105px; }

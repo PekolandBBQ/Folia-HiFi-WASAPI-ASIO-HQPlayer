@@ -2,6 +2,7 @@
 const { spotifyError } = require('./errors.cjs');
 const { failure: captureFailure } = require('./cableCaptureProtocol.cjs');
 const { CODES: ROUTE_CODES } = require('./ownedRouteProtocol.cjs');
+const { durationsAgree } = require('./durationFacts.cjs');
 
 // electron/spotify/cableAudioFacts.cjs: catalog identity and safe public error mapping for desktop capture.
 const fail = code => Object.assign(new Error(code), { code });
@@ -20,9 +21,13 @@ function metadataFacts(value, requested) {
 function requireFacts(value, record, playing) {
   if (value?.deviceId !== record.selection.deviceId) throw fail('DEVICE_ID_MISMATCH');
   if (value.trackId !== record.resolvedTrackId) throw fail('TRACK_NOT_CURRENT');
-  const endedPaused = playing === false && value.positionMs === record.durationMs;
-  if (value.durationMs !== record.durationMs || !position(value.positionMs, record.durationMs) && !endedPaused
-    || value.isPlaying !== playing) throw fail('PLAYBACK_STATE_UNCONFIRMED');
+  const endedPaused = playing === false && value.positionMs === value.durationMs;
+  const mismatch = !durationsAgree(value.durationMs, record.durationMs) ? 'duration-mismatch'
+    : !position(value.positionMs, value.durationMs) && !endedPaused ? 'position-invalid'
+    : value.isPlaying !== playing ? 'playing-mismatch' : null;
+  if (mismatch) throw Object.assign(fail('PLAYBACK_STATE_UNCONFIRMED'), { stateMismatch: mismatch,
+    stage: 'playback-facts', expectedPlaying: playing, actualPlaying: value.isPlaying,
+    expectedDurationMs: record.durationMs, actualDurationMs: value.durationMs, actualPositionMs: value.positionMs });
   return value;
 }
 const CONTROL_CODES = new Set(['AUTH_REQUIRED', 'SCOPES_UNKNOWN', 'SCOPE_REQUIRED', 'SESSION_CHANGED',
@@ -69,6 +74,8 @@ function mappedError(error) {
     return spotifyError('unavailable', 'external-playback-change');
   if (code === 'RATE_LIMITED') return spotifyError('unavailable', 'rate-limited');
   if (code === 'TRACK_UNAVAILABLE') return spotifyError('not-playable', 'track-unavailable');
+  if (['INVALID_AUDIO_TRACK_ID', 'INVALID_AUDIO_REQUEST_ID', 'INVALID_AUDIO_QUALITY'].includes(code))
+    return spotifyError('invalid-response', 'invalid-audio-request');
   if (['METADATA_INVALID', 'INVALID_AUDIO_REQUEST', 'INVALID_POSITION'].includes(code)) return spotifyError('invalid-response',
     code === 'INVALID_POSITION' ? 'invalid-position' : code === 'INVALID_AUDIO_REQUEST' ? 'invalid-audio-request' : 'track-metadata-mismatch');
   if (['CAPTURE_CONFIGURATION_REQUIRED', 'CAPTURE_UNSUPPORTED_PLATFORM', 'CAPTURE_HELPER_UNAVAILABLE',
@@ -89,7 +96,10 @@ function mappedError(error) {
 }
 function publicError(error) {
   const result = mappedError(error);
+  for (const key of ['retryCount', 'retriesExhausted']) if (error?.[key] !== undefined) result[key] = error[key];
   for (const key of ['nativeCode', 'failureCode', 'stage']) if (typeof error?.[key] === 'string') result[key] = error[key];
+  for (const key of ['stateMismatch','expectedPlaying','actualPlaying','expectedDurationMs','actualDurationMs','actualPositionMs'])
+    if (error?.[key] !== undefined) result[key] = error[key];
   const details = captureFailure(error?.nativeCode || error?.code, error);
   if (details.formatLeaseReadback) result.formatLeaseReadback = details.formatLeaseReadback;
   if (details.hresult !== undefined) result.hresult = details.hresult;

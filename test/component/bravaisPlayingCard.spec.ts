@@ -282,3 +282,20 @@ test.describe('[grid] stay here', () => {
         await expect(page.locator('[data-grid-card-play="playing"], [data-grid-card-play="paused"]')).toHaveCount(0);
     });
 });
+
+test('[bravais-only] consecutive next, previous and automatic changes reveal the playing card without remount', async ({mount,page})=>{
+ await mountBravais(mount,page);await openCard(page);
+ const {card,entry,playbackKey}=await expandSong(page);
+ await card.locator('[data-bravais-action="play"]').dispatchEvent('click');
+ await setNowPlaying(page,playbackKey,true);
+ const other=(await page.locator('[data-library-entry]').evaluateAll(nodes=>Array.from(new Set(nodes.map(n=>n.getAttribute('data-library-entry')))))).filter(k=>k&&k!==entry).slice(0,2) as string[];
+ expect(other.length).toBe(2);
+ await page.keyboard.press('Escape');
+ await expect(page.locator('[data-bravais-expanded]')).toHaveCount(0);
+ for(const key of [other[0],entry,other[1]]){
+  await setNowPlaying(page,key.replace(/-\d+$/,''),true);
+  await expect(page.locator('[data-bravais-expanded]')).toHaveAttribute('data-library-entry',key);
+  await expect.poll(()=>isInViewport(page)).toBe(true);
+ }
+ expect(await calls(page,'enterPlaybackView')).toHaveLength(0);
+});

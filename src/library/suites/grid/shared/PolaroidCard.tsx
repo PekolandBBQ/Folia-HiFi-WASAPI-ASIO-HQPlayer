@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import { withSelectionOrigin } from '../../../../services/playbackSelectionTrace';
 import { Pencil } from 'lucide-react';
 import type { SongResult, Theme, UnifiedSong } from '../../../../types';
 import { getSongUnavailableLabel, isSongUnavailable } from '../../../../services/onlineMusic/songAvailability';
@@ -60,7 +61,7 @@ export const PolaroidCard = React.memo<PolaroidCardProps>(
         item,
         isDaylight,
         theme,
-        onSelect,
+        onSelect: select,
         onCenter,
         onAddQueue,
         mode,
@@ -78,6 +79,7 @@ export const PolaroidCard = React.memo<PolaroidCardProps>(
         fullBleedCover = false,
         playbackMark = null,
     }) => {
+        const onSelect = () => withSelectionOrigin('grid-card', item.rawTrack, select);
         const isUnavailable = mode === 'tracks' && item.rawTrack ? isSongUnavailable(item.rawTrack) : false;
         const unavailableTagText = (mode === 'tracks' && item.rawTrack)
             ? getSongUnavailableLabel(item.rawTrack, t('status.songUnavailableTag'))
@@ -336,6 +338,12 @@ export const PolaroidCard = React.memo<PolaroidCardProps>(
     },
     (prev, next) => {
         return (
+            prev.item.rawTrack === next.item.rawTrack &&
+            prev.onSelect === next.onSelect && prev.onCenter === next.onCenter &&
+            prev.onAddQueue === next.onAddQueue && prev.onRemoveTrack === next.onRemoveTrack &&
+            prev.onSelectAlbum === next.onSelectAlbum && prev.onSelectArtist === next.onSelectArtist &&
+            prev.onBeforeNestedNavigate === next.onBeforeNestedNavigate &&
+            prev.onEditLocalMetadata === next.onEditLocalMetadata && prev.t === next.t &&
             prev.item.id === next.item.id &&
             prev.item.name === next.item.name &&
             prev.item.coverUrl === next.item.coverUrl &&

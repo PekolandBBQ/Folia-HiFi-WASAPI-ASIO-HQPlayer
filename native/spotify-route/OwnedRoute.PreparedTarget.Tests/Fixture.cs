@@ -13,6 +13,7 @@ sealed class Fixture : IProductRouteBackend,IProductRouteLifetime,IVerifiedSpoti
  public TimeSpan Elapsed;
  public int Epoch=1; public Func<SessionObservation,SessionObservation>? AlterObservation; public SpotifyProcess Live=Identity;
  public bool RealTime=false;
+ public bool RequiresTargetEndpointActivity {get;set;}=true;
  public Action? OnValidateAuthority;
  readonly long realtimeStart=System.Diagnostics.Stopwatch.GetTimestamp();
  public TimeSpan Monotonic=>RealTime?System.Diagnostics.Stopwatch.GetElapsedTime(realtimeStart):Elapsed;
@@ -62,7 +63,7 @@ sealed class Fixture : IProductRouteBackend,IProductRouteLifetime,IVerifiedSpoti
  public void ValidateOwnership(PreparedRetention r){if(r.Process!=Identity||r.TransactionId!=Latest?.TransactionId)throw new JournalUnavailableException("BAD_RETAINED_OWNER");}
  public void ValidateApplyAuthority(){PolicyScans++;OnValidateAuthority?.Invoke();if(CaptureChildExited)throw new RouteBlockedException("OWNED_SILENT_RENDER_LEASE_LOST");}
  public void ValidatePausedOwnerLiveness(){}
- public void VerifyPausedSource(OwnedPlaybackTarget target){readingTarget=target;new SourcePauseVerifier(this,this,this,()=>Now,ledger).RequirePaused(target);}
+ public void VerifyPausedSource(OwnedPlaybackTarget target){readingTarget=target;new SourcePauseVerifier(this,this,this,()=>Now,ledger,requireNativeQuiescence:RequiresTargetEndpointActivity).RequirePaused(target);}
  public void VerifyRestoredTerminal(RouteRecord r,PreparedRetention p)=>CheckOriginals();
  public ProductDefaultStatus ReadDefaultStatus()=>new(true,["physical","physical","physical"],["physical","physical","physical"]);
  public bool IntervalIsolated=>IntervalGeneration!=0&&!Suspended;public int IntervalGeneration{get;private set;}public string? IntervalId{get;private set;}

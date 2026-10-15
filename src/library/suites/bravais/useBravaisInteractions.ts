@@ -4,7 +4,8 @@ import type { WallDirection } from '../../../components/wall/wallNavigation';
 import { overlaps } from '../../../components/wall/layout';
 import { getWallSlot, parseWallSlotKey, type WallSlot } from '../../../components/wall/wallSlots';
 import { BRAVAIS_METRICS } from './bravaisConstants';
-import { findNearestSlot, resolveSlotFace, resolveSlotItem, type BravaisDisplay } from './bravaisDisplay';
+import { findNearestSlot, resolveSlotFace, resolveSlotItem, resolveBravaisActionItem, type BravaisDisplay } from './bravaisDisplay';
+import { selectionTrace } from '../../../services/playbackSelectionTrace';
 import { findDisplayItemSlot } from './bravaisItemSlots';
 import type { BravaisHomeShortcut } from './bravaisHomeModels';
 import { resolveEscapeStep, type BravaisKeyAction } from './bravaisKeyboardModel';
@@ -92,9 +93,9 @@ export const useBravaisInteractions = ({
 }) => {
     // 只取 focus 里身份稳定的成员：磁贴的 handlers 要跨渲染保持同一个对象，否则每张磁贴的 memo 都会失效。
     const { focusSlot, expand, collapse, expandedRef, focusedRef, drawnRect } = focus;
-    const itemAt = useCallback((slotKey: string | null) => {
+    const itemAt = useCallback((slotKey: string | null, renderedKey?: string) => {
         const slot = bravaisSlotFromKey(slotKey);
-        return slot ? resolveSlotItem(displayRef.current, slot) : null;
+        return slot ? resolveBravaisActionItem(displayRef.current, slot, renderedKey) : null;
     }, [displayRef]);
 
     /** 从一张磁贴打开下一层：先记下起点（新层到达时它原地成为第 1 项）。 */
@@ -137,8 +138,10 @@ export const useBravaisInteractions = ({
             const item = itemAt(slotKey);
             if (item?.hideable) displayRef.current?.layer.home?.onToggleHidden?.(item.key);
         },
-        play: slotKey => {
-            const item = itemAt(slotKey);
+        play: (slotKey, renderedKey) => {
+            const item = itemAt(slotKey, renderedKey);
+            selectionTrace('wall-play-resolved', null, { slotKey, renderedKey,
+                slotTargetKey: itemAt(slotKey)?.key, resolvedKey: item?.key, resolvedTitle: item?.title });
             const layer = displayRef.current?.layer;
             if (!item || !layer) return;
             const toggle = playbackRef.current.toggle;
@@ -151,8 +154,8 @@ export const useBravaisInteractions = ({
         },
         togglesCurrent,
         enterPlayback: hasEnter ? () => playbackRef.current.enter?.() : undefined,
-        enqueue: slotKey => {
-            const item = itemAt(slotKey);
+        enqueue: (slotKey, renderedKey) => {
+            const item = itemAt(slotKey, renderedKey);
             if (item) displayRef.current?.layer.onEnqueueItem?.(item.key);
         },
         canOpenAlbum: itemKey => Boolean(displayRef.current?.layer.canOpenAlbum?.(itemKey)),

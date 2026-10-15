@@ -2,10 +2,15 @@ const { isRetryableRouteCleanup } = require('./ownedRouteCleanup.cjs');
 const { readClientSettings, writeClientSettings } = require('./clientSettings.cjs');
 const { spotifyError } = require('./errors.cjs');
 const { NCSPOT_CLIENT_ID } = require('./catalogLogin.cjs');
+const { retryPlayback } = require('./playbackRetry.cjs');
 
 // Serializes client changes against new requests while cancelling work from the previous configuration.
-function createSpotifyRuntime({ directory, createService, environment = process.env, connectionMode = 'oauth' }) {
+function createSpotifyRuntime({ directory, createService, environment = process.env, connectionMode = 'oauth', retryWait, onRetry = value => console.info('[SpotifyRecovery]', JSON.stringify(value)) }) {
   let service, queue = Promise.resolve(), closed = false, cleanupFailed = false, cleanupFailure, closing, reconfigurePending = false;
+  let audioRetry;
+  const cancelRetry = requestId => {
+    if (audioRetry && (requestId == null || requestId === audioRetry.requestId)) audioRetry.controller.abort();
+  };
   const publicSettings = () => {
     const config = readClientSettings(directory, environment);
     return { playbackMode: connectionMode, mode: config.catalogClientId === NCSPOT_CLIENT_ID ? 'shared' : 'custom', clientId: config.catalogClientId,
@@ -13,6 +18,12 @@ function createSpotifyRuntime({ directory, createService, environment = process.
   };
   return {
     async request(input, progress) {
+      const retry = connectionMode === 'wrapper' && input?.action === 'audio'
+        ? { requestId: input.requestId, controller: new AbortController() } : null;
+      if (retry) { cancelRetry(); audioRetry = retry; }
+      if (['configure', 'logout', 'loginBegin', 'leaveProvider'].includes(input?.action)) cancelRetry();
+      if (input?.action === 'desktopSetup' && ['choose', 'install', 'configure'].includes(input.operation)) cancelRetry();
+      if (input?.action === 'cancelAudio') cancelRetry(input.requestId);
       if (input?.action === 'configure') {
         if (connectionMode === 'wrapper') throw Object.assign(new Error('SPOTIFY_WRAPPER_SETTINGS_AUTOMATIC'), { code: 'SPOTIFY_WRAPPER_SETTINGS_AUTOMATIC' });
         const task = queue.then(async () => {
@@ -47,9 +58,17 @@ function createSpotifyRuntime({ directory, createService, environment = process.
       if (cleanupFailed) throw cleanupFailure;
       if (reconfigurePending) throw spotifyError('setup-required', 'source-configuration-changed');
       if (!service) service = createService(readClientSettings(directory, environment));
+      if (retry) {
+        try {
+          return await retryPlayback(() => service.request(input, progress), {
+            signal: retry.controller.signal, wait: retryWait, report: onRetry,
+          });
+        } finally { if (audioRetry === retry) audioRetry = null; }
+      }
       return service.request(input, progress);
     },
     async leaveProvider() {
+      cancelRetry();
       await queue;
       if (closed) throw new Error('Spotify: runtime-closed');
       if (cleanupFailed) throw cleanupFailure;
@@ -57,6 +76,7 @@ function createSpotifyRuntime({ directory, createService, environment = process.
       if (reconfigurePending) { await service?.close(); service = undefined; reconfigurePending = false; }
     },
     async prepareSourceOutput(url, backend) {
+      cancelRetry();
       await queue;
       if (closed) throw new Error('Spotify: runtime-closed');
       if (cleanupFailed) throw cleanupFailure;
@@ -66,6 +86,7 @@ function createSpotifyRuntime({ directory, createService, environment = process.
     lookupSoloistPcmSource(url) { return closed || cleanupFailed || reconfigurePending ? null : service?.lookupSoloistPcmSource?.(url) || null; },
     requestBrowserPcm(input) { if (closed || !service) throw new Error('Spotify: runtime-closed'); if (cleanupFailed) throw cleanupFailure; if (reconfigurePending) throw spotifyError('setup-required', 'source-configuration-changed'); return service.requestBrowserPcm(input); },
     close() {
+      cancelRetry();
       if (closing) return closing;
       closed = true;
       closing = (async () => { await queue; await service?.close(); service = undefined; })();

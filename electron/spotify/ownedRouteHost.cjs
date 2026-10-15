@@ -13,7 +13,7 @@ async function resolveOwnedRouteComponent(directory, io = fs, { allowTrial = fal
   try {
     const manifest = JSON.parse(await io.readFile(path.join(directory, 'component.json'), 'utf8'));
     if (manifest.schema !== 1 || manifest.protocolMajor !== 1 || manifest.executable !== 'folia-route-service.exe'
-      || manifest.version !== '0.19.0-dev.30' || !/^[a-f0-9]{64}$/.test(manifest.sha256 || '')) throw failure('ROUTE_COMPONENT_INVALID');
+      || manifest.version !== '0.19.0-dev.31' || !/^[a-f0-9]{64}$/.test(manifest.sha256 || '')) throw failure('ROUTE_COMPONENT_INVALID');
     if (manifest.productionQualified !== true && !runtimeArtifact(manifest)) {
       if (!trialArtifact(manifest)) throw failure('ROUTE_HELPER_UNQUALIFIED');
       if (!allowTrial) throw Object.assign(failure('ROUTE_TRIAL_OPT_IN_REQUIRED'), { trialAvailable: true, validationProfile: VALIDATION_PROFILE });
@@ -71,11 +71,23 @@ function createOwnedRouteHost({ componentDirectory, platform = process.platform,
       }
       if (value.ok && pending.command === 'completePreparedSelection' && record.routeScope)
         record.routeScope.baselineUri = record.routeScope.selectedUri;
+      // Normal runtime diagnostics contain bounded preparation facts, never private identities.
+      if (!value.ok || ['verifyPreparedTargetActive', 'completePreparedSelection', 'resumePreparation', 'seekResumePreparation'].includes(pending.command)) {
+        const facts = value.preparationDiagnostic;
+        console.info('[SpotifyRoutePreparation]', JSON.stringify({ operation: pending.command, ok: value.ok,
+          code: /^[A-Z0-9_]{1,128}$/.test(value.code || '') ? value.code : 'ROUTE_REQUEST_FAILED',
+          ...(facts && ['process', 'endpoint'].includes(facts.mode) ? { mode: facts.mode,
+            epoch: Number.isSafeInteger(facts.epoch) ? facts.epoch : undefined,
+            pendingProof: facts.pendingProof === true, completedProof: facts.completedProof === true,
+            activeSessionCount: Number.isSafeInteger(facts.activeSessionCount) ? facts.activeSessionCount : null,
+            selectionCompleted: facts.selectionCompleted === true, pausedHeld: facts.pausedHeld === true,
+            seekParked: facts.seekParked === true } : {}) }));
+      }
       if (value.ok) pending.resolve(value);
       else {
         const error = failure(value.code);
         if (/^[A-Z][A-Z0-9_]{1,127}$/.test(value.code || '')) error.nativeCode = value.code;
-        error.stage = 'route-' + pending.command;
+        error.stage = 'route-' + pending.command.replace(/[A-Z]/g, letter => '-' + letter.toLowerCase());
         if (value.code === 'BASE_OR_UNPROVEN_DEFAULT_FEEDBACK_GUARD') {
           // Resume can discover an output change after the initial setup check.
           // Notify the existing guide without changing rejection or route ownership.

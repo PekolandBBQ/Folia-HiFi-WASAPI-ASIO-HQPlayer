@@ -1,3 +1,4 @@
+import { useNativeLyricsResultStore } from '@/stores/useNativeLyricsResultStore';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const cachedAudioMock = vi.hoisted(() => vi.fn());
@@ -555,4 +556,14 @@ describe('instrumental tracks, once auto-match has settled them', () => {
         expect(merged.importedLyrics).toBe(imported);
         expect(merged.matchedIsPureMusic).toBe(true);
     });
+});
+
+it('empty Spotify response shows a presentation notice without marking the track instrumental; failure does not',async()=>{
+ loadLyricsStateMock.mockResolvedValue(null);songCacheMock.mockResolvedValue(null);
+ const track={...song,sourceRef:{kind:'online',providerId:'spotify',mediaId:'empty-track'}} as SongResult;
+ const onPureMusicChange=vi.fn();const callbacks={isCurrent:()=>true,onLyrics:vi.fn(),onDone:vi.fn(),onPureMusicChange};
+ lyricsMock.mockResolvedValue({lyrics:null,mainText:null,isPureMusic:false});await loadOnlineSongLyrics(track,null,null,callbacks);
+ expect(useNativeLyricsResultStore.getState().state).toBe('empty');expect(onPureMusicChange).toHaveBeenCalledWith(false);
+ lyricsMock.mockRejectedValue(Error('timeout'));await expect(loadOnlineSongLyrics(track,null,null,callbacks)).rejects.toThrow('timeout');
+ expect(useNativeLyricsResultStore.getState().state).toBe('error');
 });

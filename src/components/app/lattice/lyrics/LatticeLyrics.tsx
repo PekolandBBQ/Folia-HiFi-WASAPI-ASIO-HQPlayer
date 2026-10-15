@@ -7,7 +7,7 @@ import type { LatticeTile } from '../latticeModel';
 import './LatticeLyrics.css';
 
 // src/components/app/lattice/lyrics/LatticeLyrics.tsx
-export default function LatticeLyrics({ tile, reducedMotion }: { tile: LatticeTile; reducedMotion: boolean }) {
+export default function LatticeLyrics({ tile, reducedMotion, showMetadata = true }: { tile: LatticeTile; reducedMotion: boolean; showMetadata?: boolean }) {
     const source = useLatticeLyrics();
     const fontsEpoch = useFontsEpoch();
     const host = useRef<HTMLDivElement>(null);
@@ -16,7 +16,7 @@ export default function LatticeLyrics({ tile, reducedMotion }: { tile: LatticeTi
     const ready = useLatticeLyricCanvas(host, input);
     const line = input?.lines[input.currentLineIndex];
     return <>
-        <AnimatePresence initial={false}>
+        {showMetadata && <AnimatePresence initial={false}>
             <motion.span
                 key={ready ? 'lyrics-ready' : 'lyrics-loading'}
                 className={`lattice-poster-copy ${ready ? 'lattice-lyric-metadata' : ''}`}
@@ -27,7 +27,7 @@ export default function LatticeLyrics({ tile, reducedMotion }: { tile: LatticeTi
             >
                 <strong>{tile.title}</strong><small>{tile.artist}</small>
             </motion.span>
-        </AnimatePresence>
+        </AnimatePresence>}
         <div className={`lattice-lyrics ${ready ? 'is-ready' : ''}`}>
             <div ref={host} className="lattice-lyrics-canvas" aria-hidden="true" />
             {ready && <span className="sr-only">{line?.fullText}</span>}

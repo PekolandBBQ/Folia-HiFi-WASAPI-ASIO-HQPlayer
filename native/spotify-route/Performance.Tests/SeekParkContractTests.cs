@@ -13,9 +13,9 @@ internal static class SeekParkContractTests
         JsonElement Wire(OwnedSeekParkReceipt receipt) => JsonSerializer.SerializeToElement(receipt, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
         OwnedSeekParkReceipt Receipt(Fixture f) => new("seek-parked", "session", 1, Guid.NewGuid().ToString("D"), Guid.NewGuid().ToString("D"),
             5000, true, true, true, true, false, new("session", 1, 1, f.Now.ToUnixTimeMilliseconds()));
-        (Fixture F, OwnedSeekParkReceipt Receipt, ServiceReply Parked) Park()
+        (Fixture F, OwnedSeekParkReceipt Receipt, ServiceReply Parked) Park(bool processCapture = false)
         {
-            var f = new Fixture(); f.Prepare(); f.Start(1); f.Paused = true; f.PcmStopped = false; f.ResetReceipt();
+            var f = new Fixture { RequiresTargetEndpointActivity = !processCapture, EmptyProcessSessions = processCapture }; f.Prepare(); f.Start(1); f.Paused = true; f.PcmStopped = false; f.ResetReceipt();
             var receipt = Receipt(f); f.CaptureParkReceipt = receipt;
             var parked = f.Send("seekPark", new { intervalEpoch = 1, seekTransaction = receipt.SeekTransaction,
                 captureParkReceipt = Wire(receipt), reusePauseObservation = true }); Ok(parked);
@@ -33,6 +33,15 @@ internal static class SeekParkContractTests
             Ok(f.Send("authorizeResume", new { selectedSourceUri = Fixture.Track, captureStarted = true, monitorGainZero = true }));
             f.Paused = false; f.PcmStopped = false; f.ResetReceipt(); Check(f.Send("status").Ready, "New interval not ready");
             Check(f.Writes == writes, "Seek rewrote routing policy");
+        });
+        Test("process capture without active endpoint resumes bounded Seek and cancels to ordinary Pause", () => {
+            var x = Park(true); using var f = x.F; var writes = f.Writes;
+            Ok(Resume(f, x.Receipt, x.Parked)); Complete(f);
+            f.PcmStopped=true;f.CaptureParkReceipt=null;f.ResetReceipt();
+            Ok(f.Send("seekCancelToPaused",new {seekTransaction=x.Receipt.SeekTransaction,intervalEpoch=2}));
+            Ok(f.Send("resumePreparation",new {intervalEpoch=3,selectedSourceUri=Fixture.Track}));
+            Ok(f.Send("completePreparedSelection",new {intervalEpoch=3}));
+            Check(f.Writes==writes,"Process Seek rewrote route");Ok(f.Send("release"));f.CheckOriginals();
         });
         var receiptFaults = new Func<OwnedSeekParkReceipt, OwnedSeekParkReceipt>[] {
             p => p with { CaptureStopped = false }, p => p with { CaptureReset = false }, p => p with { OldGenerationRetired = false },

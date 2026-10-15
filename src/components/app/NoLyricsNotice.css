@@ -1,0 +1,5 @@
+/* Keep controls and title accessible; use the existing foreground color in either theme. */
+.folia-no-lyrics { position: absolute; display: flex; align-items: center; justify-content: center; pointer-events: none; z-index: 2; color: var(--text-primary, #fff); text-align: center; padding: 24px; font-size: clamp(16px, 2vw, 24px); line-height: 1.6; }
+.folia-no-lyrics--card { inset: 150px 24px 105px; }
+.folia-no-lyrics--player { inset: 22% 12% 25%; }
+.folia-no-lyrics span { text-shadow: 0 1px 8px rgb(0 0 0 / 35%); }

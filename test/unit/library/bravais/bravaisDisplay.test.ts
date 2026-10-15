@@ -9,6 +9,7 @@ import {
     findNearestSlot,
     pointOrigin,
     resolveSlotItem,
+    resolveBravaisActionItem,
     resolveFocusReflow,
     resolveTileTransition,
     toFlipSteps,
@@ -139,4 +140,21 @@ describe('focus card reflow', () => {
         expect(card.height).toBe(6 * 136 - 8);
         expect(resolveFocusReflow(null).size).toBe(0);
     });
+});
+
+describe('retained card face playback identity', () => {
+ it('plays the shown item when a rapid layout update maps its slot to another song', () => {
+  const rows = items('track', 10), slot = block(0,0)[0];
+  const before = createBravaisDisplay(layer('playlist', rows), slot.key);
+  const visible = resolveSlotItem(before, slot)!;
+  const after = createBravaisDisplay(layer('playlist', [...rows.slice(1), rows[0]]), slot.key);
+  expect(resolveSlotItem(after, slot)?.key).not.toBe(visible.key);
+  expect(resolveBravaisActionItem(after, slot, visible.key)?.key).toBe(visible.key);
+  expect(resolveBravaisActionItem(after, slot)?.key).toBe(resolveSlotItem(after, slot)?.key);
+ });
+ it('does not substitute a different song when the displayed item was removed', () => {
+  const rows = items('track', 3), slot = block(0,0)[0];
+  const after = createBravaisDisplay(layer('playlist', rows.slice(1)), slot.key);
+  expect(resolveBravaisActionItem(after, slot, rows[0].key)).toBeNull();
+ });
 });

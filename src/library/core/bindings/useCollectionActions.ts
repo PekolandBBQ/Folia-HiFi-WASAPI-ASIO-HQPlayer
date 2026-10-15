@@ -13,7 +13,7 @@ import type { CollectionView } from './useCollectionView';
 export type CollectionActions = {
     capabilities: { scope: LibraryCapability; reload: LibraryCapability };
     /** 以当前范围（筛选后）为队列播放这首。 */
-    playTrack: (track: SongResult) => void;
+    playTrack: (track: SongResult, options?: { shouldNavigateToPlayer?: boolean }) => void;
     /** 以整个集合的可播放曲目为队列播放这首（曲目侧栏的语义，忽略筛选）。 */
     playTrackInFullList: (track: SongResult) => void;
     enqueueTrack: (track: SongResult) => void;
@@ -50,7 +50,7 @@ export const useCollectionActions = ({
     );
 
     const callbacks = useMemo(() => ({
-        playTrack: (track: SongResult) => latest.current.port.playTrack(track, latest.current.view.contextTracks),
+        playTrack: (track: SongResult, options?: { shouldNavigateToPlayer?: boolean }) => latest.current.port.playTrack(track, latest.current.view.contextTracks, options),
         playTrackInFullList: (track: SongResult) => latest.current.port.playTrack(track, latest.current.view.playableTracks),
         enqueueTrack: (track: SongResult) => latest.current.port.enqueueTrack(track),
         playScope: () => {
