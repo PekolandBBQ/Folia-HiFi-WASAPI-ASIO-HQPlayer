@@ -27,8 +27,8 @@ internal sealed class ProductSessionObserver : ISessionObserver, IDisposable
             throw new RouteBlockedException("OWNED_SILENT_RENDER_LEASE_INVALID");
         feed.BindOwnedSilentRenderSession(identity); silentLease = identity; silentLeaseLive = live;
     }
-    internal ProductSessionObserver(IReadOnlySessionFeed source, string selectedRender, ObservationOptions? options = null)
-    { feed = new(source); observer = new(feed, options); render = selectedRender; }
+    internal ProductSessionObserver(IReadOnlySessionFeed source, string selectedRender, ObservationOptions? options = null, TimeProvider? timeProvider = null)
+    { feed = new(source); observer = new(feed, options, timeProvider); render = selectedRender; }
     internal RawAudioSession[] LastCertifiedInventory { get; private set; } = [];
     internal void BindAudioProcessSet(IEnumerable<int> candidatePids) => audioCandidates = candidatePids.Select(pid => checked((uint)pid)).ToHashSet();
     internal void BindEnvironmentGuard(Action guard, Action? pauseGuard = null)

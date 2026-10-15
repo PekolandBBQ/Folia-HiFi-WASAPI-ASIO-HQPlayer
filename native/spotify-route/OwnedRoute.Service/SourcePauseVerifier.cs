@@ -15,6 +15,8 @@ public sealed class SourcePauseVerifier
 	private readonly ISessionObserver observer;
 	private readonly IVerifiedSpotifyResolver resolver;
 	private readonly PreparationObservationLedger observations;
+	private readonly bool requireNativeQuiescence;
+	private readonly bool observeCaptureBaseline;
 
 	private readonly Func<DateTimeOffset> now;
 
@@ -24,11 +26,13 @@ public sealed class SourcePauseVerifier
 
 	private static readonly TimeSpan PauseBudget = TimeSpan.FromSeconds(12.0);
 
-	public SourcePauseVerifier(ISourcePlaybackControl control, ISessionObserver observer, IVerifiedSpotifyResolver resolver, Func<DateTimeOffset>? clock = null, PreparationObservationLedger? preparationLedger = null)
+	public SourcePauseVerifier(ISourcePlaybackControl control, ISessionObserver observer, IVerifiedSpotifyResolver resolver, Func<DateTimeOffset>? clock = null, PreparationObservationLedger? preparationLedger = null, bool requireNativeQuiescence = true, bool observeCaptureBaseline = false)
 	{
 		this.control = control;
 		this.observer = observer;
 		this.resolver = resolver;
+		this.requireNativeQuiescence = requireNativeQuiescence;
+		this.observeCaptureBaseline = observeCaptureBaseline;
 		observations = preparationLedger ?? new PreparationObservationLedger();
 		now = clock ?? ((Func<DateTimeOffset>)(() => DateTimeOffset.UtcNow));
 	}
@@ -47,13 +51,20 @@ public sealed class SourcePauseVerifier
 			throw new RouteBlockedException("SOURCE_NOT_PAUSED");
 		}
 		DateTimeOffset dateTimeOffset = now();
+        // Process-loopback capture does not consume an endpoint's mix. Spotify's
+        // paused render client may remain Active (including silent packets), so
+        // that flag is not a pause prerequisite. Fresh source/identity/PCM and
+        // receipt checks above and below remain authoritative. An empty player
+        // still needs independent native quiescence for restoration.
+        if (requireNativeQuiescence || playbackStatus.EmptyPlayer || observeCaptureBaseline)
+        {
         // An empty Web API player is not a paused-device fact. Only this explicit
         // restore receipt can ask the native all-endpoint quiescence observer.
         var settling = Stopwatch.StartNew();
         SessionObservation sessionObservation;
         for (;;) {
             var remaining = Budget - settling.Elapsed;
-            if (remaining <= TimeSpan.Zero) { ObserveFailure("pause-budget", null, dateTimeOffset); throw new RouteBlockedException("PAUSED_SOURCE_COMPLETE_SESSION_PROOF_REQUIRED"); }
+            if (remaining <= TimeSpan.Zero) { ObserveFailure("pause-budget", null, dateTimeOffset); throw new RouteBlockedException("PAUSED_SOURCE_OBSERVATION_TIMEOUT"); }
 		    sessionObservation = playbackStatus.EmptyPlayer
             ? (observer as IRestoreQuiescenceObserver ?? throw new RouteBlockedException("EMPTY_PLAYER_NATIVE_PROOF_REQUIRED"))
                 .ObserveRestoreQuiescence(boundSpotifyPolicy, remaining)
@@ -62,20 +73,25 @@ public sealed class SourcePauseVerifier
             // Player pause may precede the Windows session becoming inactive.
             // Retry only a complete, current, same-process observation. Never
             // turn an incomplete or changed-identity scan into a paused proof.
-            if (!sessionObservation.CompleteForProcess || sessionObservation.Process != target.Process
-                || sessionObservation.ObservedAtUtc < dateTimeOffset || sessionObservation.ObservedAtUtc > now()
-                || sessionObservation.Sessions.Any(x => x.Process != target.Process || string.IsNullOrWhiteSpace(x.SessionInstanceId)))
-            { ObserveFailure("invalid-native-observation", sessionObservation, dateTimeOffset); throw new RouteBlockedException("PAUSED_SOURCE_COMPLETE_SESSION_PROOF_REQUIRED"); }
-            if (!sessionObservation.Sessions.Any(x => x.Active)) break;
+            var invalidObservation = !sessionObservation.CompleteForProcess ? "PAUSED_SOURCE_SCAN_INCOMPLETE"
+                : sessionObservation.Process != target.Process || sessionObservation.Sessions.Any(x => x.Process != target.Process) ? "PAUSED_SOURCE_PROCESS_MISMATCH"
+                : sessionObservation.ObservedAtUtc < dateTimeOffset ? "PAUSED_SOURCE_OBSERVATION_STALE"
+                : sessionObservation.ObservedAtUtc > now() ? "PAUSED_SOURCE_OBSERVATION_IN_FUTURE"
+                : sessionObservation.Sessions.Any(x => string.IsNullOrWhiteSpace(x.SessionInstanceId)) ? "PAUSED_SOURCE_SESSION_ID_MISSING" : null;
+            if (invalidObservation is not null)
+            { ObserveFailure(invalidObservation, sessionObservation, dateTimeOffset); throw new RouteBlockedException(invalidObservation); }
+            if (!requireNativeQuiescence && !playbackStatus.EmptyPlayer || !sessionObservation.Sessions.Any(x => x.Active)) break;
             if (playbackStatus.EmptyPlayer || Budget - settling.Elapsed < TimeSpan.FromMilliseconds(20))
-            { ObserveFailure("still-active", sessionObservation, dateTimeOffset); throw new RouteBlockedException("PAUSED_SOURCE_COMPLETE_SESSION_PROOF_REQUIRED"); }
+            { ObserveFailure("still-active", sessionObservation, dateTimeOffset); throw new RouteBlockedException("PAUSED_SOURCE_SESSIONS_STILL_ACTIVE"); }
             Thread.Sleep(20);
         }
 		RequireIdentity(boundSpotifyPolicy, target.Process);
-		if (!sessionObservation.CompleteForProcess || sessionObservation.Process != target.Process || sessionObservation.ObservedAtUtc < dateTimeOffset || sessionObservation.ObservedAtUtc > now() || sessionObservation.Sessions.Any((RenderSession x) => x.Process != target.Process || x.Active || string.IsNullOrWhiteSpace(x.SessionInstanceId)))
+		if (!sessionObservation.CompleteForProcess || sessionObservation.Process != target.Process || sessionObservation.ObservedAtUtc < dateTimeOffset || sessionObservation.ObservedAtUtc > now() || sessionObservation.Sessions.Any((RenderSession x) => x.Process != target.Process || (requireNativeQuiescence || playbackStatus.EmptyPlayer) && x.Active || string.IsNullOrWhiteSpace(x.SessionInstanceId)))
 		{
-			throw new RouteBlockedException("PAUSED_SOURCE_COMPLETE_SESSION_PROOF_REQUIRED");
+			ObserveFailure("final-native-observation", sessionObservation, dateTimeOffset);
+			throw new RouteBlockedException("PAUSED_SOURCE_OBSERVATION_INVALID");
 		}
+        }
 		PlaybackStatus playbackStatus2 = Read(target, target.RequirePausedHoldObservation ? playbackStatus : null);
 		if (!playbackStatus2.EmptyPlayer && playbackStatus2.IsPlaying != false)
 		{

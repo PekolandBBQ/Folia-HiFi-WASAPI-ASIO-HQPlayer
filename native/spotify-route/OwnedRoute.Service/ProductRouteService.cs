@@ -883,7 +883,7 @@ public sealed class ProductRouteService : IDisposable
 				owned.ValidateOwnership(preparedRetention);
 				retention = preparedRetention;
 			}
-		}), now);
+		}), now, requireTargetEndpointActivity: owned.RequiresTargetEndpointActivity);
 		owned.ValidateApplyAuthority();
 		owned.VerifyPausedSource(playbackTarget);
 		RouteRecord record = transaction.AcquirePaused(found.Identity, found.Target);
@@ -1016,6 +1016,13 @@ public sealed class ProductRouteService : IDisposable
 		case "SOURCE_NOT_PAUSED":
 		case "SOURCE_BROKER_UNAVAILABLE":
 		case "SOURCE_BROKER_FAILED":
+		case "PAUSED_SOURCE_COMPLETE_SESSION_PROOF_REQUIRED":
+		case "PAUSED_SOURCE_SESSIONS_STILL_ACTIVE":
+		case "PAUSED_SOURCE_OBSERVATION_INVALID":
+		case "PAUSED_SOURCE_OBSERVATION_TIMEOUT":
+		case "PAUSED_SOURCE_SCAN_INCOMPLETE":
+		case "PAUSED_SOURCE_OBSERVATION_STALE":
+		case "PAUSED_SOURCE_OBSERVATION_IN_FUTURE":
 		case "EMPTY_PLAYER_NATIVE_QUIESCENCE_UNCONFIRMED":
 		case "EMPTY_PLAYER_NATIVE_QUIESCENCE_EXPIRED":
 			return true;

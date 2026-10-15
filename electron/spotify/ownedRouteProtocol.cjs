@@ -16,6 +16,9 @@ const NATIVE_FAILURE_CODES = Object.freeze([
   'EXACT_BASE_CAPTURE_RENDER_OWNER_MISMATCH', 'BASE_PAIR_CHANGED', 'BASE_OTHER_WRITER_PRESENT',
   'SOURCE_PAUSE_CONFIRMATION_REQUIRED', 'SOURCE_NOT_PAUSED', 'SOURCE_TRACK_CHANGED',
   'SOURCE_STATUS_DEVICE_OR_FRESHNESS_MISMATCH', 'SOURCE_RESUMED_DURING_PAUSE_PROOF', 'PAUSED_SOURCE_COMPLETE_SESSION_PROOF_REQUIRED',
+  'PAUSED_SOURCE_SESSIONS_STILL_ACTIVE', 'PAUSED_SOURCE_OBSERVATION_INVALID', 'PAUSED_SOURCE_OBSERVATION_TIMEOUT',
+  'PAUSED_SOURCE_SCAN_INCOMPLETE', 'PAUSED_SOURCE_PROCESS_MISMATCH', 'PAUSED_SOURCE_OBSERVATION_STALE',
+  'PAUSED_SOURCE_OBSERVATION_IN_FUTURE', 'PAUSED_SOURCE_SESSION_ID_MISSING',
   'PCM_STOP_NOT_CONFIRMED', 'SOURCE_BROKER_UNAVAILABLE', 'SOURCE_BROKER_FAILED',
   'EMPTY_PLAYER_RESTORE_SCOPE_INVALID', 'EMPTY_PLAYER_NATIVE_PROOF_REQUIRED',
   'EMPTY_PLAYER_NATIVE_QUIESCENCE_UNCONFIRMED', 'EMPTY_PLAYER_NATIVE_QUIESCENCE_EXPIRED',
@@ -109,7 +112,7 @@ function qualified(value, { allowTrial = false } = {}) {
       && value.implementationAvailable === true && value.compatibilityProfile === COMPATIBILITY_PROFILE
     || allowTrial && value?.productionQualified === false && value.trialAuthorized === true
       && value.validationProfile === VALIDATION_PROFILE && value.implementationAvailable === true && value.canOperate === true;
-  return value?.protocolMajor === 1 && value.componentVersion === '0.19.0-dev.29' && value.platform === 'win32-x64' && value.contract === 'folia-owned-route-v1'
+  return value?.protocolMajor === 1 && value.componentVersion === '0.19.0-dev.30' && value.platform === 'win32-x64' && value.contract === 'folia-owned-route-v1'
     && admitted
     && value.heldPausedAcquire === true && value.completeSessionProof === true
     && value.notificationCoherent === true && value.retainedJournalRecovery === true && value.intervalIsolation === true

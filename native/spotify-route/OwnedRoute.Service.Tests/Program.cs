@@ -188,6 +188,47 @@ Run("partial or active native sessions invalidate official paused status",()=>
         try {new SourcePauseVerifier(c,p,p,()=>p.Now).RequirePaused(new("official-device","spotify:track:owned",p.Live));throw new Exception("Unproved native pause accepted");}catch(RouteBlockedException){}
     }
 });
+Run("process capture pause does not depend on endpoint Active flags or a full scan",()=>
+{
+    foreach(var complete in new[]{true,false})
+    {
+        var p=new Fake{Complete=complete,Paused=false};var c=new SourceFake(p);
+        new SourcePauseVerifier(c,p,p,()=>p.Now,requireNativeQuiescence:false)
+            .RequirePaused(new("official-device","spotify:track:owned",p.Live,RequirePcmStopped:true));
+        Check(p.Observations==0,"Process pause unnecessarily scanned endpoint sessions");
+        Check(c.Reads==2,"Process pause must freshly confirm both source reads");
+    }
+});
+Run("process capture still rejects playing stale wrong-track wrong-device and unstopped PCM",()=>
+{
+    foreach(var reason in new[]{"playing","stale","track","device","pcm","resumed"})
+    {
+        var p=new Fake();var c=new SourceFake(p){Playing=reason=="playing",Stale=reason=="stale",
+            Track=reason=="track"?"spotify:track:external":"spotify:track:owned",Device=reason=="device"?"other":"official-device",
+            PcmStopped=reason!="pcm",ResumeOnSecondRead=reason=="resumed"};
+        try {new SourcePauseVerifier(c,p,p,()=>p.Now,requireNativeQuiescence:false)
+            .RequirePaused(new("official-device","spotify:track:owned",p.Live,RequirePcmStopped:true));
+            throw new Exception("Invalid process source accepted: "+reason);}catch(RouteBlockedException){}
+    }
+});
+Run("process capture resume refreshes its capture baseline without requiring inactive render sessions",()=>
+{
+    var p=new Fake{Paused=false};var c=new SourceFake(p);
+    new SourcePauseVerifier(c,p,p,()=>p.Now,requireNativeQuiescence:false,observeCaptureBaseline:true)
+        .RequirePaused(new("official-device","spotify:track:owned",p.Live));
+    Check(p.Observations==1&&c.Reads==2,"Resume did not publish one fresh capture baseline");
+    p.Complete=false;
+    try {new SourcePauseVerifier(c,p,p,()=>p.Now,requireNativeQuiescence:false,observeCaptureBaseline:true)
+        .RequirePaused(new("official-device","spotify:track:owned",p.Live));throw new Exception("Incomplete capture baseline accepted");}
+    catch(RouteBlockedException e){Check(e.Message=="PAUSED_SOURCE_SCAN_INCOMPLETE","Baseline cause lost");}
+});
+Run("legacy incomplete scan returns its specific pause cause",()=>
+{
+    var p=new Fake{Complete=false};var c=new SourceFake(p);
+    try {new SourcePauseVerifier(c,p,p,()=>p.Now).RequirePaused(new("official-device","spotify:track:owned",p.Live));
+        throw new Exception("Incomplete scan accepted");}
+    catch(RouteBlockedException e) {Check(e.Message=="PAUSED_SOURCE_SCAN_INCOMPLETE","Pause cause lost");}
+});
 Run("external resume during native proof prevents restoration",()=>
 {
     var p=new Fake();var c=new SourceFake(p){ResumeOnSecondRead=true};

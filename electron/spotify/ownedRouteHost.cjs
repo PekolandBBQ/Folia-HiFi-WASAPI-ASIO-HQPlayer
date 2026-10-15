@@ -13,7 +13,7 @@ async function resolveOwnedRouteComponent(directory, io = fs, { allowTrial = fal
   try {
     const manifest = JSON.parse(await io.readFile(path.join(directory, 'component.json'), 'utf8'));
     if (manifest.schema !== 1 || manifest.protocolMajor !== 1 || manifest.executable !== 'folia-route-service.exe'
-      || manifest.version !== '0.19.0-dev.29' || !/^[a-f0-9]{64}$/.test(manifest.sha256 || '')) throw failure('ROUTE_COMPONENT_INVALID');
+      || manifest.version !== '0.19.0-dev.30' || !/^[a-f0-9]{64}$/.test(manifest.sha256 || '')) throw failure('ROUTE_COMPONENT_INVALID');
     if (manifest.productionQualified !== true && !runtimeArtifact(manifest)) {
       if (!trialArtifact(manifest)) throw failure('ROUTE_HELPER_UNQUALIFIED');
       if (!allowTrial) throw Object.assign(failure('ROUTE_TRIAL_OPT_IN_REQUIRED'), { trialAvailable: true, validationProfile: VALIDATION_PROFILE });
