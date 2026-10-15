@@ -88,7 +88,7 @@ it('route cleanup errors remain actionable public errors and block new native ou
   const { revision } = await f.invoke({ action: 'sourceRevision' });
   expect(await f.invoke({ action: 'leaveProvider', expectedSourceRevision: revision }))
     .toMatchObject({ spotifyError: { code: 'unavailable', message: 'Spotify: automatic-route-restore-unconfirmed',
-      nativeCode: 'ROUTE_RESTORE_UNCONFIRMED', stage: 'leaveProvider', detail: expect.stringContaining('ROUTE_RESTORE_UNCONFIRMED') } });
+      nativeCode: 'ROUTE_RESTORE_UNCONFIRMED', stage: 'leaveProvider', detail: 'Spotify 原输出路由尚未确认恢复；已保留原路由记录以供继续恢复。' } });
   f.prepareSourceOutput.mockRejectedValue(error);
   await expect(f.runtime.prepareSourceOutput()).rejects.toBe(error);
 });
