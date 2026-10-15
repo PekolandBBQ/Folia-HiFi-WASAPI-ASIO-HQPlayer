@@ -158,18 +158,29 @@ function createCableAudioPreparation({ captureHost, control, vault, cooldown, ge
   }
   // Retiring a track closes only its controller/PCM generation. The provider lease
   // and immutable native journal survive until an explicit provider exit or Quit.
+  const retryablePauseCleanup = error => ['PAUSED_SOURCE_COMPLETE_SESSION_PROOF_REQUIRED',
+    'PAUSED_SOURCE_SESSIONS_STILL_ACTIVE', 'PAUSED_SOURCE_OBSERVATION_INVALID', 'PAUSED_SOURCE_OBSERVATION_TIMEOUT',
+    'PAUSED_SOURCE_SCAN_INCOMPLETE', 'PAUSED_SOURCE_OBSERVATION_STALE', 'PAUSED_SOURCE_OBSERVATION_IN_FUTURE',
+    'SOURCE_NOT_PAUSED', 'SOURCE_RESUMED_DURING_PAUSE_PROOF', 'SOURCE_STATUS_DEVICE_OR_FRESHNESS_MISMATCH',
+    'PREPARATION_OBSERVATION_CHANGED_DURING_SCAN', 'SOURCE_BROKER_UNAVAILABLE', 'SOURCE_BROKER_FAILED',
+    'SESSION_OBSERVATION_UNTRUSTED', 'OWNED_SILENT_RENDER_LEASE_NOT_STOPPED',
+    'CONTROL_TIMEOUT'].includes(error?.failureCode || error?.nativeCode || error?.code);
   function release(record) {
     if (!record || record.sourceOwner?.released === true || record.sourceOwner?.route?.restored === true) return Promise.resolve();
     if (record.releasing) return record.releasing;
     const terminal = record.terminalCleanup, retiringIntent = record.intent, retiringOwner = record.outputOwner;
     record.terminalCleanup = null;
     cleanupRecords.add(record);
+    const retry = !!record.cleanupFailure;
+    if (retry) console.info('[SpotifyCleanup]', JSON.stringify({ stage: 'cleanup-retry', session: record.session,
+      previousCode: diagnosticCode(record.cleanupFailure) }));
     void cancelPlayingSeek(record);
     record.releasing = Promise.resolve().then(async () => {
       if (record.automaticRouting) {
         await record.preparationPromise?.catch(() => {});
         await record.queue.catch(() => {});
       }
+      let retainForRetry = false;
       try {
         if (record.sourceOwner?.record !== record && record.sourceOwner) return;
         const completed = record.externalSelection && record.heldRoute?.heldPaused === true
@@ -187,20 +198,36 @@ function createCableAudioPreparation({ captureHost, control, vault, cooldown, ge
           providerOwner.failure = undefined;
         // The owner now retains the route alone. No late track/media callback may close it.
         record.preparationRoute = null; record.heldRoute = null; record.retiredReads.clear();
+      } catch (error) {
+        // Keep this controller and the exact route journal alive for a fresh
+        // paused-hold attempt. Closing them here made every later click replay
+        // the first failed Promise instead of recovering its session.
+        retainForRetry = retryablePauseCleanup(error);
+        throw error;
       } finally {
-        await boundedCleanup(Promise.resolve().then(() => control.close(record.session)));
-        record.controlController.abort();
-        if (record.sourceOwner === providerOwner && !providerOwner?.route) {
-          providerOwner?.controller.abort(); providerOwner = null;
+        if (!retainForRetry) {
+          await boundedCleanup(Promise.resolve().then(() => control.close(record.session)));
+          record.controlController.abort();
+          if (record.sourceOwner === providerOwner && !providerOwner?.route) {
+            providerOwner?.controller.abort(); providerOwner = null;
+          }
         }
       }
     });
     record.intent++; record.controller.abort(); invalidateRead(record);
     if (!record.prepared && !record.automaticRouting) record.controlController.abort();
     if (record.handle) void Promise.resolve(record.handle.revoke()).catch(() => {});
-    void record.releasing.then(() => cleanupRecords.delete(record), error => {
+    const attempt = record.releasing;
+    void attempt.then(() => {
+      cleanupRecords.delete(record); record.cleanupFailure = undefined;
+      if (retry) console.info('[SpotifyCleanup]', JSON.stringify({ stage: 'cleanup-recovered', session: record.session }));
+    }, error => {
       record.cleanupFailure = error;
       if (record.sourceOwner) record.sourceOwner.failure ||= error;
+      console.warn('[SpotifyCleanup]', JSON.stringify({ stage: 'cleanup-failed', session: record.session,
+        nativeCode: error?.nativeCode || diagnosticCode(error), causeCode: error?.failureCode,
+        retryable: retryablePauseCleanup(error) }));
+      if (record.releasing === attempt && retryablePauseCleanup(error)) record.releasing = null;
     });
     return record.releasing;
   }

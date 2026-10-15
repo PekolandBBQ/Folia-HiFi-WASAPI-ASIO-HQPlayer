@@ -135,6 +135,18 @@ Run("preexisting target is never owned or reset", () =>
     c.Restore(); Restored(p);
     Check(p.Writes.All(x => x.Role != RenderRole.Multimedia), "Unowned role changed");
 });
+foreach(var observation in new[]{"no-active","wrong-endpoint","mixed"})
+    Run("process capture does not require endpoint-mix activity: "+observation,()=>{
+        var p=new FakePlatform{ObservationMode=observation};var c=new OwnedRouteTransaction(p,p,p,new MemoryJournal(),requireTargetEndpointActivity:false);
+        Check(c.Begin(p.Live,p.Endpoint).Stage==RouteStage.Active,"Process activity was tied to the VB endpoint");
+        Check(c.ValidateActive().Stage==RouteStage.Active,"An endpoint transition invalidated the process capture");
+        c.Restore();Restored(p);
+    });
+foreach(var observation in new[]{"incomplete","stale","wrong-process","blank-session"})
+    Run("process capture keeps fresh identity/session evidence: "+observation,()=>{
+        var p=new FakePlatform{ObservationMode=observation};var c=new OwnedRouteTransaction(p,p,p,new MemoryJournal(),requireTargetEndpointActivity:false);
+        Check(c.Begin(p.Live,p.Endpoint).Stage==RouteStage.RolledBack,"Invalid process evidence accepted");Restored(p);
+    });
 
 Run("core preserves an opaque empty original without silently normalizing it", () =>
 {

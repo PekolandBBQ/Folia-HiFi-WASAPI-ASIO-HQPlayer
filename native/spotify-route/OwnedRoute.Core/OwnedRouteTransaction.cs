@@ -6,7 +6,8 @@ namespace Folia.RouteResearch;
 /// </summary>
 public sealed class OwnedRouteTransaction(IVerifiedSpotifyResolver resolver,
     ISelectedEndpointVerifier endpointVerifier, ISessionObserver observer,
-    IDurableRouteJournal journal, Func<DateTimeOffset>? clock = null, Func<bool>? cancelRequested = null)
+    IDurableRouteJournal journal, Func<DateTimeOffset>? clock = null, Func<bool>? cancelRequested = null,
+    bool requireTargetEndpointActivity = true)
 {
     private readonly object gate = new();
     private readonly Func<DateTimeOffset> now = clock ?? (() => DateTimeOffset.UtcNow);
@@ -277,8 +278,16 @@ public sealed class OwnedRouteTransaction(IVerifiedSpotifyResolver resolver,
         }
     }
 
-    private static void RequireTargetActivity(SessionObservation observation, SpotifyProcess process, string target)
+    private void RequireTargetActivity(SessionObservation observation, SpotifyProcess process, string target)
     {
+        // A process-loopback interval has its own exact capture/PCM evidence.
+        // Its audio need not appear in the selected endpoint mix, especially
+        // while a previous output releases an exclusive device or a song ends.
+        if (!requireTargetEndpointActivity) {
+            if (observation.Sessions.Any(x => x.Process != process || string.IsNullOrWhiteSpace(x.SessionInstanceId)))
+                throw new RouteBlockedException("SESSION_OBSERVATION_UNTRUSTED");
+            return;
+        }
         var active = observation.Sessions.Where(x => x.Active).ToArray();
         if (active.Length == 0 || active.Any(x => x.Process != process ||
             string.IsNullOrWhiteSpace(x.SessionInstanceId) || x.EndpointId != target))

@@ -149,7 +149,9 @@ internal sealed class WindowsProductBackend : IProductRouteBackend, IDisposable
             // The fresh stopped-source proof below also retires that partial binding.
             // VerifyPaused just published a complete scan while the main bridge
             // attested capture Stop completion. An active old keeper fails closed.
-            if (silentLease is not null && Observer.LastCertifiedInventory.Any(row => silentLease.Session.SameInstance(row)
+            // Process capture uses the exact stopped-capture receipt instead;
+            // its last endpoint inventory can predate Stop and cannot veto it.
+            if (!ProcessCaptureRouting.Enabled && silentLease is not null && Observer.LastCertifiedInventory.Any(row => silentLease.Session.SameInstance(row)
                 && row.State == Folia.RouteObservation.AudioSessionState.Active))
                 throw new RouteBlockedException("OWNED_SILENT_RENDER_LEASE_NOT_STOPPED");
             observerSuspended = true;
@@ -159,7 +161,7 @@ internal sealed class WindowsProductBackend : IProductRouteBackend, IDisposable
         }
         internal void CancelSeekCaptureInterval()
         {
-            if (silentLease is not null && Observer.LastCertifiedInventory.Any(row => silentLease.Session.SameInstance(row)
+            if (!ProcessCaptureRouting.Enabled && silentLease is not null && Observer.LastCertifiedInventory.Any(row => silentLease.Session.SameInstance(row)
                 && row.State == Folia.RouteObservation.AudioSessionState.Active))
                 throw new RouteBlockedException("OWNED_SILENT_RENDER_LEASE_NOT_STOPPED");
             Observer.StopForHeldPause(); observerSuspended = true; intervalGeneration = 0; intervalId = null;
@@ -331,7 +333,9 @@ internal sealed class WindowsProductBackend : IProductRouteBackend, IDisposable
             var sourceProof = new SourcePauseVerifier(source(expected),
                 expected.AllowEmptyPlayerForRestore ? Observer.ForEmptyRestore
                     : !expected.RequirePausedHoldObservation && (expected.RequirePreparedSelection || expected.RequirePreparationObservation) ? Observer : Observer.ForPause,
-                nativeResolver!, preparationLedger: preparationObservations).RequirePaused(expected);
+                nativeResolver!, preparationLedger: preparationObservations,
+                requireNativeQuiescence: !ProcessCaptureRouting.Enabled,
+                observeCaptureBaseline: !expected.RequirePcmStopped || expected.RequireSeekParkEvidence).RequirePaused(expected);
             if (expected.RequirePcmStopped) VerifyRestorationBindings();
             VerifyRestorationEnvironment();
             playback = expected;
@@ -492,6 +496,7 @@ internal sealed class WindowsProductBackend : IProductRouteBackend, IDisposable
         public IVerifiedSpotifyResolver Resolver => inner.Resolver;
         public ISelectedEndpointVerifier EndpointVerifier => inner.EndpointVerifier;
         public ISessionObserver Observer => inner.Observer;
+        public bool RequiresTargetEndpointActivity => !ProcessCaptureRouting.Enabled;
         public IDurableRouteJournal Journal => inner.Journal;
         public bool IntervalIsolated => context.IntervalGeneration != 0 && context.Observer.IntervalIsolated;
         public int IntervalGeneration => context.IntervalGeneration;

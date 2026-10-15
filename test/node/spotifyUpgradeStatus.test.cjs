@@ -4,6 +4,16 @@ const fs = require('node:fs/promises'), path = require('node:path'), os = requir
 const { upgradeAssets } = require('../../electron/spotify/upgradeAssets.cjs');
 const { digest } = require('../../electron/spotify/componentPackage.cjs');
 const { failureDetails } = require('../../electron/spotify/failureDetails.cjs');
+test('paused cleanup errors keep their concrete Chinese cause across public mapping',()=>{
+ for (const code of ['PAUSED_SOURCE_COMPLETE_SESSION_PROOF_REQUIRED','PAUSED_SOURCE_SESSIONS_STILL_ACTIVE',
+   'PAUSED_SOURCE_OBSERVATION_INVALID','PAUSED_SOURCE_OBSERVATION_TIMEOUT','PCM_STOP_NOT_CONFIRMED',
+   'PAUSED_SOURCE_SCAN_INCOMPLETE','PAUSED_SOURCE_PROCESS_MISMATCH','PAUSED_SOURCE_OBSERVATION_STALE',
+   'PAUSED_SOURCE_OBSERVATION_IN_FUTURE','PAUSED_SOURCE_SESSION_ID_MISSING','FRESH_CAPTURE_INTERVAL_BASELINE_REQUIRED']) {
+  const value=failureDetails(publicError(Object.assign(Error(code),{code,stage:'cleanup'})),'audio');
+  assert.equal(value.nativeCode,code);assert.equal(value.stage,'cleanup');
+  assert.doesNotMatch(value.detail,/以下为组件返回的具体错误/);assert.match(value.detail,/[\u4e00-\u9fff]/);
+ }
+});
 const { publicError } = require('../../electron/spotify/cableAudioFacts.cjs');
 const { createSpotifyRuntime } = require('../../electron/spotify/runtime.cjs');
 // Regression fixtures use isolated assets; no real Spotify, backup, driver or account is changed.

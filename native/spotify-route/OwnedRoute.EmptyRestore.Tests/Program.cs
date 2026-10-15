@@ -68,6 +68,13 @@ Run("changed paused track restores with actual URI; changed playing track never 
  using(var f=new Fixture()){f.Prepare();f.Start(1);f.Pause();f.TrackUri=Fixture.Other;f.ResetReceipt();Ok(f.Send("release"));f.CheckOriginals();Check(f.PauseCommands==0,"Restore sent source pause");}
  using(var f=new Fixture()){f.Prepare();f.Start(1);f.PcmStopped=true;f.TrackUri=Fixture.Other;f.ResetReceipt();var r=f.Send("release");Check(!r.Ok&&f.Service.HasLease&&f.PauseCommands==0,"Changed playing source was adopted/paused");}
 });
+Run("transient paused-session failures can retry the exact prewrite restoration",()=>{
+ foreach(var code in new[]{"PAUSED_SOURCE_COMPLETE_SESSION_PROOF_REQUIRED","PAUSED_SOURCE_SCAN_INCOMPLETE","PAUSED_SOURCE_SESSIONS_STILL_ACTIVE"}){
+  using var f=new Fixture();f.Prepare();f.Start(1);f.Pause();var writes=f.Writes;f.PausedProofFailure=code;
+  var first=f.Send("release");Check(!first.Ok&&first.Code==code&&first.CleanupRetryable&&first.RestoreWritesStarted==false&&f.Writes==writes,"Retryable pause cause/owner lost: "+code);
+  f.PausedProofFailure=null;Ok(f.Send("release"));f.CheckOriginals();
+ }
+});
 Run("same-receipt before and after native scan rejects a source mutation",()=>{
  using var f=new Fixture();f.Prepare();f.Start(1);f.Pause();f.ChangeDuringScan=true;
  var r=f.Send("resumePreparation",new {intervalEpoch=2,selectedSourceUri=Fixture.Track});Check(!r.Ok&&!r.Ready,"Changed source receipt passed scan fence");
@@ -97,6 +104,7 @@ sealed class Fixture : IProductRouteBackend,IProductRouteLifetime,IVerifiedSpoti
  public ProductRouteService Service {get;}
  public TimeSpan Elapsed;
  public bool RealTime;
+ public string? PausedProofFailure;
  readonly long realtimeStart=System.Diagnostics.Stopwatch.GetTimestamp();
  public TimeSpan Monotonic=>RealTime?System.Diagnostics.Stopwatch.GetElapsedTime(realtimeStart):Elapsed;
  public DateTimeOffset Now=>RealTime?DateTimeOffset.UtcNow:StartTime+Elapsed;
@@ -119,7 +127,7 @@ sealed class Fixture : IProductRouteBackend,IProductRouteLifetime,IVerifiedSpoti
  long observations,epoch;
  string? leaseId;
  public Fixture(){Service=new(this,()=>Now,()=>Monotonic);}
- public ProductCapabilities Capabilities {get;}=new(true,true,true,true,true,[],IntervalIsolation:true,OwnedSilentRenderLease:true,PreparedSelection:true,BoundedPreparationObservation:true,BoundedRestoreObservation:true,IndefiniteHeldPause:true,FreshResumeInterval:true,PreparedTargetActivity:true);
+ public ProductCapabilities Capabilities {get;}=new(true,true,true,true,true,[],IntervalIsolation:true,OwnedSilentRenderLease:true,PreparedSelection:true,BoundedPreparationObservation:true,BoundedRestoreObservation:true,IndefiniteHeldPause:true,FreshResumeInterval:true);
  public ServiceReply Send(string command,object? extra=null){var payload=new Dictionary<string,object?>{{"session","session"},{"generation",1},{"leaseId",leaseId}};if(extra!=null)foreach(var p in JsonSerializer.SerializeToElement(extra).EnumerateObject())payload[p.Name]=p.Value.Clone();return Service.Dispatch(JsonSerializer.Serialize(new{id=Guid.NewGuid().ToString(),command,payload}));}
  public ServiceReply Acquire()=>Send("acquire",new{sourcePaused=true,sourceDeviceId="device",expectedSourceUri=Track,captureDeviceId="capture",renderDeviceId="render",expectedSpotifyProcessId=12,expectedSpotifyStartTimeUtcTicks=Identity.StartTimeUtcTicks.ToString()});
  void Must(ServiceReply r){if(!r.Ok)throw new Exception("Setup failed "+r.Code);}
@@ -149,9 +157,10 @@ sealed class Fixture : IProductRouteBackend,IProductRouteLifetime,IVerifiedSpoti
  private EmptyFeed? nativeFeed;
  private bool emptyProof;
  public void VerifyPausedSource(OwnedPlaybackTarget target){
+  if(PausedProofFailure is not null)throw new RouteBlockedException(PausedProofFailure);
   readingTarget=target;
   nativeFeed??=new EmptyFeed(this);
-  nativeObserver??=new ProductSessionObserver(nativeFeed,CurrentSelection.RenderDeviceId);
+  nativeObserver??=new ProductSessionObserver(nativeFeed,CurrentSelection.RenderDeviceId,timeProvider:new FixtureClock(this));
   var result=new SourcePauseVerifier(this,target.AllowEmptyPlayerForRestore?nativeObserver.ForEmptyRestore:this,this,()=>Now,ledger).RequirePaused(target);
   emptyProof=result.EmptyPlayer;
  }
@@ -169,6 +178,7 @@ sealed class Fixture : IProductRouteBackend,IProductRouteLifetime,IVerifiedSpoti
   if(value!=Originals[(int)role]||bound.CheckLiveIdentity()!=Identity||bound.Get(role)!="base")throw new RouteBlockedException("EXTERNAL_POLICY_CONFLICT");
   nativeObserver!.RequireCurrentRestoreQuiescence();
  }
+ private sealed class FixtureClock(Fixture owner):TimeProvider { public override DateTimeOffset GetUtcNow()=>owner.Now; }
  private sealed class EmptyFeed(Fixture owner):IReadOnlySessionFeed{
   private Action<SessionFeedEvent>? changed;
   public void Changed()=>changed?.Invoke(new(SessionFeedEventKind.SessionChanged,owner.CurrentSelection.RenderDeviceId,"new-session"));

@@ -389,6 +389,39 @@ it('does not restore or acquire a replacement when native capture stop remains u
   expect(f.audio.lookup(active.prepared.url)).toBeNull();
 });
 
+it('rechecks a failed paused hold on seven new-song attempts and recovers the same lease without provider exit', async () => {
+  const f = create(), active = await start(f); f.captures[0].queue.push(Buffer.alloc(8, 9)); await active.next;
+  const native = f.host.request.getMockImplementation()!;
+  let rejectHold = true, holdAttempts = 0;
+  f.host.request.mockImplementation(async (command: string, payload: any) => {
+    if (command === 'suspendPaused') {
+      holdAttempts++;
+      if (rejectHold) throw Object.assign(new Error('native pause incomplete'), { code: 'PAUSED_SOURCE_COMPLETE_SESSION_PROOF_REQUIRED' });
+    }
+    return native(command, payload);
+  });
+  const close = vi.spyOn(f.control, 'close');
+  await expect(active.source.revoke()).rejects.toMatchObject({ code: 'PAUSED_SOURCE_COMPLETE_SESSION_PROOF_REQUIRED' });
+  const retiredSession = (f.controlPrepare.mock.calls[0][0] as any).session;
+  const ids = [trackId, oldTrack, '5P4EQaoX8QEyL59fUhLeR9', '0qUId2i13vDDWsQejz8Vrb'];
+  for (let i = 0; i < 7; i++) {
+    const before = holdAttempts;
+    await expect(f.audio.prepare(ids[i % ids.length], `22345678-1234-1234-1234-${String(i).padStart(12, '0')}`))
+      .rejects.toMatchObject({ nativeCode: 'PAUSED_SOURCE_COMPLETE_SESSION_PROOF_REQUIRED' });
+    expect(holdAttempts).toBeGreaterThan(before);
+  }
+  expect(close.mock.calls.some(call => call[0] === retiredSession)).toBe(false);
+  expect(f.captures).toHaveLength(1); expect(f.events).not.toContain('route:release');
+  rejectHold = false;
+  const prepared = await f.audio.prepare(oldTrack, '32345678-1234-1234-1234-123456789abc');
+  expect(prepared.url).toBeTruthy(); expect(close).toHaveBeenCalledWith(retiredSession);
+  const source = f.audio.lookup(prepared.url), opened = await source.openReadable();
+  const next = opened.stream[Symbol.asyncIterator]().next(); await tick();
+  f.captures.at(-1).queue.push(Buffer.alloc(8, 3)); expect((await next).value).toEqual(Buffer.alloc(8, 3));
+  expect(f.events.filter(event => event === 'route:acquire')).toHaveLength(1);
+  expect(f.events).not.toContain('route:release');
+  await source.stop(); await f.audio.leaveProvider(); expect(f.lease().state).toBe('restored');
+});
 it('parks the old source and retains its route across a new-song authorization failure', async () => {
   const f = create(), active = await start(f); f.captures[0].queue.push(Buffer.alloc(8)); await active.next;
   f.events.length = 0;

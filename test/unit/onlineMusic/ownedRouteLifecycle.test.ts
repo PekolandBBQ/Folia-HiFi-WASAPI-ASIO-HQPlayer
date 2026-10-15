@@ -24,8 +24,25 @@ async function armCapture(lease: any) {
 }
 
 afterEach(async () => { vi.useRealTimers(); for (const f of fixtures.splice(0)) await f.route.close().catch(() => {}); });
+it.each(['PAUSED_SOURCE_COMPLETE_SESSION_PROOF_REQUIRED','PAUSED_SOURCE_SCAN_INCOMPLETE','PAUSED_SOURCE_SESSIONS_STILL_ACTIVE'])
+('retries the exact retained restore after transient pause proof: %s', async code => {
+  const f=create(), lease=await f.route.acquire(input), native=f.host.request.getMockImplementation()!;
+  let failOnce=true;
+  f.host.request.mockImplementation(async (command: string,payload: any) => {
+    if(command==='release'&&failOnce){failOnce=false;
+      const receipt={ok:false,state:'recoveryRequired',code,cleanupRetryable:true,restoreWritesStarted:false,lease:structuredClone(f.lease())};
+      throw Object.assign(new Error(code),{code,retryableCleanupReceipt:receipt});
+    }
+    return native(command,payload);
+  });
+  await expect(lease.release()).rejects.toMatchObject({code:'ROUTE_RESTORE_UNCONFIRMED'});
+  await expect(f.route.recoverBeforePlay()).resolves.toBeUndefined();
+  expect(f.lease().state).toBe('restored');
+  expect(f.host.request.mock.calls.filter(call=>call[0]==='acquire')).toHaveLength(1);
+  expect(f.host.request.mock.calls.filter(call=>call[0]==='release')).toHaveLength(2);
+});
 it('accepts only the complete qualified service contract', () => {
-  const valid = { protocolMajor: 1, componentVersion: '0.19.0-dev.29', platform: 'win32-x64', contract: 'folia-owned-route-v1', supported: true,
+  const valid = { protocolMajor: 1, componentVersion: '0.19.0-dev.30', platform: 'win32-x64', contract: 'folia-owned-route-v1', supported: true,
     productionQualified: true, heldPausedAcquire: true, completeSessionProof: true, notificationCoherent: true, retainedJournalRecovery: true,
     intervalIsolation: true, providerRouteLifetime: true, boundedSeekPark: true, boundedPausedProofTransfer: true, indefiniteHeldPause: true, freshResumeInterval: true,
     ownedSilentRenderLease: true, preparedSelection: true, preparedTargetActivity: true, boundedPreparationObservation: true, boundedRestoreObservation: true,
