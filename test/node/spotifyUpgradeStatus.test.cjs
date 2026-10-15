@@ -8,7 +8,7 @@ test('paused cleanup errors keep their concrete Chinese cause across public mapp
  for (const code of ['PAUSED_SOURCE_COMPLETE_SESSION_PROOF_REQUIRED','PAUSED_SOURCE_SESSIONS_STILL_ACTIVE',
    'PAUSED_SOURCE_OBSERVATION_INVALID','PAUSED_SOURCE_OBSERVATION_TIMEOUT','PCM_STOP_NOT_CONFIRMED',
    'PAUSED_SOURCE_SCAN_INCOMPLETE','PAUSED_SOURCE_PROCESS_MISMATCH','PAUSED_SOURCE_OBSERVATION_STALE',
-   'PAUSED_SOURCE_OBSERVATION_IN_FUTURE','PAUSED_SOURCE_SESSION_ID_MISSING']) {
+   'PAUSED_SOURCE_OBSERVATION_IN_FUTURE','PAUSED_SOURCE_SESSION_ID_MISSING','FRESH_CAPTURE_INTERVAL_BASELINE_REQUIRED']) {
   const value=failureDetails(publicError(Object.assign(Error(code),{code,stage:'cleanup'})),'audio');
   assert.equal(value.nativeCode,code);assert.equal(value.stage,'cleanup');
   assert.doesNotMatch(value.detail,/以下为组件返回的具体错误/);assert.match(value.detail,/[\u4e00-\u9fff]/);
