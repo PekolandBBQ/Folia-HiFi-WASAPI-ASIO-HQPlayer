@@ -28,6 +28,8 @@ export type PlaybackNavigationOptions = {
 };
 
 export type NextTrackOptions = PlaybackNavigationOptions & {
+    /** Natural end from the outgoing deck must not supersede a pending user selection. */
+    trigger?: 'ended';
     allowStopOnMissing?: boolean;
     /**
      * The track to step from, when it is deliberately NOT the one the listener can see.

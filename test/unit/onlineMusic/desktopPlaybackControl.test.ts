@@ -787,3 +787,29 @@ it.each(['select', 'play', 'pause', 'seek', 'activation'])('ignores %s 200 obser
   await expect(replacement).resolves.toMatchObject({ deviceId: 'desktop-1', trackId, isPlaying: false });
   await expect(f.control.readState(nextSession)).resolves.toMatchObject({ deviceId: 'desktop-1', trackId });
 });
+
+
+it.each(['play', 'seek', 'pause'])('silently rereads a transient state failure before %s without duplicating control writes', async operation => {
+  const f = fixture({ settleTimeoutMs: 4000 }); await f.prepare();
+  if (operation === 'pause') await f.control.play(session);
+  f.fetcher.mockClear(); let reads = 0;
+  f.intercept((_url, init) => {
+    if (init.method === 'GET' && ++reads <= 3) return new Response(null, { status: 503 });
+  });
+  if (operation === 'seek') await f.control.seek(session, 5000);
+  else await f.control[operation](session);
+  expect(reads).toBeGreaterThanOrEqual(4);
+  expect(f.onRevoke).not.toHaveBeenCalled();
+  const target = '/' + operation;
+  expect(f.writes().filter(([url]) => new URL(url).pathname.endsWith(target))).toHaveLength(1);
+});
+
+it('a transient playing-state lag does not immediately revoke an active source', async () => {
+  const f = fixture({ settleTimeoutMs: 4000 }); await f.prepare(); await f.control.play(session);
+  let reads = 0;
+  f.intercept((_url, init) => {
+    if (init.method === 'GET' && ++reads <= 3) return new Response(JSON.stringify({ ...f.state, is_playing: false }));
+  });
+  const state = await f.control.readState(session, { expectedPlaying: true });
+  expect(state.isPlaying).toBe(true); expect(reads).toBe(4); expect(f.onRevoke).not.toHaveBeenCalled();
+});

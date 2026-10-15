@@ -1,9 +1,10 @@
+import { captureSelectionRequest, selectionTrace } from '../services/playbackSelectionTrace';
 import { preparePlaybackSourceCommit } from '../services/playbackSourceCommit';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Dispatch, MutableRefObject, SetStateAction } from 'react';
 import type { MotionValue } from 'framer-motion';
 import { applyOnlineAudioSourceMetadata, loadOnlineSongAudioSource, loadOnlineSongLyrics } from '../services/onlinePlayback';
-import { beginPlaybackSourceRequest, finishPlaybackSourceRequest } from '../services/playbackSourceRequest';
+import { beginPlaybackSourceRequest, finishPlaybackSourceRequest, hasPendingPlaybackSourceRequest } from '../services/playbackSourceRequest';
 import { useAccountPlaybackCleanup } from './useAccountPlaybackCleanup';
 import { getSongReplacement, isSongUnavailable } from '../services/onlineMusic/songAvailability';
 import { getSongResourceCacheKey } from '../services/onlineMusic/resourceKeys';
@@ -469,6 +470,8 @@ export function usePlaybackQueueController({
         // out instead of replacing the song the user picked last.
         // An automix advance skips the hook (see `isAutomixAdvance`).
         const playSongCallId = ++playSongCallIdRef.current;
+        const trace = captureSelectionRequest();
+        selectionTrace('request', requestedSong, trace);
         // 没传队列，或传的就是 store 里的当前队列（下一首 / 上一首 / 队列面板 / FM 续歌）：失败按钮按点击时的最新队列走。
         // 只有还没写进 store 的显式队列（如从歌单点歌）才用快照。在 beforePlay 的 await 之前取，比较的是调用方看到的队列。
         const queueFollowsStore = queue.length === 0 || queue === usePlaybackStore.getState().playQueue;
@@ -479,6 +482,7 @@ export function usePlaybackQueueController({
             return;
         }
         const song = allowedSong;
+        selectionTrace('allowed', song, trace);
         // A pause still fading out belongs to the song being replaced. Run it now instead of
         // dropping it: the old song is still sounding and the new one can take seconds to load, so
         // dropping it would leave the old song at full volume under a PAUSED player. The fade node
@@ -786,12 +790,13 @@ export function usePlaybackQueueController({
             currentOnlineAudioUrlFetchedAtRef.current = null;
         }
         setAudioSrc(audioResult.audioSrc);
+        selectionTrace('source-committed', song, { ...trace, generation: landedGeneration });
         // The new source now belongs to the deck. Lyrics/theme work must not hold output selection.
         finishPlaybackSourceRequest(sourceRequest);
 
         try {
             await loadOnlineSongLyrics(song, prefetched, userId, {
-                isCurrent: () => currentSongRef.current === songKey,
+                isCurrent: () => currentSongRef.current === songKey && isLatestPlaybackRequest(),
                 onLyrics: resolvedLyrics => setLyrics(resolvedLyrics),
                 onPureMusicChange: isPureMusic => {
                     setCurrentSong(prev => {
@@ -812,8 +817,11 @@ export function usePlaybackQueueController({
             });
         } catch (error) {
             console.warn('[App] Lyric fetch failed', error);
-            setLyrics(null);
-            setIsLyricsLoading(false);
+            // A late failure from the outgoing song must never erase the arriving lyrics.
+            if (currentSongRef.current === songKey && isLatestPlaybackRequest()) {
+                setLyrics(null);
+                setIsLyricsLoading(false);
+            }
         }
 
         try {
@@ -988,6 +996,11 @@ export function usePlaybackQueueController({
     ]);
 
     const handleNextTrack = useCallback(async (options?: NextTrackOptions) => {
+        if (options?.trigger === 'ended' && hasPendingPlaybackSourceRequest()) {
+            selectionTrace('outgoing-ended-ignored', currentSong, { pendingSelection: true });
+            return;
+        }
+        selectionTrace('next', currentSong, { ...captureSelectionRequest(), automatic: Boolean(options?.allowStopOnMissing), automix: Boolean(options?.isAutomixAdvance) });
         if (isNowPlayingStageActive) return;
 
         const stopAtQueueEnd = () => {
@@ -1061,6 +1074,7 @@ export function usePlaybackQueueController({
     }, [audioRef, currentSong, endHeldTransition, getDisplaySong, isFmMode, isNowPlayingStageActive, loopMode, playQueue, playSong, setPlayQueue, setPlayerState, shouldNavigateToPlayerOnTrackChange]);
 
     const handlePrevTrack = useCallback(() => {
+        selectionTrace('previous', currentSong, captureSelectionRequest());
         if (isNowPlayingStageActive) return;
         if (!currentSong || playQueue.length === 0) return;
 

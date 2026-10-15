@@ -10,6 +10,7 @@ vi.hoisted(() => {
 });
 const bridge = vi.hoisted(() => vi.fn());
 const audioLookup = vi.hoisted(() => vi.fn());
+const lyricLookup = vi.hoisted(() => vi.fn(async () => null));
 const localLookup = vi.hoisted(() => vi.fn());
 const localRows = vi.hoisted(() => vi.fn());
 const externalCalls = vi.hoisted(() => [] as unknown[]);
@@ -18,7 +19,7 @@ vi.hoisted(() => { vi.stubGlobal('fetch', (...args: unknown[]) => {
 }); });
 vi.mock('@/services/onlinePlayback', async original => ({
     ...await original<typeof import('@/services/onlinePlayback')>(),
-    loadOnlineSongAudioSource: audioLookup, loadOnlineSongLyrics: async () => null,
+    loadOnlineSongAudioSource: audioLookup, loadOnlineSongLyrics: lyricLookup,
 }));
 vi.mock('@/services/db', async original => ({
     ...await original<typeof import('@/services/db')>(), getFromCache: async () => null,
@@ -128,7 +129,7 @@ function mount() {
     return { ...shared, audio };
 }
 beforeEach(async () => {
-    vi.clearAllMocks(); externalCalls.length = 0;
+    vi.clearAllMocks(); lyricLookup.mockReset().mockResolvedValue(null); externalCalls.length = 0;
     for (const method of ['log', 'warn', 'error'] as const) vi.spyOn(console, method).mockImplementation(() => {});
     Object.defineProperty(URL, 'revokeObjectURL', { configurable: true, value: vi.fn() });
     window.electron = { spotify: { request: bridge, onProgress: () => () => {} } } as unknown as typeof window.electron;
@@ -447,4 +448,65 @@ describe('actual queue navigation and actual App EOF decisions', () => {
         expect(usePlaybackStore.getState().audioSrc).toBe('https://fixture.invalid/old-spotify');
         expect(bridge).not.toHaveBeenCalled();
     });
+});
+
+// A retired deck can report EOF while the selected song is still resolving.
+it('does not let old-deck automatic next replace a pending card selection', async () => {
+    mount(); const pending = deferred<any>();
+    const selected = normalizeSpotifySong({ id: '2123456789012345678901', name: 'Selected C', type: 'track' });
+    audioLookup.mockImplementation(song => song.id === selected.id ? pending.promise
+        : Promise.resolve({ kind: 'ok', audioSrc: 'https://fixture.invalid/' + song.id }));
+    let task!: Promise<void>;
+    await act(async () => { task = queue.playSong(selected, [spotifySong, spotifyNext, selected]); });
+    await vi.waitFor(() => expect(audioLookup).toHaveBeenCalledTimes(1));
+    await act(async () => { await queue.handleNextTrack({ trigger: 'ended', allowStopOnMissing: true }); });
+    expect(audioLookup).toHaveBeenCalledTimes(1);
+    await act(async () => { pending.resolve({ kind: 'ok', audioSrc: 'https://fixture.invalid/selected' }); await task; });
+    expect(usePlaybackStore.getState().currentSong?.id).toBe(selected.id);
+});
+it('rapid A/B/C selections commit only C even when B resolves last', async () => {
+    mount(); const pending = deferred<any>();
+    const selected = normalizeSpotifySong({ id: '2123456789012345678901', name: 'Selected C', type: 'track' });
+    audioLookup.mockImplementation(song => song.id === spotifyNext.id ? pending.promise
+        : Promise.resolve({ kind: 'ok', audioSrc: 'https://fixture.invalid/' + song.id }));
+    let old!: Promise<void>;
+    await act(async () => { old = queue.playSong(spotifyNext, [spotifySong, spotifyNext, selected]); });
+    await vi.waitFor(() => expect(audioLookup).toHaveBeenCalledTimes(1));
+    await act(async () => { await queue.playSong(selected, [spotifySong, spotifyNext, selected]); });
+    await act(async () => { pending.resolve({ kind: 'ok', audioSrc: 'https://fixture.invalid/old' }); await old; });
+    expect(usePlaybackStore.getState().currentSong?.id).toBe(selected.id);
+    expect(usePlaybackStore.getState().audioSrc).toBe('https://fixture.invalid/' + selected.id);
+});
+
+it('late outgoing lyric failure cannot erase the new track lyrics', async () => {
+ const slow=deferred<null>(); lyricLookup.mockImplementationOnce(()=>slow.promise);
+ const state=mount(); let first!:Promise<void>;
+ await act(async()=>{first=queue.playSong(spotifySong,[spotifySong,spotifyNext]);});
+ await vi.waitFor(()=>expect(lyricLookup).toHaveBeenCalledTimes(1));
+ await act(async()=>queue.playSong(spotifyNext,[spotifySong,spotifyNext]));
+ state.setLyrics.mockClear();state.setIsLyricsLoading.mockClear();
+ await act(async()=>{slow.reject(Error('late lyric failure'));await first;});
+ expect(state.setLyrics).not.toHaveBeenCalled();expect(state.setIsLyricsLoading).not.toHaveBeenCalled();
+});
+it('next, previous and automatic advance preserve inline navigation', async () => {
+ const state=mount();
+ await act(async()=>queue.handleNextTrack());
+ await vi.waitFor(()=>expect(usePlaybackStore.getState().currentSong?.id).toBe(spotifyNext.id));
+ await act(async()=>queue.handlePrevTrack());
+ await vi.waitFor(()=>expect(usePlaybackStore.getState().currentSong?.id).toBe(spotifySong.id));
+ await act(async()=>queue.handleNextTrack({trigger:'ended'}));
+ await vi.waitFor(()=>expect(usePlaybackStore.getState().currentSong?.id).toBe(spotifyNext.id));
+ expect(state.navigateToPlaybackView).not.toHaveBeenCalled();
+});
+
+it('A to B to A does not accept lyrics from the first A request', async () => {
+ const slow=deferred<null>();let firstIsCurrent!:()=>boolean;
+ lyricLookup.mockImplementationOnce((...args:unknown[])=>{firstIsCurrent=(args[3] as {isCurrent:()=>boolean}).isCurrent;return slow.promise;});
+ mount();let first!:Promise<void>;
+ await act(async()=>{first=queue.playSong(spotifySong,[spotifySong,spotifyNext]);});
+ await vi.waitFor(()=>expect(lyricLookup).toHaveBeenCalledTimes(1));
+ await act(async()=>queue.playSong(spotifyNext,[spotifySong,spotifyNext]));
+ await act(async()=>queue.playSong(spotifySong,[spotifySong,spotifyNext]));
+ expect(firstIsCurrent()).toBe(false);
+ await act(async()=>{slow.resolve(null);await first;});
 });

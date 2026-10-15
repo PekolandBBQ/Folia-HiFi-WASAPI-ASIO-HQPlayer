@@ -74,3 +74,9 @@ describe('library playback port', () => {
         expect(createLibraryPlaybackPort(props).enqueueAll([onlineSong])).toBeUndefined();
     });
 });
+
+it('preserves explicit inline playback without changing default navigation', () => {
+ const props=surface(); const port=createLibraryPlaybackPort(props);
+ port.playTrack(onlineSong,[onlineSong],{shouldNavigateToPlayer:false});
+ expect(props.onPlaySong).toHaveBeenCalledExactlyOnceWith(onlineSong,[onlineSong],false,{shouldNavigateToPlayer:false});
+});

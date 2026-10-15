@@ -8,7 +8,7 @@ function audioError(code, detail) {
     error.code = CODES.has(code) ? code : 'NATIVE_REQUEST_FAILED';
     return error;
 }
-function errorCode(error) { return CODES.has(error?.nativeCode) ? error.nativeCode
+function errorCode(error) { return isCancellation(error) ? 'CANCELLED' : CODES.has(error?.nativeCode) ? error.nativeCode
     : CODES.has(error?.code) ? error.code : 'NATIVE_REQUEST_FAILED'; }
 function sourceLifecycleError(error) {
     const project = code => {
@@ -22,7 +22,7 @@ function sourceLifecycleError(error) {
         return result;
     };
     // A replaced Spotify reader is a cancelled command, not a source outage.
-    if (error?.message === 'Spotify: request-cancelled') return audioError('CANCELLED');
+    if (isCancellation(error)) return audioError('CANCELLED');
     if (['ROUTE_RESTORE_UNCONFIRMED', 'ROUTE_SOURCE_PAUSE_UNCONFIRMED', 'ROUTE_HELPER_EXIT_UNCONFIRMED'].includes(error?.code)
         || error?.message === 'Spotify: automatic-route-restore-unconfirmed') return project('SOURCE_RESTORE_UNCONFIRMED');
     if (CODES.has(error?.nativeCode)) return project(error.nativeCode);
@@ -30,9 +30,14 @@ function sourceLifecycleError(error) {
     return project('SOURCE_UNAVAILABLE');
 }
 function diagnostic(error) {
+    if (isCancellation(error)) return;
     const detail = String(error?.message || error).replace(/https?:\/\/\S+/gi, '[URL omitted]')
         .replace(/(cookie|token|password|authorization)\s*[:=]\s*[^\s,;]+/gi, '$1=[redacted]');
     const fields = [error?.nativeCode, error?.failureCode, error?.stage].filter(value => typeof value === 'string' && /^[A-Za-z0-9_-]{1,128}$/.test(value));
     console.error(`[原生音频错误 / Native audio error] ${errorCode(error)}${fields.length ? ` [${fields.join(' / ')}]` : ''}: ${detail}`);
 }
-module.exports = { audioError, errorCode, diagnostic, sourceLifecycleError };
+function isCancellation(error) {
+    return error?.code === 'CANCELLED' || error?.nativeCode === 'CANCELLED'
+        || error?.name === 'AbortError' || error?.message === 'Spotify: request-cancelled';
+}
+module.exports = { audioError, errorCode, diagnostic, sourceLifecycleError, isCancellation };

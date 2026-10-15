@@ -56,3 +56,33 @@ test('slow liked metadata does not block source reads and 429 is not retried',as
   f.request(3,'likedTracks');await tick();assert.equal(calls,1);
   assert.equal(f.replies.find(r=>r.id===3).code,'LIBRARY_RATE_LIMITED');
 });
+
+test('transient lyric failure is evicted so the same song can recover',async()=>{
+ let calls=0;const f=fixture(async()=>{if(++calls===1)throw {status:503};return {lyrics:{syncType:'LINE_SYNCED',lines:[{startTimeMs:'0',words:'recovered'}]}};});
+ const args={trackId:'0123456789012345678901'};
+ f.request(1,'lyrics',args);await tick();assert.equal(f.replies[0].code,'LYRICS_UNAVAILABLE');
+ f.request(2,'lyrics',args);await tick();assert.equal(calls,2);assert.equal(f.replies[1].value.lines[0].words,'recovered');
+});
+
+// Observed track IDs: each must recover independently of any earlier negative response.
+for(const [title,trackId] of [['Paper Plane','6nZlSXP6aqHUU7SJpYQzIC'],['In Moments Does Moon Persist','0SalvDj3mS5mOqsQsPFpnV'],['赴大荒','19rMrCvCTdATwQVMNvromq']]){
+ for(const reason of ['http-not-found','missing-lyrics','invalid-lines','empty-lines','blank-lines']){
+  test(title+': '+reason+' remains distinguishable and is not cached',async()=>{
+   let calls=0;const f=fixture(async()=>{if(++calls>1)return {lyrics:{syncType:'LINE_SYNCED',lines:[{startTimeMs:'0',words:'recovered'}]}};
+    if(reason==='http-not-found')throw {status:404};
+    if(reason==='missing-lyrics')return {};
+    if(reason==='invalid-lines')return {lyrics:{lines:{}}};
+    return {lyrics:{lines:reason==='blank-lines'?[{words:'   '},null]:[]}};
+   });
+   f.request(1,'lyrics',{trackId});await tick();assert.equal(f.replies[0].value.reason,reason);
+   assert.equal(f.replies[0].value.lines.length,0);
+   f.request(2,'lyrics',{trackId});await tick();assert.equal(calls,2);assert.equal(f.replies[1].value.lines[0].words,'recovered');
+   f.request(3,'lyrics',{trackId});await tick();assert.equal(calls,2);assert.equal(f.replies[2].value.cacheHit,true);
+  });
+ }
+}
+test('HTTP authorization failures are not mislabeled as empty lyrics',async()=>{
+ for(const [status,code] of [[401,'LYRICS_AUTH_REQUIRED'],[403,'LYRICS_ACCESS_DENIED']]){
+  const f=fixture(async()=>{throw {status};});f.request(1,'lyrics',{trackId:'6nZlSXP6aqHUU7SJpYQzIC'});await tick();assert.equal(f.replies[0].code,code);
+ }
+});

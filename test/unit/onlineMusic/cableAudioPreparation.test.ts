@@ -68,7 +68,7 @@ function fixture(options: any = {}) {
   }), close: vi.fn(async () => {}) };
   const getSelection = vi.fn(async () => ({ ...selection, ...options.selection }));
   const fetcher = vi.fn(options.fetcher || (async () => Response.json({ id, type: 'track', uri: `spotify:track:${id}`, duration_ms: options.durationMs || 120000 })));
-  const audio = createCableAudioPreparation({ captureHost, control, vault, cooldown, getSelection, fetcher, media, routeLifecycle: options.routeLifecycle,
+  const audio = createCableAudioPreparation({ captureHost, control, vault, cooldown, getSelection, fetcher, media, routeLifecycle: options.routeLifecycle, localSourceMetadata: options.localSourceMetadata,
     onDiagnostic: (value: any) => diagnostics.push(value) });
   cleanups.push(() => audio.close());
   return { audio, captureHost, control, vault, cooldown, getSelection, fetcher, media, captures, handles, diagnostics,
@@ -104,9 +104,9 @@ it('preserves the off-mode r18 live source even when an automatic routing compon
   expect(routeLifecycle.acquire).not.toHaveBeenCalled(); expect(f.captures).toHaveLength(1);
   expect(f.control.prepare.mock.calls[0][0].beforeSelect).toBeUndefined(); await active.source.pause();
 });
-it('publishes only an opaque prepared source with unknown Spotify encoding and actual quality', async () => {
-  const f = fixture(), prepared = await f.audio.prepare(id, requestId, () => {}, 'lossless');
-  expect(prepared).toMatchObject({ playbackTransport: 'cable-pcm', requestedQuality: 'lossless', actualQuality: null, quality: null,
+it.each(['standard', 'high', 'lossless', 'hires'])('accepts global %s preference without claiming or changing Spotify encoding', async quality => {
+  const f = fixture(), prepared = await f.audio.prepare(id, requestId, () => {}, quality);
+  expect(prepared).toMatchObject({ playbackTransport: 'cable-pcm', requestedQuality: quality, actualQuality: null, quality: null,
     sessionBoundAudio: true, sourceInfo: { codec: null, sampleRate: null, bitDepth: null, lossless: null, encodingVerified: false },
     preparedAudio: { representation: 's32le', sampleRate: 44100, channels: 2, bitDepth: 32 } });
   expect(JSON.stringify(prepared)).not.toMatch(/explicit-|test-private-bearer/);
@@ -114,6 +114,23 @@ it('publishes only an opaque prepared source with unknown Spotify encoding and a
   expect(f.control.prepare).toHaveBeenCalledWith(expect.objectContaining({ deviceId: selection.deviceId, trackId: id, positionMs: 0,
     durationMs: 120000, restoreSavedTarget: true }));
   expect(f.captureHost.inspectRoute.mock.invocationCallOrder[0]).toBeLessThan(f.control.prepare.mock.invocationCallOrder[0]);
+});
+it.each([
+  ['invalid-track', requestId, 'high', 'INVALID_AUDIO_TRACK_ID'],
+  [id, '', 'high', 'INVALID_AUDIO_REQUEST_ID'],
+  [id, requestId, 'invalid-quality', 'INVALID_AUDIO_QUALITY'],
+])('identifies invalid request fields before touching playback: %s / %s / %s', async (track, request, quality, nativeCode) => {
+  const log = vi.spyOn(console, 'warn').mockImplementation(() => {});
+  try {
+    const f = fixture();
+    await expect(f.audio.prepare(track, request, () => {}, quality)).rejects.toMatchObject({
+      code: 'invalid-response', nativeCode, stage: 'request-validation',
+    });
+    expect(f.control.prepare).not.toHaveBeenCalled(); expect(f.captureHost.open).not.toHaveBeenCalled();
+    expect(JSON.stringify(log.mock.calls)).toContain(nativeCode);
+    expect(JSON.stringify(log.mock.calls)).not.toContain(id);
+    expect(JSON.stringify(log.mock.calls)).not.toContain(requestId);
+  } finally { log.mockRestore(); }
 });
 it('never attempts saved-target restoration when the observed local Spotify route is missing', async () => {
   const f = fixture({ configuration: { ...configuration(), ready: false, sessions: [],
@@ -360,4 +377,26 @@ it('revokes a media handle that finishes publishing after cancellation', async (
   f.audio.cancel(requestId); await tick();
   const handle = { url: 'http://127.0.0.1:1234/late-opaque', revoke: vi.fn(async () => {}) }; publishing.resolve(handle);
   await rejected; expect(handle.revoke).toHaveBeenCalledOnce(); expect(f.audio.lookup(handle.url)).toBeNull();
+});
+
+it.each([48,1000,-1000])('duration difference %i ms does not block cleanup or the next request', async delta => {
+ const f=fixture({durationMs:270000});await f.audio.prepare(id,requestId);
+ f.changeState({durationMs:270000+delta,isPlaying:false,positionMs:1353});
+ await expect(f.audio.prepare(id,nextRequest)).resolves.toHaveProperty('url');
+});
+it('duration tolerance preserves actual end position and rejects wrong songs and material differences',()=>{
+ const {requireFacts}=require('../../../electron/spotify/cableAudioFacts.cjs');
+ const record={selection:{deviceId:'local'},resolvedTrackId:id,durationMs:270000};
+ const facts={deviceId:'local',trackId:id,durationMs:270048,positionMs:270048,isPlaying:false};
+ expect(()=>requireFacts(facts,record,false)).not.toThrow();
+ expect(()=>requireFacts({...facts,trackId:'other'},record,false)).toThrow('TRACK_NOT_CURRENT');
+ expect(()=>requireFacts({...facts,durationMs:271001},record,false)).toThrow('PLAYBACK_STATE_UNCONFIRMED');
+ expect(()=>requireFacts({...facts,positionMs:270049},record,false)).toThrow('PLAYBACK_STATE_UNCONFIRMED');
+});
+
+it('rounded local metadata refresh accepts precise player duration before publication',async()=>{
+ const f=fixture({durationMs:270048,localSourceMetadata:async()=>({trackId:id,durationMs:270000})});
+ const original=f.control.prepare.getMockImplementation()!;f.control.prepare.mockImplementation(async input=>{await original(input);f.changeState({durationMs:270048});return f.facts();});
+ const prepared=await f.audio.prepare(id,requestId);
+ expect(prepared.durationMs).toBe(270048);expect(f.audio.lookup(prepared.url).durationMs).toBe(270048);
 });

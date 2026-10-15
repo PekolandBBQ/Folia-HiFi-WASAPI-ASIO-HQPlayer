@@ -372,7 +372,7 @@ public sealed class ProductRouteService : IDisposable
                     if (now() - observation.ObservedAtUtc >= budget) throw new RouteBlockedException("PREPARED_TARGET_ACTIVITY_EXPIRED");
                     preparedTargetActivity = new(route.TransactionId, leaseId!, generation, route.CurrentProcess,
                         preparedSelectionTarget.TrackUri!, route.Target.Id, intervalEpoch, observation.ObservedAtUtc,
-                        observation.Sessions.Where(row => row.Active).Select(row => row.SessionInstanceId).ToArray());
+                        observation.Sessions.Where(row => row.Active).Select(row => row.SessionInstanceId).ToArray(), (lifetime?.RequiresTargetEndpointActivity ?? true));
                     lastContact = monotonic();
                     return Reply(obj, true, "preparedSelection", "PREPARED_TARGET_ACTIVE") with { PreparedTargetActive = true };
                 }
@@ -400,7 +400,7 @@ public sealed class ProductRouteService : IDisposable
 						PreparationPhase = (playbackTarget.RequirePreparationObservation ? "selected" : null)
 					};
                     if (backend.Capabilities.PreparedTargetActivity &&
-                        preparedTargetActivity?.Matches(routeRecord, leaseId!, generation, ownedPlaybackTarget.TrackUri!, intervalEpoch) != true)
+                        preparedTargetActivity?.Matches(routeRecord, leaseId!, generation, ownedPlaybackTarget.TrackUri!, intervalEpoch, (lifetime?.RequiresTargetEndpointActivity ?? true)) != true)
                         throw new RouteBlockedException("PREPARED_TARGET_ACTIVITY_REQUIRED");
 					lifetime.VerifyPausedSource(ownedPlaybackTarget);
 					lifetime.ValidateApplyAuthority();
@@ -410,7 +410,7 @@ public sealed class ProductRouteService : IDisposable
                     {
                         var afterPause = ValidateOwnershipAndPolicy();
                         if (afterPause.Stage != RouteStage.HeldPaused) return StageReply(obj, afterPause);
-                        if (preparedTargetActivity?.Matches(afterPause, leaseId!, generation, ownedPlaybackTarget.TrackUri!, intervalEpoch) != true)
+                        if (preparedTargetActivity?.Matches(afterPause, leaseId!, generation, ownedPlaybackTarget.TrackUri!, intervalEpoch, (lifetime?.RequiresTargetEndpointActivity ?? true)) != true)
                             throw new RouteBlockedException("PREPARED_TARGET_ACTIVITY_REQUIRED");
                         completedTargetActivity = preparedTargetActivity; preparedTargetActivity = null;
                     }
@@ -607,9 +607,24 @@ public sealed class ProductRouteService : IDisposable
                         // proof, without inventing stream continuity or replaying select.
                         var afterPause = ValidateOwnershipAndPolicy();
                         if (afterPause.Stage != RouteStage.HeldPaused) return StageReply(obj, afterPause);
-                        if (completedTargetActivity?.Matches(afterPause, leaseId!, generation, sameTrack, intervalEpoch) != true)
-                            throw new RouteBlockedException("PREPARED_TARGET_ACTIVITY_REQUIRED");
-                        preparedTargetActivity = completedTargetActivity with { PreparationEpoch = nextEpoch };
+                        if (!(lifetime?.RequiresTargetEndpointActivity ?? true))
+                        {
+                            // Rebuild after interrupted preparation as well as ordinary
+                            // resume/Seek/output replacement. Never manufacture active rows.
+                            var observed = transaction.ObserveHeldTargetActivity(TimeSpan.FromSeconds(2));
+                            lifetime.ValidateApplyAuthority(); lifetime.ValidateOwnership(RequireRetention());
+                            if (now() - observed.ObservedAtUtc >= TimeSpan.FromSeconds(2))
+                                throw new RouteBlockedException("PREPARED_TARGET_ACTIVITY_EXPIRED");
+                            preparedTargetActivity = new(afterPause.TransactionId, leaseId!, generation, afterPause.CurrentProcess,
+                                sameTrack, afterPause.Target.Id, nextEpoch, observed.ObservedAtUtc,
+                                observed.Sessions.Where(row => row.Active).Select(row => row.SessionInstanceId).ToArray(), false);
+                        }
+                        else
+                        {
+                            if (completedTargetActivity?.Matches(afterPause, leaseId!, generation, sameTrack, intervalEpoch) != true)
+                                throw new RouteBlockedException("PREPARED_TARGET_ACTIVITY_REQUIRED");
+                            preparedTargetActivity = completedTargetActivity with { PreparationEpoch = nextEpoch };
+                        }
                         completedTargetActivity = null;
                     }
                     playbackTarget = fresh; preparedSelectionTarget = fresh;
@@ -1172,7 +1187,12 @@ public sealed class ProductRouteService : IDisposable
 		int? intervalGeneration = lifetime?.IntervalGeneration;
 		bool intervalArmed = lifetime?.IntervalGeneration == generation && !string.IsNullOrWhiteSpace(lifetime?.IntervalId);
 		string intervalId = lifetime?.IntervalId;
-		return new ServiceReply(id, ok, state, code, ready, capabilities, inspection, lease, resume, restored, defaults, null, GlobalDefaultsWritten: false, null, intervalIsolated, intervalGeneration, intervalArmed, intervalId, PausedHeld: pausedHeld, IntervalEpoch: intervalEpoch);
+		return new ServiceReply(id, ok, state, code, ready, capabilities, inspection, lease, resume, restored, defaults, null, GlobalDefaultsWritten: false, null, intervalIsolated, intervalGeneration, intervalArmed, intervalId, PausedHeld: pausedHeld, IntervalEpoch: intervalEpoch,
+            PreparationDiagnostic: new { mode = (lifetime?.RequiresTargetEndpointActivity ?? true) ? "endpoint" : "process",
+                epoch = intervalEpoch, pendingProof = preparedTargetActivity is not null,
+                completedProof = completedTargetActivity is not null,
+                activeSessionCount = (preparedTargetActivity ?? completedTargetActivity)?.SessionInstanceIds.Length,
+                selectionCompleted = preparedSelectionCompleted, pausedHeld, seekParked });
 	}
 
 	private static string WireState(RouteStage stage)

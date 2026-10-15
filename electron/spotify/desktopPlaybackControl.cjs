@@ -3,6 +3,7 @@ const { setTimeout: delay } = require('node:timers/promises');
 const { createHttpPlaybackSource } = require('./httpPlaybackSource.cjs');
 const { createColdVolumeReceipt } = require('./desktopColdRecovery.cjs');
 const { createDesktopPreparationIntent } = require('./desktopPreparationIntent.cjs');
+const { retryPlayback } = require('./playbackRetry.cjs');
 const { reportSpotifyPlaybackControl, reportSpotifyColdBootstrap } = require('./requestDiagnostics.cjs');
 const { fail, failureCode, validDeviceId, validTrackId, validSessionId, sameStamp, position,
   normalizeDevices, requireDevice } = require('./desktopPlaybackFacts.cjs');
@@ -90,12 +91,16 @@ function createDesktopPlaybackControl({ onRevoke = () => {}, onFailureDiagnostic
       revoke(record, 'SESSION_CHANGED'); throw fail('SESSION_CHANGED');
     }
   }
-  function get(session) {
+  function get(session, { cleanup = false } = {}) {
     if (!current || current.session !== session) throw fail('STALE_SESSION');
-    own(current); return current;
+    own(current);
+    if (current.cleanupOnly && !cleanup) throw Object.assign(fail('PLAYBACK_STATE_UNCONFIRMED'), { stage: 'cleanup-required' });
+    return current;
   }
-  async function guarded(record, action, { preserveCancelled } = {}) {
-    try { own(record); const result = await action(); own(record); return result; }
+  async function guarded(record, action, { preserveCancelled, cleanup = false } = {}) {
+    try { own(record);
+      if (record.cleanupOnly && !cleanup) throw Object.assign(fail('PLAYBACK_STATE_UNCONFIRMED'), { stage: 'cleanup-required' });
+      const result = await action(); own(record); return result; }
     catch (error) {
       try { onFailureDiagnostic(error); } catch { /* Diagnostics cannot change cleanup. */ }
       // A canceled pre-dispatch position cut has made no remote write. Keep
@@ -112,14 +117,22 @@ function createDesktopPlaybackControl({ onRevoke = () => {}, onFailureDiagnostic
           await settleAcknowledgedSelectionForRestore(record, currentState, parked);
           record.onRouteParked();
           parkedForCleanup = true;
-        } catch { error = Object.assign(fail('ROUTE_SOURCE_PAUSE_UNCONFIRMED'), { cause: fail(failureCode(error)) }); }
+        } catch { error = Object.assign(fail('ROUTE_SOURCE_PAUSE_UNCONFIRMED'), { cause: fail(failureCode(error)),
+          retryCount: error?.retryCount, retriesExhausted: error?.retriesExhausted }); }
       }
       const code = failureCode(error);
       // The provider still needs this controller to retire capture and hold its
       // existing route. Closing it here makes that cleanup fail with STALE_SESSION.
       // The initiating operation still rejects; provider release closes it after hold.
-      if (!parkedForCleanup) revoke(record, code);
+      if (!parkedForCleanup) {
+        // Keep the exact source owner for cleanup retries, but never allow new
+        // Play/Seek on this failed controller. Account changes still revoke it.
+        if (record.routeEngaged && current === record && !record.revoked && !record.controller.signal.aborted
+          && record.revision === revision && sameStamp(record.stamp, dependencies.vault.stamp())) record.cleanupOnly = true;
+        else revoke(record, code);
+      }
       const failure = fail(code);
+      for (const key of ['retryCount', 'retriesExhausted', 'stateMismatch', 'expectedPlaying', 'actualPlaying']) if (error?.[key] !== undefined) failure[key] = error[key];
       for (const key of ['nativeCode', 'failureCode', 'stage'])
         if (typeof error?.[key] === 'string') failure[key] = error[key];
       if (code === 'ROUTE_SOURCE_PAUSE_UNCONFIRMED' && error.cause) failure.cause = fail(failureCode(error.cause));
@@ -138,7 +151,7 @@ function createDesktopPlaybackControl({ onRevoke = () => {}, onFailureDiagnostic
     if (!['state', 'devices'].includes(operation)) invalidateObservation(record);
     return api.request(operation, record, () => own(record), options);
   };
-  const read = async (record, { allowEmpty = false, signal, reusePreparedObservation = false, diagnosticObservation, ...options } = {}) => {
+  const readOnce = async (record, { allowEmpty = false, signal, reusePreparedObservation = false, diagnosticObservation, ...options } = {}) => {
     if (reusePreparedObservation) {
       own(record);
       const saved = usableObservation(record);
@@ -152,6 +165,14 @@ function createDesktopPlaybackControl({ onRevoke = () => {}, onFailureDiagnostic
     try { diagnosticObservation?.(body); } catch { /* Diagnostics never change source confirmation. */ }
     return allowEmpty && body == null ? null : api.playbackFacts(body, record, { now, ...options });
   };
+  const read = (record, { expectedPlaying, ...options } = {}) => retryPlayback(async attempt => {
+    const facts = await readOnce(record, { ...options, reusePreparedObservation: attempt === 0 && options.reusePreparedObservation });
+    if (typeof expectedPlaying === 'boolean' && facts?.isPlaying !== expectedPlaying)
+      throw Object.assign(fail('PLAYBACK_STATE_UNCONFIRMED'), { stage: 'playback-facts',
+        stateMismatch: 'playing-mismatch', expectedPlaying, actualPlaying: facts?.isPlaying });
+    return facts;
+  }, { signal: options.signal || record.controller.signal, check: () => own(record), wait,
+    operation: 'state-read', report: value => console.info('[SpotifyRecovery]', JSON.stringify(value)) });
   // The deadline covers dispatch, response drain, every read and every wait, even
   // when an injected transport or producer ignores cancellation.
   async function withinConfirmation(confirmation, action) {
@@ -809,8 +830,9 @@ function createDesktopPlaybackControl({ onRevoke = () => {}, onFailureDiagnostic
         return {...parked,previousTrackId:previous};
       });
     },
-    async readState(session, { forPreparation = false } = {}) { const record = get(session);
-      return enqueue(record, () => read(record, { reusePreparedObservation: forPreparation && record.preparationObservationOpen === true })); },
+    async readState(session, { forPreparation = false, expectedPlaying } = {}) { const record = get(session);
+      return enqueue(record, () => read(record, { expectedPlaying,
+        reusePreparedObservation: forPreparation && record.preparationObservationOpen === true })); },
     async routeSourceControl(input, { signal: callerSignal } = {}) {
       const record = routeSources.get(input?.session);
       if (!record) throw fail('STALE_SESSION');
@@ -1098,7 +1120,7 @@ function createDesktopPlaybackControl({ onRevoke = () => {}, onFailureDiagnostic
       const state = await setPlaying(record, true, { reusePreparedObservation: record.preparationObservationOpen === true });
       record.preparationObservationOpen = false; return state;
     }); },
-    async pause(session, { forPreparation = false, completedPause } = {}) { const record = get(session);
+    async pause(session, { forPreparation = false, completedPause } = {}) { const record = get(session, { cleanup: true });
       return enqueue(record, async () => {
         record.pendingPositionStart = undefined;
         // One exact completed Pause may cross the immediately replacing reader.
@@ -1124,7 +1146,7 @@ function createDesktopPlaybackControl({ onRevoke = () => {}, onFailureDiagnostic
         if (record.pausedHoldObservation === observed && observed)
           record.completedPause = { state, observation: observed };
         return state;
-      }); },
+      }, { cleanup: true }); },
     terminalCleanupCheckpoint(session) {
       const record = get(session), observed = usableObservation(record), queue = mutation;
       if (!observed || observed.facts.isPlaying !== false || observed.facts.trackId !== record.trackId
@@ -1138,7 +1160,7 @@ function createDesktopPlaybackControl({ onRevoke = () => {}, onFailureDiagnostic
         && usableObservation(record, { allowExpired: true }) === observed });
     },
     beginPausedHoldProof(session) {
-      const record = get(session), observed = record.pausedHoldObservation;
+      const record = get(session, { cleanup: true }), observed = record.pausedHoldObservation;
       record.pausedHoldObservation = undefined;
       if (!observed || usableObservation(record) !== observed || observed.lease !== record.preparationLease
         || record.preparationPhase !== 'selected' || !Number.isSafeInteger(record.preparationLease?.generation)

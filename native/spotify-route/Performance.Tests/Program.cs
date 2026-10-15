@@ -105,6 +105,8 @@ sealed class Fixture : IProductRouteBackend,IProductRouteLifetime,IVerifiedSpoti
  public ProductRouteService Service {get;}
  public TimeSpan Elapsed;
  public bool RealTime;
+ public bool RequiresTargetEndpointActivity {get;set;}=true;
+ public bool EmptyProcessSessions;
  readonly long realtimeStart=System.Diagnostics.Stopwatch.GetTimestamp();
  public TimeSpan Monotonic=>RealTime?System.Diagnostics.Stopwatch.GetElapsedTime(realtimeStart):Elapsed;
  public DateTimeOffset Now=>RealTime?DateTimeOffset.UtcNow:StartTime+Elapsed;
@@ -148,7 +150,7 @@ sealed class Fixture : IProductRouteBackend,IProductRouteLifetime,IVerifiedSpoti
  public SpotifyProcess CheckLiveIdentity()=>ProcessChanged?Identity with { StartTimeUtcTicks=Identity.StartTimeUtcTicks+1 }:Identity;public string? Get(RenderRole role)=>values[(int)role];
  public void Set(RenderRole role,string? value){if(FailRestore&&value!="base")throw new RouteBlockedException("RESTORE_READBACK_MISMATCH");if(role==RenderRole.Communications)throw new Exception("Communications setter");values[(int)role]=value;Writes++;}
  public BaseRenderEndpoint VerifySelected(BaseRenderEndpoint e)=>EndpointChanged?throw new RouteBlockedException("BASE_PAIR_CHANGED"):e;
- public SessionObservation Observe(IBoundSpotifyPolicy process,TimeSpan budget){SessionScans++;if(ChangeDuringScan){ResetReceipt();}return new(true,Identity,Now,[new(Identity,"spotify",CurrentSelection.RenderDeviceId,!Paused)]);}
+ public SessionObservation Observe(IBoundSpotifyPolicy process,TimeSpan budget){SessionScans++;if(ChangeDuringScan){ResetReceipt();}return new(true,Identity,Now,EmptyProcessSessions ? [] : [new(Identity,"spotify",CurrentSelection.RenderDeviceId,!Paused)]);}
  public RouteRecord? ReadLatest()=>Latest;public void Append(RouteRecord r)=>Latest=r;
  public PreparedRetention RetainAndAcknowledgePrepared(RouteRecord r)=>new(r.TransactionId,Identity,new string('a',64),1,"file",true,true,true);
  public void ValidateOwnership(PreparedRetention r){if(JournalOwnerLost||r.Process!=Identity||r.TransactionId!=Latest?.TransactionId)throw new JournalUnavailableException("BAD_RETAINED_OWNER");}
@@ -161,7 +163,7 @@ sealed class Fixture : IProductRouteBackend,IProductRouteLifetime,IVerifiedSpoti
   readingTarget=target;
   nativeFeed??=new EmptyFeed(this);
   nativeObserver??=new ProductSessionObserver(nativeFeed,CurrentSelection.RenderDeviceId);
-  var result=new SourcePauseVerifier(this,target.AllowEmptyPlayerForRestore&&Broker is not null?nativeObserver.ForEmptyRestore:this,this,()=>Now,ledger).RequirePaused(target);
+  var result=new SourcePauseVerifier(this,target.AllowEmptyPlayerForRestore&&Broker is not null?nativeObserver.ForEmptyRestore:this,this,()=>Now,ledger,requireNativeQuiescence:RequiresTargetEndpointActivity).RequirePaused(target);
   emptyProof=result.EmptyPlayer;
   if (Broker is not null && target.RequireSeekParkEvidence) CaptureParkReceipt=result.CaptureParkReceipt;
  }

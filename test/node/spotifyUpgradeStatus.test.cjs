@@ -8,7 +8,8 @@ test('paused cleanup errors keep their concrete Chinese cause across public mapp
  for (const code of ['PAUSED_SOURCE_COMPLETE_SESSION_PROOF_REQUIRED','PAUSED_SOURCE_SESSIONS_STILL_ACTIVE',
    'PAUSED_SOURCE_OBSERVATION_INVALID','PAUSED_SOURCE_OBSERVATION_TIMEOUT','PCM_STOP_NOT_CONFIRMED',
    'PAUSED_SOURCE_SCAN_INCOMPLETE','PAUSED_SOURCE_PROCESS_MISMATCH','PAUSED_SOURCE_OBSERVATION_STALE',
-   'PAUSED_SOURCE_OBSERVATION_IN_FUTURE','PAUSED_SOURCE_SESSION_ID_MISSING','FRESH_CAPTURE_INTERVAL_BASELINE_REQUIRED']) {
+   'PAUSED_SOURCE_OBSERVATION_IN_FUTURE','PAUSED_SOURCE_SESSION_ID_MISSING','FRESH_CAPTURE_INTERVAL_BASELINE_REQUIRED',
+   'INVALID_AUDIO_REQUEST','INVALID_AUDIO_TRACK_ID','INVALID_AUDIO_REQUEST_ID','INVALID_AUDIO_QUALITY']) {
   const value=failureDetails(publicError(Object.assign(Error(code),{code,stage:'cleanup'})),'audio');
   assert.equal(value.nativeCode,code);assert.equal(value.stage,'cleanup');
   assert.doesNotMatch(value.detail,/以下为组件返回的具体错误/);assert.match(value.detail,/[\u4e00-\u9fff]/);
@@ -43,7 +44,7 @@ for (const layout of ['store','desktop']) test(layout + ' old resources upgrade 
 });
 test('raw route cause survives public mapping and is shown instead of a generic preparation failure',()=>{
  const mapped=publicError(Object.assign(Error('ignored'),{code:'BOOTSTRAP_IDENTITY_UNCONFIRMED',failureCode:'ORIGINAL_PHYSICAL_OWNER_UNPROVEN',stage:'identity-inspect'}));
- const details=failureDetails(mapped,'audio');assert.equal(details.causeCode,'ORIGINAL_PHYSICAL_OWNER_UNPROVEN');assert.match(details.detail,/原输出/);assert.match(details.detail,/identity-inspect/);
+ const details=failureDetails(mapped,'audio');assert.equal(details.causeCode,'ORIGINAL_PHYSICAL_OWNER_UNPROVEN');assert.match(details.detail,/原输出/);assert.equal(details.stage,'identity-inspect');assert.doesNotMatch(details.detail,/identity-inspect|ORIGINAL_PHYSICAL_OWNER_UNPROVEN/);
 });
 test('Wrapper identifies its settings mode and rejects obsolete OAuth saves without touching service',async t=>{
  const directory=await root(t);let created=0;
@@ -63,4 +64,18 @@ test('capture failure remains visible even when the routing component is availab
  const directory=await root(t);const {createGuide}=require('../../electron/spotify/desktopSetupGuide.cjs');
  const guide=createGuide({directory,apps:()=>path.join(directory,'missing'),desktop:{inspect:async()=>({candidates:[],errors:[],running:[]})},bridge:{connected:()=>false},capture:{devices:async()=>{throw Object.assign(Error('no helper'),{code:'CAPTURE_HELPER_UNAVAILABLE'})}},route:{availability:async()=>({supported:true})},endpointsConfigured:()=>false,extension:async()=>'',log:()=>{}});
  const result=await guide.request({operation:'status'});assert.equal(result.ready,false);assert.equal(result.engine,false);assert.ok(result.issues.some(i=>i.nativeCode==='CAPTURE_HELPER_UNAVAILABLE'));
+});
+
+test('process preparation errors retain specific Chinese reasons and route stage',()=>{
+ for(const code of ['PREPARED_TARGET_ACTIVITY_REQUIRED','PREPARED_TARGET_ACTIVITY_EXPIRED','SPOTIFY_INSTANCE_CHANGED']) {
+  const value=failureDetails(publicError(Object.assign(Error(code),{code,stage:'route-resume-preparation'})),'audio');
+  assert.equal(value.stage,'route-resume-preparation');assert.equal(value.nativeCode,code);
+  assert.doesNotMatch(value.detail,/以下为组件返回的具体错误/);
+ }
+});
+
+test('playback fact mismatch preserves concrete Chinese reason without private fields',()=>{
+ const {requireFacts}=require('../../electron/spotify/cableAudioFacts.cjs');let caught;
+ try{requireFacts({deviceId:'local',trackId:'song',durationMs:2000,positionMs:100,isPlaying:true},{selection:{deviceId:'local'},resolvedTrackId:'song',durationMs:2000},false)}catch(e){caught=e;}
+ const details=failureDetails(publicError(caught),'audio');assert.equal(details.stateMismatch,'playing-mismatch');assert.equal(details.actualPlaying,true);assert.equal(details.expectedPlaying,false);assert.match(details.detail,/播放\/暂停状态不一致/);assert.doesNotMatch(JSON.stringify(details),/local|song/);
 });

@@ -139,7 +139,7 @@ function createService({beforeLeaveProvider},local,log){
       if(input.action==='lyrics'){
         await local.ready;
         if(!catalog.has(input.id))await refresh();
-        const result=await bridge.request('lyrics',{trackId:input.id,imageUrl:catalog.get(input.id)?.coverUrl});
+        const result=await require('./wrapper/lyrics.cjs').requestNativeLyrics(bridge,{trackId:input.id,imageUrl:catalog.get(input.id)?.coverUrl},log);
         log('ui-native-lyrics',{trackId:input.id,source:result.source,syncType:result.syncType,lineCount:result.lines.length});
         return result;
       }

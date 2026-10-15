@@ -28,7 +28,7 @@ export const useGridStayPlayback = (playTrack: (track: SongResult, queue: SongRe
 
     /**
      * 卡片的「播放」：正在播放的那首（留在原处时）切换播放状态，其余照旧交给播放端口。点的那一刻直读 store：
-     * PolaroidCard 的 memo 比较不看 onSelect，卡片手里可能是早先渲染的闭包，判断不能依赖渲染时的值。
+     * 同一帧内也可能连续点击，判断使用点击时的 store，避免依赖上一帧的播放状态。
      */
     const selectTrack = useCallback((track: SongResult, queue: SongResult[]) => {
         const current = usePlaybackStore.getState().currentSong;

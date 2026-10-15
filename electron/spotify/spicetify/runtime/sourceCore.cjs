@@ -132,7 +132,7 @@ function createSourceCore({ port, authority, now = Date.now, timeoutMs = 4000, c
       || !Number.isSafeInteger(facts.positionMs) || facts.positionMs < 0
       || facts.positionMs > facts.durationMs || facts.isPlaying && facts.positionMs === facts.durationMs) throw fail('PROTOCOL_INVALID');
     if (matchTrack && facts.trackId !== expected.trackId) throw fail('TRACK_NOT_CURRENT');
-    if (matchTrack && Math.abs(facts.durationMs - expected.durationMs) > 1000) throw fail('PROTOCOL_INVALID');
+    if (matchTrack && !require('../../durationFacts.cjs').durationsAgree(facts.durationMs, expected.durationMs)) throw fail('PROTOCOL_INVALID');
     return Object.freeze({ ...facts, positionMs: matchTrack ? facts.positionMs : 0,
       disallows: Object.freeze({ ...facts.disallows }) });
   }

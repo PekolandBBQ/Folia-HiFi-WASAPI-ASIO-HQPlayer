@@ -38,7 +38,7 @@ function createBridge(log, options={}) {
     connected:()=>!closed&&socket?.readyState===1,
     async start(){await new Promise((yes,no)=>{server.once('error',no);server.listen(options.port??19238,'127.0.0.1',yes);});return {url:'ws://127.0.0.1:'+server.address().port+'/bridge/'+secret};},
     request(op,args={}) { if(closed||!socket||socket.readyState!==1)return Promise.reject(Object.assign(Error('SPOTIFY_INSTANCE_CHANGED'),{code:'SPOTIFY_INSTANCE_CHANGED'}));
-      const id=++serial;return new Promise((resolve,reject)=>{const timer=setTimeout(()=>{pending.delete(id);reject(Object.assign(Error('CONTROL_TIMEOUT'),{code:'CONTROL_TIMEOUT'}));},10000);pending.set(id,{resolve,reject,timer});socket.send(JSON.stringify({id,op,args}));});},
+      const id=++serial;return new Promise((resolve,reject)=>{const timer=setTimeout(()=>{pending.delete(id);reject(Object.assign(Error('CONTROL_TIMEOUT'),{code:'CONTROL_TIMEOUT'}));},op==='lyrics'?30000:10000);pending.set(id,{resolve,reject,timer});socket.send(JSON.stringify({id,op,args}));});},
     close(){closed=true;rejectPending();socket?.close();wss.close();server.close();},
   };
 }

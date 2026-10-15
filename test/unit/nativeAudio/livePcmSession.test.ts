@@ -370,3 +370,22 @@ it('rapid real-HQ seeks do not query a revoked intermediate reader and only the 
     expect(await second).toMatchObject({ position: 47, playing: true });
     expect(f.readers.at(-1)?.positionMs).toBe(47000);
 });
+
+it('seek immediately after initial preparation replaces the pending reader without reporting a playback failure',async()=>{
+ const f=await fixture({hq:true,actualHQ:true});const gate=deferred();const original=f.source.openReadable.getMockImplementation()!;
+ f.source.openReadable.mockImplementationOnce(async args=>{await gate.promise;return original(args);});
+ const first=f.session.prepare();const old=expect(first).rejects.toBeDefined();
+ await vi.waitFor(()=>expect(f.source.openReadable).toHaveBeenCalledOnce());
+ const seek=f.session.command('seek',{position:24});gate.resolve();await old;await seek;
+ await f.session.command('play');expect(f.readers.at(-1)?.positionMs).toBe(24000);expect(f.onError).not.toHaveBeenCalled();
+});
+
+it('seek during pending resume preserves play intent without a second manual Play',async()=>{
+ const f=await fixture({hq:true,actualHQ:true});await f.session.prepare();await f.session.command('play');await f.session.command('pause');
+ const gate=deferred(),original=f.source.openReadable.getMockImplementation()!;
+ f.source.openReadable.mockImplementationOnce(async args=>{await gate.promise;return original(args);});
+ const playing=f.session.command('play'),old=expect(playing).rejects.toBeDefined();
+ await vi.waitFor(()=>expect(f.source.openReadable).toHaveBeenCalledTimes(2));
+ const seeking=f.session.command('seek',{position:42});gate.resolve();await old;
+ expect(await seeking).toMatchObject({position:42,playing:true});expect(f.readers.at(-1)?.positionMs).toBe(42000);expect(f.onError).not.toHaveBeenCalled();
+});

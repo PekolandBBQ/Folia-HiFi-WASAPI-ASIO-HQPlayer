@@ -7,7 +7,7 @@ public sealed record ProductCapabilities(bool ProductionQualified, bool HeldPaus
     bool CompleteSessionProof, bool NotificationCoherent, bool RetainedJournalRecovery, string[] Blockers, bool TrialAuthorized=false, string? ValidationProfile=null, bool IntervalIsolation=false, bool OwnedSilentRenderLease=false, bool PreparedSelection=false, bool BoundedPreparationObservation=false, bool BoundedRestoreObservation=false, bool IndefiniteHeldPause=false, bool FreshResumeInterval=false, bool BoundedPausedHoldObservation=false, bool PreparedTargetActivity=false, bool BoundedPausedProofTransfer=false, bool BoundedSeekPark=false, bool ProviderRouteLifetime=false, bool RuntimeCompatible=false, string? CompatibilityProfile=null, uint? WindowsBuild=null, string? RouteInterfaceId=null)
 {
     public int ProtocolMajor => 1;
-    public string ComponentVersion => "0.19.0-dev.30";
+    public string ComponentVersion => "0.19.0-dev.31";
     public string Platform => "win32-x64";
     public string Contract => "folia-owned-route-v1";
     public bool ImplementationAvailable => IntervalIsolation && HeldPausedAcquire && CompleteSessionProof && NotificationCoherent && RetainedJournalRecovery && Blockers.Length == 0;

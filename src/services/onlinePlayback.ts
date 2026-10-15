@@ -1,3 +1,5 @@
+import { useNativeLyricsResultStore } from '../stores/useNativeLyricsResultStore';
+import { getPlaybackSongKey } from '../utils/appPlaybackGuards';
 import { beginPlaybackLoad, updatePlaybackLoad, endPlaybackLoad } from '../stores/usePlaybackLoadStore';
 import { isSessionBoundAudio } from './onlineMusic/audioPolicy';
 import { LyricData, OnlineLyricsState, ReplayGainInfo, SongResult } from '../types';
@@ -174,6 +176,8 @@ export async function loadOnlineSongLyrics(
     }
 ): Promise<void> {
     const { isCurrent, onLyrics, onPureMusicChange, onStateChange, onAutoMatchStart, onDone } = callbacks;
+    const songKey = getPlaybackSongKey(song);
+    if (isCurrent()) useNativeLyricsResultStore.setState({ songKey, state: 'loading' });
     const lyricCacheKey = getSongResourceCacheKey('lyric', song);
     const onlineLyricsState = await loadOnlineLyricsState(song);
   const initialSettingsLyricSettings = useLyricSettingsStore.getState();
@@ -190,8 +194,18 @@ export async function loadOnlineSongLyrics(
         // Old auto-match caches do not establish Spotify-native provenance. Fetch the
         // owning provider, but release audio immediately instead of waiting on lyrics.
         onDone();
-        const native = await omni.getLyrics(song, { userId });
+        const started = Date.now();
+        console.info('[SpotifyLyrics]', JSON.stringify({ phase: 'request', trackId: song.sourceRef.mediaId }));
+        let native;
+        try { native = await omni.getLyrics(song, { userId }); }
+        catch (error) {
+            if (isCurrent()) useNativeLyricsResultStore.setState({ songKey, state: 'error' });
+            throw error;
+        }
+        console.info('[SpotifyLyrics]', JSON.stringify({ phase: isCurrent() ? 'received' : 'stale-discarded',
+            trackId: song.sourceRef.mediaId, elapsedMs: Date.now() - started, lines: native.lyrics?.lines.length ?? 0 }));
         if (!isCurrent()) return;
+        useNativeLyricsResultStore.setState({ songKey, state: native.lyrics?.lines.some(line => line.fullText.trim()) || native.mainText?.trim() ? 'ready' : 'empty' });
         onPureMusicChange?.(native.isPureMusic);
         onLyrics(native.lyrics);
         return;

@@ -3,7 +3,7 @@ const path = require('node:path');
 const { createHelper } = require('./helper.cjs');
 const { decodeLocalAudio } = require('./decode.cjs');
 const { downloadRemoteAudio } = require('./download.cjs');
-const { audioError, errorCode, diagnostic, sourceLifecycleError } = require('./errors.cjs');
+const { audioError, errorCode, diagnostic, sourceLifecycleError, isCancellation } = require('./errors.cjs');
 const { createHQPlayerComponentHost } = require('../hqplayer/client.cjs');
 const { loadHQPlayerSession } = require('./hqplayerSession.cjs');
 const { publishPreviewDiagnostic, isPreviewDiagnosticsEnabled, previewSessionRef, previewOperationRef, releasePreviewSession, sourceErrorCode } = require('../debug/privatePreviewDiagnosticBus.cjs');
@@ -67,6 +67,7 @@ function registerNativeAudio({ app, ipcMain, isTrustedSender, helperFactory = cr
             current.sender.send('native-audio:event', { event: 'state', session: current.id, state: publicAudioState(state, current.sourceInfo) });
         },
         onError: error => {
+            if (isCancellation(error)) return;
             diagnostic(error);
             const current = active;
             if (!current || current.backend !== 'hqplayer' || current.sender.isDestroyed()) return;
@@ -440,7 +441,7 @@ function registerNativeAudio({ app, ipcMain, isTrustedSender, helperFactory = cr
                             assertCurrent(current); return streamHelper.request(payload);
                         }, { signal: current.abort.signal, recovering: nativeHandoffPending, onRetry: () => progress(current, 'connect') }); },
                         onError: error => {
-                            if (active !== current || current.abort.signal.aborted || current.streamFailed) return;
+                            if (active !== current || current.abort.signal.aborted || current.streamFailed || isCancellation(error)) return;
                             current.streamFailed = true; diagnostic(error);
                             observeError(current, error);
                             current.sender.send('native-audio:event', { event: 'error', session: current.id, errorCode: errorCode(error) });
@@ -465,7 +466,7 @@ function registerNativeAudio({ app, ipcMain, isTrustedSender, helperFactory = cr
                                 assertCurrent(current); return streamHelper.request(payload);
                             }, { signal: current.abort.signal, recovering: nativeHandoffPending, onRetry: () => progress(current, 'connect') }),
                             progress, assertCurrent, onError: error => {
-                                if (active !== current || current.abort.signal.aborted || current.streamFailed) return;
+                                if (active !== current || current.abort.signal.aborted || current.streamFailed || isCancellation(error)) return;
                                 current.streamFailed = true; diagnostic(error);
                                 observeError(current, error);
                                 current.sender.send('native-audio:event', { event: 'error', session: current.id, errorCode: errorCode(error) });
@@ -623,7 +624,7 @@ function registerNativeAudio({ app, ipcMain, isTrustedSender, helperFactory = cr
             if (errorCode(error) === 'SOURCE_RESTORE_UNCONFIRMED') {
                 for (const sender of lifecycleSenders) if (!sender.isDestroyed()) sender.send('native-audio:event', {
                     event: 'lifecycle-error', errorCode: 'SOURCE_RESTORE_UNCONFIRMED' });
-            } else if (previous && !previous.sender.isDestroyed()) previous.sender.send('native-audio:event', {
+            } else if (!isCancellation(error) && previous && !previous.sender.isDestroyed()) previous.sender.send('native-audio:event', {
                 event: 'error', session: previous.id, errorCode: errorCode(error) });
         });
     });
