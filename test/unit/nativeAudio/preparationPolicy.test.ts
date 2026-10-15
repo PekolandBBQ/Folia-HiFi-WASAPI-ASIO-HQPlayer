@@ -2,9 +2,34 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { prepareWithCompatibility } from '../../../src/services/nativeAudio/prepareWithCompatibility';
 import { useDecodeCompatibilityStore } from '../../../src/stores/useDecodeCompatibilityStore';
 import { beginPlaybackLoad, updatePlaybackLoad, endPlaybackLoad, usePlaybackLoadStore } from '../../../src/stores/usePlaybackLoadStore';
+import { authorizeHQPlayerConnection } from '../../../src/services/nativeAudio/hqplayerSettings';
+
+vi.mock('../../../src/services/nativeAudio/hqplayerSettings', () => ({ authorizeHQPlayerConnection: vi.fn() }));
 
 // User choices and progress packets must remain owned by the request that presented them.
-afterEach(() => { useDecodeCompatibilityStore.getState().prompt?.choose('cancel'); useDecodeCompatibilityStore.setState({ enabled: false }); vi.unstubAllGlobals(); });
+afterEach(() => { useDecodeCompatibilityStore.getState().prompt?.choose('cancel'); useDecodeCompatibilityStore.setState({ enabled: false }); vi.unstubAllGlobals(); vi.clearAllMocks(); });
+it('recognizes the message-only HQPlayer error after crossing the Electron bridge', async () => {
+    vi.mocked(authorizeHQPlayerConnection).mockResolvedValueOnce(true);
+    const load = vi.fn().mockRejectedValueOnce(new Error('HQPLAYER_CONFIRM_EXISTING')).mockResolvedValueOnce('audio');
+    const controller = new AbortController();
+    expect(await prepareWithCompatibility('bridge', controller.signal, load)).toBe('audio');
+    expect(authorizeHQPlayerConnection).toHaveBeenCalledWith(controller.signal);
+    expect(load).toHaveBeenCalledTimes(2);
+});
+it('does not retry a message-only HQPlayer error after connection is declined', async () => {
+    vi.mocked(authorizeHQPlayerConnection).mockResolvedValueOnce(false);
+    const load = vi.fn().mockRejectedValueOnce(new Error('HQPLAYER_CONFIRM_EXISTING'));
+    await expect(prepareWithCompatibility('bridge', new AbortController().signal, load)).rejects.toMatchObject({ name: 'AbortError' });
+    expect(load).toHaveBeenCalledOnce();
+});
+it('recognizes message-only strict decode failure without silently enabling compatibility', async () => {
+    const load = vi.fn().mockRejectedValueOnce(new Error('STRICT_DECODE_FAILED')).mockResolvedValueOnce('audio');
+    const result = prepareWithCompatibility('bridge', new AbortController().signal, load);
+    await vi.waitFor(() => expect(useDecodeCompatibilityStore.getState().prompt).not.toBeNull());
+    useDecodeCompatibilityStore.getState().prompt!.choose('once');
+    expect(await result).toBe('audio');
+    expect(load.mock.calls).toEqual([[false], [true]]);
+});
 it('starts strict and keeps a one-song exception out of the persisted preference', async () => {
     expect(useDecodeCompatibilityStore.getState().enabled).toBe(false);
     const load = vi.fn().mockRejectedValueOnce({ code: 'STRICT_DECODE_FAILED' }).mockResolvedValue('audio');
