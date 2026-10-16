@@ -51,7 +51,7 @@ describe('Spotify Liked Songs public library resource', () => {
         expect(fixture.request.mock.calls.map(([request]) => request)).toEqual([
             { action: 'savedTracks', limit: 1, offset: 0 }, { action: 'savedTracks', limit: 50, offset: 50 },
         ]);
-        expect(spotifyProvider.capabilities.mutations).toBe(false);
+        expect(spotifyProvider.capabilities.mutations).toBe(true);
     });
 
     it('distinguishes playlist access denial from saved-tracks permission without relabeling authentication', async () => {
