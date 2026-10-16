@@ -10,10 +10,10 @@ test('connected bridge preserves a concrete audio failure and refreshes when Spo
     }));
     await mount('spotifyAccount');
     await page.getByRole('button', { name: 'Connect Spotify', exact: true }).click();
-    await expect(page.getByText('本机桥接：已连接', { exact: true })).toBeVisible();
+    await expect(page.getByText('Spotify 连接：已连接，可搜索和收藏歌曲', { exact: true })).toBeVisible();
     await expect(page.getByText('音频链路：路由准备失败：ORIGINAL_ENDPOINT_UNSAFE [route-inspect]', { exact: true })).toBeVisible();
     await page.evaluate(() => (window as any).spotifyConnectionProbe.patch({ running: false, connected: false }));
-    await expect(page.getByText('本机桥接：Spotify 尚未启动', { exact: true })).toBeVisible({ timeout: 12000 });
+    await expect(page.getByText('Spotify 连接：尚未启动，使用时将自动连接', { exact: true })).toBeVisible({ timeout: 12000 });
     await expect(page.getByText('音频链路：路由准备失败：ORIGINAL_ENDPOINT_UNSAFE [route-inspect]', { exact: true })).toBeVisible();
 });
 
@@ -25,7 +25,7 @@ test('component discovery errors remain visible independently of bridge readines
     await mount('spotifyAccount');
     await page.getByRole('button', { name: 'Connect Spotify', exact: true }).click();
     await expect(page.getByText('采集组件不可用：COMPONENT_PROTOCOL_MISMATCH [capture-devices]', { exact: true })).toBeVisible();
-    await expect(page.getByText('本机桥接：等待连接', { exact: true })).toBeVisible();
+    await expect(page.getByText('Spotify 连接：尚未连接，Folia 会在使用时自动处理', { exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: '② 一键配置', exact: true })).toBeDisabled();
 });
 
@@ -48,7 +48,7 @@ test.beforeEach(async ({ page }) => {
         localStorage.setItem('active_online_provider_id', 'spotify');
         let authenticated = false;
         let status = {
-            enabled: true, installations: [{ id: 'desktop-1', layout: 'desktop', version: 'fixture' }], selected: 'desktop-1',
+            bridgeRuntime: { state: 'ready', detail: '' }, enabled: true, installations: [{ id: 'desktop-1', layout: 'desktop', version: 'fixture' }], selected: 'desktop-1',
             detectionFailed: false, running: false, connected: false, cli: false, wrapper: false, extension: false,
             driver: false, driverEndpointsReady: false, engine: false, ready: false, bundleVersion: 'preview.3',
             versions: { spicetify: '2.45.3', cable: '45' }, systemOutput: { state: 'ready', names: ['Fixture speakers'] },
@@ -130,7 +130,7 @@ test('Store installation and restart-required state do not repeat installation',
     expect(await page.evaluate(() => (window as any).spotifyConnectionProbe.operations)).not.toContain('desktopSetup:install');
 });
 
-test('unfinished guide resumes saved components without login, install or configure', async ({ page, mount }) => {
+test('unfinished marker does not open a guide on startup', async ({ page, mount }) => {
     await page.addInitScript(() => {
         localStorage.setItem('spotify_connection_pending', 'true');
         (window as any).spotifyConnectionProbe.authenticate();
@@ -138,9 +138,6 @@ test('unfinished guide resumes saved components without login, install or config
             wrapper: true, extension: true, ready: true, connected: true, running: true });
     });
     await mount('spotifyAccount');
-    await expect(page.getByRole('dialog')).toBeVisible();
-    await expect(page.getByRole('button', { name: '完成并返回歌单', exact: true })).toBeVisible();
-    await page.keyboard.press('Escape');
     await expect(page.getByRole('dialog')).toHaveCount(0);
     expect(await page.evaluate(() => localStorage.getItem('spotify_connection_pending'))).toBe('true');
     const operations = await page.evaluate(() => (window as any).spotifyConnectionProbe.operations as string[]);
