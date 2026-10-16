@@ -91,3 +91,11 @@ it('portals the current guide, traps focus and restores the trigger on close', a
     expect(connection.close).toHaveBeenCalledOnce(); expect(ready).not.toHaveBeenCalled();
     await act(async () => root.render(null)); expect(document.activeElement).toBe(trigger); trigger.remove();
 });
+
+it.each([
+ ['outdated','运行中仍是旧桥接'],['unmanaged','Spotify 未带 Folia 资源目录启动'],['ready','已加载桥接 1.1.0，播放、在线搜索和收藏能力已确认']
+])('renders runtime handshake state %s rather than disk readiness',async(state,detail)=>{
+ status.running=true;status.extension=true;status.connected=true;status.bridgeRuntime={state,detail,version:state==='ready'?'1.1.0':undefined};
+ await mount();expect(document.body.textContent).toContain(state==='ready'?'已连接，可搜索和收藏歌曲':'尚未连接，Folia 会在使用时自动处理');expect(document.body.textContent).not.toContain('已写入');
+ expect(document.body.textContent).not.toContain('本机桥接：已连接');
+});

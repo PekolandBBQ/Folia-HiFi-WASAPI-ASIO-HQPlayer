@@ -6,13 +6,15 @@ import { createSpotifyLikedCollection, normalizeSpotifyCollection, normalizeSpot
 import { normalizeSpotifyAudioSource } from './spotifyAudioSource';
 import { getAllSpotifySavedTracks, getSpotifySavedTracks, spotifyLibraryError } from './spotifySavedTracks';
 import { normalizeSpotifyLyrics } from './spotifyLyrics';
+import { spotifyMutations } from './spotifyMutations';
 
 // Desktop preview routes temporary PCM through Folia's normal playback engines via Omni.
 export const spotifyProvider: OnlineMusicProvider = {
     id: 'spotify', displayName: 'Spotify', shortName: 'Spotify',
     getAvailability: () => ({ configured: spotifyAvailable(), ...(!spotifyAvailable() ? { reason: 'runtime-unavailable' as const } : {}) }),
     capabilities: { search: true, playback: true, lyrics: true, auth: true, userLibrary: true, playlists: true,
-        albums: true, artists: false, recommendations: false, mutations: false, wordByWordLyrics: false, likes: true },
+        albums: true, artists: false, recommendations: false, mutations: true, wordByWordLyrics: false, likes: true },
+    mutations: spotifyMutations,
     normalizeSong: normalizeSpotifySong, normalizeCollection: normalizeSpotifyCollection,
     songMetadata: { getSongMetadata: createProviderSongMetadata },
     getSongPageUrl: song => `https://open.spotify.com/track/${encodeURIComponent(String(song.id))}`,

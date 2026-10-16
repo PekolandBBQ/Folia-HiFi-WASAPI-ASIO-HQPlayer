@@ -7,7 +7,57 @@
   const bridgeUrl=__FOLIA_LIVE_URL__;let currentSocket, reconnectDelay=250, queue=Promise.resolve();
   const wait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
   const lyricsCache=new Map();let lyricsRateLimited=false;
-  let libraryRateLimited=false;
+  let libraryRateLimited=false, searchRateLimited=false, libraryWrites=Promise.resolve();
+  // Native search and library operations stay independent of the playback command queue.
+  const trackId=uri=>/^spotify:track:[A-Za-z0-9]{22}$/.test(uri||'')?uri.slice(14):null;
+  function searchTrack(row){
+    const t=row?.item?.data||row?.data||row?.item||row;
+    const id=trackId(t?.uri);if(!id||typeof t.name!=='string')return null;
+    const album=t.albumOfTrack||t.album||{},artists=t.artists?.items||t.artists||[];
+    return {id,name:t.name,durationMs:t.duration?.totalMilliseconds??t.duration?.milliseconds??t.durationMs,
+      artist:artists.map(a=>a.profile?.name||a.name||'').join(' / '),album:album.name||'',
+      coverUrl:(album.coverArt?.sources||album.images?.items||album.images||[]).flat().map(i=>i.url).find(u=>typeof u==='string'&&u.startsWith('https://'))};
+  }
+  async function searchTracks(args){
+    if(searchRateLimited)throw Error('SEARCH_RATE_LIMITED');
+    const query=String(args.query||'').trim(),offset=Math.max(0,Math.floor(args.offset||0)),limit=Math.min(50,Math.max(1,Math.floor(args.limit||30)));
+    if(!query)return {items:[],total:0,next:null,consumed:0};
+    const graph=Spicetify.GraphQL,definition=graph?.Definitions?.searchTracks||args.definition;
+    if(typeof graph?.Request!=='function'||definition?.name!=='searchTracks'||!/^[a-f0-9]{64}$/.test(definition.sha256Hash||''))throw Error('SEARCH_API_UNAVAILABLE');
+    let result;
+    try{result=await graph.Request(definition,{searchTerm:query,offset,limit,includePreReleases:false,includeAlbumPreReleases:false,includeAudiobooks:true,includeAuthors:false,includeEpisodeContentRatingsV2:false,numberOfTopResults:20});}
+    catch(e){if(Number(e?.status??e?.statusCode)===429)searchRateLimited=true;throw Error(searchRateLimited?'SEARCH_RATE_LIMITED':'SEARCH_REQUEST_FAILED');}
+    if(result?.errors?.length)throw Error('SEARCH_REQUEST_FAILED');
+    const page=result?.data?.searchV2?.tracksV2;
+    if(!Array.isArray(page?.items))throw Error('SEARCH_SCHEMA_INVALID');
+    const items=page.items.map(searchTrack).filter(Boolean),nextOffset=page.pagingInfo?.nextOffset;
+    const total=Number.isSafeInteger(page.totalCount)?page.totalCount:undefined;
+    const advances=Number.isSafeInteger(nextOffset)&&nextOffset>offset;
+    return {items,total,consumed:advances?nextOffset-offset:page.items.length,next:advances?String(nextOffset):nextOffset===null?null:(page.items.length===limit&&(total===undefined||offset+limit<total)?String(offset+limit):null)};
+  }
+  async function setLiked(args){
+    const uri='spotify:track:'+args.trackId,api=Spicetify.Platform.LibraryAPI;
+    if(!trackId(uri)||typeof args.liked!=='boolean')throw Error('INVALID_TRACK');
+    if(libraryRateLimited)throw Error('LIBRARY_RATE_LIMITED');
+    if(typeof api?.contains!=='function'||typeof api?.[args.liked?'add':'remove']!=='function')throw Error('LIBRARY_WRITE_UNAVAILABLE');
+    try{
+      const before=await api.contains(uri);
+      if(!Array.isArray(before)||typeof before[0]!=='boolean')throw Error('LIBRARY_SCHEMA_INVALID');
+      if(before[0]!==args.liked)await api[args.liked?'add':'remove']({uris:[uri]});
+      // A fulfilled write alone is not success: read the native library state back.
+      for(let attempt=0;attempt<4;attempt++){
+        if(attempt)await wait(250*attempt);
+        const state=await api.contains(uri);
+        if(Array.isArray(state)&&state[0]===args.liked)return {trackId:args.trackId,liked:args.liked,confirmed:true};
+      }
+      throw Error('LIBRARY_WRITE_UNCONFIRMED');
+    }catch(e){
+      if(Number(e?.status??e?.statusCode)===429)libraryRateLimited=true;
+      if(libraryRateLimited)throw Error('LIBRARY_RATE_LIMITED');
+      if(/^LIBRARY_/.test(e.message||''))throw e;
+      throw Error('LIBRARY_WRITE_FAILED');
+    }
+  }
   // Spicetify 2.45.3 installs this getter during its broader UI-module discovery.
   // Spotify 1.3.4 can expose Platform first; bind the same read-only getter without replacing Wrapper commands.
   function wrapperPlayer(){
@@ -69,8 +119,13 @@
       timing:{userMs:userDone-snapshotStarted,snapshotMs:performance.now()-snapshotStarted}};
   }
   async function handle(op,args){
+    if(op==='hello')return {protocol:1,version:'1.1.0',capabilities:['snapshot','command','catalog','lyrics','likedTracks','searchTracks','setLiked']};
     if(op==='snapshot')return snapshot();
     if(op==='lyrics')return nativeLyrics(args);
+    if(op==='searchTracks')return searchTracks(args);
+    if(op==='setLiked'){
+      const task=libraryWrites.then(()=>setLiked(args));libraryWrites=task.catch(()=>{});return task;
+    }
     if(op==='likedTracks'){
       if(libraryRateLimited)throw Error('LIBRARY_RATE_LIMITED');
       if(typeof Spicetify.Platform.LibraryAPI?.getTracks!=='function')throw Error('LIBRARY_UNAVAILABLE');
@@ -150,7 +205,7 @@
         message:String(error.message).replace(/https?:\/\/\S+/g,'[url]').replace(/Bearer\s+\S+/gi,'[token]').slice(0,240),
         wrapperOriginPresent:!!Spicetify.Player?.origin,wrapperPlayUriType:typeof Spicetify.Player?.playUri}});}};
     // Metadata network latency must never serialize pause, source preparation or seek.
-    if(request.op==='lyrics'||request.op==='likedTracks')void run();else queue=queue.catch(()=>{}).then(run);
+    if(['lyrics','likedTracks','searchTracks','setLiked'].includes(request.op))void run();else queue=queue.catch(()=>{}).then(run);
   };
   }
   connect();

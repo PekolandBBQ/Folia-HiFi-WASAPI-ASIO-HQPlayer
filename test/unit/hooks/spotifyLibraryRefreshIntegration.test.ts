@@ -147,3 +147,29 @@ describe('passive Spotify library provenance', () => {
         expect(JSON.stringify(fields)).not.toMatch(/PRIVATE_CACHE_TITLE|listener|nickname|display_name|https?:/);
     });
 });
+
+it('online search, remote like and remote unlike flow through Omni into the rendered liked collection',async()=>{
+ let saved: ReturnType<typeof rawSong>[]=[];
+ const online=rawSong(999);
+ fixture.request.mockImplementation(async({action,id,liked})=>{
+  if(action==='status')return {id:user.id,display_name:user.nickname};
+  if(action==='playlists')return playlistPage();
+  if(action==='search')return {items:[online],total:1,next:null};
+  if(action==='likeSong'){saved=liked?[online]:[];return {trackId:id,liked,confirmed:true};}
+  if(action==='savedTracks')return {items:saved,total:saved.length,next:null};
+  throw Error('unexpected action');
+ });
+ await mount();
+ const page=await omni.searchProviderSongs('spotify','Online only',{limit:30,offset:0});
+ expect(page.items[0].id).toBe(online.id);expect(omni.canLikeSong(page.items[0])).toBe(true);
+ await act(async()=>{await omni.likeSong(page.items[0],true);});
+ expect(saved.map(s=>s.id)).toEqual([online.id]);expect(account().likedSongIds).toEqual([online.id]);
+ expect(host.querySelector('[data-collection="spotify-liked-songs"]')?.textContent).toContain(':1');
+ const firstRevision=account().collections[0].tracksUpdatedAt;
+ await act(async()=>{await omni.likeSong(page.items[0],false);});
+ expect(saved).toEqual([]);expect(account().likedSongIds).toEqual([]);
+ expect(host.querySelector('[data-collection="spotify-liked-songs"]')?.textContent).toContain(':0');
+ expect(account().collections[0].tracksUpdatedAt).toBeGreaterThan(firstRevision!);
+ expect(persisted?.likedSongIds).toEqual([]);
+ expect(fixture.request.mock.calls.filter(([r])=>r.action==='likeSong')).toHaveLength(2);
+});

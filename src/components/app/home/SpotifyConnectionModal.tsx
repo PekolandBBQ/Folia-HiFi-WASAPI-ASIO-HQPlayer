@@ -12,7 +12,7 @@ import { useSpotifyPortalTheme } from './useSpotifyPortalTheme';
 import '../../modal/settings/SpotifySetupAppearance.css';
 
 // The first connection saves required setup in one resumable dialog. Playback checks run on track click.
-type SpotifyConnectionModalProps = { connection: SpotifyConnection; daylight: boolean; portalTheme?: CSSProperties };
+type SpotifyConnectionModalProps = { failureDetail?: string; connection: SpotifyConnection; daylight: boolean; portalTheme?: CSSProperties };
 
 // Keep the presentation separately renderable for SSR; the actual dialog escapes home stacking contexts.
 export default function SpotifyConnectionModal(props: SpotifyConnectionModalProps) {
@@ -22,7 +22,7 @@ export default function SpotifyConnectionModal(props: SpotifyConnectionModalProp
         {typeof document === 'undefined' ? dialog : createPortal(dialog, document.body)}</>;
 }
 
-export function SpotifyConnectionDialog({ connection, daylight, portalTheme }: SpotifyConnectionModalProps) {
+export function SpotifyConnectionDialog({ connection, daylight, portalTheme, failureDetail }: SpotifyConnectionModalProps) {
     const { t } = useTranslation();
     const [review, setReview] = useState<number | null>(null);
     const [desktopMode, setDesktopMode] = useState(false);
@@ -56,6 +56,7 @@ export function SpotifyConnectionDialog({ connection, daylight, portalTheme }: S
             <h3 className="pr-7 text-lg font-medium">{t('home.loginTitleSpotify')}</h3>
             </header>
             <div className="spotify-connection-content" data-testid="spotify-connection-scroll-content">
+            {failureDetail && <p role="alert" className="mb-3 text-sm">{failureDetail}</p>}
             <SpotifyDesktopSetup onMode={setDesktopMode} onReady={() => void connection.finishDesktop()} finishing={connection.finishing} />
             {desktopMode && connection.error === 'completeFailed' && <p role="alert" className="text-xs">{t('spotifyConnection.completeFailed')}</p>}
             {!desktopMode && <>

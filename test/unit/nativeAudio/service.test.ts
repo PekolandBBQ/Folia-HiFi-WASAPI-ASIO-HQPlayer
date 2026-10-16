@@ -53,7 +53,7 @@ describe('native service with portable fake output boundaries', () => {
         expect(final.preventDefault).not.toHaveBeenCalled();
         expect(quit).toHaveBeenCalledOnce();
     });
-    it('holds quit while resource creation is unconfirmed and exits only after late cleanup succeeds', async () => {
+    it('exits at the cleanup deadline even when resource creation hangs, and still handles late cleanup', async () => {
         const { begin, app, directory } = await fixture();
         const quit = vi.fn(); Object.assign(app, { quit });
         const originalCreate = filesystem.mkdtemp; let complete!: () => void;
@@ -68,6 +68,7 @@ describe('native service with portable fake output boundaries', () => {
             await vi.advanceTimersByTimeAsync(2499); expect(quit).not.toHaveBeenCalled();
             app.emit('before-quit', { preventDefault: vi.fn() });
             await vi.advanceTimersByTimeAsync(1); expect(quit).not.toHaveBeenCalled();
+            await vi.advanceTimersByTimeAsync(500); expect(quit).toHaveBeenCalledOnce();
         } finally { vi.useRealTimers(); }
         // Keep the fake app alive long enough to verify late completion is still cleaned.
         complete(); await rejected;

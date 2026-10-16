@@ -56,7 +56,7 @@ test('Wrapper identifies its settings mode and rejects obsolete OAuth saves with
 test('connected socket without a ready Spotify player is not reported as connected',async t=>{
  const directory=await root(t);
  const {createGuide}=require('../../electron/spotify/desktopSetupGuide.cjs');
- const guide=createGuide({directory,apps:()=>path.join(directory,'missing'),desktop:{inspect:async()=>({candidates:[{id:'local',version:'test',layout:'desktop'}],selected:'local',errors:[],running:[{}]})},
+ const guide=createGuide({directory,apps:()=>path.join(directory,'missing'),desktop:{inspect:async()=>({candidates:[{id:'local',version:'test',layout:'desktop'}],selected:'local',errors:[],running:[{}],bridgeRuntime:{state:'ready'}})},
  bridge:{connected:()=>true,request:async()=>({local:true,wrapperReady:false,account:'test',deviceId:'test'})},capture:{devices:async()=>({endpoints:[]})},route:{availability:async()=>({supported:true})},endpointsConfigured:()=>false,extension:async()=>'',log:()=>{}});
  const result=await guide.request({operation:'status'});assert.equal(result.connected,false);assert.equal(result.ready,false);assert.ok(result.issues.some(i=>i.nativeCode==='SPOTIFY_PLAYER_NOT_READY'));
 });

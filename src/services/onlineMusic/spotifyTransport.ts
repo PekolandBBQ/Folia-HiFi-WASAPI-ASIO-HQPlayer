@@ -3,7 +3,8 @@ import type { ProviderErrorCode, AudioSourceRequestOptions, ProviderConnectionSe
 
 // The renderer sees metadata and opaque login handles, never a Spotify bearer token.
 export type SpotifyRequest = { action: 'loginBegin' | 'loginImage' | 'loginCheck' | 'loginCancel' | 'status' | 'logout'
-    | 'desktopSetup' | 'search' | 'playlists' | 'savedTracks' | 'song' | 'lyrics' | 'playlist' | 'playlistTracks' | 'album' | 'albumTracks' | 'audio' | 'cancelAudio' | 'configuration' | 'configure' | 'playbackSetup' | 'sourceRevision' | 'leaveProvider';
+    | 'desktopSetup' | 'search' | 'likeSong' | 'playlists' | 'savedTracks' | 'song' | 'lyrics' | 'playlist' | 'playlistTracks' | 'album' | 'albumTracks' | 'audio' | 'cancelAudio' | 'configuration' | 'configure' | 'playbackSetup' | 'sourceRevision' | 'leaveProvider';
+    liked?: boolean;
     expectedSourceRevision?: number; key?: string; id?: string; query?: string; quality?: import('../../types/onlineMusic').AudioQualityPreference; streaming?: boolean; limit?: number; offset?: number; requestId?: string; settings?: ProviderConnectionSettings;
     operation?: ProviderPlaybackSetupRequest['operation'] | 'choose' | 'open' | 'launch' | 'install' | 'configure'; component?: string; installation?: string; keyValue?: string; selection?: import('../../types/onlineMusic').ProviderCableSelection };
 export type SpotifyProgress = Parameters<NonNullable<AudioSourceRequestOptions['onProgress']>>[0] & { requestId: string };
@@ -23,7 +24,9 @@ export async function requestSpotify<T>(request: SpotifyRequest, options?: Audio
     try {
         const result = await bridge.request({ ...request, ...(requestId ? { requestId } : {}) }) as T & { spotifyError?: { code: ProviderErrorCode; message: string; detail?: string; stage?: string; nativeCode?: string; causeCode?: string } };
         if (options?.signal?.aborted) throw new DOMException('Request cancelled', 'AbortError');
-        if (result?.spotifyError) throw new OnlineProviderError(result.spotifyError.code, result.spotifyError.message, 'spotify', undefined, undefined, undefined, { userMessage: result.spotifyError.detail, stage: result.spotifyError.stage, nativeCode: result.spotifyError.nativeCode, causeCode: result.spotifyError.causeCode });
+        if (result?.spotifyError) throw new OnlineProviderError(result.spotifyError.code,
+            ['search', 'likeSong', 'savedTracks'].includes(request.action) ? result.spotifyError.detail || result.spotifyError.message : result.spotifyError.message,
+            'spotify', undefined, undefined, undefined, { userMessage: result.spotifyError.detail, stage: result.spotifyError.stage, nativeCode: result.spotifyError.nativeCode, causeCode: result.spotifyError.causeCode });
         return result;
     } finally { unsubscribe?.(); options?.signal?.removeEventListener('abort', cancel); }
 }

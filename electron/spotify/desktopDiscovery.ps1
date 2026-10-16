@@ -11,7 +11,12 @@ try{foreach($pkg in @(Get-AppxPackage -Name SpotifyAB.SpotifyMusic)){
  $exe=Join-Path $pkg.InstallLocation 'Spotify.exe'
  $candidates+=@{id='store:'+$pkg.PackageFamilyName;layout='store';exe=$exe;prefs=(Join-Path $env:LOCALAPPDATA ('Packages\'+$pkg.PackageFamilyName+'\LocalState\Spotify\prefs'));version=$pkg.Version.ToString();packageFullName=$pkg.PackageFullName;available=(Test-Path -LiteralPath $exe)}
 }}catch{$errors+='STORE_DISCOVERY_UNAVAILABLE'}
+$processInfo=@{};try{Get-CimInstance Win32_Process -Filter "name='Spotify.exe'" | ForEach-Object {$processInfo[[int]$_.ProcessId]=$_.CommandLine}}catch{}
 $running=@(Get-Process Spotify -ErrorAction SilentlyContinue | ForEach-Object {
- try{@{pid=$_.Id;exe=$_.Path;started=$_.StartTime.ToUniversalTime().ToString('o')}}catch{}
+ try{
+  $line=$processInfo[[int]$_.Id];$asset=$null
+  if($line -match '"--app-directory=([^"]+)"|--app-directory(?:=|\s+)(?:"([^"]+)"|(\S+))'){$asset=if($Matches[1]){$Matches[1]}elseif($Matches[2]){$Matches[2]}else{$Matches[3]}}
+  @{pid=$_.Id;exe=$_.Path;started=$_.StartTime.ToUniversalTime().ToString('o');commandLineKnown=[bool]$line;mainProcess=([bool]$line -and $line -notmatch '--type=');appDirectory=$asset}
+ }catch{}
 })
 @{candidates=@($candidates);running=$running;errors=$errors}|ConvertTo-Json -Depth 4 -Compress

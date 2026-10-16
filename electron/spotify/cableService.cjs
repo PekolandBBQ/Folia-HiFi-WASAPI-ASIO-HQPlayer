@@ -232,22 +232,9 @@ function registerCableSpotify({ app, ipcMain, isTrustedSender, createService = c
     if (quitAllowed || !runtime && !closing) return;
     event.preventDefault(); if (closing) return;
     closing = true; epoch++;
-    void mutations.then(() => runtime?.close()).then(() => { quitAllowed = true; app.quit(); }).catch(error => {
-      if (!/^ROUTE_/.test(error?.code || '') && error?.code !== 'CAPTURE_HELPER_EXIT_UNCONFIRMED') {
-        quitAllowed = true; app.quit(); return;
-      }
-      // Keep Folia available to report recovery; an unconfirmed restore never counts as a clean quit.
-      closing = false;
-      app.emit('spotify-route-cleanup-failed', { code: error?.code === 'ROUTE_HELPER_EXIT_UNCONFIRMED'
-        ? 'ROUTE_HELPER_EXIT_UNCONFIRMED' : 'ROUTE_RESTORE_UNCONFIRMED' });
-      const failure = publicFailure(error, 'exit-restore').spotifyError;
-      void electron.dialog?.showMessageBox({ type: 'error', title: 'Spotify 路由恢复未完成',
-        message: failure.detail || '未能确认 Spotify 原输出路由已恢复。',
-        detail: isRetryableRouteCleanup(error)
-          ? '原路由恢复任务已保留。当前 Spotify 请求结束后，可以再次退出以重试恢复。'
-          : '原路由恢复尚未确认，Folia 暂时保留窗口和恢复记录。',
-        buttons: ['保留 Folia'], noLink: true }).catch(() => {});
-    });
+    void require('../quitCleanup.cjs').settleQuitCleanup(
+      () => mutations.then(() => runtime?.close()), error => publicFailure(error, 'exit-restore')
+    ).then(() => { quitAllowed = true; app.quit(); });
   });
   return {
     prepareSourceOutput(url, backend) {

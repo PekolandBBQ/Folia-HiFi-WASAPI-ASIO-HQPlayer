@@ -186,9 +186,10 @@ function registerSpotify({ app, ipcMain, isTrustedSender, createService = create
     event.preventDefault();
     if (closing) return;
     closing = true; epoch++;
-    void observeSpotifyOperation('lifecycle', null,
+    void require('../quitCleanup.cjs').settleQuitCleanup(() => observeSpotifyOperation('lifecycle', null,
       () => mutation.finally(() => service?.close()).finally(() => soloist.close()).finally(() => appliance?.close()), { lifecycle: 'shutdown' })
-      .finally(() => { quitAllowed = true; app.quit(); }).catch(() => {});
+      , error => console.warn('[Spotify] Exit cleanup incomplete', { code: error?.code || 'UNKNOWN' }))
+      .then(() => { quitAllowed = true; app.quit(); });
   });
   return { lookupSoloistPcmSource(url) { return closing ? null : service?.lookupSoloistPcmSource(url) || null; } };
 }

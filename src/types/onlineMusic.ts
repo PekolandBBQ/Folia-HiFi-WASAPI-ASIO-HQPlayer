@@ -521,7 +521,7 @@ export interface OnlineMutationProvider {
         song: MediaId | SongResult,
         liked: boolean,
         context?: { likedFileId?: MediaId },
-    ): Promise<void>;
+    ): Promise<void | { likedSongIds: MediaId[]; collectionId: MediaId }>;
     updatePlaylistTracks?(
         operation: 'add' | 'del',
         playlist: MediaId | ProviderCollection,

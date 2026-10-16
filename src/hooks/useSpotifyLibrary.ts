@@ -48,6 +48,7 @@ export function useSpotifyLibrary() {
                     return false;
                 }
                 const previous = useOnlineProviderAccountStore.getState().accounts.spotify;
+                const previousLikedIds = previous?.likedSongIds;
                 const sameUser = previous?.user?.id === user.id;
                 update({ status: 'authenticated', user, hydration: 'ready', error: undefined,
                     ...(!sameUser ? { collections: [], likedSongIds: [] } : {}) });
@@ -74,9 +75,22 @@ export function useSpotifyLibrary() {
                 if (!active()) { observation.result(false, { reason: 'cancelled', revisionChanged: true }); return false; }
                 const previousLikedCount = sameUser ? previous?.collections.find(collection => collection.isLiked)?.trackCount : undefined;
                 collections.unshift({ ...createSpotifyLikedCollection(likedFailure ? previousLikedCount : likedSongIds.length), coverUrl: likedCover });
+                // A confirmed mutation may complete while this older refresh is fetching or saving.
+                const preserveNewerLikes = () => {
+                    const latest = useOnlineProviderAccountStore.getState().accounts.spotify;
+                    const latestLiked = latest?.collections.find(collection => collection.isLiked);
+                    if (sameUser && latest?.user?.id === user.id && latest.likedSongIds !== previousLikedIds) {
+                        likedSongIds = latest.likedSongIds;
+                        collections[0] = { ...collections[0], ...latestLiked, trackCount: likedSongIds.length };
+                    } else if (latestLiked?.tracksUpdatedAt) {
+                        collections[0] = { ...collections[0], tracksUpdatedAt: latestLiked.tracksUpdatedAt };
+                    }
+                };
                 await enqueue(async () => {
+                    preserveNewerLikes();
                     if (active()) await saveProviderAccountSnapshot('spotify', { user, collections, likedSongIds });
                 });
+                preserveNewerLikes();
                 if (active()) observation.replace(useOnlineProviderAccountStore.getState().accounts.spotify?.collections || [], collections);
                 update({ collections, likedSongIds, freshness: likedFailure ? 'error' : 'fresh', lastUpdatedAt: Date.now(),
                     error: likedFailure instanceof Error ? likedFailure.message : likedFailure ? 'Spotify: saved-tracks-unavailable' : undefined });

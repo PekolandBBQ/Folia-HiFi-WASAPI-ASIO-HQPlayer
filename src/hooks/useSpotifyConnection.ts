@@ -1,3 +1,4 @@
+import { spotifyReadiness } from '../services/onlineMusic/spotifyReadiness';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useStore } from 'zustand';
 import { useTranslation } from 'react-i18next';
@@ -80,7 +81,7 @@ export function useSpotifyConnection(onComplete: (isCurrent: () => boolean) => P
                 if (isCurrent(owner)) setError('completeFailed');
                 return;
             }
-            if (isCurrent(owner)) useSpotifyConnectionStore.getState().complete();
+            if (isCurrent(owner)) { useSpotifyConnectionStore.getState().complete(); spotifyReadiness.reset(); void spotifyReadiness.run(); }
         } catch { if (isCurrent(owner)) setError('completeFailed'); }
         finally {
             if (finishingOwner.current === owner) {
@@ -101,7 +102,7 @@ export function useSpotifyConnection(onComplete: (isCurrent: () => boolean) => P
                 if (isCurrent(owner)) setError('completeFailed');
                 return;
             }
-            if (isCurrent(owner)) useSpotifyConnectionStore.getState().complete();
+            if (isCurrent(owner)) { useSpotifyConnectionStore.getState().complete(); spotifyReadiness.reset(); void spotifyReadiness.run(); }
         } catch { if (isCurrent(owner)) setError('completeFailed'); }
         finally { if (finishingOwner.current === owner) { finishingOwner.current = null; if (isCurrent(owner)) setFinishing(false); } }
     };

@@ -17,18 +17,24 @@ function createDesktopLifecycle({directory,apps,bridge,ready,log,dialog,parent,d
  const assetPath=()=>typeof apps==='function'?apps():apps;
  const file=path.join(directory,'desktop-installation.json');let selected,owned,starting;
  try{selected=JSON.parse(fs.readFileSync(file,'utf8')).id;}catch{}
- async function inspect(){const info=await discovery();let target;try{target=select(info,selected);}catch{}return {...info,selected:target?.id,owned:Boolean(owned),bridgeReady:bridge.connected()};}
+ async function inspect(){const info=await discovery();let target;try{target=select(info,selected);}catch{}const bridgeRuntime=await require('./wrapper/handshake.cjs').inspectRuntime(bridge,info.running,assetPath());return {...info,selected:target?.id,owned:Boolean(owned),bridgeReady:bridgeRuntime.state==='ready',bridgeRuntime};}
  async function choose(id){const info=await discovery();if(!info.candidates.some(c=>c.id===id))throw failure('SPOTIFY_SELECTED_INSTALL_MISSING');selected=id;fs.mkdirSync(directory,{recursive:true});fs.writeFileSync(file,JSON.stringify({id}));return inspect();}
  async function run(progress=()=>{}){
   await ready;
   if(bridge.connected()){
-   const snapshot=await bridge.request('snapshot');
-   if(snapshot.local&&snapshot.wrapperReady&&snapshot.account&&snapshot.deviceId)return;
+   const handshake=await require('./wrapper/handshake.cjs').inspectHandshake(bridge);log('bridge-runtime',handshake);
+   if(handshake.state==='ready'){const snapshot=await bridge.request('snapshot');
+    if(snapshot.local&&snapshot.wrapperReady&&snapshot.account&&snapshot.deviceId)return;}
   }
-  const info=await discovery();let target;
+  let info=await discovery();let target;
   try{target=select(info,selected);}catch(e){if(e.code==='SPOTIFY_NOT_INSTALLED')await dialog.showMessageBox(parent(),{type:'info',title:'需要安装 Spotify',message:'未检测到 Spotify 桌面版或 Microsoft Store 版。请自行安装并登录 Spotify，然后回到 Folia 重新检查。',buttons:['知道了']});throw e;}
   if(info.running.some(p=>p.exe.toLowerCase()!==target.exe.toLowerCase()))throw failure('SPOTIFY_OTHER_INSTALL_RUNNING');
   if(!fs.existsSync(path.join(assetPath(),'xpui','index.html')))throw failure('SPOTIFY_COMPONENT_SETUP_REQUIRED');
+  const previousRuntime=await require('./wrapper/handshake.cjs').inspectRuntime(bridge,info.running,assetPath());
+  if(['outdated','unmanaged','wrong-assets'].includes(previousRuntime.state)){
+   progress({stage:'spotifyLaunch'});log('spotify-auto-reconnect',{reason:previousRuntime.state});
+   await stopForConfiguration(true);info=await discovery();
+  }
   if(!info.running.length){
    const launchedAt=Date.now();progress({stage:'spotifyLaunch'});
    let launchPid;
@@ -40,8 +46,11 @@ function createDesktopLifecycle({directory,apps,bridge,ready,log,dialog,parent,d
    }
    owned={exe:target.exe,launchedAt,pids:[]};log('spotify-background-launch',{layout:target.layout,pid:launchPid});
   }
+  const loaded=await require('./wrapper/handshake.cjs').inspectRuntime(bridge,info.running,assetPath());
+  if(['unmanaged','wrong-assets'].includes(loaded.state))throw failure('SPOTIFY_RESOURCE_DIRECTORY_MISSING');
   const deadline=Date.now()+30000;
   while(!bridge.connected()){if(Date.now()>deadline)throw failure('SPOTIFY_BRIDGE_NOT_READY');await new Promise(r=>setTimeout(r,100));}
+  log('bridge-runtime',await require('./wrapper/handshake.cjs').inspectHandshake(bridge));
   // A connected extension can precede Spotify's restored local device/player.
   let playerReady=false;
   while(Date.now()<deadline){
@@ -53,8 +62,8 @@ function createDesktopLifecycle({directory,apps,bridge,ready,log,dialog,parent,d
   log('spotify-background-ready',{owned:Boolean(owned)});
  }
  // Configuration restores Folia's audio route before stopping only the selected installation.
- async function stopForConfiguration(){
-  if(starting)await starting;
+ async function stopForConfiguration(fromReconnect=false){
+  if(starting&&!fromReconnect)await starting;
   const info=await discovery(),target=select(info,selected);
   if(info.running.some(p=>p.exe.toLowerCase()!==target.exe.toLowerCase()))throw failure('SPOTIFY_OTHER_INSTALL_RUNNING');
   for(const p of info.running){
@@ -72,8 +81,10 @@ function createDesktopLifecycle({directory,apps,bridge,ready,log,dialog,parent,d
  }
  return {inspect,choose,stopForConfiguration,ensure(progress){if(!starting)starting=run(progress).catch(e=>{log('spotify-background-failed',{code:e.code||'UNKNOWN',message:e.message});throw e;}).finally(()=>{starting=null;});return starting;},
   handBack(){owned=null;},
-  async offerExit(reason){if(!owned)return;const scope=owned;const info=await discovery();const matches=info.running.filter(p=>scope.pids.some(old=>old.pid===p.pid&&old.started===p.started));if(!matches.length){owned=null;return;}
-   const result=await dialog.showMessageBox(parent(),{type:'question',title:'后台 Spotify',message:reason==='quit'?'退出 Folia 时，是否同时退出由 Folia 拉起的 Spotify？':'已切换音源，是否同时退出由 Folia 拉起的 Spotify？',buttons:['保留 Spotify','同时退出 Spotify'],defaultId:0,cancelId:0});
+  async offerExit(reason){if(!owned)return;
+   if(reason==='quit'){owned=null;log('spotify-background-retained',{reason});return;}
+   const scope=owned;const info=await discovery();const matches=info.running.filter(p=>scope.pids.some(old=>old.pid===p.pid&&old.started===p.started));if(!matches.length){owned=null;return;}
+   const result=await dialog.showMessageBox(parent(),{type:'question',title:'后台 Spotify',message:'已切换音源，是否同时退出由 Folia 拉起的 Spotify？',buttons:['保留 Spotify','同时退出 Spotify'],defaultId:0,cancelId:0});
    owned=null;
    if(result.response===1){const fresh=await discovery();for(const p of matches){if(fresh.running.some(n=>n.pid===p.pid&&n.started===p.started)){try{process.kill(p.pid);}catch(e){if(e.code!=='ESRCH')throw e;}}}log('spotify-background-exit',{reason,processes:matches.length});}
    else log('spotify-background-retained',{reason});

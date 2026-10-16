@@ -38,10 +38,10 @@ function createGuide({ desktop, bridge, apps, capture, route, directory, assetDi
     const receipt = await require('./upgradeAssets.cjs').findReceipt(currentApps);
     if (receipt && receipt.receipt.installation !== state.selected) { wrapper = false; valid = false; issue('selected-installation', { code: 'SPOTIFY_CONFIGURATION_VERSION_CHANGED' }); }
     let connected = false;
-    if (bridge.connected()) { try { const snapshot = await bridge.request('snapshot'); connected = snapshot.local === true && snapshot.wrapperReady === true && Boolean(snapshot.account && snapshot.deviceId); if (!connected) issue('bridge-player', { code: 'SPOTIFY_PLAYER_NOT_READY' }); } catch (error) { issue('bridge-player', error); } }
+    if (state.bridgeRuntime?.state === 'ready') { try { const snapshot = await bridge.request('snapshot'); connected = snapshot.local === true && snapshot.wrapperReady === true && Boolean(snapshot.account && snapshot.deviceId); if (!connected) issue('bridge-player', { code: 'SPOTIFY_PLAYER_NOT_READY' }); } catch (error) { issue('bridge-player', error); } }
     return { enabled: true, bundleVersion: currentBundle.version, versions: { spicetify: currentBundle.spicetify.version, cable: currentBundle.cable.version },
       installations: state.candidates.map(x => ({ id: x.id, layout: x.layout, version: x.version })), selected: state.selected,
-      detectionFailed: state.errors.length > 0, running: state.running.length > 0, connected, issues, playback: require('./playbackHealth.cjs').get(),
+      detectionFailed: state.errors.length > 0, running: state.running.length > 0, connected, bridgeRuntime: state.bridgeRuntime, issues, playback: require('./playbackHealth.cjs').get(),
       cli: Boolean(await findCli()), wrapper, extension: valid, driver, driverCurrent: currentDriverVersions?.every(version => version === currentBundle.cable.version)
         && currentDriverVersions.length > 0, updateCheck: updateCheck && { checkedAt: updateCheck.checkedAt, release: updateCheck.release,
           publishedVersion: updateCheck.publishedVersion }, driverEndpointsReady: endpointsConfigured(endpoints), engine, systemOutput,

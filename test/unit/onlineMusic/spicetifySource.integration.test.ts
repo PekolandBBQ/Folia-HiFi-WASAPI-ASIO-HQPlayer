@@ -1,5 +1,5 @@
 import { createRequire } from 'node:module';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, rmSync, readFileSync, readdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { EventEmitter } from 'node:events';
@@ -111,7 +111,7 @@ it('candidate main registration and real runtime route audio to injected private
     expect(f.events.filter((x: string) => x === 'route:release')).toHaveLength(1);
   } finally { rmSync(directory, { recursive: true, force: true }); }
 });
-it('registered Quit with unconfirmed restoration stays open and retains the desktop source transport', async () => {
+it('registered Quit records unconfirmed restoration and exits without claiming restoration', async () => {
   const f = create(); await f.sourceHarness.ready;
   const directory = mkdtempSync(join(tmpdir(), 'folia-desktop-main-failed-')), app: any = new EventEmitter(), handlers = new Map();
   const sender = { isDestroyed: () => false, send() {} }; let exited = false, cleanupFailure: any;
@@ -135,13 +135,13 @@ it('registered Quit with unconfirmed restoration stays open and retains the desk
     const prepared = await handlers.get('spotify:request')({ sender }, { action: 'audio', id: trackId, requestId });
     expect(prepared.spotifyError).toBeUndefined(); await open(f, f.audio.lookup(prepared.url));
     app.quit();
-    for (let i = 0; i < 100 && !cleanupFailure; i++) await new Promise(resolve => setTimeout(resolve, 5));
-    expect(cleanupFailure).toEqual({ code: 'ROUTE_RESTORE_UNCONFIRMED' });
-    expect(exited).toBe(false); expect(f.lease().state).not.toBe('restored'); expect(f.sourceHarness.inspect().closed).toBe(false);
-    // Unqualified restoration cannot turn into a successful shutdown on a second Quit.
-    cleanupFailure = undefined; app.quit();
-    for (let i = 0; i < 100 && !cleanupFailure; i++) await new Promise(resolve => setTimeout(resolve, 5));
-    expect(cleanupFailure).toEqual({ code: 'ROUTE_RESTORE_UNCONFIRMED' });
-    expect(exited).toBe(false); expect(f.sourceHarness.inspect().closed).toBe(false);
+    for (let i = 0; i < 100 && !exited; i++) await new Promise(resolve => setTimeout(resolve, 5));
+    expect(exited).toBe(true); expect(cleanupFailure).toBeUndefined();
+    expect(f.lease().state).not.toBe('restored');
+    const logs = readdirSync(directory, { recursive: true }).filter(name => String(name).endsWith('.jsonl'));
+    const recorded = logs.map(name => readFileSync(join(directory, String(name)), 'utf8')).join('\n');
+    expect(recorded).toContain('ROUTE_RESTORE_UNCONFIRMED');
+    expect(recorded).toContain('exit-restore');
+    app.quit(); expect(exited).toBe(true);
   } finally { f.host.request.mockImplementation(request); rmSync(directory, { recursive: true, force: true }); }
 });

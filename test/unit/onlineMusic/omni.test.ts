@@ -499,3 +499,14 @@ describe('omni like mutations', () => {
         expect(account.likedSongFileIds).toEqual({});
     });
 });
+
+it('confirmed remote library replaces stale IDs and invalidates the displayed liked collection',async()=>{
+ registerOnlineMusicProvider({...provider(providerId,undefined),capabilities:{...capabilities,mutations:true,likes:true},mutations:{likeSong:async()=>({likedSongIds:['7','remote-change'],collectionId:'liked'})}});
+ useOnlineProviderAccountStore.getState().updateAccount(providerId,{user:{id:'user',nickname:'Listener'},likedSongIds:['stale'],collections:[{providerId,id:'liked',type:'playlist',name:'Liked',isLiked:true,trackCount:1,tracksUpdatedAt:1}]});
+ await omni.likeSong(song(providerId,'7'),true);
+ const account=useOnlineProviderAccountStore.getState().accounts[providerId];
+ expect(account.likedSongIds).toEqual(['7','remote-change']);
+ expect(account.collections[0].trackCount).toBe(2);expect(account.collections[0].tracksUpdatedAt).toBeGreaterThan(1);
+ expect(saveProviderAccountSnapshot).toHaveBeenLastCalledWith(providerId,expect.objectContaining({likedSongIds:['7','remote-change']}));
+ useOnlineProviderAccountStore.getState().clearAccount(providerId);
+});

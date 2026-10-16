@@ -144,7 +144,7 @@ function createService({beforeLeaveProvider},local,log){
         return result;
       }
       if(input.action==='leaveProvider'){await leave();await desktop.offerExit('source');return null;}
-      if(input.action==='status'){if(!bridge.connected())throw Object.assign(Error('Spotify: desktop-offline'),{code:'unavailable'});const s=await source.sample();return {id:s.account,display_name:'本机 Spotify · '+(process.env.FOLIA_LOCAL_CONTROL_PATH||'wrapper')};}
+      if(input.action==='status'){await desktop.ensure(progress);const s=await source.sample();return {id:s.account,display_name:'本机 Spotify · '+(process.env.FOLIA_LOCAL_CONTROL_PATH||'wrapper')};}
       if(input.action==='playbackSetup'){
         if(!['status','devices'].includes(input.operation))throw Object.assign(Error('SPOTIFY_WRAPPER_SETTINGS_AUTOMATIC'),{code:'SPOTIFY_WRAPPER_SETTINGS_AUTOMATIC'});
         const s=await source.sample(),c=await route.availability(),devices=await capture.devices();
@@ -154,22 +154,33 @@ function createService({beforeLeaveProvider},local,log){
         return {backend:'vb-cable',state:'stopped',code:'AUTOMATIC_ROUTE_ON_PLAY',driverInstalled:present===true,spotifyRunning:true,
           selection:{...saved,connectDeviceId:s.deviceId},devices:{spotify:[{id:s.deviceId,name:'本机 Spotify',type:'Computer',isActive:s.isActive,restricted:s.restricted,selectable:s.restricted===false}],capture:devices.endpoints.filter(e=>e.supportedBaseCable&&e.flow==='capture'),render:devices.endpoints.filter(e=>e.supportedBaseCable&&e.flow==='render')},automaticRoute:{enabled:true,supported:c.supported,eligible:c.supported,productionQualified:false,trialAvailable:true,trialAuthorized:true}};
       }
+      if(['search','likeSong','savedTracks'].includes(input.action)){
+        await local.ready;await desktop.ensure(progress);
+        if(['search','likeSong'].includes(input.action))await require('./wrapper/handshake.cjs').requireHandshake(bridge);
+        if(input.action==='savedTracks'){
+          const result=await bridge.request('likedTracks',{offset:input.offset||0,limit:input.limit||50});
+          for(const t of result.items)catalog.set(t.id,t);
+          log('ui-local-liked-tracks',{count:result.items.length,total:result.total,consumed:result.consumed,coverCount:result.items.filter(t=>t.coverUrl).length,hasMore:Boolean(result.next)});
+          return {...result,items:result.items.map(song)};
+        }
+        if(input.action==='search'){
+          const result=await bridge.request('searchTracks',{query:input.query,offset:input.offset,limit:input.limit,
+            definition:require('./wrapper/searchDefinition.cjs').readSearchDefinition(local.apps())});
+          for(const t of result.items)catalog.set(t.id,t);
+          log('ui-online-search',{offset:input.offset||0,count:result.items.length,total:result.total,next:result.next});
+          return {...result,items:result.items.map(song)};
+        }
+        const result=await bridge.request('setLiked',{trackId:input.id,liked:input.liked});
+        if(result?.confirmed!==true||result.trackId!==input.id||result.liked!==input.liked)throw Object.assign(Error('LIBRARY_WRITE_UNCONFIRMED'),{code:'LIBRARY_WRITE_UNCONFIRMED'});
+        log('ui-liked-write',{trackId:input.id,liked:input.liked,confirmed:true});return result;
+      }
       const tracks=await refresh(), offset=input.offset||0,limit=input.limit||50;
       const page=items=>({items:items.slice(offset,offset+limit),total:items.length,next:offset+limit<items.length?'local-next':null});
       if(input.action==='song'){const t=catalog.get(input.id);if(!t)throw Error('Spotify: local-metadata-unavailable');return song(t);}
-      if(input.action==='search')return page(tracks.filter(t=>!input.query||`${t.name} ${t.artist}`.toLowerCase().includes(input.query.toLowerCase())).map(song));
       const collection={id:'folia-local-queue',providerId:'spotify',name:'本机 Spotify 已加载曲目',description:'当前曲目与本机队列；不调用官方目录接口',coverUrl:tracks.find(t=>t.coverUrl)?.coverUrl,trackCount:tracks.length,providerData:{localQueue:true},type:'playlist'};
       if(input.action==='playlists')return {items:[collection],total:1,next:null};
       if(input.action==='playlist')return collection;
       if(input.action==='playlistTracks')return page(tracks.map(song));
-      if(input.action==='savedTracks'){
-        // Fresh metadata needs the desktop too; a stopped Spotify must not strand the playlist before Play.
-        if(!bridge.connected())await desktop.ensure(progress);
-        const result=await bridge.request('likedTracks',{offset,limit});
-        for(const t of result.items)catalog.set(t.id,t);
-        log('ui-local-liked-tracks',{count:result.items.length,total:result.total,consumed:result.consumed,coverCount:result.items.filter(t=>t.coverUrl).length,hasMore:Boolean(result.next)});
-        return {...result,items:result.items.map(song)};
-      }
       throw Error('Spotify: local-trial-operation-unavailable');
     },
     async prepareSourceOutput(url,backend){if(audio.lookup(url)){return;}await leave();await desktop.offerExit('source');},

@@ -80,14 +80,13 @@ it('stale owner Stop cannot restore the same source after ownership transfers to
     await f.load('second', 'wasapi-exclusive'); await f.request({ action: 'stop', session: 'first' });
     expect(f.source.stop).not.toHaveBeenCalled(); expect(f.streams[1].close).not.toHaveBeenCalled();
 });
-it('Quit with a retained route blocks on failed restoration and retries rather than falsely exiting', async () => {
+it('Quit with failed route restoration continues without a renderer blocking notice', async () => {
     const f = await fixture(); await f.load('first'); await f.request({ action: 'stop', session: 'first', reason: 'handoff' });
     f.source.stop.mockRejectedValue(Object.assign(new Error('Spotify: automatic-route-restore-unconfirmed'), { code: 'unavailable' }));
     f.app.emit('before-quit', { preventDefault() {} }); await vi.waitFor(() => expect(f.source.stop).toHaveBeenCalledOnce());
-    expect(f.app.quit).not.toHaveBeenCalled();
-    expect(f.sender.send).toHaveBeenCalledWith('native-audio:event', { event: 'lifecycle-error', errorCode: 'SOURCE_RESTORE_UNCONFIRMED' });
-    f.source.stop.mockResolvedValue(undefined); f.app.emit('before-quit', { preventDefault() {} });
-    await vi.waitFor(() => expect(f.app.quit).toHaveBeenCalledOnce()); expect(f.source.stop).toHaveBeenCalledTimes(2);
+    await vi.waitFor(() => expect(f.app.quit).toHaveBeenCalledOnce());
+    expect(f.sender.send).not.toHaveBeenCalledWith('native-audio:event', { event: 'lifecycle-error', errorCode: 'SOURCE_RESTORE_UNCONFIRMED' });
+    expect(f.source.stop).toHaveBeenCalledOnce();
 });
 it('new output waits for entire HQ shutdown, including rapid return to HQ before it acknowledges', async () => {
     const f = await fixture(); await f.load('first', 'hqplayer'); const gate = deferred(); f.hq.shutdown.mockImplementation(() => gate.promise as Promise<void>);
