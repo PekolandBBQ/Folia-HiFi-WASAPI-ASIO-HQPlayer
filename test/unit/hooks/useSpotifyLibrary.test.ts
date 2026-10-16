@@ -139,3 +139,16 @@ describe('Spotify library completeness through the real refresh hook', () => {
         expect(fixture.save).not.toHaveBeenCalled();
     });
 });
+
+it('a completed like is not overwritten by an older background library refresh',async()=>{
+ fixture.playlists.mockResolvedValue({items:[],nextOffset:0,hasMore:false});
+ fixture.liked.mockImplementation(async()=>{
+  fixture.account.likedSongIds=['newly-liked'];
+  fixture.account.collections=[{...collection(0),id:'spotify-liked-songs',isLiked:true,trackCount:1,tracksUpdatedAt:42}];
+  return [];
+ });
+ await expect(useSpotifyLibrary().refresh()).resolves.toBe(true);
+ expect(fixture.account.likedSongIds).toEqual(['newly-liked']);
+ expect(fixture.account.collections[0]).toMatchObject({trackCount:1,tracksUpdatedAt:42});
+ expect(fixture.save.mock.calls[0][1].likedSongIds).toEqual(['newly-liked']);
+});

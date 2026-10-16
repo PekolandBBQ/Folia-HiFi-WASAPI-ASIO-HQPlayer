@@ -28,7 +28,9 @@ function createBridge(log, options={}) {
         let value;try{value=JSON.parse(data.toString());}catch{return ws.close();}
         const job=pending.get(value.id);if(!job)return;
         pending.delete(value.id);clearTimeout(job.timer);
-        value.ok?job.resolve(value.value):job.reject(Object.assign(Error(value.code),{code:value.code,diagnostic:value.diagnostic}));
+        const code=value.code==='SOURCE_OPERATION_UNSUPPORTED'&&['searchTracks','setLiked'].includes(job.op)
+          ? 'BRIDGE_UPDATE_REQUIRED' : value.code;
+        value.ok?job.resolve(value.value):job.reject(Object.assign(Error(code),{code,diagnostic:value.diagnostic}));
       });
       ws.on('close',()=>{if(socket!==ws)return;socket=null;rejectPending();log('bridge-disconnected',{});});
     });
@@ -38,7 +40,7 @@ function createBridge(log, options={}) {
     connected:()=>!closed&&socket?.readyState===1,
     async start(){await new Promise((yes,no)=>{server.once('error',no);server.listen(options.port??19238,'127.0.0.1',yes);});return {url:'ws://127.0.0.1:'+server.address().port+'/bridge/'+secret};},
     request(op,args={}) { if(closed||!socket||socket.readyState!==1)return Promise.reject(Object.assign(Error('SPOTIFY_INSTANCE_CHANGED'),{code:'SPOTIFY_INSTANCE_CHANGED'}));
-      const id=++serial;return new Promise((resolve,reject)=>{const timer=setTimeout(()=>{pending.delete(id);reject(Object.assign(Error('CONTROL_TIMEOUT'),{code:'CONTROL_TIMEOUT'}));},op==='lyrics'?30000:10000);pending.set(id,{resolve,reject,timer});socket.send(JSON.stringify({id,op,args}));});},
+      const id=++serial;return new Promise((resolve,reject)=>{const timer=setTimeout(()=>{pending.delete(id);reject(Object.assign(Error('CONTROL_TIMEOUT'),{code:'CONTROL_TIMEOUT'}));},op==='hello'?3000:['lyrics','searchTracks','setLiked','likedTracks'].includes(op)?30000:10000);pending.set(id,{resolve,reject,timer,op});socket.send(JSON.stringify({id,op,args}));});},
     close(){closed=true;rejectPending();socket?.close();wss.close();server.close();},
   };
 }

@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 beforeEach(() => { localStorage.clear(); vi.resetModules(); });
 afterEach(() => vi.restoreAllMocks());
 describe('Spotify connection restart marker', () => {
-    it('reopens unfinished setup after restart but respects dismissal in the current run', async () => {
+    it('retains unfinished setup without opening the guide after restart', async () => {
         const first = await import('@/stores/useSpotifyConnectionStore');
         first.useSpotifyConnectionStore.getState().begin();
         first.useSpotifyConnectionStore.getState().dismiss();
@@ -14,7 +14,7 @@ describe('Spotify connection restart marker', () => {
         expect(localStorage.getItem(first.SPOTIFY_CONNECTION_PENDING_KEY)).toBe('true');
         vi.resetModules();
         const restarted = await import('@/stores/useSpotifyConnectionStore');
-        expect(restarted.useSpotifyConnectionStore.getState()).toMatchObject({ open: true, pending: true });
+        expect(restarted.useSpotifyConnectionStore.getState()).toMatchObject({ open: false, pending: true });
         restarted.useSpotifyConnectionStore.getState().complete();
         vi.resetModules();
         const finished = await import('@/stores/useSpotifyConnectionStore');

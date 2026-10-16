@@ -728,12 +728,12 @@ export const omni = {
         const songKey = String(source.mediaId);
         const account = useOnlineProviderAccountStore.getState().accounts[source.providerId];
         const cachedFileId = account?.likedSongFileIds?.[songKey];
-
+        let refreshed: Awaited<ReturnType<NonNullable<typeof provider.mutations.likeSong>>>;
         try {
             if (cachedFileId === undefined) {
-                await provider.mutations.likeSong(song, liked);
+                refreshed = await provider.mutations.likeSong(song, liked);
             } else {
-                await provider.mutations.likeSong(song, liked, { likedFileId: cachedFileId });
+                refreshed = await provider.mutations.likeSong(song, liked, { likedFileId: cachedFileId });
             }
         } catch (error) {
             // 失败时只丢掉可能已经失效的 fileId，点赞状态保持原样——调用方会把错误往上抛。
@@ -750,12 +750,15 @@ export const omni = {
         // 优先读调用方传进来的那一份。所以从 GridView 直接调用这里，网易云的播放器心形不会跟着变，
         // 要等下一次账号刷新。真要统一得把那份 state 挪进 store，不在这次改动范围内。
         const latest = useOnlineProviderAccountStore.getState().accounts[source.providerId];
+        if (latest?.user?.id !== account?.user?.id || latest?.connectionRevision !== account?.connectionRevision) return;
         const likedSongIds = (latest?.likedSongIds || []).filter(id => String(id) !== songKey);
         const likedSongFileIds = { ...(latest?.likedSongFileIds || {}) };
         delete likedSongFileIds[songKey];
         useOnlineProviderAccountStore.getState().updateAccount(source.providerId, {
-            likedSongIds: liked ? [...likedSongIds, source.mediaId] : likedSongIds,
+            likedSongIds: refreshed ? refreshed.likedSongIds : liked ? [...likedSongIds, source.mediaId] : likedSongIds,
             likedSongFileIds,
+            ...(refreshed ? { collections: (latest?.collections || []).map(collection => String(collection.id) === String(refreshed.collectionId)
+                ? { ...collection, trackCount: refreshed.likedSongIds.length, tracksUpdatedAt: Math.max(Date.now(), (collection.tracksUpdatedAt || 0) + 1) } : collection) } : {}),
         });
         await persistProviderLikedSongIds(source.providerId);
     },

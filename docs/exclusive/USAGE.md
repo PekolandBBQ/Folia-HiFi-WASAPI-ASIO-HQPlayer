@@ -1,16 +1,16 @@
 <!-- docs/exclusive/USAGE.md -->
 # Folia-HiFi-WASAPI-ASIO-HQPlayer-Spotify 使用说明
 
-这是我维护的 Windows x64 正式专版，名称为 **Folia-HiFi-WASAPI-ASIO-HQPlayer-Spotify**，当前应用版本 **0.7.19**、专版修订 **r3**。它基于 Folia v0.7.19，保留原项目的许可证和署名。
+这是我维护的 Windows x64 正式专版，名称为 **Folia-HiFi-WASAPI-ASIO-HQPlayer-Spotify**，当前应用版本 **0.7.19**、专版修订 **r4**。它基于 Folia v0.7.19，保留原项目的许可证和署名。
 
 ## 安装与更新
 
-从 [0.7.19 r3 正式版](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/releases/tag/folia-hifi-v0.7.19-r3) 选择一种安装方式：
+从 [0.7.19 r4 正式版](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/releases/tag/folia-hifi-v0.7.19-r4) 选择一种安装方式：
 
 | 方式 | 下载与使用 |
 | --- | --- |
-| **EXE 安装版（推荐）** | 下载 [Folia-HiFi-WASAPI-ASIO-HQPlayer-0.7.19-win-x64-Setup.exe](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/releases/download/folia-hifi-v0.7.19-r3/Folia-HiFi-WASAPI-ASIO-HQPlayer-0.7.19-win-x64-Setup.exe)，运行安装向导并选择目录；安装后从开始菜单启动。仅为当前用户安装，提供 Windows“已安装的应用”卸载入口。 |
-| **ZIP 免安装版** | 下载 [Folia-HiFi-WASAPI-ASIO-HQPlayer-0.7.19-win-x64.zip](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/releases/download/folia-hifi-v0.7.19-r3/Folia-HiFi-WASAPI-ASIO-HQPlayer-0.7.19-win-x64.zip)，完整解压到可写目录，运行 `Folia-HiFi-WASAPI-ASIO-HQPlayer.exe`。不要在压缩包内直接运行，也不要单独移动 EXE。 |
+| **EXE 安装版（推荐）** | 下载 [Folia-HiFi-WASAPI-ASIO-HQPlayer-0.7.19-win-x64-Setup.exe](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/releases/download/folia-hifi-v0.7.19-r4/Folia-HiFi-WASAPI-ASIO-HQPlayer-0.7.19-win-x64-Setup.exe)，运行安装向导并选择目录；安装后从开始菜单启动。仅为当前用户安装，提供 Windows“已安装的应用”卸载入口。 |
+| **ZIP 免安装版** | 下载 [Folia-HiFi-WASAPI-ASIO-HQPlayer-0.7.19-win-x64.zip](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/releases/download/folia-hifi-v0.7.19-r4/Folia-HiFi-WASAPI-ASIO-HQPlayer-0.7.19-win-x64.zip)，完整解压到可写目录，运行 `Folia-HiFi-WASAPI-ASIO-HQPlayer.exe`。不要在压缩包内直接运行，也不要单独移动 EXE。 |
 
 两种方式包含相同程序、WASAPI/ASIO 组件 0.1.3-preview.3、独立 HQPlayer 组件 0.1.4-preview.7 和支持 PCM24/PCM32 的 FFmpeg，无需安装 Node 或 .NET SDK。ASIO 需要另行安装厂商的 x64 驱动，HQPlayer 需另行安装并授权。
 
@@ -40,11 +40,15 @@ Spotify 原歌词在当前歌曲卡片与详情页显示。确认没有可显示
 
 **Spotify → HQPlayer 仍可能出现断续播放，本版未解决。** 预缓冲不能保证消除断续，也不代表已解决供数抖动。三秒性能与历史偶发 Seek 继续观察。
 
+### 自动连接与在线收藏
+
+已连接账号后，每次启动 Folia 自动检查并尝试完成缺失组件安装、配置及连接；正常状态复用，无需指定 Spotify 启动顺序。三次静默重试仍失败时，仅在打开 Spotify 歌单后显示配置向导与具体中文原因。Spotify 自行安装/登录、管理员授权和 Windows 重启仍需用户操作。在线搜索覆盖 Spotify 曲库，点赞/取消点赞在远端确认后刷新已点赞歌单。
+
 ### 桌面换歌、跨音源与退出
 
 - 在 Spotify 桌面直接换歌，Folia 检测到后暂停，询问是否追随歌曲与进度；可选择交还 Spotify 直接播放，避免两端争抢控制。
 - Spotify 内暂停、停止、切歌、Seek、后端切换保留路由；暂停和停止关闭采集。浏览其他歌单不代表已经切换音源。
-- 真正开始播放 QQ、网易云或本地歌曲，或退出 Folia、明确交还 Spotify 时，恢复 Spotify 原路由。退出/切换音源时可选择是否同时退出由 Folia 后台拉起的 Spotify；用户自己打开的实例按实际所有权处理。
+- 真正开始播放 QQ、网易云或本地歌曲，或退出 Folia、明确交还 Spotify 时，恢复 Spotify 原路由。退出 Folia 时清理有时间上限，失败记录日志也继续退出，默认保留 Spotify；实际切换音源时可选择是否同时退出由 Folia 后台拉起的 Spotify。
 - Spotify 音量由用户管理，Folia 不自动查询或修改。旧音量恢复记录保留为历史证据，不用于自动恢复。
 - 已点赞歌曲以随机九首歌曲封面组成九宫格；有可用 Spotify 原歌词时回传，缺失或接口不可用时不冒充原歌词。
 

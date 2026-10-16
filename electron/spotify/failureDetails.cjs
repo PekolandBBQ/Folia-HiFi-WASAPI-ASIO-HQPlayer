@@ -1,6 +1,17 @@
 'use strict';
 // Preserve bounded machine codes across IPC; messages explain the failed operation without exposing account data.
 const descriptions = {
+ SEARCH_API_UNAVAILABLE: '当前 Spotify 客户端尚未提供在线搜索接口，请重启 Spotify 以加载新版桥接；不会退回已点赞歌曲冒充在线结果。',
+ BRIDGE_UPDATE_REQUIRED: 'Spotify 仍在运行旧版桥接，尚不支持在线搜索或收藏。请保持 Folia 打开，完全退出 Spotify 后回到 Folia 重试，由 Folia 自动拉起；无需重装组件或重新配置。',
+ SPOTIFY_RESOURCE_DIRECTORY_MISSING: 'Spotify 启动时未使用当前 Folia 的桥接资源目录。请退出 Spotify 后回到 Folia 重试，由 Folia 自动拉起；无需重装或重新配置。',
+ SEARCH_REQUEST_FAILED: 'Spotify 在线搜索请求失败，请稍后重试；当前播放不受影响。',
+ SEARCH_SCHEMA_INVALID: 'Spotify 在线搜索返回的数据格式与当前桥接不匹配，未显示本地缓存结果。',
+ SEARCH_RATE_LIMITED: 'Spotify 暂时限制了搜索请求，本次未继续重试；当前播放不受影响。',
+ LIBRARY_WRITE_UNAVAILABLE: 'Spotify 收藏接口尚未就绪，请重启 Spotify 以加载新版桥接。',
+ LIBRARY_WRITE_FAILED: 'Spotify 未完成收藏操作，本地收藏状态未标记成功。',
+ LIBRARY_WRITE_UNCONFIRMED: 'Spotify 收藏请求已发送，但回读仍未确认目标状态，请刷新已点赞歌单确认。',
+ LIBRARY_RATE_LIMITED: 'Spotify 暂时限制了歌单请求，本次未继续重试；当前播放不受影响。',
+ LIBRARY_SCHEMA_INVALID: 'Spotify 返回的收藏状态格式无法识别，本地未标记成功。',
  ...require('./routeFailureDescriptions.cjs'),
  ...require('./captureFailureDescriptions.cjs'),
  AUTH_REQUIRED: 'Spotify 尚未登录，或登录凭据已失效，请登录 Spotify 后继续。',
@@ -39,7 +50,7 @@ const descriptions = {
  SPOTIFY_BACKUP_MISSING: '原资源目录没有可复用的 Spicetify 备份，无法无损升级；原目录已保留。',
  SPOTIFY_WRAPPER_SETTINGS_AUTOMATIC: 'Wrapper 使用自动配置，请使用一键配置；旧手动保存操作不适用。',
  SPOTIFY_INSTANCE_CHANGED: '本次采集绑定的 Spotify 进程已退出或被新进程替换，旧会话不能继续使用；需要重新建立采集会话，这不等同于账号断开。',
- SPOTIFY_BRIDGE_NOT_READY: 'Spotify 已运行，但 Folia 桥接扩展在 30 秒内没有连接。请完成一键配置后重启 Spotify。',
+ SPOTIFY_BRIDGE_NOT_READY: 'Spotify 已运行，但桥接在 30 秒内没有连接。请正常退出 Spotify，不要手动重新打开，再回到 Folia 重试，由 Folia 拉起带桥接资源的客户端。',
  SPOTIFY_OTHER_INSTALL_RUNNING: '运行中的 Spotify 与选定的桌面版或 Store 版不一致。请退出另一版本，或选择正在使用的版本。',
  SPOTIFY_PLAYER_NOT_READY: '桥接已连接，但 Spotify 尚未提供本机账号和播放设备。请在 Spotify 中完成登录。',
  SPOTIFY_COMPONENT_SETUP_REQUIRED: '所选 Spotify 的 Folia 资源目录缺失，请完成一键配置。',

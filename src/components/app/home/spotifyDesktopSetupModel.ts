@@ -1,5 +1,6 @@
 // First-use component progress contains no account, filesystem or raw exception data.
 export type DesktopSetupStatus = {
+    bridgeRuntime?: { state: string; detail: string; version?: string; expectedVersion?: string; missing?: string[] };
     issues?: { detail?: string; stage?: string; nativeCode?: string }[]; playback?: { state: 'untested' | 'prepared' | 'failed'; detail?: string };
     enabled: boolean; installations: { id: string; layout: string; version: string }[]; selected?: string;
     detectionFailed: boolean; running: boolean; connected: boolean; cli: boolean; wrapper: boolean;

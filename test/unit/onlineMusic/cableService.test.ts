@@ -106,7 +106,7 @@ it('still attempts helper close after synchronous cleanup exceptions and never r
   } finally { remove(); }
 });
 
-it('keeps quit blocked and explains unconfirmed route restoration instead of reporting a successful exit', async () => {
+it('records failed route restoration but exits without a blocking dialog', async () => {
   const directory = await mkdtemp(path.join(tmpdir(), 'folia-route-quit-')); directories.push(directory);
   const handlers = new Map<string, Function>(), lifecycle = new Map<string, Function>();
   const close = vi.fn(async () => { throw Object.assign(new Error(), { code: 'ROUTE_RESTORE_UNCONFIRMED' }); });
@@ -117,7 +117,9 @@ it('keeps quit blocked and explains unconfirmed route restoration instead of rep
     electron: { safeStorage: {}, net: { fetch: vi.fn() }, shell: {}, dialog: { showMessageBox } }, platform: 'win32' });
   await handlers.get('spotify:request')!({ sender: {} }, { action: 'status' });
   const preventDefault = vi.fn(); lifecycle.get('before-quit')!({ preventDefault });
-  await vi.waitFor(() => expect(showMessageBox).toHaveBeenCalledOnce());
-  expect(preventDefault).toHaveBeenCalledOnce(); expect(app.quit).not.toHaveBeenCalled();
-  expect(app.emit).toHaveBeenCalledWith('spotify-route-cleanup-failed', { code: 'ROUTE_RESTORE_UNCONFIRMED' });
+  await vi.waitFor(() => expect(app.quit).toHaveBeenCalledOnce());
+  expect(preventDefault).toHaveBeenCalledOnce(); expect(showMessageBox).not.toHaveBeenCalled();
+  expect(app.emit).not.toHaveBeenCalledWith('spotify-route-cleanup-failed', expect.anything());
+  const final = { preventDefault: vi.fn() }; lifecycle.get('before-quit')!(final);
+  expect(final.preventDefault).not.toHaveBeenCalled();
 });

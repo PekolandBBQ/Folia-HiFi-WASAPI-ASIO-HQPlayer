@@ -33,11 +33,11 @@ export default function SpotifyDesktopSetup({ onMode, onReady, finishing = false
             {item.layout === 'store' ? 'Microsoft Store 版' : '官网桌面版'} {item.version}{status.selected === item.id ? ' · 已选择' : ''}</button>)}
         <ul className="space-y-1 text-xs">
             <li>Spicetify：{status.wrapper ? '已准备' : status.cli ? '已安装，待配置' : '待安装并配置'}</li>
-            <li>Folia 桥接扩展：{status.extension ? '已准备' : '待配置'}</li>
+            <li>Spotify 连接组件：{status.extension ? '已准备' : '待配置'}</li>
             <li>VB-CABLE：{status.driverCurrent === false ? '版本需更新，请完成一键安装' : status.driver ? '已检测到驱动设备' : '尚未检测到驱动设备'}</li>
             <li>音频输入输出：{status.driverEndpointsReady ? '已识别完整设备对' : '尚未就绪'}</li>
             <li>采集与路由组件：{status.engine ? '已准备' : '待安装'}</li>
-            <li>本机桥接：{status.connected ? '已连接' : status.running ? '等待连接' : 'Spotify 尚未启动'}</li>
+            <li>Spotify 连接：{busy ? '正在连接…' : status.connected && status.bridgeRuntime?.state === 'ready' ? '已连接，可搜索和收藏歌曲' : status.running ? '尚未连接，Folia 会在使用时自动处理' : '尚未启动，使用时将自动连接'}</li>
         </ul>
         {status.issues?.map((issue, index) => <p role="alert" className="text-xs" key={index}>{issue.detail || `${issue.stage}: ${issue.nativeCode}`}</p>)}
         <p role="status" className="text-xs">音频链路：{status.playback?.state === 'failed' ? status.playback.detail || '最近播放失败，尚未获得具体组件错误。' : status.playback?.state === 'prepared' ? '音源准备已完成；不代表已确认实际出声。' : '尚未实播；组件和连接检查不代表音频输出通过。'}</p>

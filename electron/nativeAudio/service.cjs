@@ -596,15 +596,13 @@ function registerNativeAudio({ app, ipcMain, isTrustedSender, helperFactory = cr
     app.on('before-quit', event => {
         if (cleanupFinished) return;
         // Electron does not await a Promise returned by this event. Hold the first quit,
-        // including duplicate requests, until owned resources are released.
+        // including duplicate requests, for a bounded cleanup attempt.
         event?.preventDefault?.();
         if (cleanupStarted) return;
         cleanupStarted = true;
         const previous = active; active = null;
-        const lifecycleSenders = new Set([previous?.sender, ...Array.from(retainedSources.values(), entry => entry.sender)].filter(Boolean));
-        // Keep the process alive until restoration is acknowledged. Failure leaves the
-        // owned receipt retryable; a second user Quit retries rather than reporting success.
-        const cleanup = (async () => {
+        // Keep recovery evidence on failure without vetoing the user's exit.
+        const cleanup = async () => {
             // A failed process shutdown must not skip source restoration on Quit.
             // Known output owners are still stopped/acknowledged by release below.
             await outputTransition.catch(diagnostic);
@@ -617,16 +615,9 @@ function registerNativeAudio({ app, ipcMain, isTrustedSender, helperFactory = cr
             }
             await sourceCache.dispose();
             helper?.dispose(); await helper?.waitForExit?.(); await hqplayer.dispose();
-        })();
-        void cleanup.then(() => { cleanupFinished = true; app.quit?.(); }, error => {
-            cleanupStarted = false;
-            diagnostic(error);
-            if (errorCode(error) === 'SOURCE_RESTORE_UNCONFIRMED') {
-                for (const sender of lifecycleSenders) if (!sender.isDestroyed()) sender.send('native-audio:event', {
-                    event: 'lifecycle-error', errorCode: 'SOURCE_RESTORE_UNCONFIRMED' });
-            } else if (!isCancellation(error) && previous && !previous.sender.isDestroyed()) previous.sender.send('native-audio:event', {
-                event: 'error', session: previous.id, errorCode: errorCode(error) });
-        });
+        };
+        void require('../quitCleanup.cjs').settleQuitCleanup(cleanup, diagnostic)
+            .then(() => { cleanupFinished = true; app.quit?.(); });
     });
     return { handle: observedHandle,
         async releaseProviderOutput() {

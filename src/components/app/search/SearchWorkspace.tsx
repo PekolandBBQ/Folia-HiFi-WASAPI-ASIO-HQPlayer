@@ -77,6 +77,9 @@ const SearchWorkspace: React.FC<SearchWorkspaceProps> = ({
         return resolveTrackDisplay ? raw.map(resolveTrackDisplay) : raw;
     }, [resolveTrackDisplay, searchResults]);
     const activeOnlineProviderId = useOnlineProviderAccountStore(state => state.activeProviderId);
+    // Spotify transport supplies translated, actionable errors; do not replace them with a generic retry prompt.
+    const searchFailureText = searchSourceTab === 'spotify' && /[\u3400-\u9fff]/.test(searchError || '')
+        ? searchError : t('search.error');
     const sources = useMemo<SearchSource[]>(() => [activeOnlineProviderId, 'local', 'navidrome'], [activeOnlineProviderId]);
     const hasCollection = useCollectionNavigationStore(state => Boolean(state.snapshot?.stack.length));
     const getSourceLabel = (source: SearchSource) => {
@@ -185,7 +188,7 @@ const SearchWorkspace: React.FC<SearchWorkspaceProps> = ({
                         ) : searchError && results.length === 0 ? (
                             <div className="flex h-full flex-col items-center justify-center gap-3 text-center opacity-65">
                                 <AlertCircle size={32} />
-                                <p>{t('search.error')}</p>
+                                <p className="max-w-xl px-6 text-center">{searchFailureText}</p>
                                 <button
                                     type="button"
                                     onClick={() => onSubmitSearch()}
@@ -214,7 +217,7 @@ const SearchWorkspace: React.FC<SearchWorkspaceProps> = ({
                                 </div>
                                 {searchError ? (
                                     <div className="flex shrink-0 items-center justify-center gap-3 py-3 text-sm">
-                                        <span className="opacity-60">{t('search.error')}</span>
+                                        <span className="opacity-60">{searchFailureText}</span>
                                         <button
                                             type="button"
                                             disabled={isLoadingMore}
