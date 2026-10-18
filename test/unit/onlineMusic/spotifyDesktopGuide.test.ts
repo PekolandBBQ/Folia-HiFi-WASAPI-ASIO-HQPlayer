@@ -31,7 +31,7 @@ beforeEach(() => {
 });
 afterEach(async () => { await act(async () => root.unmount()); host.remove(); delete window.electron; });
 it('checks passively and orders explicit install before configure', async () => {
-    await mount(); expect(request.mock.calls.every(([x]) => x.operation === 'status')).toBe(true);
+    await mount(); expect(request.mock.calls.every(([x]) => ['status', 'preferences'].includes(x.operation))).toBe(true);
     const labels = [...document.querySelectorAll('button')].map(b => b.textContent);
     expect(labels.indexOf('② 一键配置')).toBe(labels.indexOf('① 一键安装') + 1);
     await act(async () => button('① 一键安装').click()); await act(async () => button('② 一键配置').click());

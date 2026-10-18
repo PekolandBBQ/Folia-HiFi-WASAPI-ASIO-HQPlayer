@@ -9,7 +9,7 @@ import type { ProviderPlaybackSetupStatus } from '@/types/onlineMusic';
 
 // Offline SSR checks cover native labels, disabled options and selection state; no audio operations run.
 const fixture = vi.hoisted(() => ({ state: { status: null as ProviderPlaybackSetupStatus | null, busy: false }, run: vi.fn() }));
-vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
+vi.mock('react-i18next', async importOriginal => ({ ...await importOriginal<typeof import('react-i18next')>(), useTranslation: () => ({ t: (key: string) => key }) }));
 vi.mock('@/hooks/useSpotifyPlaybackSetup', () => ({ useSpotifyPlaybackSetup: () => fixture.state }));
 vi.mock('@/services/onlineMusic/spotifyPlaybackSetup', () => ({ spotifyPlaybackSetup: {
     canRun: () => true, run: fixture.run,
