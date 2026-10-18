@@ -65,3 +65,26 @@ test('empty Gitee does not report latest and names both failing sources',async t
 test('failed GitHub download can switch only to the identical Gitee build',async t=>{
  for(const build of ['1792300000001','1792300000000']){const f=await mirrorFixture(t,{githubFails:false,downloadFails:true,mirrorBuild:build});await f.service.check();await f.service.download();assert.equal(f.states.at(-1).status,build==='1792300000001'?'downloaded':'error');}
 });
+// Gitee serves byte ranges of the identical package, not a separately rebuilt installer.
+test('Gitee parts assemble in order; portable parts never install',async t=>{
+ for(const installed of [true,false]){
+  const directory=await fs.mkdtemp(path.join(os.tmpdir(),'folia-parts-'));t.after(()=>fs.rm(directory,{recursive:true,force:true}));const states=[],opened=[],installedFiles=[];
+  const kind=installed?'installer':'portable',names=['part01','part02'];const r={...release(),id:42,assets:names.map((name,i)=>({name,size:2,browser_download_url:`https://gitee.com/attachments/download/${i+1}`}))};r.assets.push({name:'folia-hifi-update.json',browser_download_url:'https://gitee.com/attachments/download/3'});
+  const m={...manifest(),parts:{[kind]:names.map(name=>({name,size:2}))}};
+  const service=createForkUpdates({current,installed,directory,publish:s=>states.push(s),getSource:()=> 'gitee',openDownloaded:f=>opened.push(f),install:async f=>{installedFiles.push(f);return true;},fetcher:async url=>url.endsWith('/latest')?Response.json(r):url.endsWith('/attach_files')?Response.json(r.assets):url.includes('/3?')?Response.json(m):new Response(url.endsWith('/1')?'ab':'cd')});
+  await service.check({manual:true});assert.equal(states.at(-1).status,'available');await service.download();assert.equal(states.at(-1).status,'downloaded');assert.equal(installedFiles.length,0);assert.equal(await service.confirmInstall(),installed);assert.equal(await fs.readFile(installed?installedFiles[0]:opened[0],'utf8'),'abcd');
+  const missing={...r,assets:r.assets.filter(a=>a.name!=='part02')};assert.throws(()=>selectUpdate(missing,m,current,installed,'gitee'),/缺少完整分片/);
+ }
+});
+test('interrupted second part never becomes an installable package; retry starts clean',async t=>{
+ const directory=await fs.mkdtemp(path.join(os.tmpdir(),'folia-parts-retry-'));t.after(()=>fs.rm(directory,{recursive:true,force:true}));const states=[];let failing=true,installedFile;
+ const r={...release(),id:42,assets:[{name:'p1',size:2,browser_download_url:'https://gitee.com/attachments/download/1'},{name:'p2',size:2,browser_download_url:'https://gitee.com/attachments/download/2'},{name:'folia-hifi-update.json',browser_download_url:'https://gitee.com/attachments/download/3'}]};const m={...manifest(),parts:{installer:[{name:'p1',size:2},{name:'p2',size:2}]}};
+ const service=createForkUpdates({current,installed:true,directory,publish:s=>states.push(s),getSource:()=> 'gitee',install:async f=>{installedFile=f;return true;},fetcher:async url=>{if(url.endsWith('/latest'))return Response.json(r);if(url.endsWith('/attach_files'))return Response.json(r.assets);if(url.includes('/3?'))return Response.json(m);if(url.endsWith('/2')&&failing)throw Error('测试中断');return new Response(url.endsWith('/1')?'ab':'cd');}});
+ await service.check();await service.download();assert.equal(states.at(-1).status,'error');assert.equal(await service.confirmInstall(),false);failing=false;await service.download();assert.equal(await service.confirmInstall(),true);assert.equal(await fs.readFile(installedFile,'utf8'),'abcd');
+});
+test('release splitting retains every original byte and publishes one manifest for both hosts',async t=>{
+ const directory=await fs.mkdtemp(path.join(os.tmpdir(),'folia-split-'));t.after(()=>fs.rm(directory,{recursive:true,force:true}));const r={forkTag:current.forkTag,build:current.build,productName:'Folia',version:'0.7.19'};
+ for(const name of ['Folia-0.7.19-win-x64-Setup.exe','Folia-0.7.19-win-x64.zip'])await fs.writeFile(path.join(directory,name),'abcdefg');
+ const m=await require('../../packaging/exclusive/updateManifest.cjs').prepareUpdateArtifacts(directory,r,3);
+ for(const kind of ['installer','portable']){assert.deepEqual(m.parts[kind].map(p=>p.size),[3,3,1]);assert.equal(Buffer.concat(await Promise.all(m.parts[kind].map(p=>fs.readFile(path.join(directory,p.name))))).toString(),'abcdefg');}
+});

@@ -112,12 +112,7 @@ async function main() {
         publish: null,
     }, publish: 'never' });
     if (process.env.FOLIA_ASSEMBLY_ONLY !== 'true') {
-      const names = await fs.readdir(output);
-      const manifest = { schema: 1, tag: release.forkTag, build: release.build,
-        installer: names.find(n => n === release.productName + '-' + release.version + '-win-x64-Setup.exe'),
-        portable: names.find(n => n === release.productName + '-' + release.version + '-win-x64.zip') };
-      if (!manifest.installer || !manifest.portable) throw new Error('Missing fork update artifacts');
-      await fs.writeFile(path.join(output, 'folia-hifi-update.json'), JSON.stringify(manifest, null, 2));
+      await require('./updateManifest.cjs').prepareUpdateArtifacts(output,release);
     }
     console.log(JSON.stringify({ output, version: release.version, componentVersions: releases.map(r => r.version),
         spotifyComponentVersion: wrapper.bundleVersion }));

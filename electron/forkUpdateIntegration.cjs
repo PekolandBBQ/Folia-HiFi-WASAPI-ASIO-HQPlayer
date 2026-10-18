@@ -15,7 +15,7 @@ function detectInstalled(directory){
 }
 function create({app,session,dialog,current,publish,shell,installed,getSource=()=> 'auto',launch=spawn}){
  const directory=path.join(app.getPath('userData'),'updates');
- return createForkUpdates({current,installed,directory,publish,getSource,openExternal:url=>shell.openExternal(url),
+ return createForkUpdates({current,installed,directory,publish,getSource,openExternal:url=>shell.openExternal(url),openDownloaded:file=>shell.showItemInFolder(file),
  fetcher:(url,options)=>session.fromPartition('folia-fork-update').fetch(url,options),
  install:async installer=>{
   const answer=await dialog.showMessageBox({type:'question',title:'更新 Folia HiFi',message:'安装包已下载。现在退出 Folia 并更新吗？',detail:'更新会停止播放并完成退出清理。现有配置和组件备份保留，完成后重新打开 Folia。',buttons:['暂不更新','退出并更新'],defaultId:0,cancelId:0});

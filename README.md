@@ -369,3 +369,5 @@ Folia 会读取音频文件元数据、同目录歌词和封面，并可通过�
 保留 Folia 上游对 [chenmozhijin/LDDC](https://github.com/chenmozhijin/LDDC) 的致谢。Music Assistant 与 spotify-player 属于历史方案参考，当前 Wrapper 无需安装这两个项目。
 
 相关官方软件与资料：[Signalyst HQPlayer Control 源码与接口资料](https://www.signalyst.eu/custom.html)用于 HQPlayer 控制接入；[VB-Audio VB-CABLE](https://vb-audio.com/Cable/)用于 Spotify 的受控音频路由与格式准备。感谢两者提供的工具与资料。
+
+Gitee 单附件限制为 100 MB，因此安装包和便携包以分片保存；Folia 从 Gitee 下载时按清单自动合并完整文件。GitHub 提供相同构建的完整文件。安装版合并完成后仍需确认才安装；便携版合并为 ZIP 并打开保存目录，用户自行退出旧版、完整解压。直接从 Gitee 网页下载便携包时，请下载全部 `.zip.001` 起的分片，并用 7-Zip 打开 `.001` 合并解包。

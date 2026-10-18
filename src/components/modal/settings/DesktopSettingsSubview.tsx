@@ -445,7 +445,7 @@ const DesktopSettingsSubview: React.FC<DesktopSettingsSubviewProps> = ({
                 )}
 
                 <div className="text-[10px] opacity-45 px-1 leading-relaxed text-left" style={{ color: 'var(--text-secondary)' }}>
-                    {updateStatus?.autoUpdateSupported
+                    {updateStatus?.forkUpdate ? '支持 GitHub 和 Gitee；分片下载会自动合并，安装前仍需确认。' : updateStatus?.autoUpdateSupported
                         ? t('options.autoUpdateGithubNotice') || 'Auto update needs access to GitHub; if the network is unstable, keep a system proxy enabled.'
                         : t('options.updateCheckGithubNotice')}
                 </div>
