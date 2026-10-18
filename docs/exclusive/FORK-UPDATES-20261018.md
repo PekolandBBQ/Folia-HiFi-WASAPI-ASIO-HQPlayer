@@ -76,3 +76,8 @@ Spotify 账号入口已实测显示 PekolandBBQ 和真实头像（naturalWidth=6
 - 更新后 bridge-connected 至 spotify-background-ready 71ms，owned=false，复用已有 Spotify；真实流媒体菜单显示用户头像及 PekolandBBQ。
 - 60 项针对性测试通过；提交 a8b3e6cb 的 GitHub 单元测试、sync-server 类型检查、设置 UI 测试通过。PR12 合并。历史两次助手失败仍保留，不以最终通过覆盖。
 - GitHub 和 Gitee 正式 r5 共享此构建；Spotify 经 HQPlayer 的历史断续播放、三秒目标与偶发 Seek 仍按已知问题记录。
+
+
+## r5 专版身份显示覆盖
+
+构建 1792341347763：显示 Folia HiFi、PekolandBBQ、双源仓库与实际运行版本，保留 chthollyphile/folia-major 上游署名。版本显示与复制读取当前安装包的运行时版本；更新提示不重复添加 v。专版说明替代上游未知构建警告。按用户明确要求不运行测试，仅构建 EXE/ZIP 并覆盖同一 r5 双源附件与清单，不安装、不关闭现有程序、不变更用户配置及备份。

@@ -1,3 +1,4 @@
+import { formatForkVersion } from './ForkAbout';
 import ForkUpdateDetails from './ForkUpdateDetails';
 import React from 'react';
 import { motion } from 'framer-motion';
@@ -456,7 +457,7 @@ const DesktopSettingsSubview: React.FC<DesktopSettingsSubviewProps> = ({
                         <div className="flex items-center gap-2">
                             <AlertCircle size={16} className="text-amber-500 shrink-0" />
                             <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-                                {t('options.newVersionFound', { version: updateStatus.availableVersion })}
+                                {updateStatus.forkUpdate ? `发现新版本 ${formatForkVersion(updateStatus.availableVersion)}` : t('options.newVersionFound', { version: updateStatus.availableVersion })}
                             </span>
                         </div>
 

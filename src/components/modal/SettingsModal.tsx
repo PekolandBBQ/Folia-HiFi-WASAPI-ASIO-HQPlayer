@@ -1,3 +1,4 @@
+import ForkAbout, { formatForkVersion } from './settings/ForkAbout';
 import ForkUpdateDetails from './settings/ForkUpdateDetails';
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -595,7 +596,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 
     const handleCopyVersionInfo = async () => {
         try {
-            await copyTextToClipboard(VERSION_INFO);
+            await copyTextToClipboard(updateStatus?.forkUpdate ? `${formatForkVersion(updateStatus.currentVersion)}\n专版作者／维护者：PekolandBBQ\nhttps://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer\n上游：chthollyphile/folia-major` : VERSION_INFO);
             setVersionCopied(true);
             window.setTimeout(() => setVersionCopied(false), 1800);
         } catch (error) {
@@ -1280,7 +1281,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
         }
 
         if (updateStatus?.availableVersion) {
-            return `${t('options.updateAvailable') || 'Found'} v${updateStatus.availableVersion}`;
+            return `${t('options.updateAvailable') || 'Found'} ${updateStatus.forkUpdate ? formatForkVersion(updateStatus.availableVersion) : 'v' + updateStatus.availableVersion}`;
         }
 
         if (updateStatus?.status === 'latest') {
@@ -1520,7 +1521,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 
                                 {/* Author Info (Moved from Footer) */}
                                 <div className="mt-8 pt-6 border-t border-white/10 text-center shrink-0">
-                                    <div className="relative mb-1">
+                                    {updateStatus?.forkUpdate ? <ForkAbout /> : <div className="relative mb-1">
                                         <p className="text-sm opacity-60" style={{ color: 'var(--text-secondary)' }}>
                                             <button
                                                 type="button"
@@ -1533,7 +1534,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                                             </button>{' '}
                                             <a href="https://github.com/chthollyphile/folia-major" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors underline decoration-white/30 hover:decoration-white">chthollyphile/folia-major</a>
                                         </p>
-                                    </div>
+                                    </div>}
                                     <div className="flex flex-col items-center gap-2 mt-6 mb-2 text-xs font-mono text-center">
                                         {/* 第一行：原本的版本信息按钮 */}
                                         <button
@@ -1546,9 +1547,9 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                                         >
                                             {versionCopied
                                                 ? t('status.copied')
-                                                : VERSION_INFO}
+                                                : updateStatus?.forkUpdate ? `当前版本：${formatForkVersion(updateStatus.currentVersion)}` : VERSION_INFO}
                                         </button>
-                                        {BUILD_KIND !== 'official' && (
+                                        {!updateStatus?.forkUpdate && BUILD_KIND !== 'official' && (
                                             <p
                                                 className={`max-w-sm text-[11px] leading-snug font-sans ${BUILD_KIND === 'unofficial' ? 'text-amber-500/90' : 'opacity-60'}`}
                                                 style={BUILD_KIND === 'unofficial' ? undefined : { color: 'var(--text-secondary)' }}
@@ -1563,7 +1564,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                                             <>
                                                 <div className="flex flex-wrap items-center justify-center gap-x-2.5 gap-y-1 mt-0.5">
                                                     <span className="text-amber-500 font-semibold">
-                                                        {t('options.newVersionFound', { version: updateStatus.availableVersion })}
+                                                        {updateStatus.forkUpdate ? `发现新版本 ${formatForkVersion(updateStatus.availableVersion)}` : t('options.newVersionFound', { version: updateStatus.availableVersion })}
                                                     </span>
 
                                                     {updateStatus.autoUpdateSupported && updateStatus.status === 'downloaded' ? (
