@@ -5,4 +5,5 @@ namespace Folia.RouteResearch;
 public sealed record PhysicalOwnerDiagnostic(string Stage, string Reason,
     int? Role = null, string? OriginalKind = null, int? Depth = null,
     uint? NativeResult = null, int? Hresult = null, string? Property = null,
-    uint? PropertyType = null, uint? PropertyLength = null, string? Bus = null);
+    uint? PropertyType = null, uint? PropertyLength = null, string? Bus = null, uint? EndpointState = null, uint? EndpointFlow = null,
+    bool? TargetMatch = null, bool? PolicyMatch = null);

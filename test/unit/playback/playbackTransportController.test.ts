@@ -219,3 +219,14 @@ describe('transport failure reasons', () => {
         expect(useStatusMessageStore.getState().message).toBe(countdown);
     });
 });
+
+// Cold restoration has a selected song but intentionally no session URL.
+it('prepares a restored Spotify session on first resume without playing the empty deck', async () => {
+ const host=mount({refreshSource:true});
+ act(()=>usePlaybackStore.setState({audioSrc:null,currentSong:{id:'restored',name:'Restored',artists:[],album:{id:'a',name:'a'},durationMs:200000,sourceRef:{kind:'online',providerId:'spotify',mediaId:'restored'}}}));
+ host.recover.mockResolvedValueOnce({status:'recovered'});
+ await act(async()=>{await host.actions().resumePlayback();});
+ expect(host.recover).toHaveBeenCalledOnce();
+ expect(host.recover.mock.calls[0][0].autoplay).toBe(true);
+ expect(host.audio.play).not.toHaveBeenCalled();
+});

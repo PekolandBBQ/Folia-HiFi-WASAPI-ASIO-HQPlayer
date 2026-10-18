@@ -27,7 +27,7 @@ async function fixture(t, layout) {
   const execute = async (_exe,args,env) => {
     calls.push(args);
     if (args.at(-1)==='apply') {
-      const apps = layout==='store'?path.join(env.SPICETIFY_CONFIG,'AppX'):path.join(directory,'spotify/Apps');
+      const apps = layout==='store'?path.join(env.SPICETIFY_CONFIG,'AppX'):path.join(env.USERPROFILE,'spotify/Apps');
       await fs.mkdir(path.join(apps,'xpui/helper'),{recursive:true});
       await fs.mkdir(path.join(apps,'xpui/extensions'),{recursive:true});
       await fs.writeFile(path.join(apps,'xpui/index.html'),'<script src="helper/spicetifyWrapper.js"></script><script src="extensions/folia-live-bridge.js"></script></body>');
@@ -71,4 +71,17 @@ test('CLI stdin is closed and stdout failure facts survive',async t=>{
   await assert.rejects(runCli(process.execPath,['-e',"console.error('vendor failed');process.exit(7)"],process.env,log),{code:'SPOTIFY_CONFIGURE_CLI_FAILED'});
   const records=(await fs.readFile(log,'utf8')).trim().split('\n').map(JSON.parse);
   assert.equal(records[1].exitCode,7);assert.match(records[1].stderr,/vendor failed/);
+});
+
+for(const layout of ['store','desktop'])test(layout+' fresh client generation preserves old files and records the new client build',async t=>{
+ const f=await fixture(t,layout);
+ f.options.target.binaryVersion='1.3.4.258';await configureAssets(f.options);
+ const oldReceipt=await fs.readFile(path.join(f.directory,'configuration.json'),'utf8');
+ const directory=path.join(f.root,'client-1.3.5');
+ const options={...f.options,directory,target:{...f.options.target,binaryVersion:'1.3.5.3058'}};
+ const apps=await configureAssets(options);
+ assert.equal(JSON.parse(await fs.readFile(path.join(directory,'configuration.json'),'utf8')).spotifyVersion,'1.3.5.3058');
+ assert.equal((await require('../../electron/spotify/resourceVersion.cjs').resourceVersion(apps,options.target)).state,'current');
+ const before=f.calls.length;await configureAssets(options);assert.equal(f.calls.length,before);
+ assert.equal(await fs.readFile(path.join(f.directory,'configuration.json'),'utf8'),oldReceipt);
 });

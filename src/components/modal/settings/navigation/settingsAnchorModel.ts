@@ -42,6 +42,7 @@ export const SETTINGS_ANCHOR_DEFINITIONS = {
     audioOutputSettings: { section: 'playback', labelKey: 'options.audioOutputSettings' },
     hqPlayerOutput: { section: 'playback', labelKey: 'hqPlayer.title', electronOnly: true, isAvailable: isNativeAudioSupported },
     nativeAudioOutput: { section: 'playback', labelKey: 'nativeAudio.title', electronOnly: true, isAvailable: isNativeAudioSupported },
+    audioSignalPath: { section: 'playback', labelKey: 'audioSignalPath.title', electronOnly: true, isAvailable: isNativeAudioSupported },
 
     // InteractionSettingsSubview
     gridActionButton: { section: 'interaction', labelKey: 'options.gridActionButton' },

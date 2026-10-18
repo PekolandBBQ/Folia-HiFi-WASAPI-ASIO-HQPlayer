@@ -1,22 +1,22 @@
 <!-- docs/exclusive/USAGE.md -->
 # Folia-HiFi-WASAPI-ASIO-HQPlayer-Spotify 使用说明
 
-这是我维护的 Windows x64 正式专版，名称为 **Folia-HiFi-WASAPI-ASIO-HQPlayer-Spotify**，当前应用版本 **0.7.19**、专版修订 **r4**。它基于 Folia v0.7.19，保留原项目的许可证和署名。
+这是我维护的 Windows x64 正式专版，名称为 **Folia-HiFi-WASAPI-ASIO-HQPlayer-Spotify**，当前应用版本 **0.7.19**、专版修订 **r5**。它基于 Folia v0.7.19，保留原项目的许可证和署名。
 
 ## 安装与更新
 
-从 [0.7.19 r4 正式版](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/releases/tag/folia-hifi-v0.7.19-r4) 选择一种安装方式：
+从 [0.7.19 r5 正式版](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/releases/tag/folia-hifi-v0.7.19-r5) 选择一种安装方式：
 
 | 方式 | 下载与使用 |
 | --- | --- |
-| **EXE 安装版（推荐）** | 下载 [Folia-HiFi-WASAPI-ASIO-HQPlayer-0.7.19-win-x64-Setup.exe](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/releases/download/folia-hifi-v0.7.19-r4/Folia-HiFi-WASAPI-ASIO-HQPlayer-0.7.19-win-x64-Setup.exe)，运行安装向导并选择目录；安装后从开始菜单启动。仅为当前用户安装，提供 Windows“已安装的应用”卸载入口。 |
-| **ZIP 免安装版** | 下载 [Folia-HiFi-WASAPI-ASIO-HQPlayer-0.7.19-win-x64.zip](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/releases/download/folia-hifi-v0.7.19-r4/Folia-HiFi-WASAPI-ASIO-HQPlayer-0.7.19-win-x64.zip)，完整解压到可写目录，运行 `Folia-HiFi-WASAPI-ASIO-HQPlayer.exe`。不要在压缩包内直接运行，也不要单独移动 EXE。 |
+| **EXE 安装版（推荐）** | 下载 [Folia-HiFi-WASAPI-ASIO-HQPlayer-0.7.19-win-x64-Setup.exe](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/releases/download/folia-hifi-v0.7.19-r5/Folia-HiFi-WASAPI-ASIO-HQPlayer-0.7.19-win-x64-Setup.exe)，运行安装向导并选择目录；安装后从开始菜单启动。仅为当前用户安装，提供 Windows“已安装的应用”卸载入口。 |
+| **ZIP 免安装版** | 下载 [Folia-HiFi-WASAPI-ASIO-HQPlayer-0.7.19-win-x64.zip](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/releases/download/folia-hifi-v0.7.19-r5/Folia-HiFi-WASAPI-ASIO-HQPlayer-0.7.19-win-x64.zip)，完整解压到可写目录，运行 `Folia-HiFi-WASAPI-ASIO-HQPlayer.exe`。不要在压缩包内直接运行，也不要单独移动 EXE。 |
 
 两种方式包含相同程序、WASAPI/ASIO 组件 0.1.3-preview.3、独立 HQPlayer 组件 0.1.4-preview.7 和支持 PCM24/PCM32 的 FFmpeg，无需安装 Node 或 .NET SDK。ASIO 需要另行安装厂商的 x64 驱动，HQPlayer 需另行安装并授权。
 
 两种方式共用 `%APPDATA%\Folia HiFi`，首次运行在新目录不存在时，将旧 `%APPDATA%\FoliaExclusive` 完整复制迁移，保留旧目录作为备份；新目录已存在则不合并、不覆盖。迁移前请退出旧版。不会自动导入官方版或旧人工验证版的账号、曲库。ZIP 免安装不等于配置随身携带，不要同时运行安装版和 ZIP 版。
 
-更新前先退出专版。EXE 用户重新运行新版安装程序；ZIP 用户将新版完整解压到新目录。配置保留，正常卸载安装版也保留配置。专版关闭上游自动更新，请从本 fork 的 Releases 手动更新。源码 ZIP 与证据 ZIP 用于审查，不是运行包。
+更新前先退出专版。EXE 用户重新运行新版安装程序；ZIP 用户将新版完整解压到新目录。配置保留，正常卸载安装版也保留配置。专版仅检查本 fork 的正式发行版，支持 GitHub、Gitee 或自动选择。安装版可在应用内下载并确认后更新；便携版下载 ZIP 后自行解压。检查更新不阻塞播放，不自动安装。源码 ZIP 与证据 ZIP 用于审查，不是运行包。
 
 发行包尚未进行代码签名。Windows 可能显示未知发布者；请从本仓库的 Release 下载。
 
@@ -48,7 +48,7 @@ Spotify 原歌词在当前歌曲卡片与详情页显示。确认没有可显示
 
 - 在 Spotify 桌面直接换歌，Folia 检测到后暂停，询问是否追随歌曲与进度；可选择交还 Spotify 直接播放，避免两端争抢控制。
 - Spotify 内暂停、停止、切歌、Seek、后端切换保留路由；暂停和停止关闭采集。浏览其他歌单不代表已经切换音源。
-- 真正开始播放 QQ、网易云或本地歌曲，或退出 Folia、明确交还 Spotify 时，恢复 Spotify 原路由。退出 Folia 时清理有时间上限，失败记录日志也继续退出，默认保留 Spotify；实际切换音源时可选择是否同时退出由 Folia 后台拉起的 Spotify。
+- 真正开始播放 QQ、网易云或本地歌曲，或退出 Folia、明确交还 Spotify 时，恢复 Spotify 原路由。退出 Folia 时清理有时间上限，失败记录日志也继续退出，默认保留 Spotify；切换音源时保留 Spotify；可在 Spotify 连接设置中开启“退出 Folia 时自动退出 Spotify”，默认关闭。
 - Spotify 音量由用户管理，Folia 不自动查询或修改。旧音量恢复记录保留为历史证据，不用于自动恢复。
 - 已点赞歌曲以随机九首歌曲封面组成九宫格；有可用 Spotify 原歌词时回传，缺失或接口不可用时不冒充原歌词。
 

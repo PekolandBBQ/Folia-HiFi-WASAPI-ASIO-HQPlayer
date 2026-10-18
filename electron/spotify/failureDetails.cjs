@@ -1,6 +1,8 @@
 'use strict';
 // Preserve bounded machine codes across IPC; messages explain the failed operation without exposing account data.
 const descriptions = {
+ SPOTIFY_RESOURCE_VERSION_CHANGED: 'Spotify 已升级，但 Folia 的页面资源仍属于旧版本，需要为当前客户端生成独立资源；原配置和备份会保留。',
+ BRIDGE_COMMAND_TIMEOUT: 'Spotify 未在等待时间内完成播放指令；控制队列已释放，搜索与状态读取不受影响。',
  SEARCH_API_UNAVAILABLE: '当前 Spotify 客户端尚未提供在线搜索接口，请重启 Spotify 以加载新版桥接；不会退回已点赞歌曲冒充在线结果。',
  BRIDGE_UPDATE_REQUIRED: 'Spotify 仍在运行旧版桥接，尚不支持在线搜索或收藏。请保持 Folia 打开，完全退出 Spotify 后回到 Folia 重试，由 Folia 自动拉起；无需重装组件或重新配置。',
  SPOTIFY_RESOURCE_DIRECTORY_MISSING: 'Spotify 启动时未使用当前 Folia 的桥接资源目录。请退出 Spotify 后回到 Folia 重试，由 Folia 自动拉起；无需重装或重新配置。',
@@ -60,6 +62,7 @@ const descriptions = {
  ORIGINAL_PHYSICAL_OWNER_UNPROVEN: '无法确认 Spotify 原输出对应的实际设备，路由尚未修改。',
  ORIGINAL_EXPLICIT_ENDPOINT_CHANGED: 'Spotify 原输出设备在准备期间发生变化，路由尚未提交。',
  EXTERNAL_POLICY_CONFLICT: '其他程序或系统设置改变了 Spotify 的输出路由，当前路由操作未继续。',
+ SPOTIFY_CANDIDATE_SET_CHANGED: 'Spotify 正在启动或替换音频进程，正在重新确认本机播放会话。',
  BOOTSTRAP_IDENTITY_UNCONFIRMED: '准备路由时未能确认 Spotify 本机音频进程。',
  PREPARED_SELECTION_INVALID_STATE: 'Spotify 准备步骤与当前会话状态不一致，新的采集尚未启动；需要结束未完成的准备后重新建立会话。',
  CAPTURE_INTERVAL_EPOCH_MISMATCH: '收到的 Spotify 操作属于旧准备轮次，不能用于当前采集会话；已保留当前路由与清理记录。',

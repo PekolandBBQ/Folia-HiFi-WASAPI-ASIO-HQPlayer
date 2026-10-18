@@ -15,7 +15,7 @@ for(const connected of [true,false])test(`configuration completes only after liv
  install.start('configure');await install.settled();
  assert.deepEqual(calls,['restore-and-stop','configure','connect']);
  assert.equal((await install.status()).phase,connected?'complete':'failed');
- if(!connected)assert.match((await install.status()).detail,/SPOTIFY_BRIDGE_NOT_READY/);
+ if(!connected){assert.equal((await install.status()).code,'SPOTIFY_BRIDGE_NOT_READY');assert.match((await install.status()).detail,/桥接/);}
 });
 test('restore failure prevents process stop, asset mutation and launch',async t=>{
  const directory=await temporary(t),calls=[];
@@ -23,7 +23,7 @@ test('restore failure prevents process stop, asset mutation and launch',async t=
  prepareConfiguration:async()=>{throw Object.assign(Error('restore'),{code:'EXTERNAL_POLICY_CONFLICT'});},
  configureSpicetify:async()=>calls.push('configure'),connect:async()=>calls.push('connect')});
  install.start('configure');await install.settled();assert.deepEqual(calls,[]);
- assert.match((await install.status()).detail,/stopping.*EXTERNAL_POLICY_CONFLICT/);
+ assert.equal((await install.status()).code,'EXTERNAL_POLICY_CONFLICT');assert.match((await install.status()).detail,/输出路由/);
 });
 test('selected desktop process is stopped and its disconnected state confirmed',async t=>{
  const directory=await temporary(t),p={pid:12,started:'2026-10-15',exe:'C:\\Spotify.exe'};let running=[p],connected=true;

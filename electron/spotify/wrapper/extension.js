@@ -4,7 +4,7 @@
   const panel=document.createElement('aside');panel.textContent='Folia 实播桥接：连接中';
   Object.assign(panel.style,{position:'fixed',right:'20px',top:'80px',zIndex:2147483647,background:'#172332',color:'white',padding:'16px'});
   document.body.append(panel);
-  const bridgeUrl=__FOLIA_LIVE_URL__;let currentSocket, reconnectDelay=250, queue=Promise.resolve();
+  const bridgeUrl=__FOLIA_LIVE_URL__;let currentSocket, reconnectDelay=250;
   const wait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
   const lyricsCache=new Map();let lyricsRateLimited=false;
   let libraryRateLimited=false, searchRateLimited=false, libraryWrites=Promise.resolve();
@@ -118,8 +118,8 @@
       stateReady,isPlaying:stateReady&&raw.isPaused===false,sampledAt:Date.now(),sourceTimestamp:stateReady?raw.timestamp:null,
       timing:{userMs:userDone-snapshotStarted,snapshotMs:performance.now()-snapshotStarted}};
   }
-  async function handle(op,args){
-    if(op==='hello')return {protocol:1,version:'1.1.0',capabilities:['snapshot','command','catalog','lyrics','likedTracks','searchTracks','setLiked']};
+  async function handle(op,args, active=()=>true){
+    if(op==='hello')return {protocol:1,version:'1.1.1',capabilities:['snapshot','command','catalog','lyrics','likedTracks','searchTracks','setLiked','independentReads']};
     if(op==='snapshot')return snapshot();
     if(op==='lyrics')return nativeLyrics(args);
     if(op==='searchTracks')return searchTracks(args);
@@ -174,6 +174,7 @@
     if(before.account!==args.account||before.deviceId!==args.deviceId)throw Error('SESSION_CHANGED');
     const api=args.path==='origin'?Spicetify.Platform.PlayerAPI:wrapperPlayer();
     const invoke=async(kind,value)=>{
+      if(!active())throw Error('BRIDGE_COMMAND_TIMEOUT');
       if(kind==='pause')await api.pause();
       else if(kind==='play')await (args.path==='origin'?api.resume():api.play());
       else if(kind==='seek')await (args.path==='origin'?api.seekTo(value):api.seek(value));
@@ -185,27 +186,32 @@
     if(opName==='play-at-position'){
       await invoke('seek',args.positionMs);
       const until=performance.now()+4000;let matched=false;
-      do{const s=await snapshot();if(Math.abs(s.positionMs-args.positionMs)<500){matched=true;break;}await wait(20);}while(performance.now()<until);
+      do{if(!active())throw Error('BRIDGE_COMMAND_TIMEOUT');const s=await snapshot();if(Math.abs(s.positionMs-args.positionMs)<500){matched=true;break;}await wait(20);}while(performance.now()<until);
       if(!matched)throw Error('SEEK_UNCONFIRMED');
       await invoke('play');
     }else await invoke(opName,opName==='select'?'spotify:track:'+args.trackId:args.positionMs);
     return {call:'invocation-returned',state:await snapshot()};
   }
   function connect(){
-  const ws=new WebSocket(bridgeUrl);currentSocket=ws;
+  const ws=new WebSocket(bridgeUrl);currentSocket=ws;let queue=Promise.resolve();
   const connected=()=>currentSocket===ws&&ws.readyState===1;
   const reply=value=>{if(connected())ws.send(JSON.stringify(value));};
   ws.onopen=()=>{reconnectDelay=250;panel.textContent='Folia 实播桥接已连接（本机，无官方查询）';};
   ws.onclose=()=>{if(currentSocket!==ws)return;panel.textContent='Folia 实播桥接等待 Folia';
     const delay=reconnectDelay;reconnectDelay=Math.min(5000,reconnectDelay*2);setTimeout(connect,delay);};
-  ws.onmessage=e=>{let request;try{request=JSON.parse(e.data);}catch{return;}
-    const run=async()=>{if(!connected())return;try{const value=await handle(request.op,request.args);reply({id:request.id,ok:true,value});}
+  ws.onmessage=e=>{const deadline=performance.now()+8000;let request;try{request=JSON.parse(e.data);}catch{return;}
+    const run=async()=>{if(!connected())return;let timer,expired=false;try{
+      if(request.op==='command'&&performance.now()>=deadline)throw Error('BRIDGE_COMMAND_TIMEOUT');
+      const operation=handle(request.op,request.args,()=>!expired&&connected());
+      const value=request.op==='command'?await Promise.race([operation,new Promise((_,reject)=>{timer=setTimeout(()=>{expired=true;reject(Error('BRIDGE_COMMAND_TIMEOUT'));},Math.max(1,deadline-performance.now()));})]):await operation;
+      reply({id:request.id,ok:true,value});}
       catch(error){reply({id:request.id,ok:false,code:/^[A-Z_]+$/.test(error.message)?error.message:'CONTROL_REJECTED',diagnostic:{
         operation:request.args?.operation,path:request.args?.path,errorName:error.name,
         message:String(error.message).replace(/https?:\/\/\S+/g,'[url]').replace(/Bearer\s+\S+/gi,'[token]').slice(0,240),
-        wrapperOriginPresent:!!Spicetify.Player?.origin,wrapperPlayUriType:typeof Spicetify.Player?.playUri}});}};
+        wrapperOriginPresent:!!Spicetify.Player?.origin,wrapperPlayUriType:typeof Spicetify.Player?.playUri}});}
+      finally{expired=true;if(timer)clearTimeout(timer);}};
     // Metadata network latency must never serialize pause, source preparation or seek.
-    if(['lyrics','likedTracks','searchTracks','setLiked'].includes(request.op))void run();else queue=queue.catch(()=>{}).then(run);
+    if(request.op!=='command')void run();else queue=queue.catch(()=>{}).then(run);
   };
   }
   connect();

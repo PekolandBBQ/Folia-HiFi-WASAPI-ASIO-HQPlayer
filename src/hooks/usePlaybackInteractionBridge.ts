@@ -112,6 +112,9 @@ export function usePlaybackInteractionBridge({
     // rejection with no media context. Log the element state that explains why play() failed
     // (expired online stream, ended element with an empty queue, decode error, ...).
     const startPlaybackFromInteraction = useCallback(() => {
+        if (currentSong?.sourceRef?.kind === 'online' && currentSong.sourceRef.providerId === 'spotify') {
+            console.info('[SpotifyResume] bottom-play', { songId: currentSong.id, hasSource: Boolean(audioSrc), hasTransport: Boolean(audioRef.current) });
+        }
         void resumePlayback().catch(error => {
             const audioElement = audioRef.current;
             console.error('[Playback] Resume from interaction failed', {

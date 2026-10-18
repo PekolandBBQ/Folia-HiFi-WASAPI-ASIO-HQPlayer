@@ -298,3 +298,13 @@ test('playlist correlation IDs are consumed only by trusted local IPC and never 
     assert.doesNotMatch(text, /ZZZZ|PRIVATE_|https?:|playlistId|accountId|responseBody|cookie/);
     assert.ok(text.includes('"playlistRef":' + playlistRef));
 });
+
+test('endpoint rejection details survive native projection and diagnostic export',async t=>{
+ const {physicalOwnerDiagnostic}=require('../../electron/spotify/ownedRouteProtocol.cjs');const f=fixture(t);
+ const fields={stage:'endpoint-policy',reason:'target-is-original',role:0,originalKind:'explicit',endpointState:1,endpointFlow:0,targetMatch:true,policyMatch:true};
+ assert.deepEqual(physicalOwnerDiagnostic(fields),fields);
+ f.manager.record('spotify.route-owner-proof',{operation:'inspect',errorCode:'ORIGINAL_ENDPOINT_UNSAFE',...fields});
+ await f.invoke({action:'export'});const zipped=unzipSync(fs.readFileSync(f.output));
+ const rows=Buffer.from(zipped['diagnostics.jsonl']).toString('utf8').trim().split('\n').map(line=>JSON.parse(line));
+ const row=rows.find(row=>row.type==='spotify.route-owner-proof');assert.deepEqual(row.fields,{operation:'inspect',errorCode:'ORIGINAL_ENDPOINT_UNSAFE',...fields});
+});

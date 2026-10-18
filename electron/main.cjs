@@ -1863,7 +1863,8 @@ const MOD_SYSTEM_ENABLED_SETTING_KEY = 'MOD_SYSTEM_ENABLED';
 const DEFAULT_STAGE_API_PORT = 32107;
 const DEFAULT_OBS_BROWSER_SOURCE_PORT = 32108;
 const DEFAULT_LYRIC_API_PORT = 32109;
-const FOLIA_RELEASES_URL = 'https://github.com/chthollyphile/folia-major/releases';
+const forkRelease = global.__foliaForkRelease || null;
+const FOLIA_RELEASES_URL = forkRelease ? require('./forkUpdates.cjs').releasesUrl : 'https://github.com/chthollyphile/folia-major/releases';
 const FOLIA_GITHUB_REPOSITORY = {
   owner: 'chthollyphile',
   repo: 'folia-major',
@@ -3141,6 +3142,7 @@ function getUpdateCheckEnabled() {
 }
 
 function getAutoUpdateEnabled() {
+  if (forkRelease) return false;
   return Boolean(store.get(ENABLE_AUTO_UPDATE_SETTING_KEY));
 }
 
@@ -3171,6 +3173,7 @@ function normalizeUpdateChannelSelection(value) {
 }
 
 function getUpdateCheckSupportReason() {
+  if (forkRelease) return null;
   return getCurrentReleaseChannel().updateEnabled ? null : 'channel';
 }
 
@@ -3195,6 +3198,7 @@ function getDevUpdatePreviewVersion() {
 }
 
 function isAutoUpdaterSupported() {
+  if (forkRelease) return false;
   return (
     process.platform === 'win32' &&
     isUpdateCheckSupported() &&
@@ -3205,6 +3209,7 @@ function isAutoUpdaterSupported() {
 }
 
 function getAutoUpdateSupportReason() {
+  if (forkRelease) return null;
   if (!getCurrentReleaseChannel().updateEnabled) {
     return 'channel';
   }
@@ -3225,19 +3230,33 @@ const updateState = {
   downloadProgress: null,
 };
 
+let forkUpdater, forkInstalled = false, forkInstallationCheck;
+function detectForkInstallation() {
+ if (!forkInstallationCheck) forkInstallationCheck = (process.platform === 'win32'
+  ? require('./forkUpdateIntegration.cjs').detectInstalled(path.dirname(process.execPath)) : Promise.resolve(false))
+  .then(value => { forkInstalled = value; publishUpdateStatus(); });
+ return forkInstallationCheck;
+}
+function isForkInstalled() { void detectForkInstallation(); return forkInstalled; }
+async function getForkUpdater() {
+ await detectForkInstallation();
+ if (!forkUpdater) forkUpdater = require('./forkUpdateIntegration.cjs').create({ app, session, dialog, current: forkRelease, publish: setUpdateState, shell, installed: forkInstalled, getSource: () => store.get('FORK_UPDATE_SOURCE') || 'auto' });
+ return forkUpdater;
+}
 function getUpdateStatus() {
   const availableVersion = updateState.availableVersion;
   const isDevPreview = isDevUpdatePreviewEnabled();
 
   return {
     ...updateState,
+    ...(forkRelease ? { forkUpdate: true, sourcePreference: store.get('FORK_UPDATE_SOURCE') || 'auto', currentVersion: forkRelease.forkTag + ' · 构建 ' + forkRelease.build } : {}),
     supported: isDevPreview || isAutoUpdaterSupported(),
     updateCheckSupported: isDevPreview || isUpdateCheckSupported(),
     updateCheckSupportReason: isDevPreview ? null : getUpdateCheckSupportReason(),
     platform: process.platform,
     updateCheckEnabled: getUpdateCheckEnabled(),
     autoUpdateEnabled: getAutoUpdateEnabled(),
-    autoUpdateSupported: isDevPreview || isAutoUpdaterSupported(),
+    autoUpdateSupported: forkRelease ? isForkInstalled() : isDevPreview || isAutoUpdaterSupported(),
     autoUpdateSupportReason: isDevPreview ? null : getAutoUpdateSupportReason(),
     lastSeenVersion: store.get(LAST_SEEN_UPDATE_VERSION_SETTING_KEY) || null,
     updateSeen: Boolean(
@@ -3262,6 +3281,7 @@ function setUpdateState(patch) {
 
 // Load electron-updater lazily so updater failures don't block the main window.
 function ensureAutoUpdater() {
+  if (forkRelease) return null;
   if (autoUpdater !== null) {
     return autoUpdater;
   }
@@ -3362,6 +3382,7 @@ function configureAutoUpdaterChannel(updater) {
 }
 
 async function downloadAvailableUpdate() {
+  if (forkRelease) { await (await getForkUpdater()).download(); return getUpdateStatus(); }
   if (isDevUpdatePreviewEnabled()) {
     setUpdateState({ status: 'downloaded', error: null, downloadProgress: null });
     return getUpdateStatus();
@@ -3432,6 +3453,8 @@ async function checkForUpdates({ manual = false } = {}) {
     setUpdateState({ status: 'idle', error: null, downloadProgress: null });
     return getUpdateStatus();
   }
+
+  if (forkRelease) { await (await getForkUpdater()).check({ manual }); return getUpdateStatus(); }
 
   if (!isAutoUpdaterSupported()) {
     return checkForManualUpdateAvailability();
@@ -3529,6 +3552,7 @@ function markUpdateSeen(version) {
 }
 
 async function openUpdateReleasePage(version) {
+  if (forkRelease) { await shell.openExternal(updateState.updateUrl || FOLIA_RELEASES_URL); return true; }
   const normalizedVersion = normalizeVersion(version || updateState.availableVersion);
   const url = normalizedVersion
     ? getReleaseUrl(getCurrentReleaseChannel().id, normalizedVersion, FOLIA_RELEASES_URL)
@@ -5516,6 +5540,7 @@ ipcMain.handle('save-settings', (event, key, value) => {
     return getPublicSettings();
   }
 
+  if (forkRelease && (key === UPDATE_CHANNEL_SETTING_KEY || key === ENABLE_AUTO_UPDATE_SETTING_KEY)) return getPublicSettings();
   let nextValue = value;
   if (key === UPDATE_CHANNEL_SETTING_KEY) {
     const channel = normalizeUpdateChannelSelection(value);
@@ -5842,6 +5867,14 @@ ipcMain.handle('updates-get-status', () => {
   return getUpdateStatus();
 });
 
+ipcMain.handle('updates-set-source', async (_event, source) => {
+  if (!forkRelease || !['auto', 'github', 'gitee'].includes(source) || ['checking','downloading'].includes(updateState.status)) return getUpdateStatus();
+  await (await getForkUpdater()).waitForCheck();
+  store.set('FORK_UPDATE_SOURCE', source);
+  publishUpdateStatus();
+  return checkForUpdates({ manual: true });
+});
+
 ipcMain.handle('updates-check', () => {
   return checkForUpdates({ manual: true });
 });
@@ -5862,7 +5895,8 @@ ipcMain.handle('updates-download', () => {
   return downloadAvailableUpdate();
 });
 
-ipcMain.handle('updates-quit-and-install', () => {
+ipcMain.handle('updates-quit-and-install', async () => {
+  if (forkRelease) return (await getForkUpdater()).confirmInstall();
   const updater = ensureAutoUpdater();
   if (!isAutoUpdaterSupported() || !updater || updateState.status !== 'downloaded') {
     return false;

@@ -24,4 +24,13 @@ async function recoverOrphanRoute({ componentDirectory, source, current, log, ex
   log('spotify-orphan-route-restored', result); current();
   return result;
 }
-module.exports = { recoverOrphanRoute };
+// Both warm inspection and cold identity inspection share the same recovery boundary.
+async function prepareWithOrphanRecovery(prepare, recover, current = () => {}) {
+  try { return await prepare(); }
+  catch (error) {
+    if ((error.failureCode || error.nativeCode || error.code) !== 'ORIGINAL_ENDPOINT_UNSAFE' || error.stage !== 'route-inspect') throw error;
+    current(); await recover(); current();
+    return prepare();
+  }
+}
+module.exports = { recoverOrphanRoute, prepareWithOrphanRecovery };

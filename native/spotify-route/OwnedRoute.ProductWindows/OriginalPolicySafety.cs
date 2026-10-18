@@ -62,7 +62,14 @@ internal static class OriginalPolicySafety
             if (endpoint.State != 1 || endpoint.Flow != 0 || endpoint.BaseIdentity.State != "unsupported" ||
                 string.Equals(endpoint.Id, target.Id, StringComparison.OrdinalIgnoreCase) ||
                 (raw is not null && (endpoint.PolicyValue is null || !string.Equals(raw, endpoint.PolicyValue, StringComparison.OrdinalIgnoreCase))))
-                throw new RouteBlockedException("ORIGINAL_ENDPOINT_UNSAFE");
+                throw new RouteBlockedException("ORIGINAL_ENDPOINT_UNSAFE",
+                    new("endpoint-policy", endpoint.State != 1 ? "inactive" : endpoint.Flow != 0 ? "not-render" :
+                        string.Equals(endpoint.Id,target.Id,StringComparison.OrdinalIgnoreCase) ? "target-is-original" :
+                        endpoint.BaseIdentity.State != "unsupported" ? "virtual-original" : "policy-mismatch",
+                        Role:role, OriginalKind:raw is null ? "default" : "explicit",
+                        EndpointState:endpoint.State, EndpointFlow:endpoint.Flow,
+                        TargetMatch:string.Equals(endpoint.Id,target.Id,StringComparison.OrdinalIgnoreCase),
+                        PolicyMatch:raw is null ? null : string.Equals(raw,endpoint.PolicyValue,StringComparison.OrdinalIgnoreCase)));
             var physical = readPhysical(endpoint);
             if (!physical.Verified || string.IsNullOrWhiteSpace(physical.PhysicalIdentity))
                 throw new RouteBlockedException("ORIGINAL_PHYSICAL_OWNER_UNPROVEN",

@@ -9,6 +9,8 @@ internal static class PhysicalOwnerDiagnosticTests
     {
         var count=0;
         void Test(string name,Action body){body();count++;Console.WriteLine("PASS "+name);}
+        var endpoint=new PhysicalOwnerDiagnostic("endpoint-policy","target-is-original",Role:0,OriginalKind:"explicit",EndpointState:1,EndpointFlow:0,TargetMatch:true,PolicyMatch:true);
+        if(PhysicalOwnerDiagnosticProjection.FromFailure("ORIGINAL_ENDPOINT_UNSAFE",endpoint)!=endpoint)throw new Exception("Endpoint diagnostic lost at projection");
         var valid=new PhysicalOwnerDiagnostic("owner-hardware-ids","wrong-type",1,"explicit",3,13,-2147467259,"hardware-ids",1,128,"usb");
         foreach(var command in new[]{"inspect","acquire"})
         foreach(var code in new[]{"ORIGINAL_PHYSICAL_OWNER_UNPROVEN","ORIGINAL_EXPLICIT_ENDPOINT_CHANGED"})

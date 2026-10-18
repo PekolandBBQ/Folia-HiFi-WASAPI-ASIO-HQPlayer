@@ -32,8 +32,6 @@ export default function NativeAudioSettingsSection({ isDaylight, theme, classNam
     const [devicesEnumerated, setDevicesEnumerated] = useState(false);
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState('');
-    const showSignalPath = useAudioSettingsStore(state => state.showAudioSignalPath);
-    const setShowSignalPath = useAudioSettingsStore(state => state.handleSetShowAudioSignalPath);
     const [component, setComponent] = useState<NativeComponentStatus>({ available: false });
     const [componentNotice, setComponentNotice] = useState(false);
     const [available, setAvailable] = useState(false);
@@ -159,15 +157,7 @@ export default function NativeAudioSettingsSection({ isDaylight, theme, classNam
                     processingMode === 'integer-direct' ? 'translate-x-6' : 'translate-x-0'}`} />
             </button>
         </div>
-        <div className="mt-4 flex items-center justify-between gap-4 border-t pt-4 text-sm" style={{ borderColor: isDaylight ? 'rgba(24,24,27,0.12)' : 'rgba(255,255,255,0.1)' }}>
-            {t('nativeAudio.showSignalPath')}
-            <button type="button" role="switch" aria-checked={showSignalPath} aria-label={t('nativeAudio.showSignalPath')}
-                disabled={controlsBusy} onClick={() => void requireComponent(() => setShowSignalPath(!showSignalPath))}
-                className={`h-6 w-12 shrink-0 rounded-full p-1 transition-colors ${showSignalPath ? '' : settingsToggleOffClassFor(isDaylight)}`}
-                style={{ backgroundColor: showSignalPath ? theme?.secondaryColor || 'rgba(114,119,134,1)' : undefined }}>
-                <div className={`h-4 w-4 rounded-full bg-white shadow-sm transition-transform ${showSignalPath ? 'translate-x-6' : 'translate-x-0'}`} />
-            </button>
-        </div>
+
         </div>
         {createPortal(<ThemedDialog isOpen={componentNotice} isDaylight={isDaylight}
             title={t('nativeAudio.componentRequiredTitle')} closeDisabled={busy}

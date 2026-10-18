@@ -9,7 +9,7 @@ foreach($key in @('HKCU:\Software\Microsoft\Windows\CurrentVersion\App Paths\Spo
 foreach($p in @($paths|Sort-Object -Unique)){if(Test-Path -LiteralPath $p -PathType Leaf){$candidates+=@{id='desktop:'+$p;layout='desktop';exe=$p;prefs=(Join-Path $env:APPDATA 'Spotify\prefs');version=(Get-Item -LiteralPath $p).VersionInfo.FileVersion}}}
 try{foreach($pkg in @(Get-AppxPackage -Name SpotifyAB.SpotifyMusic)){
  $exe=Join-Path $pkg.InstallLocation 'Spotify.exe'
- $candidates+=@{id='store:'+$pkg.PackageFamilyName;layout='store';exe=$exe;prefs=(Join-Path $env:LOCALAPPDATA ('Packages\'+$pkg.PackageFamilyName+'\LocalState\Spotify\prefs'));version=$pkg.Version.ToString();packageFullName=$pkg.PackageFullName;available=(Test-Path -LiteralPath $exe)}
+ $candidates+=@{id='store:'+$pkg.PackageFamilyName;layout='store';exe=$exe;prefs=(Join-Path $env:LOCALAPPDATA ('Packages\'+$pkg.PackageFamilyName+'\LocalState\Spotify\prefs'));version=$pkg.Version.ToString();binaryVersion=$(if(Test-Path -LiteralPath $exe){(Get-Item -LiteralPath $exe).VersionInfo.FileVersion});packageFullName=$pkg.PackageFullName;available=(Test-Path -LiteralPath $exe)}
 }}catch{$errors+='STORE_DISCOVERY_UNAVAILABLE'}
 $processInfo=@{};try{Get-CimInstance Win32_Process -Filter "name='Spotify.exe'" | ForEach-Object {$processInfo[[int]$_.ProcessId]=$_.CommandLine}}catch{}
 $running=@(Get-Process Spotify -ErrorAction SilentlyContinue | ForEach-Object {

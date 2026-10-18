@@ -55,6 +55,7 @@ describe('settings section anchors', () => {
             ['audioOutputSettings', 'anchorId="audioOutputSettings"'],
             ['hqPlayerOutput', '<HQPlayerSettingsSection'],
             ['nativeAudioOutput', '<NativeAudioSettingsSection'],
+            ['audioSignalPath', '<AudioSignalPathSettingsSection'],
         ]
             .map(([id, marker]) => {
                 expect(source, `${marker} missing`).toContain(marker);

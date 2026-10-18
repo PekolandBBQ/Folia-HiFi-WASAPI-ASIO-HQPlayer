@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 
 // Session-owned preparation telemetry; late packets cannot replace the current song's progress.
-export type LoadStage = 'spotifyLaunch' | 'cache' | 'inspect' | 'source' | 'download' | 'upload' | 'decode' | 'validate' | 'connect' | 'load' | 'buffer';
+export type LoadStage = 'spotifyLaunch' | 'spotifyHandshake' | 'spotifyReady' | 'cache' | 'inspect' | 'source' | 'download' | 'upload' | 'decode' | 'validate' | 'connect' | 'load' | 'buffer';
 export type LoadProgress = { preparationRevision?: number; stage: LoadStage; loaded?: number; total?: number; elapsedMs?: number; unit?: 'bytes' | 'milliseconds' | 'items'; complete?: boolean;
     startupDelayMs?: number; startupElapsedMs?: number };
 export const usePlaybackLoadStore = create<{ owner: string; startedAt: number; progress: LoadProgress | null; preparationRevision: number }>(() => ({ owner: '', startedAt: 0, progress: null, preparationRevision: 0 }));

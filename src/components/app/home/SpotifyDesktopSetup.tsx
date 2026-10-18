@@ -1,3 +1,4 @@
+import SpotifyExitSetting from './SpotifyExitSetting';
 import { useEffect, useState } from 'react';
 import { type DesktopSetupStatus, installError, installPhase } from './spotifyDesktopSetupModel';
 // Wrapper prerequisites stay visible even without a running or authenticated desktop.
@@ -25,6 +26,7 @@ export default function SpotifyDesktopSetup({ onMode, onReady, finishing = false
     </section>;
     const button = 'spotify-setup-button rounded-full border px-4 py-2 text-xs';
     return <section className="space-y-3 text-sm" aria-label="Spotify 组件安装向导">
+        <SpotifyExitSetting />
         <h4 className="font-medium">准备 Spotify 本机播放</h4>
         <p className="spotify-setup-hint text-xs">组件包 {status.bundleVersion} · Spicetify {status.versions.spicetify} · VB-CABLE {status.versions.cable}</p>
         <p className="spotify-setup-hint text-xs">每次安装前联网核对 Folia 已验证组件清单，并检查已有文件；版本一致且完整才复用。</p>

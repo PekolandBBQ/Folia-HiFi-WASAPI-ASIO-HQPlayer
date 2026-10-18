@@ -1,3 +1,4 @@
+import { requestSpotify } from '../../../services/onlineMusic/spotifyTransport';
 import { useHQPlayerSettingsStore } from '../../../stores/useHQPlayerSettingsStore';
 import { useAudioSettingsStore } from '../../../stores/useAudioSettingsStore';
 import { useDecodeCompatibilityStore } from '../../../stores/useDecodeCompatibilityStore';
@@ -39,6 +40,11 @@ const spotifySetupCommand = (id: string, operation: ProviderPlaybackSetupAction,
 });
 
 export const settingsCommands: CommandPaletteCommand[] = [
+    defineCommand({id:'spotify-quit-with-folia',group:'settings',title:'Quit Spotify with Folia',description:'Toggle automatic Spotify exit',keywords:['spotify','退出','自动退出'],platform:['win'],
+        execute: async (_input,context)=>{try{const p=await requestSpotify<{quitOnFoliaExit:boolean}>({action:'desktopSetup',operation:'preferences'});
+            await requestSpotify({action:'desktopSetup',operation:'preferences',preferences:{quitOnFoliaExit:!p.quitOnFoliaExit}});return true;
+        }catch{context.shared.setStatusMsg({type:'error',text:context.shared.t('spotifyExit.saveFailed')});return false;}}}),
+
     createSettingsAnchorCommand('settings-live-pcm-prebuffer', 'Spotify PCM prebuffer', 'Adjust the shared 25–5000 ms target for the next native stream',
         ['spotify pcm', 'prebuffer', '预缓冲'], 'nativeAudioOutput',
         { platform: ['win'], isAvailable: isNativeAudioSupported }),
@@ -736,6 +742,9 @@ export const settingsCommands: CommandPaletteCommand[] = [
             '隐藏字幕背景',
             '字幕底色',
         ], context => context.settings.toggleSubtitleOverlayBackground()),
+    defineCommand({ id: 'fork-update-check', group: 'settings', title: '检查 Folia HiFi 更新', description: '检查专版正式发布与构建更新', keywords: ['更新', 'GitHub', 'Gitee'], platform: ['win'], execute: () => { void window.electron?.checkForUpdates(); return true; } }),
+    defineCommand({ id: 'fork-update-source-gitee', group: 'settings', title: '使用 Gitee 更新源', description: '切换专版国内更新源并检查更新', keywords: ['国内', '更新源', 'Gitee'], platform: ['win'], execute: () => { void window.electron?.setUpdateSource('gitee'); return true; } }),
+    defineCommand({ id: 'fork-update-source-auto', group: 'settings', title: '自动选择更新源', description: 'GitHub 优先，失败后尝试 Gitee', keywords: ['自动', '更新源', 'GitHub'], platform: ['win'], execute: () => { void window.electron?.setUpdateSource('auto'); return true; } }),
     createAppLanguageCommand('settings-language-system', 'system', 'Follow system language', 'Use the browser or system language', ['system language', 'follow system', 'auto language', '跟随系统', '系统语言']),
     createAppLanguageCommand('settings-language-zh-CN', 'zh-CN', 'Switch language to Chinese', 'Use Simplified Chinese in the interface', ['chinese', 'simplified chinese', '中文', '简体中文']),
     createAppLanguageCommand('settings-language-en', 'en', 'Switch language to English', 'Use English in the interface', ['english', 'interface english', '英文']),

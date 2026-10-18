@@ -15,6 +15,6 @@ export function describePlaybackLoad(progress: LoadProgress, elapsedMs: number, 
         : t('loadProgress.unmeasured');
     const elapsed = t('loadProgress.seconds', { value: (Math.max(0, elapsedMs, progress.elapsedMs || 0) / 1000).toFixed(0) });
     return { percent, completion, elapsed,
-        stage: progress.stage === 'spotifyLaunch' ? '正在后台拉起 Spotify' : t(`loadProgress.${progress.stage}`),
-        reason: progress.stage === 'spotifyLaunch' ? '等待 Spotify 启动并连接本机播放桥接。' : t(`loadProgress.reasons.${progress.stage}`) };
+        stage: t(`loadProgress.${progress.stage}`),
+        reason: t(`loadProgress.reasons.${progress.stage}`) };
 }

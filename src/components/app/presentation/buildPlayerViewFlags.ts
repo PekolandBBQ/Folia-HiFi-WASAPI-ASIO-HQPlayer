@@ -1,3 +1,5 @@
+import type { SongResult } from '../../../types';
+import { isSessionBoundAudio } from '../../../services/onlineMusic/audioPolicy';
 // src/components/app/presentation/buildPlayerViewFlags.ts
 
 // Builds top-level player-view booleans used by the shell, overlays, and floating controls.
@@ -11,6 +13,7 @@ export const buildPlayerViewFlags = ({
     activePlaybackContext,
     stageActiveEntryKind,
     audioSrc,
+    currentSong,
     duration,
 }: {
     currentView: string;
@@ -22,6 +25,7 @@ export const buildPlayerViewFlags = ({
     activePlaybackContext: 'main' | 'stage';
     stageActiveEntryKind: string | null;
     audioSrc: string | null;
+    currentSong?: SongResult | null;
     duration: number;
 }) => {
     const isPlayerView = currentView === 'player';
@@ -32,7 +36,7 @@ export const buildPlayerViewFlags = ({
         shouldHidePlayerTranslationSubtitle: isPlayerView && hidePlayerTranslationSubtitle,
         shouldHidePlayerRightPanelButton: isPlayerView && hidePlayerRightPanelButton,
         canToggleCurrentPlayback: !isNowPlayingControlDisabled && Boolean(
-            audioSrc || (activePlaybackContext === 'stage' && stageActiveEntryKind === 'lyrics' && duration > 0),
+            audioSrc || (activePlaybackContext === 'main' && currentSong && isSessionBoundAudio(currentSong)) || (activePlaybackContext === 'stage' && stageActiveEntryKind === 'lyrics' && duration > 0),
         ),
     };
 };

@@ -17,8 +17,6 @@ export default function HQPlayerSettingsSection({ className }: { className: stri
     const { t } = useTranslation();
     const backend = useAudioSettingsStore(state => state.nativeAudioBackend);
     const apply = useAudioSettingsStore(state => state.handleSetNativeAudioOutput);
-    const signalPath = useAudioSettingsStore(state => state.showAudioSignalPath);
-    const setSignalPath = useAudioSettingsStore(state => state.handleSetShowAudioSignalPath);
     const gainDb = useHQPlayerSettingsStore(state => state.gainDb);
     const remember = useHQPlayerSettingsStore(state => state.remember);
     const setGain = useHQPlayerSettingsStore(state => state.setGain);
@@ -72,10 +70,7 @@ export default function HQPlayerSettingsSection({ className }: { className: stri
                 {t('hqPlayer.remember')}
                 <SettingsSwitch label={t('hqPlayer.remember')} checked={remember} disabled={busy || !available} onChange={value => void change(() => setRemember(value))} />
             </label>
-            <label className="mt-4 flex items-center justify-between gap-4 text-sm">
-                {t('nativeAudio.showSignalPath')}
-                <SettingsSwitch label={t('nativeAudio.showSignalPath')} checked={signalPath} disabled={busy || !available} onChange={value => void change(() => setSignalPath(value))} />
-            </label>
+
         </div>
     </SettingsAnchor>;
 }

@@ -10,6 +10,7 @@ const { HQPLAYER_ARCHIVE_FILE } = require('./hqplayer/archiveContract.cjs');
 const resources = path.join(process.resourcesPath, 'exclusive-native-audio');
 const approved = require('./exclusive-approved.json');
 const release = require('./release.json');
+global.__foliaForkRelease = release;
 // A local validation package can reuse an isolated test profile without touching the stable profile.
 if (release.wrapperLocalValidation && process.env.FOLIA_VALIDATION_PROFILE) {
     release.profile = process.env.FOLIA_VALIDATION_PROFILE;
@@ -95,7 +96,9 @@ componentModule.createComponentManager = options => createManager({ ...options,
     app: { isPackaged: false, getPath: name => app.getPath(name) }, catalogPath });
 const Store = require('electron-store').default || require('electron-store');
 const store = new Store({ projectName: 'Folia' });
-store.set('ENABLE_UPDATE_CHECK', false); store.set('ENABLE_AUTO_UPDATE', false);
+// Previous packages forced checks off every launch. Migrate once, then respect the user's switch.
+if (!store.get('FORK_UPDATE_CHECK_INITIALIZED')) { store.set('ENABLE_UPDATE_CHECK', true); store.set('FORK_UPDATE_CHECK_INITIALIZED', true); }
+store.set('ENABLE_AUTO_UPDATE', false);
 // The fork's offline HQPlayer package has a separate catalog and activation directory.
 const hqpApproved = require('./hqplayer-approved.json');
 const hqpCatalog = { schema: 1, releases: [

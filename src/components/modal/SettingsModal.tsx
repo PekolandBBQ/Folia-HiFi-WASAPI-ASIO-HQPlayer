@@ -1,3 +1,4 @@
+import ForkUpdateDetails from './settings/ForkUpdateDetails';
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import type { MotionValue } from 'framer-motion';
@@ -521,7 +522,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
             : savedAiApiKey
                 ? 'configured'
                 : 'missing';
-    const showQuarkDownload = electronSettings.UPDATE_CHANNEL === 'realeco';
+    const showQuarkDownload = !updateStatus?.forkUpdate && electronSettings.UPDATE_CHANNEL === 'realeco';
 
     useEffect(() => {
         if (aiApiKeyStatus === 'missing' && themeGenerationSource === 'ai') {
@@ -1306,7 +1307,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                 ? <AlertCircle size={13} />
                 : <Check size={13} />;
     const canDownloadUpdate = Boolean(
-        electronSettings.ENABLE_UPDATE_CHECK &&
         updateStatus?.autoUpdateSupported &&
         updateStatus?.availableVersion &&
         updateStatus.status !== 'downloading' &&
@@ -1630,7 +1630,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                                                         style={{ color: 'var(--text-secondary)' }}
                                                     >
                                                         <ExternalLink size={11} />
-                                                        {updateStatus.autoUpdateSupported
+                                                        {updateStatus.forkUpdate ? '发行说明' : updateStatus.autoUpdateSupported
                                                             ? t('options.githubRelease')
                                                             : t('options.fullInstallerGithub')}
                                                     </button>
@@ -1649,6 +1649,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                                             </>
                                         )}
 
+                                        {updateStatus?.forkUpdate && <ForkUpdateDetails status={updateStatus} />}
                                         {/* 第三行：多平台网络与手动下载提醒小字 */}
                                         {updateStatus?.availableVersion && (
                                             <div className="text-xs opacity-60 mt-0.5 space-y-0.5" style={{ color: 'var(--text-secondary)' }}>

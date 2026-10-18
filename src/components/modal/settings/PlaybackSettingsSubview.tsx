@@ -1,3 +1,4 @@
+import AudioSignalPathSettingsSection from './AudioSignalPathSettingsSection';
 import React, { useState } from 'react';
 import { AudioLines, ChevronRight, ListFilter, Monitor, PlayCircle, Radio, RefreshCw, Settings2, Timer } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -505,6 +506,7 @@ const PlaybackSettingsSubview: React.FC<PlaybackSettingsSubviewProps> = ({
             </SettingsAnchor>
             <HQPlayerSettingsSection className={settingsCardClass} />
             <NativeAudioSettingsSection isDaylight={isDaylight} theme={theme} className={settingsCardClass} />
+            <AudioSignalPathSettingsSection className={settingsCardClass} />
         </div>
     );
 };

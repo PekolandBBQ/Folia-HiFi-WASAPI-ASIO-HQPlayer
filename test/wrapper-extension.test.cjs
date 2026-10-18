@@ -8,7 +8,7 @@ function fixture(get,getTracks=async()=>({items:[],totalLength:0,limit:0})){
   let ws;const replies=[];
   const state={item:{uri:'spotify:track:0123456789012345678901'},timestamp:Date.now(),duration:90000,positionAsOfTimestamp:100,isPaused:true};
   const context={document:{createElement:()=>({style:{}}),body:{append(){}}},WebSocket:class{constructor(){ws=this;this.readyState=1;}send(value){replies.push(JSON.parse(value));}},
-    performance,Date,setTimeout,Spicetify:{CosmosAsync:{get},Player:{},Platform:{LibraryAPI:{getTracks},UserAPI:{getUser:async()=>({username:'test'})},PlayerAPI:{_state:state},ConnectAPI:{getState:()=>({activeDevice:{isLocal:true,connectStateId:'local'}})}}}};
+    performance,Date,setTimeout,clearTimeout,Spicetify:{CosmosAsync:{get},Player:{},Platform:{LibraryAPI:{getTracks},UserAPI:{getUser:async()=>({username:'test'})},PlayerAPI:{_state:state},ConnectAPI:{getState:()=>({activeDevice:{isLocal:true,connectStateId:'local'}})}}}};
   vm.runInNewContext(fs.readFileSync(require('node:path').join(__dirname,'../electron/spotify/wrapper/extension.js'),'utf8').replace('__FOLIA_LIVE_URL__',JSON.stringify('ws://test')),context);
   return {context,replies,request:(id,op,args={})=>ws.onmessage({data:JSON.stringify({id,op,args})})};
 }
@@ -129,4 +129,26 @@ test('handshake describes actual loaded code even without player state',async()=
  f.request(1,'hello');await tick();assert.equal(f.replies[0].ok,true);
  const {expected}=require('../electron/spotify/wrapper/handshake.cjs');
  assert.deepEqual(f.replies[0].value,expected);
+});
+
+test('hung playback leaves hello, snapshot and online search responsive; timeout releases next command',async()=>{
+ const f=fixture(async()=>({})),s=f.context.Spicetify;let expire,calls=0;
+ f.context.setTimeout=(fn,ms)=>{assert.ok(ms>0&&ms<=8000);expire=fn;return 1;};f.context.clearTimeout=()=>{};
+ for(const name of ['playUri','play','seek'])s.Player[name]=async()=>{};
+ s.Player.pause=()=>{calls++;return calls===1?new Promise(()=>{}):Promise.resolve();};
+ s.GraphQL={Request:async()=>({data:{searchV2:{tracksV2:{items:[],totalCount:0}}}}),Definitions:{searchTracks:{name:'searchTracks',sha256Hash:'a'.repeat(64)}}};
+ const args={path:'wrapper',operation:'pause',account:'test',deviceId:'local'};
+ f.request(1,'command',args);await tick();
+ f.request(2,'hello');f.request(3,'snapshot');f.request(4,'searchTracks',{query:'test'});await tick();
+ for(const id of [2,3,4])assert.equal(f.replies.find(r=>r.id===id)?.ok,true);
+ expire();await tick();assert.equal(f.replies.find(r=>r.id===1).code,'BRIDGE_COMMAND_TIMEOUT');
+ f.request(5,'command',args);await tick();assert.equal(f.replies.find(r=>r.id===5).ok,true);assert.equal(calls,2);
+});
+test('late seek completion cannot resume playback after the command expires',async()=>{
+ const f=fixture(async()=>({})),s=f.context.Spicetify;let expire,finish,plays=0;
+ f.context.setTimeout=(fn)=>{expire=fn;return 1;};f.context.clearTimeout=()=>{};
+ s.Player.playUri=async()=>{};s.Player.pause=async()=>{};s.Player.play=async()=>{plays++;};
+ s.Player.seek=()=>new Promise(resolve=>{finish=resolve;});
+ f.request(1,'command',{path:'wrapper',operation:'play-at-position',positionMs:100,account:'test',deviceId:'local'});await tick();
+ expire();await tick();finish();await tick();assert.equal(plays,0);assert.equal(f.replies.length,1);
 });
