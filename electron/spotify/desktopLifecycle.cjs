@@ -47,6 +47,7 @@ function createDesktopLifecycle({directory,apps,bridge,ready,log,dialog,parent,d
    await stopForConfiguration(true);info=await discovery();
   }
   if(!info.running.length){
+   bridge.clearConnectionFailure?.();
    const launchedAt=Date.now();progress({stage:'spotifyLaunch'});
    let launchPid;
    if(target.layout==='store'){
