@@ -32,6 +32,9 @@ function initialize(log){
 }
 function registerLocalUiTrial(options){
   const log=global.__foliaTrialLog||((event,facts)=>{
+    if(['bridge-upgrade-rejected','spotify-connection-unavailable','spotify-auto-reconnect','spotify-background-ready','spotify-background-failed','bridge-connected'].includes(event)){
+      try{const directory=path.join(require('electron').app.getPath('userData'),'spotify','diagnostics');fs.mkdirSync(directory,{recursive:true});fs.appendFileSync(path.join(directory,'connection.jsonl'),JSON.stringify({at:Date.now(),event,...facts})+'\n');}catch{}
+    }
     if(['spotify-orphan-route-restored','spotify-background-retained','spotify-background-exit','spotify-background-exit-failed','spotify-resource-version','bridge-connected','bridge-disconnected','bridge-request-failed','bridge-runtime','spotify-background-failed','ui-online-search'].includes(event))
       require('../debug/debugHost.cjs').runtimeLine('SpotifyBridge',JSON.stringify({event,...facts}));
   }), local=initialize(log);
@@ -145,7 +148,7 @@ function createService({beforeLeaveProvider},local,log){
         return result;
       }
       if(input.action==='leaveProvider'){await leave();await desktop.offerExit('source');return null;}
-      if(input.action==='status'){await desktop.ensure(progress);const s=await source.sample();return {id:s.account,display_name:'本机 Spotify · '+(process.env.FOLIA_LOCAL_CONTROL_PATH||'wrapper')};}
+      if(input.action==='status'){await desktop.ensure(progress);const s=await source.sample();return {id:s.account,display_name:s.displayName||s.account,images:s.images||[]};}
       if(input.action==='playbackSetup'){
         if(!['status','devices'].includes(input.operation))throw Object.assign(Error('SPOTIFY_WRAPPER_SETTINGS_AUTOMATIC'),{code:'SPOTIFY_WRAPPER_SETTINGS_AUTOMATIC'});
         const s=await source.sample(),c=await route.availability(),devices=await capture.devices();

@@ -112,14 +112,16 @@
       && Number.isFinite(raw.positionAsOfTimestamp) && raw.duration>0;
     const wrapper=wrapperPlayer(),wrapperReady=wrapper?.origin===p.PlayerAPI
       && ['playUri','pause','play','seek'].every(name=>typeof wrapper?.[name]==='function');
-    return {account:user.username,deviceId:d.connectStateId,local:true,isActive:d.isActive===true,wrapperReady,
+    return {account:user.username,displayName:user.displayName||user.username,
+      images:Array.isArray(user.images)?user.images.filter(image=>typeof image?.url==='string'&&image.url.startsWith('https://')).map(({url,width,height})=>({url,width,height})):[],
+      deviceId:d.connectStateId,local:true,isActive:d.isActive===true,wrapperReady,
       restricted:d.isDisabled===true,uri:raw.item?.uri||null,durationMs:raw.duration,
       positionMs:stateReady?Math.max(0,Math.round(raw.positionAsOfTimestamp+(raw.isPaused?0:Date.now()-raw.timestamp))):null,
       stateReady,isPlaying:stateReady&&raw.isPaused===false,sampledAt:Date.now(),sourceTimestamp:stateReady?raw.timestamp:null,
       timing:{userMs:userDone-snapshotStarted,snapshotMs:performance.now()-snapshotStarted}};
   }
   async function handle(op,args, active=()=>true){
-    if(op==='hello')return {protocol:1,version:'1.1.1',capabilities:['snapshot','command','catalog','lyrics','likedTracks','searchTracks','setLiked','independentReads']};
+    if(op==='hello')return {protocol:1,version:'1.1.2',capabilities:['snapshot','command','catalog','lyrics','likedTracks','searchTracks','setLiked','independentReads','accountProfile']};
     if(op==='snapshot')return snapshot();
     if(op==='lyrics')return nativeLyrics(args);
     if(op==='searchTracks')return searchTracks(args);

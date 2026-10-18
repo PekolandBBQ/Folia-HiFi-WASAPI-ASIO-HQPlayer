@@ -152,3 +152,9 @@ test('late seek completion cannot resume playback after the command expires',asy
  f.request(1,'command',{path:'wrapper',operation:'play-at-position',positionMs:100,account:'test',deviceId:'local'});await tick();
  expire();await tick();finish();await tick();assert.equal(plays,0);assert.equal(f.replies.length,1);
 });
+
+test('account snapshot returns the current Spotify display name and profile images',async()=>{
+ const f=fixture(async()=>({}));f.context.Spicetify.Platform.UserAPI.getUser=async()=>({username:'account-id',displayName:'测试用户',images:[{url:'https://example.com/avatar.jpg',width:300,height:300}]});
+ f.request(1,'snapshot');await tick();assert.equal(f.replies[0].value.account,'account-id');assert.equal(f.replies[0].value.displayName,'测试用户');assert.equal(f.replies[0].value.images[0].url,'https://example.com/avatar.jpg');
+ f.context.Spicetify.Platform.UserAPI.getUser=async()=>({username:'other-id'});f.request(2,'snapshot');await tick();assert.equal(f.replies[1].value.displayName,'other-id');assert.deepEqual(f.replies[1].value.images,[]);
+});

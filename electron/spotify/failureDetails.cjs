@@ -123,12 +123,14 @@ function failureDetails(error, operation) {
  const recoveryText = code === 'PLAYBACK_STATE_UNCONFIRMED' && stage.startsWith('cleanup')
    ? '上一 Spotify 会话尚未完成暂停或清理，新的播放尚未开始；重试会重新核对旧会话，不会复用上次失败结果。' : undefined;
  const stageNames = { 'cleanup-previous-session': '停止上一轮采集', 'cleanup-required': '清理上一轮播放', 'scope': '读取本机播放状态', 'track-metadata': '读取歌曲信息', 'route-inspect': '检查应用输出路由', 'route-resume-preparation': '恢复采集准备', 'playback-facts': '确认播放状态', 'audio': '准备播放', 'browser-pcm': '交付音频' };
- const text = recoveryText || descriptions[code] || ((stageNames[stage] || '执行播放操作') + '未完成：组件没有提供已识别的原因，具体阶段及原始错误已记录在日志中。');
+ const connectionReason=code==='SPOTIFY_BRIDGE_NOT_READY'&&['connection-key-mismatch','connection-timeout','origin-mismatch','connection-present'].includes(error?.connectionReason)?error.connectionReason:undefined;
+ const connectionText=connectionReason==='connection-key-mismatch'?'Spotify 仍加载着旧连接信息，无法连接当前 Folia；自动重新加载后仍未恢复。':connectionReason==='connection-timeout'?'Spotify 已运行，但未在 30 秒内连接 Folia 桥接；自动重新加载后仍未恢复。':undefined;
+ const text = connectionText || recoveryText || descriptions[code] || ((stageNames[stage] || '执行播放操作') + '未完成：组件没有提供已识别的原因，具体阶段及原始错误已记录在日志中。');
  const readback = code === 'FORMAT_LEASE_READBACK_MISMATCH'
    ? require('../debug/privatePreviewDiagnosticSchema.cjs').projectFormatLeaseReadback(error?.formatLeaseReadback) : undefined;
  const formatDetail = readback ? ` ${readback.endpointRole === 'render' ? '输出端' : '采集端'}请求 ${readback.requested.sampleRate} Hz／${readback.requested.channels} 声道，实际 ${readback.observed.sampleRate} Hz／${readback.observed.channels} 声道；差异字段：${readback.differingFields.map(field => ({ sampleRate: '采样率', channels: '声道数', bitsPerSample: '位深', validBitsPerSample: '有效位深', channelMask: '声道布局', formatTag: '格式标记', subFormat: '采样格式', blockAlign: '帧字节数', avgBytesPerSec: '每秒字节数' }[field] || '音频格式参数')).join('、')}。` : '';
  return { nativeCode, causeCode, stage, ...(error?.retriesExhausted === true ? { retryCount: 3, retriesExhausted: true } : {}), ...(mismatch ? { stateMismatch: mismatch, ...stateFacts } : {}), ...(readback ? { formatLeaseReadback: readback } : {}),
-   ...(Number.isInteger(error?.hresult) ? { hresult: error.hresult } : {}),
+   ...(connectionReason?{connectionReason}:{}),...(Number.isInteger(error?.hresult) ? { hresult: error.hresult } : {}),
    detail: text + (mismatch ? ' 具体差异：' + mismatchNames[mismatch] + '。' : '') + formatDetail + (error?.retriesExhausted === true ? ' 已自动重试三次，仍未恢复。' : '') };
 }
 module.exports = { failureDetails, descriptions };
