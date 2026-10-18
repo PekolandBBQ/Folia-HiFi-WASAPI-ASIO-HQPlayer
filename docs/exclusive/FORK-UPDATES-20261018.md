@@ -66,3 +66,13 @@ win-unpacked 内程序可直接试用界面；安装版 Setup.exe 供用户自�
 独立 Node 父进程复现相同失败，排除了 Folia 播放清理逻辑的必要性。由 PowerShell 启动自己的隐藏独立进程后，父进程退出仍能执行到安装阶段。新增真实 Windows 父进程退出回归（路径含中文和空格），与确认、取消、分片、源切换共 18 项通过。诊断读取与写日志并发也不能中断安装。最终应用内更新仍待验证，不将启动器单独验证算作完整流程通过。
 
 Spotify 账号入口已实测显示 PekolandBBQ 和真实头像（naturalWidth=64）；首次头像 CDN 超时后重新加载成功，保留此网络失败记录。Folia 重新打开复用 Spotify 进程，连接至就绪间隔 78ms，没有重复重启。
+
+## r5 最终实际验收
+
+- 最终构建 1792339916245，GitHub 完整 EXE 282510818 字节、ZIP 350773084 字节；Gitee 为同一文件的 3 个安装分片、4 个便携分片。未核对校验值。
+- 两个真实更新源均返回同一构建可更新；Gitee 实际下载合并成功，耗时 133845 ms。GitHub 完整下载已在此前候选实测，本次验证最终清单及附件，不把它记为本次重复下载。
+- 从完整安装版点击真实“退出并更新”确认，日志 install-s4yGte：00:27:13 正常退出后开始安装，00:27:24 installer-exit=0，application-restarted pid=83260。重新读取实际安装 ASAR，构建号已变为 1792339916245，真实窗口已自动重开。这次才将完整应用内更新记为通过。
+- 配置及组件/备份基线共 178 项，缺失 0；不声称配置字节不变（更新来源已从测试 Gitee 恢复为原有 auto）。未删除配置，未重跑 Spotify backup。
+- 更新后 bridge-connected 至 spotify-background-ready 71ms，owned=false，复用已有 Spotify；真实流媒体菜单显示用户头像及 PekolandBBQ。
+- 60 项针对性测试通过；提交 a8b3e6cb 的 GitHub 单元测试、sync-server 类型检查、设置 UI 测试通过。PR12 合并。历史两次助手失败仍保留，不以最终通过覆盖。
+- GitHub 和 Gitee 正式 r5 共享此构建；Spotify 经 HQPlayer 的历史断续播放、三秒目标与偶发 Seek 仍按已知问题记录。
