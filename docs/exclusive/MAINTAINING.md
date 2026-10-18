@@ -52,3 +52,14 @@ node test/manual/exclusivePlaybackReview.cjs
 ## 长期接入约束
 
 模块归属、作者要求与每次更新的检查清单见 [架构与上游接入约束](ARCHITECTURE.md)。本分支推送和 PR 执行上游原有类型检查、全量单测和 sync-server 构建；另加相关设置 UI 回归。真实设备和安装矩阵仍须本地验证，CI 通过不能替代。
+
+## r5 起的双源发布
+
+GitHub 与 Gitee 使用同一正式源码树、README、使用说明和更新说明；Gitee 只推送正式分支和 r5 起的新标签，不使用 `git push --mirror` 同步测试分支或旧版标签。保留源码提交历史与原作者署名，不把“从 r5 开始发行”理解为删除 Git 历史。
+
+一次构建生成 EXE、ZIP 和 `folia-hifi-update.json`，两个源复用这些文件与内部构建编号，禁止各自重建后沿用同一编号。先上传安装包和便携包，再上传清单；两个源均完整后验证正式接口检查和下载。更新清单不得提前指向不存在的附件。
+
+GitHub：`PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer`。
+Gitee：`pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer`。
+
+安装版验收包括下载完成前不能确认安装、取消确认不退出、确认后正常清理退出、安装后重新打开且配置/备份仍保留。便携版只下载 ZIP，不执行安装。每次记录真实验证结果，不把模拟请求作为线上双源已通过。
