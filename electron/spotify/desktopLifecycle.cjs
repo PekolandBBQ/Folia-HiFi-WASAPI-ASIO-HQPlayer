@@ -18,7 +18,7 @@ function createDesktopLifecycle({directory,apps,bridge,ready,log,dialog,parent,d
  const preferenceFile=path.join(directory,'desktop-preferences.json');
  const preferences=()=>{try{return {quitOnFoliaExit:JSON.parse(fs.readFileSync(preferenceFile,'utf8')).quitOnFoliaExit===true};}catch{return {quitOnFoliaExit:false};}};
  function setPreferences(value){const next={...preferences(),quitOnFoliaExit:value.quitOnFoliaExit===true};fs.mkdirSync(directory,{recursive:true});fs.writeFileSync(preferenceFile,JSON.stringify(next));return next;}
- const file=path.join(directory,'desktop-installation.json');let selected,owned,starting,lastProgress;const listeners=new Set();let lastVersionCheck=0,checkedApps;
+ const file=path.join(directory,'desktop-installation.json');let selected,owned,starting,lastProgress;const listeners=new Set();let lastVersionCheck=0,checkedApps,reconnectAttempted=false;
  try{selected=JSON.parse(fs.readFileSync(file,'utf8')).id;}catch{}
  async function inspect(){const info=await discovery();let target;try{target=select(info,selected);}catch{}const bridgeRuntime=await require('./wrapper/handshake.cjs').inspectRuntime(bridge,info.running,assetPath());return {...info,selected:target?.id,owned:Boolean(owned),bridgeReady:bridgeRuntime.state==='ready',bridgeRuntime};}
  async function choose(id){const info=await discovery();if(!info.candidates.some(c=>c.id===id))throw failure('SPOTIFY_SELECTED_INSTALL_MISSING');selected=id;fs.mkdirSync(directory,{recursive:true});fs.writeFileSync(file,JSON.stringify({id}));return inspect();}
@@ -47,6 +47,7 @@ function createDesktopLifecycle({directory,apps,bridge,ready,log,dialog,parent,d
    await stopForConfiguration(true);info=await discovery();
   }
   if(!info.running.length){
+   bridge.clearConnectionFailure?.();
    const launchedAt=Date.now();progress({stage:'spotifyLaunch'});
    let launchPid;
    if(target.layout==='store'){
@@ -61,7 +62,14 @@ function createDesktopLifecycle({directory,apps,bridge,ready,log,dialog,parent,d
   if(['unmanaged','wrong-assets'].includes(loaded.state))throw failure('SPOTIFY_RESOURCE_DIRECTORY_MISSING');
   progress({stage:'spotifyHandshake'});
   const deadline=Date.now()+30000;
-  while(!bridge.connected()){if(Date.now()>deadline)throw failure('SPOTIFY_BRIDGE_NOT_READY');await new Promise(r=>setTimeout(r,100));}
+  while(!bridge.connected()){
+   const rejected=bridge.connectionFailure?.();
+   if(rejected?.reason==='connection-key-mismatch'||Date.now()>deadline){
+    log('spotify-connection-unavailable',{reason:rejected?.reason||'connection-timeout'});
+    throw Object.assign(failure('SPOTIFY_BRIDGE_NOT_READY'),{connectionReason:rejected?.reason||'connection-timeout'});
+   }
+   await new Promise(r=>setTimeout(r,100));
+  }
   const handshake=await require('./wrapper/handshake.cjs').inspectHandshake(bridge);log('bridge-runtime',handshake);
   if(handshake.state!=='ready')throw failure(handshake.state==='outdated'?'BRIDGE_UPDATE_REQUIRED':'SPOTIFY_BRIDGE_NOT_READY');
   // A connected extension can precede Spotify's restored local device/player.
@@ -73,6 +81,21 @@ function createDesktopLifecycle({directory,apps,bridge,ready,log,dialog,parent,d
   if(!playerReady)throw failure('SPOTIFY_PLAYER_NOT_READY');
   if(owned){const current=await discovery();owned.pids=current.running.filter(p=>p.exe.toLowerCase()===owned.exe.toLowerCase()&&Date.parse(p.started)>=owned.launchedAt-1000);}
   log('spotify-background-ready',{owned:Boolean(owned)});progress({stage:'spotifyReady'});
+ }
+ // A correct disk directory does not prove the running extension loaded its current connection.
+ // Reload once per failed connection episode; a successful handshake rearms recovery.
+ async function connectWithRecovery(progress){
+  try{await run(progress);reconnectAttempted=false;}
+  catch(error){
+   if(error.code!=='SPOTIFY_BRIDGE_NOT_READY'||reconnectAttempted)throw error;
+   const info=await discovery(),target=select(info,selected);
+   if(!info.running.some(p=>p.exe.toLowerCase()===target.exe.toLowerCase()))throw error;
+   reconnectAttempted=true;
+   log('spotify-auto-reconnect',{reason:bridge.connectionFailure?.()?.reason||'connection-timeout',action:'reload-running-extension'});
+   progress({stage:'spotifyLaunch'});
+   await stopForConfiguration(true);
+   await run(progress);reconnectAttempted=false;
+  }
  }
  // Configuration restores Folia's audio route before stopping only the selected installation.
  async function stopForConfiguration(fromReconnect=false){
@@ -90,13 +113,13 @@ function createDesktopLifecycle({directory,apps,bridge,ready,log,dialog,parent,d
    if(Date.now()>deadline)throw failure('SPOTIFY_SETUP_STOP_TIMEOUT');
    await new Promise(r=>setTimeout(r,100));
   }
-  owned=null;log('spotify-configuration-stopped',{processes:info.running.length});
+  owned=null;bridge.clearConnectionFailure?.();log('spotify-configuration-stopped',{processes:info.running.length});
  }
  return {inspect,choose,preferences,setPreferences,stopForConfiguration,ensure(progress){
    // Every caller observes the shared startup; joining playback must not lose its progress.
    const listener=typeof progress==='function'?progress:()=>{};listeners.add(listener);
    if(starting&&lastProgress)listener(lastProgress);
-   if(!starting){lastProgress=null;starting=run(value=>{lastProgress=value;for(const notify of listeners){try{notify(value);}catch{}}}).catch(e=>{log('spotify-background-failed',{code:e.code||'UNKNOWN',message:e.message});throw e;}).finally(()=>{starting=null;lastProgress=null;});}
+   if(!starting){lastProgress=null;starting=connectWithRecovery(value=>{lastProgress=value;for(const notify of listeners){try{notify(value);}catch{}}}).catch(e=>{log('spotify-background-failed',{code:e.code||'UNKNOWN',message:e.message});throw e;}).finally(()=>{starting=null;lastProgress=null;});}
    return starting.finally(()=>listeners.delete(listener));
   },
   handBack(){owned=null;},

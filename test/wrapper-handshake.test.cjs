@@ -32,3 +32,20 @@ for(const initial of ['outdated','unmanaged','ready'])test('automatic connection
  try{await Promise.all([lifecycle.ensure(),lifecycle.ensure()]);assert.equal((await lifecycle.inspect()).bridgeRuntime.state,'ready');assert.equal(starts,initial==='ready'?0:1);assert.equal(stops,initial==='ready'?0:1);}finally{fs.rmSync(dir,{recursive:true,force:true});}
 });
 
+
+test('stale in-memory connection is reloaded once and shared callers resume without repeated waiting',async()=>{
+ const dir=fs.mkdtempSync(path.join(os.tmpdir(),'folia-stale-bridge-'));fs.mkdirSync(path.join(dir,'xpui'));fs.writeFileSync(path.join(dir,'xpui/index.html'),'');
+ let running=true,connected=false,rejection={reason:'connection-key-mismatch'},starts=0,stops=0;
+ const b={connected:()=>connected,connectionFailure:()=>rejection,clearConnectionFailure:()=>{rejection=undefined;},request:async op=>op==='hello'?expected:{local:true,wrapperReady:true,account:'test',deviceId:'local'}};
+ const lifecycle=createDesktopLifecycle({directory:dir,apps:dir,ready:Promise.resolve(),bridge:b,log:()=>{},dialog:{showMessageBox:()=>assert.fail('no prompt')},parent:()=>null,
+ discovery:async()=>({candidates:[{id:'desktop',exe:'test.exe',layout:'desktop'}],errors:[],running:running?[{pid:123,exe:'test.exe',started:'2026-10-18',mainProcess:true,commandLineKnown:true,appDirectory:dir}]:[]}),
+ stop:async()=>{stops++;running=false;connected=false;},start:()=>{starts++;running=true;connected=true;const child=Object.assign(new EventEmitter(),{pid:123,unref(){}});queueMicrotask(()=>child.emit('spawn'));return child;}});
+ try{await Promise.all([lifecycle.ensure(),lifecycle.ensure()]);assert.equal(starts,1);assert.equal(stops,1);await lifecycle.ensure();assert.equal(starts,1);}finally{fs.rmSync(dir,{recursive:true,force:true});}
+});
+
+test('a persistently rejected replacement does not cause a restart loop on further retries',async()=>{
+ const dir=fs.mkdtempSync(path.join(os.tmpdir(),'folia-rejected-bridge-'));fs.mkdirSync(path.join(dir,'xpui'));fs.writeFileSync(path.join(dir,'xpui/index.html'),'');let running=true,starts=0,reason={reason:'connection-key-mismatch'};
+ const b={connected:()=>false,connectionFailure:()=>reason,clearConnectionFailure:()=>{reason=undefined;}};
+ const lifecycle=createDesktopLifecycle({directory:dir,apps:dir,ready:Promise.resolve(),bridge:b,log:()=>{},dialog:{},parent:()=>null,discovery:async()=>({candidates:[{id:'desktop',exe:'test.exe',layout:'desktop'}],errors:[],running:running?[{pid:123,exe:'test.exe',started:'2026-10-18',mainProcess:true,commandLineKnown:true,appDirectory:dir}]:[]}),stop:async()=>{running=false;},start:()=>{starts++;running=true;reason={reason:'connection-key-mismatch'};const child=Object.assign(new EventEmitter(),{pid:123,unref(){}});queueMicrotask(()=>child.emit('spawn'));return child;}});
+ try{for(let attempt=0;attempt<4;attempt++)await assert.rejects(lifecycle.ensure(),{code:'SPOTIFY_BRIDGE_NOT_READY'});assert.equal(starts,1);}finally{fs.rmSync(dir,{recursive:true,force:true});}
+});
