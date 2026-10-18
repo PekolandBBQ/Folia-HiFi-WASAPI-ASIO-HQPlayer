@@ -79,3 +79,19 @@ test('playback fact mismatch preserves concrete Chinese reason without private f
  try{requireFacts({deviceId:'local',trackId:'song',durationMs:2000,positionMs:100,isPlaying:true},{selection:{deviceId:'local'},resolvedTrackId:'song',durationMs:2000},false)}catch(e){caught=e;}
  const details=failureDetails(publicError(caught),'audio');assert.equal(details.stateMismatch,'playing-mismatch');assert.equal(details.actualPlaying,true);assert.equal(details.expectedPlaying,false);assert.match(details.detail,/播放\/暂停状态不一致/);assert.doesNotMatch(JSON.stringify(details),/local|song/);
 });
+
+for(const layout of ['store','desktop'])test(layout+' client upgrade detects old resources and never reapplies the obsolete backup',async t=>{
+ const directory=await root(t),config=path.join(directory,'roaming/spicetify'),apps=path.join(config,'AppX');
+ await fs.mkdir(apps,{recursive:true});
+ const receipt=JSON.stringify({installation:'user',stage:'configured',bundleVersion:'same'});
+ await fs.writeFile(path.join(directory,'configuration.json'),receipt);
+ const ini='[Setting]\nversion = ignored\n[Backup]\nversion = 1.3.4.258.gc60b10b0946a\nwith = 2.45.3\n';
+ await fs.writeFile(path.join(config,'config-xpui.ini'),ini);
+ const target={id:'user',layout,version:layout==='store'?'1.305.3058.0':'1.3.5.3058',binaryVersion:'1.3.5.3058.g5d40d5480152'};
+ const {resourceVersion}=require('../../electron/spotify/resourceVersion.cjs');
+ assert.equal((await resourceVersion(apps,target)).state,'mismatch');
+ assert.equal((await resourceVersion(apps,{...target,binaryVersion:'1.3.4.258'})).state,'current');
+ assert.equal(await upgradeAssets({apps,assetDirectory:directory,target,execute:()=>{throw Error('must not apply old backup');}}),null);
+ assert.equal(await fs.readFile(path.join(directory,'configuration.json'),'utf8'),receipt);
+ assert.equal(await fs.readFile(path.join(config,'config-xpui.ini'),'utf8'),ini);
+});

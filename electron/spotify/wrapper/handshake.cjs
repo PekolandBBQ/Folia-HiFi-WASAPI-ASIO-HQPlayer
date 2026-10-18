@@ -1,7 +1,7 @@
 'use strict';
 const path = require('node:path');
 // Runtime evidence is independent of files and current playback state.
-const expected = {protocol:1,version:'1.1.0',capabilities:['snapshot','command','catalog','lyrics','likedTracks','searchTracks','setLiked']};
+const expected = {protocol:1,version:'1.1.1',capabilities:['snapshot','command','catalog','lyrics','likedTracks','searchTracks','setLiked','independentReads']};
 async function inspectHandshake(bridge){
  try{
   const value=await bridge.request('hello');

@@ -62,8 +62,8 @@ const rawPolicyValue = value => value === null || typeof value === 'string' && v
 // Failure evidence is independent of routing authority. Native identities and
 // arbitrary exception/property text are never copied into the project journal.
 const OWNER_DIAGNOSTIC_ENUMS = Object.freeze({
-  stage: 'topology-enumerator topology-endpoint topology-activate topology-connector-count topology-connector topology-connected topology-adapter-id topology-adapter topology-properties topology-instance-id topology-release owner-locate owner-device-id owner-class-guid owner-hardware-ids owner-service owner-status owner-enumerator owner-bus-type owner-parent owner-identity owner-repeat'.split(' '),
-  reason: 'api-failed unavailable wrong-type malformed out-of-bounds disconnected ambiguous unsupported virtual mismatch cycle depth-limit not-started has-problem changed release-failed'.split(' '),
+  stage: 'endpoint-policy topology-enumerator topology-endpoint topology-activate topology-connector-count topology-connector topology-connected topology-adapter-id topology-adapter topology-properties topology-instance-id topology-release owner-locate owner-device-id owner-class-guid owner-hardware-ids owner-service owner-status owner-enumerator owner-bus-type owner-parent owner-identity owner-repeat'.split(' '),
+  reason: 'inactive not-render target-is-original virtual-original policy-mismatch api-failed unavailable wrong-type malformed out-of-bounds disconnected ambiguous unsupported virtual mismatch cycle depth-limit not-started has-problem changed release-failed'.split(' '),
   originalKind: ['default', 'explicit'],
   property: ['class-guid', 'hardware-ids', 'service', 'enumerator', 'bus-type', 'device-id'],
   bus: ['usb', 'hdaudio', 'pci', 'vendor', 'virtual', 'unknown'],
@@ -77,12 +77,13 @@ function physicalOwnerDiagnostic(value) {
       if (typeof field === 'string' && allowed.includes(field)) result[key] = field;
     }
     if (!result.stage || !result.reason) return undefined;
-    for (const [key, minimum, maximum] of [['role', 0, 1], ['depth', 0, 3],
+    for (const [key, minimum, maximum] of [['role', 0, 1], ['depth', 0, 3], ['endpointState', 0, 15], ['endpointFlow', 0, 2],
       ['nativeResult', 0, 4294967295], ['hresult', -2147483648, 2147483647],
       ['propertyType', 0, 4294967295], ['propertyLength', 0, 4096]]) {
       const field = Object.getOwnPropertyDescriptor(value, key)?.value;
       if (Number.isSafeInteger(field) && field >= minimum && field <= maximum) result[key] = field;
     }
+    for (const key of ['targetMatch','policyMatch']) if(typeof value[key]==='boolean') result[key]=value[key];
     return result;
   } catch { return undefined; }
 }

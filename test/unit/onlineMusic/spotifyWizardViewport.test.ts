@@ -8,7 +8,7 @@ import { parse } from 'postcss';
 import type { SpotifyConnection } from '@/hooks/useSpotifyConnection';
 
 // Exact portal, keyboard and scroll partition checks; jsdom does not prove rendered pixels.
-vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
+vi.mock('react-i18next', async importOriginal => ({ ...await importOriginal<typeof import('react-i18next')>(), useTranslation: () => ({ t: (key: string) => key }) }));
 vi.mock('@/components/app/home/SpotifyConnectionSteps', () => ({
     default: () => React.createElement('div', null,
         React.createElement('button', { 'data-testid': 'body-control' }, 'body'),

@@ -77,12 +77,12 @@ async function fixture() {
             if (id === './nativeAudio/componentManager.cjs') return nativeModule;
             if (id === './hqplayer/archiveContract.cjs') return require('../../../electron/hqplayer/archiveContract.cjs');
             if (id === './hqplayer/componentManager.cjs') return hqpModule;
-            if (id === 'electron-store') return class { set = storeSet; };
+            if (id === 'electron-store') return class { set = storeSet; get = () => undefined; };
             if (id === './main.cjs') { mainRequested(); return {}; }
             throw new Error(`Unexpected packaging entry dependency: ${id}`);
         };
         // Run the actual saved CJS entry with only Electron/main replaced; ZIP/filesystem/profile are real.
-        const context = vm.createContext({ require: localRequire, Buffer, process: { resourcesPath: resourceRoot, env: {} } });
+        const context = vm.createContext({ global: {}, require: localRequire, Buffer, process: { resourcesPath: resourceRoot, env: {} } });
         new vm.Script(`(function () {\n${syncFs.readFileSync(entryPath, 'utf8')}\n})()`, { filename: entryPath }).runInContext(context);
     }
     await publishNative('0.1.1'); await publishNative('0.1.2');

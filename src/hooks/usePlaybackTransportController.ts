@@ -147,6 +147,9 @@ export function usePlaybackTransportController({
         // so that, should that play fail too, the message names it rather than a generic error.
         let refreshFailure: PlaybackFailure | null = null;
         if (shouldRefreshCurrentOnlineAudioSource()) {
+            if (selectedSong?.sourceRef?.kind === 'online' && selectedSong.sourceRef.providerId === 'spotify') {
+                console.info('[SpotifyResume] prepare-session', { songId: selectedSong.id, hasSource: Boolean(source) });
+            }
             const refreshed = await recoverOnlinePlaybackSource({
                 failedSrc: audio.currentSrc || audioSrc,
                 resumeAt: audio.currentTime,
@@ -154,6 +157,7 @@ export function usePlaybackTransportController({
                 shouldAutoplay,
             });
 
+            if (selectedSong?.sourceRef?.kind === 'online' && selectedSong.sourceRef.providerId === 'spotify') console.info('[SpotifyResume] preparation-result', { songId: selectedSong.id, status: refreshed.status, current: isCurrent(), wantsPlayback: wantsPlayback.current });
             if (!isCurrent() || refreshed.status === 'recovered' || refreshed.status === 'stale') {
                 return;
             }

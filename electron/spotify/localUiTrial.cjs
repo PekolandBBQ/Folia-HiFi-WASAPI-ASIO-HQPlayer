@@ -31,7 +31,10 @@ function initialize(log){
   shared={bridge,source,catalog,ready,refresh,desktop,apps,activateApps,extension:async()=>{await ready;return sessionExtension;}};return shared;
 }
 function registerLocalUiTrial(options){
-  const log=global.__foliaTrialLog||(()=>{}), local=initialize(log);
+  const log=global.__foliaTrialLog||((event,facts)=>{
+    if(['spotify-orphan-route-restored','spotify-background-retained','spotify-background-exit','spotify-background-exit-failed','spotify-resource-version','bridge-connected','bridge-disconnected','bridge-request-failed','bridge-runtime','spotify-background-failed','ui-online-search'].includes(event))
+      require('../debug/debugHost.cjs').runtimeLine('SpotifyBridge',JSON.stringify({event,...facts}));
+  }), local=initialize(log);
   return require('./cableService.cjs').registerCableSpotify({...options,connectionMode:'wrapper',createService:settings=>createService(settings,local,log)});
 }
 function createService({beforeLeaveProvider},local,log){
@@ -121,17 +124,15 @@ function createService({beforeLeaveProvider},local,log){
   return {
     async request(input,progress){
       log('ui-spotify-request',{action:input.action,operation:input.operation,trackId:input.action==='audio'?input.id:undefined});
-      if(input.action==='desktopSetup')return require('./desktopSetupGuide.cjs').request({input,beforeConfigure:leave,desktop,bridge,apps:local.apps,capture,route,directory:path.join(profile,'spotify'),assetDirectory:runtimePaths().assetRoot,existingCli:process.env.FOLIA_WRAPPER_EXISTING_CLI,extension:local.extension,activateApps:local.activateApps,configureEndpoints,endpointsConfigured:endpoints=>Boolean(require('./cableEndpointSelection.cjs').selectCableEndpoints(endpoints,saved)),log});
+      if(input.action==='desktopSetup'&&input.operation==='preferences')return input.preferences?desktop.setPreferences(input.preferences):desktop.preferences();
+      if(input.action==='desktopSetup')return require('./desktopSetupGuide.cjs').request({input,progress,beforeConfigure:leave,desktop,bridge,apps:local.apps,capture,route,directory:path.join(profile,'spotify'),assetDirectory:runtimePaths().assetRoot,existingCli:process.env.FOLIA_WRAPPER_EXISTING_CLI,extension:local.extension,activateApps:local.activateApps,configureEndpoints,endpointsConfigured:endpoints=>Boolean(require('./cableEndpointSelection.cjs').selectCableEndpoints(endpoints,saved)),log});
       if(input.action==='audio'){
         const intent=++launchIntent;
         const current=()=>{if(closing||intent!==launchIntent)throw Object.assign(Error('CANCELLED'),{code:'CANCELLED'});};
         await desktop.ensure(progress);current();let prepared;
-        try{prepared=await audio.prepare(input.id,input.requestId,progress,input.quality);}
-        catch(error){
-          if((error.nativeCode||error.code)!=='ORIGINAL_ENDPOINT_UNSAFE'||error.stage!=='route-inspect')throw error;
-          await require('./orphanRouteRecovery.cjs').recoverOrphanRoute({componentDirectory:process.env.FOLIA_LOCAL_ROUTE_COMPONENT||runtimePaths().route,source,current,log});
-          prepared=await audio.prepare(input.id,input.requestId,progress,input.quality);
-        }
+        const recovery=require('./orphanRouteRecovery.cjs');
+        prepared=await recovery.prepareWithOrphanRecovery(()=>audio.prepare(input.id,input.requestId,progress,input.quality),
+          ()=>recovery.recoverOrphanRoute({componentDirectory:process.env.FOLIA_LOCAL_ROUTE_COMPONENT||runtimePaths().route,source,current,log}),current);
         require('./playbackHealth.cjs').prepared();return prepared;
       }
       if(input.action==='cancelAudio'){launchIntent++;audio.cancel(input.requestId);return null;}

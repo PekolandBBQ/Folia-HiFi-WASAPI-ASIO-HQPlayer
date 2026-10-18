@@ -87,3 +87,12 @@ test('all admitted route and capture codes have Chinese UI descriptions', () => 
     assert.ok(!detail.includes(code), code); assert.match(detail, /[\u4e00-\u9fff]/);
   }
 });
+
+test('cold identity failures retry preparation three times then recover', async t=>{
+ let calls=0;const runtime=await runtimeFixture(t,async()=>{if(++calls<4)throw publicError(fault('BOOTSTRAP_IDENTITY_UNCONFIRMED'));return 'prepared';});
+ assert.equal(await runtime.request({action:'audio',requestId:'cold'}),'prepared');assert.equal(calls,4);await runtime.close();
+});
+test('cold identity failure stops after three retries and preserves the real cause', async t=>{
+ let calls=0;const runtime=await runtimeFixture(t,async()=>{calls++;throw Object.assign(publicError(fault('BOOTSTRAP_IDENTITY_UNCONFIRMED')),{failureCode:'EXACT_SPOTIFY_AUDIO_PROCESS_UNPROVEN'});});
+ await assert.rejects(runtime.request({action:'audio',requestId:'cold'}),{failureCode:'EXACT_SPOTIFY_AUDIO_PROCESS_UNPROVEN',retryCount:3,retriesExhausted:true});assert.equal(calls,4);await runtime.close();
+});

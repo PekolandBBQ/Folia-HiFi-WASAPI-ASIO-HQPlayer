@@ -37,11 +37,13 @@ function createGuide({ desktop, bridge, apps, capture, route, directory, assetDi
     try { await validateAssets(currentApps, currentBundle); valid = (await fs.readFile(path.join(currentApps, 'xpui/extensions/folia-live-bridge.js'), 'utf8')) === await extension(); if (!valid) issue('bridge-extension', { code: 'SPOTIFY_EXTENSION_UPDATE_REQUIRED' }); } catch (error) { issue('bridge-assets', error); }
     const receipt = await require('./upgradeAssets.cjs').findReceipt(currentApps);
     if (receipt && receipt.receipt.installation !== state.selected) { wrapper = false; valid = false; issue('selected-installation', { code: 'SPOTIFY_CONFIGURATION_VERSION_CHANGED' }); }
+    const resource = await require('./resourceVersion.cjs').resourceVersion(currentApps,state.candidates.find(c=>c.id===state.selected));
+    if (resource.state === 'mismatch') { wrapper=false; valid=false; issue('bridge-assets',{code:'SPOTIFY_RESOURCE_VERSION_CHANGED'}); }
     let connected = false;
-    if (state.bridgeRuntime?.state === 'ready') { try { const snapshot = await bridge.request('snapshot'); connected = snapshot.local === true && snapshot.wrapperReady === true && Boolean(snapshot.account && snapshot.deviceId); if (!connected) issue('bridge-player', { code: 'SPOTIFY_PLAYER_NOT_READY' }); } catch (error) { issue('bridge-player', error); } }
+    if (resource.state !== 'mismatch' && state.bridgeRuntime?.state === 'ready') { try { const snapshot = await bridge.request('snapshot'); connected = snapshot.local === true && snapshot.wrapperReady === true && Boolean(snapshot.account && snapshot.deviceId); if (!connected) issue('bridge-player', { code: 'SPOTIFY_PLAYER_NOT_READY' }); } catch (error) { issue('bridge-player', error); } }
     return { enabled: true, bundleVersion: currentBundle.version, versions: { spicetify: currentBundle.spicetify.version, cable: currentBundle.cable.version },
       installations: state.candidates.map(x => ({ id: x.id, layout: x.layout, version: x.version })), selected: state.selected,
-      detectionFailed: state.errors.length > 0, running: state.running.length > 0, connected, bridgeRuntime: state.bridgeRuntime, issues, playback: require('./playbackHealth.cjs').get(),
+      detectionFailed: state.errors.length > 0, running: state.running.length > 0, connected, resource, bridgeRuntime: state.bridgeRuntime, issues, playback: require('./playbackHealth.cjs').get(),
       cli: Boolean(await findCli()), wrapper, extension: valid, driver, driverCurrent: currentDriverVersions?.every(version => version === currentBundle.cable.version)
         && currentDriverVersions.length > 0, updateCheck: updateCheck && { checkedAt: updateCheck.checkedAt, release: updateCheck.release,
           publishedVersion: updateCheck.publishedVersion }, driverEndpointsReady: endpointsConfigured(endpoints), engine, systemOutput,
@@ -73,18 +75,19 @@ function createGuide({ desktop, bridge, apps, capture, route, directory, assetDi
         const upgraded = await require('./upgradeAssets.cjs').upgradeAssets({ apps: apps(), assetDirectory, target, cli, extension: bridgeExtension, bundle: currentBundle });
         // A separately selected installation owns a separate receipt, never an overwrite of the old selection.
         const old = await require('./upgradeAssets.cjs').findReceipt(apps());
-        const suffix = old && old.receipt.installation !== target.id ? '-' + require('node:crypto').createHash('sha256').update(target.id).digest('hex').slice(0, 12) : '';
+        const changedBuild = (await require('./resourceVersion.cjs').resourceVersion(apps(),target)).state === 'mismatch';
+        const suffix = changedBuild ? '-client-' + require('./resourceVersion.cjs').build(target.binaryVersion || target.version) + '-' + require('node:crypto').createHash('sha256').update(target.id).digest('hex').slice(0,12) : old && old.receipt.installation !== target.id ? '-' + require('node:crypto').createHash('sha256').update(target.id).digest('hex').slice(0, 12) : '';
         const assetRoot = upgraded || await configureAssets({ directory: path.join(assetDirectory, currentBundle.version + suffix), target, cli, extension: bridgeExtension, progress, bundle: currentBundle });
         await activateApps(assetRoot);
       }
       await configureEndpoints();
     },
   });
-  return { async request(input) {
+  return { async request(input, progress) {
     if (input.operation === 'open' && input.component === 'sound') await require('electron').shell.openExternal('ms-settings:sound');
     if (input.operation === 'choose') await desktop.choose(input.installation);
     if (input.operation === 'open' && links[input.component]) await require('electron').shell.openExternal(links[input.component]);
-    if (input.operation === 'launch') await desktop.ensure();
+    if (input.operation === 'launch') await desktop.ensure(progress);
     if (input.operation === 'install' || input.operation === 'configure') installer.start(input.operation);
     const install = await installer.status(), current = await inspect();
     return { ...current, ready: current.ready && !install.restartRequired, install };
@@ -92,6 +95,6 @@ function createGuide({ desktop, bridge, apps, capture, route, directory, assetDi
 }
 async function request(options) {
   if (!managers.has(options.desktop)) managers.set(options.desktop, createGuide(options));
-  return managers.get(options.desktop).request(options.input);
+  return managers.get(options.desktop).request(options.input, options.progress);
 }
 module.exports = { request, createGuide };

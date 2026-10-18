@@ -223,9 +223,10 @@ const events = {
         generation: integer(2147483647), ready: bool, exactOriginalRolesRestored: bool, observedDefaultsChanged: bool, globalDefaultsWritten: bool },
     'spotify.route-owner-proof': {
         operation: choices('inspect acquire armCaptureInterval authorizeResume status heartbeat release close'),
-        errorCode: choices('ORIGINAL_PHYSICAL_OWNER_UNPROVEN ORIGINAL_EXPLICIT_ENDPOINT_CHANGED'),
-        stage: choices('topology-enumerator topology-endpoint topology-activate topology-connector-count topology-connector topology-connected topology-adapter-id topology-adapter topology-properties topology-instance-id topology-release owner-locate owner-device-id owner-class-guid owner-hardware-ids owner-service owner-status owner-enumerator owner-bus-type owner-parent owner-identity owner-repeat'),
-        reason: choices('api-failed unavailable wrong-type malformed out-of-bounds disconnected ambiguous unsupported virtual mismatch cycle depth-limit not-started has-problem changed release-failed'),
+        errorCode: choices('ORIGINAL_PHYSICAL_OWNER_UNPROVEN ORIGINAL_EXPLICIT_ENDPOINT_CHANGED ORIGINAL_ENDPOINT_UNSAFE'),
+        stage: choices('endpoint-policy topology-enumerator topology-endpoint topology-activate topology-connector-count topology-connector topology-connected topology-adapter-id topology-adapter topology-properties topology-instance-id topology-release owner-locate owner-device-id owner-class-guid owner-hardware-ids owner-service owner-status owner-enumerator owner-bus-type owner-parent owner-identity owner-repeat'),
+        reason: choices('inactive not-render target-is-original virtual-original policy-mismatch api-failed unavailable wrong-type malformed out-of-bounds disconnected ambiguous unsupported virtual mismatch cycle depth-limit not-started has-problem changed release-failed'),
+        endpointState: integer(15), endpointFlow: integer(2), targetMatch: bool, policyMatch: bool,
         role: integer(1), originalKind: choices('default explicit'), depth: integer(3),
         nativeResult: integer(4294967295), hresult: value => Number.isSafeInteger(value) && value >= -2147483648 && value <= 2147483647,
         property: choices('class-guid hardware-ids service enumerator bus-type device-id'),

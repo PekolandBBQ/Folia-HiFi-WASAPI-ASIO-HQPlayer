@@ -8,7 +8,7 @@ import { cableSelectionComplete, EMPTY_CABLE_SELECTION } from '@/services/online
 
 // Real guide and React ownership flows; only the Omni boundary is mocked, with no Windows or account I/O.
 const fixture = vi.hoisted(() => ({ status: vi.fn(), setup: vi.fn(), begin: vi.fn(), check: vi.fn(), cancel: vi.fn(), complete: vi.fn(), t: (key: string) => key }));
-vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: fixture.t }) }));
+vi.mock('react-i18next', async importOriginal => ({ ...await importOriginal<typeof import('react-i18next')>(), useTranslation: () => ({ t: fixture.t }) }));
 vi.mock('@/services/onlineMusic/omni', () => ({ omni: { hasProviderPlaybackSetup: () => true, getProviderCapabilities: () => ({ auth: true }),
     getQrTtlMs: () => null, getLoginStatus: fixture.status, requestProviderPlaybackSetup: fixture.setup,
     createQrLogin: fixture.begin, checkQrLogin: fixture.check, cancelQrLogin: fixture.cancel } }));
@@ -105,7 +105,7 @@ it('completes Wrapper setup using current desktop readiness without browser auth
     fixture.status.mockResolvedValue(user); await mount(); await open();
     await act(async () => { await current.finishDesktop(); });
     expect(fixture.complete).toHaveBeenCalledOnce(); expect(current.open).toBe(false);
-    expect(fixture.begin).not.toHaveBeenCalled(); expect(request.mock.calls.every(([x]) => x.operation === 'status')).toBe(true);
+    expect(fixture.begin).not.toHaveBeenCalled(); expect(request.mock.calls.every(([x]) => ['status', 'preferences'].includes(x.operation))).toBe(true);
 });
 it('does not finish Wrapper setup when desktop readiness is revoked', async () => {
     const request = vi.fn(async (_input: { operation: string }) => desktopStatus(false));

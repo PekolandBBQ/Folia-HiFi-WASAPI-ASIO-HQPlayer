@@ -1662,8 +1662,10 @@ export default function App() {
         activePlaybackContext,
         stageActiveEntryKind,
         audioSrc,
+        currentSong,
         duration,
     }), [
+        currentSong,
         activePlaybackContext,
         audioSrc,
         currentView,

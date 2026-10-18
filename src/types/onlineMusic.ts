@@ -94,7 +94,7 @@ export interface AudioSourceRequestOptions {
     signal?: AbortSignal;
     /** Native outputs may consume a growing source when the provider supports it. */
     streaming?: boolean;
-    onProgress?: (progress: { stage: 'spotifyLaunch' | 'cache' | 'connect' | 'download' | 'decode' | 'validate'; loaded?: number; total?: number; unit?: 'bytes' | 'milliseconds' | 'items' }) => void;
+    onProgress?: (progress: { stage: 'spotifyLaunch' | 'spotifyHandshake' | 'spotifyReady' | 'cache' | 'connect' | 'download' | 'decode' | 'validate'; loaded?: number; total?: number; unit?: 'bytes' | 'milliseconds' | 'items' }) => void;
 }
 
 export interface ProviderAudioSource {

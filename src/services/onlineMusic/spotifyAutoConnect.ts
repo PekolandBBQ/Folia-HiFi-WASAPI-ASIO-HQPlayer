@@ -1,3 +1,4 @@
+import { beginPlaybackLoad, updatePlaybackLoad, endPlaybackLoad, usePlaybackLoadStore } from '../../stores/usePlaybackLoadStore';
 import { requestSpotify } from './spotifyTransport';
 // Complete missing setup steps through the same resumable installer used by the manual guide.
 type SetupStatus = {
@@ -34,4 +35,21 @@ export function createSpotifyAutoConnect(request: Request, wait = (ms: number) =
   return { ready: status.ready, detail: status.issues?.find(issue => issue.detail)?.detail || 'Spotify 尚未连接成功，请在向导中查看具体原因。' };
  };
 }
-export const autoConnectSpotify = createSpotifyAutoConnect(operation => requestSpotify<SetupStatus>({ action: 'desktopSetup', operation }));
+export const autoConnectSpotify = createSpotifyAutoConnect(async operation => {
+ const owner = 'spotify-startup-' + crypto.randomUUID();
+ let ready = false;
+ try {
+  return await requestSpotify<SetupStatus>({ action: 'desktopSetup', operation }, { onProgress: progress => {
+   ready = progress.stage === 'spotifyReady';
+   const current = usePlaybackLoadStore.getState().owner;
+   // Background startup must not overwrite preparation for a song selected by the listener.
+   if (!current || current === owner) {
+    if (!current) beginPlaybackLoad(owner, progress.stage);
+    updatePlaybackLoad(owner, progress);
+   }
+  } });
+ } finally {
+  if (ready) setTimeout(() => endPlaybackLoad(owner), 1200);
+  else endPlaybackLoad(owner);
+ }
+});

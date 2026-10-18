@@ -42,6 +42,16 @@ internal static class OriginalPolicySafetyTests
         Test("unmapped arbitrary policy is rejected",()=>Block("ORIGINAL_POLICY_ENDPOINT_UNRESOLVED",()=>Verify(["arbitrary",null,"comm"])));
         Test("stale mapped endpoint is rejected",()=>Block("ORIGINAL_ENDPOINT_MISSING_OR_AMBIGUOUS",()=>Verify([raw,null,"comm"],[endpoint2])));
         Test("duplicate endpoint identity is rejected",()=>Block("ORIGINAL_ENDPOINT_MISSING_OR_AMBIGUOUS",()=>Verify([raw,null,"comm"],[endpoint,endpoint])));
+        Test("unsafe endpoint carries its exact failing condition",()=>
+        {
+            foreach(var sample in new[]{(endpoint with{State=2},"inactive"),(endpoint with{Flow=1},"not-render"),(endpoint with{PolicyValue=null},"policy-mismatch")})
+            {
+                try{Verify([raw,null,"comm"],[sample.Item1]);}
+                catch(RouteBlockedException error)when(error.Message=="ORIGINAL_ENDPOINT_UNSAFE")
+                {Require(error.Diagnostic is {Stage:"endpoint-policy",Role:0,OriginalKind:"explicit"}&&error.Diagnostic.Reason==sample.Item2&&error.Diagnostic.EndpointState==sample.Item1.State);continue;}
+                throw new Exception("Missing endpoint diagnostic");
+            }
+        });
         Test("inactive explicit destination is rejected",()=>Block("ORIGINAL_ENDPOINT_UNSAFE",()=>Verify([raw,null,"comm"],[endpoint with{State=2}])));
         Test("capture destination is not a render original",()=>Block("ORIGINAL_ENDPOINT_UNSAFE",()=>Verify([raw,null,"comm"],[endpoint with{Flow=1}])));
         Test("ambiguous native policy interface is rejected",()=>Block("ORIGINAL_ENDPOINT_UNSAFE",()=>Verify([raw,null,"comm"],[endpoint with{PolicyValue=null}])));

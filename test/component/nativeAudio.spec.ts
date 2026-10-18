@@ -226,16 +226,16 @@ test('a delayed unavailable result retains installation guidance and protects th
     await expect(section.locator('p[role="status"]')).toHaveCount(0);
     await expect(section).toContainText('Install and enable the native audio component before selecting a device');
     await expect(section).not.toContainText('No component release is approved in this build yet.');
-    await section.getByRole('switch', { name: 'Show audio signal path', exact: true }).click();
+    await section.getByRole('switch', { name: 'Integer direct (experimental)', exact: true }).click();
     const dialog = page.locator('[data-folia-keyboard-window]');
     await expect(dialog.getByRole('heading', { name: 'Native audio component required' })).toBeVisible();
     await expect(dialog.getByRole('button', { name: 'Install / update component', exact: true })).toBeEnabled();
     expect(await page.evaluate(() => localStorage.getItem('folia_native_audio_backend'))).toBe('browser');
-    await expect(section.getByRole('switch', { name: 'Show audio signal path' })).toHaveAttribute('aria-checked', 'false');
+    await expect(section.getByRole('switch', { name: 'Integer direct (experimental)' })).toHaveAttribute('aria-checked', 'false');
 });
 
 for (const target of ['WASAPI exclusive — Test DAC', 'ASIO — Test ASIO Driver',
-    'Integer direct (experimental)', 'Show audio signal path', 'Automatically return to Web playback on component crash or timeout']) {
+    'Integer direct (experimental)', 'Automatically return to Web playback on component crash or timeout']) {
     test(`uninstalled component explains the requirement without changing ${target}`, async ({ mount, page }) => {
         await page.addInitScript(() => localStorage.setItem('folia_native_audio_backend', 'browser'));
         await mount('nativeAudio');
@@ -294,16 +294,30 @@ test('allows native component updates while the separate HQPlayer output remains
     await expect(page.getByRole('button', { name: 'Disable component', exact: true })).toBeEnabled();
 });
 
+test('signal path display is independent of component installation and output selection', async ({ mount, page }) => {
+    await page.addInitScript(() => localStorage.setItem('folia_native_audio_backend', 'browser'));
+    await mount('nativeAudio', { hqplayer: true });
+    await page.getByRole('button', { name: 'Disable component', exact: true }).click();
+    const display = page.locator('[data-settings-anchor="audioSignalPath"]');
+    await display.getByRole('switch', { name: 'Show audio signal path' }).click();
+    await expect(display.getByRole('switch', { name: 'Show audio signal path' })).toBeChecked();
+    await expect(page.getByRole('heading', { name: 'Native audio component required' })).toHaveCount(0);
+    expect(await page.evaluate(() => localStorage.getItem('folia_native_audio_backend'))).toBe('browser');
+    expect(await page.evaluate(() => localStorage.getItem('folia_show_audio_signal_path'))).toBe('true');
+    await expect(page.locator('[data-settings-anchor="nativeAudioOutput"]').getByRole('switch', { name: 'Show audio signal path' })).toHaveCount(0);
+    await expect(page.locator('#settings-hqPlayerOutput').getByRole('switch', { name: 'Show audio signal path' })).toHaveCount(0);
+});
+
 test('rechecks cached availability and explains when no approved install is available', async ({ mount, page }) => {
     await page.addInitScript(() => localStorage.setItem('folia_native_audio_backend', 'browser'));
     await mount('nativeAudio');
     await expect(page.getByRole('button', { name: 'Disable component', exact: true })).toBeVisible();
     await page.evaluate(() => Object.assign((window as any).__nativeComponent, { available: false, installed: false, installable: false }));
-    await page.getByRole('switch', { name: 'Show audio signal path' }).click();
+    await page.getByRole('switch', { name: 'Integer direct (experimental)' }).click();
     const dialog = page.locator('[data-folia-keyboard-window]');
     await expect(dialog).toContainText('No component release is approved');
     await expect(dialog.getByRole('button', { name: 'Install / update component' })).toHaveCount(0);
-    await expect(page.getByRole('switch', { name: 'Show audio signal path' })).toHaveAttribute('aria-checked', 'false');
+    await expect(page.getByRole('switch', { name: 'Integer direct (experimental)' })).toHaveAttribute('aria-checked', 'false');
 });
 
 for (const platform of ['darwin', 'linux', 'win32']) {
@@ -505,8 +519,9 @@ for (const installed of [false, true]) {
         if (installed) {
             await expect(hq.getByRole('button', { name: 'Return to browser playback', exact: true })).toBeVisible();
             await expect.poll(() => page.evaluate(() => localStorage.getItem('folia_native_audio_backend'))).toBe('hqplayer');
-            await hq.getByRole('switch', { name: 'Show audio signal path' }).click();
-            await expect(hq.getByRole('switch', { name: 'Show audio signal path' })).toBeChecked();
+            const display = page.locator('[data-settings-anchor="audioSignalPath"]');
+            await display.getByRole('switch', { name: 'Show audio signal path' }).click();
+            await expect(display.getByRole('switch', { name: 'Show audio signal path' })).toBeChecked();
             await page.getByRole('button', { name: 'WASAPI / ASIO exclusive playback', exact: true }).click();
             await expect(page.getByRole('option').filter({ hasText: 'HQPlayer' })).toHaveCount(0);
             await expect(page.getByRole('button', { name: 'WASAPI / ASIO exclusive playback', exact: true })).toContainText('Select a WASAPI / ASIO device');

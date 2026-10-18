@@ -33,3 +33,10 @@ test('unconfirmed recovery is not accepted as restored', async () => {
   await assert.rejects(recoverOrphanRoute(options({ execute: (_exe, _args, _settings, callback) =>
     callback(null, JSON.stringify({ restored: true, globalDefaultsWritten: true })) })), { code: 'ORPHAN_ROUTE_RECOVERY_FAILED' });
 });
+
+test('failed or cancelled orphan recovery never replays preparation', async()=>{
+ const {prepareWithOrphanRecovery}=require('../../electron/spotify/orphanRouteRecovery.cjs');
+ let attempts=0;
+ await assert.rejects(prepareWithOrphanRecovery(()=>{attempts++;throw Object.assign(Error('unsafe'),{code:'ORIGINAL_ENDPOINT_UNSAFE',stage:'route-inspect'});},()=>{throw Object.assign(Error('missing'),{code:'ORPHAN_ROUTE_RECORD_NOT_FOUND'});}),{code:'ORPHAN_ROUTE_RECORD_NOT_FOUND'});
+ assert.equal(attempts,1);
+});

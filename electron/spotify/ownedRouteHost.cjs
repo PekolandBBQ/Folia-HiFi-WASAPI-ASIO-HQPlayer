@@ -107,8 +107,9 @@ function createOwnedRouteHost({ componentDirectory, platform = process.platform,
             operation: pending.command, errorCode: cause, ...diagnostic,
           });
         }
-        if (['ORIGINAL_PHYSICAL_OWNER_UNPROVEN', 'ORIGINAL_EXPLICIT_ENDPOINT_CHANGED'].includes(cause)) {
+        if (['ORIGINAL_PHYSICAL_OWNER_UNPROVEN', 'ORIGINAL_EXPLICIT_ENDPOINT_CHANGED', 'ORIGINAL_ENDPOINT_UNSAFE'].includes(cause)) {
           const diagnostic = physicalOwnerDiagnostic(value.physicalOwnerDiagnostic);
+          if (diagnostic) console.info('[SpotifyRouteEndpoint]', JSON.stringify({operation:pending.command,code:cause,...diagnostic}));
           if (diagnostic) publishPreviewDiagnostic('spotify.route-owner-proof', {
             operation: pending.command, errorCode: cause, ...diagnostic,
           });

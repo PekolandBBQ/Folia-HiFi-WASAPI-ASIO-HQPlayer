@@ -396,6 +396,12 @@ declare global {
     | 'unsupported';
 
   interface ElectronUpdateStatus {
+    forkUpdate?: boolean;
+    sourcePreference?: 'auto' | 'github' | 'gitee';
+    updateSource?: 'github' | 'gitee';
+    downloadUrl?: string | null;
+    releaseNotes?: string | null;
+    availableBuild?: string | null;
     status: ElectronUpdateStatusValue;
     supported: boolean;
     updateCheckSupported: boolean;
@@ -859,6 +865,7 @@ declare global {
       resetCacheDirectory: () => Promise<ElectronCacheDirectoryResult>;
       getUpdateStatus: () => Promise<ElectronUpdateStatus>;
       checkForUpdates: () => Promise<ElectronUpdateStatus>;
+      setUpdateSource: (source: 'auto' | 'github' | 'gitee') => Promise<ElectronUpdateStatus>;
       markUpdateSeen: (version?: string | null) => Promise<ElectronUpdateStatus>;
       openUpdateReleasePage: (version?: string | null) => Promise<boolean>;
       openExternalUrl: (url: string) => Promise<boolean>;

@@ -16,6 +16,7 @@ async function findReceipt(apps) {
 async function upgradeAssets({ apps, assetDirectory, target, cli, extension, bundle, execute = runCli }) {
  const previous = await findReceipt(apps);
  if (!previous || previous.receipt.installation !== target.id) return null;
+ if ((await require('./resourceVersion.cjs').resourceVersion(apps,target)).state === 'mismatch') return null;
  if (!['backup-complete','applied','configured'].includes(previous.receipt.stage)) throw fail('SPOTIFY_BACKUP_REVIEW_REQUIRED');
  const oldConfig = path.join(previous.directory, 'roaming/spicetify');
  const backup = await fs.readdir(path.join(oldConfig, 'Backup')).catch(() => []);

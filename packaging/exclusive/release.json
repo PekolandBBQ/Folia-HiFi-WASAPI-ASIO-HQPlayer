@@ -58,5 +58,7 @@
       "sha256": "ae6c0258200c9d0cbc94b23378faf402a87ad05b7496783482984aaeb20d552a",
       "entrySha256": "0c8c64b9b6e6c92495b929f0801e63830d7f248d245fa075920a3bf8006d7642"
     }
-  ]
+  ],
+  "forkTag": "folia-hifi-v0.7.19-r5",
+  "build": "1792334966163"
 }

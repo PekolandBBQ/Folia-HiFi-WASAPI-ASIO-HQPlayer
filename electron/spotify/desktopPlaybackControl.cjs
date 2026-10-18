@@ -555,7 +555,7 @@ function createDesktopPlaybackControl({ onRevoke = () => {}, onFailureDiagnostic
           checkConfirmation(record, window, 'BOOTSTRAP_IDENTITY_UNCONFIRMED');
           if (['CANCELLED', 'SUPERSEDED', 'STALE_SESSION', 'CLOSED', 'SESSION_CHANGED'].includes(error?.code)) throw error;
           if (error?.name === 'AbortError') throw fail('CANCELLED');
-          if (!['EXACT_SPOTIFY_AUDIO_PROCESS_UNPROVEN', 'SPOTIFY_CANDIDATE_SET_CHANGED'].includes(error?.code)) throw fail('BOOTSTRAP_IDENTITY_UNCONFIRMED');
+          if (!['EXACT_SPOTIFY_AUDIO_PROCESS_UNPROVEN', 'SPOTIFY_CANDIDATE_SET_CHANGED'].includes(error?.code)) throw error;
         }
         // Session discovery can lag the acknowledged select. Only this exact
         // no-session or still-starting candidate-set result retries with a complete

@@ -32,6 +32,7 @@ function PlaybackPreparationProbe({ daylight = false }: { daylight?: boolean } =
         <button className="ml-4" onClick={() => { beginPlaybackLoad('probe', 'decode'); }}>Decode</button>
         <button className="ml-4" onClick={() => { beginPlaybackLoad('probe', 'buffer'); updatePlaybackLoad('probe', { stage: 'buffer', loaded: 200, total: 350, unit: 'milliseconds' }); }}>Buffer</button>
         <button className="ml-4" onClick={() => updatePlaybackLoad('probe', { stage: 'download', loaded: 2097152, total: 4194304 })}>Resume download</button>
+        {(['spotifyLaunch', 'spotifyHandshake', 'spotifyReady'] as const).map(stage => <button key={stage} onClick={() => beginPlaybackLoad('probe', stage)}>{stage}</button>)}
         <button className="ml-4" onClick={() => endPlaybackLoad('probe')}>Finish</button>
         <button className="ml-4" onClick={() => void requestDecodeCompatibility('probe', new AbortController().signal)}>Strict error</button>
         <HQPlayerDspEditor defaults /><PlaybackLoadProgress /><SignalPath />

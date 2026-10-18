@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { SpotifyConnection } from '@/hooks/useSpotifyConnection';
 
 // Independent genuine Node SSR: there is no document/window and no production provider I/O.
-vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
+vi.mock('react-i18next', async importOriginal => ({ ...await importOriginal<typeof import('react-i18next')>(), useTranslation: () => ({ t: (key: string) => key }) }));
 const mock = vi.hoisted(() => ({ state: { status: null, busy: false }, run: vi.fn() }));
 vi.mock('@/hooks/useSpotifyPlaybackSetup', () => ({ useSpotifyPlaybackSetup: () => mock.state }));
 vi.mock('@/services/onlineMusic/spotifyPlaybackSetup', () => ({ spotifyPlaybackSetup: { canRun: () => false, run: mock.run } }));

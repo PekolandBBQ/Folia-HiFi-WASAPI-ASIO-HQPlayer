@@ -113,7 +113,7 @@ test('a native inspection failure leaves the exact source paused and never acqui
   const f = fixture();
   try {
     f.hooks.inspect = () => { throw fail('SPOTIFY_AUDIO_PROCESS_AMBIGUOUS'); };
-    await assert.rejects(f.prepare(), { code: 'BOOTSTRAP_IDENTITY_UNCONFIRMED' });
+    await assert.rejects(f.prepare(), { code: 'SPOTIFY_AUDIO_PROCESS_AMBIGUOUS' });
     assert.equal(f.state.is_playing, false);
     assert.equal(f.events.includes('acquire'), false);
     assert.equal(f.events.filter(value => value === 'pause').length, 1);
@@ -189,4 +189,14 @@ test('the existing warm per-write state gates account for four PUTs and six GETs
     assert.equal(f.now() - startedAt, 4 * 650 + 6 * 450);
     assert.equal(f.events.includes('inspect'), false);
   } finally { await f.control.dispose(); }
+});
+
+test('cold endpoint rejection preserves the actual route error through controller cleanup and recovery', async () => {
+ const {prepareWithOrphanRecovery}=require('../../../electron/spotify/orphanRouteRecovery.cjs');
+ const f=fixture();let inspections=0,recoveries=0;
+ f.hooks.inspect=()=>{if(++inspections===1)throw fail('EXACT_SPOTIFY_AUDIO_PROCESS_UNPROVEN');if(inspections===2)throw Object.assign(fail('ORIGINAL_ENDPOINT_UNSAFE'),{nativeCode:'ORIGINAL_ENDPOINT_UNSAFE',stage:'route-inspect'});};
+ try{
+  await prepareWithOrphanRecovery(()=>f.prepare(),async()=>{recoveries++;assert.equal(f.state.is_playing,false);assert.equal(f.events.includes('acquire'),false);});
+  assert.equal(recoveries,1);assert.ok(f.events.includes('complete'));
+ }finally{await f.control.dispose();}
 });

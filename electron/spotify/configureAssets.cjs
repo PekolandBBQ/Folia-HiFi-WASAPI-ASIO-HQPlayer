@@ -41,7 +41,7 @@ async function configureAssets({ directory, target, cli, extension, execute = ru
   if (!receipt) {
     // Do not adopt an unknown partially created directory as a clean first install.
     try { await fs.mkdir(directory); } catch (e) { if (e.code === 'EEXIST') throw fail('SPOTIFY_CONFIGURATION_REVIEW_REQUIRED'); throw e; }
-    receipt = { schema: 1, installation: target.id, bundleVersion: bundle.version, stage: 'created', backupAttempted: false };
+    receipt = { schema: 1, installation: target.id, bundleVersion: bundle.version, spotifyVersion: target.binaryVersion || (target.layout !== 'store' ? target.version : undefined), stage: 'created', backupAttempted: false };
     await save('created');
   }
   if (receipt.stage === 'created') {

@@ -1,3 +1,4 @@
+import ForkUpdateDetails from './ForkUpdateDetails';
 import React from 'react';
 import { motion } from 'framer-motion';
 import { useShallow } from 'zustand/react/shallow';
@@ -377,7 +378,7 @@ const DesktopSettingsSubview: React.FC<DesktopSettingsSubviewProps> = ({
                         <button
                             type="button"
                             onClick={onCheckForUpdates}
-                            disabled={!electronSettings.ENABLE_UPDATE_CHECK || !updateStatus?.updateCheckSupported || updateStatus?.status === 'checking'}
+                            disabled={!updateStatus?.updateCheckSupported || updateStatus?.status === 'checking'}
                             className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-all active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 ${ghostButtonClass}`}
                             style={{ color: 'var(--text-primary)' }}
                         >
@@ -387,13 +388,14 @@ const DesktopSettingsSubview: React.FC<DesktopSettingsSubviewProps> = ({
                     )}
                 />
 
+                {updateStatus?.forkUpdate && <p className="text-xs opacity-70">仅检查 Folia HiFi fork 正式版。下载由你发起，安装前另行确认；便携版手动解压更新。</p>}
                 <div className={`rounded-xl border ${settingsCardClass} overflow-hidden`}>
                     {renderRow(
                         t('options.enableUpdateCheck') || 'Enable Update Check',
                         t('options.enableUpdateCheckDesc') || 'Check GitHub releases through the system proxy when the desktop app starts.',
                         renderToggle(electronSettings.ENABLE_UPDATE_CHECK, onToggleUpdateCheck, !updateStatus?.updateCheckSupported),
                     )}
-                    {renderRow(
+                    {!updateStatus?.forkUpdate && renderRow(
                         t('options.updateChannel') || 'Update Channel',
                         t('options.updateChannelDesc') || 'Choose which release lane this desktop app follows.',
                         <div className="w-44 shrink-0">
@@ -414,7 +416,7 @@ const DesktopSettingsSubview: React.FC<DesktopSettingsSubviewProps> = ({
                             />
                         </div>,
                     )}
-                    {renderRow(
+                    {!updateStatus?.forkUpdate && renderRow(
                         updateStatus?.autoUpdateSupported
                             ? t('options.enableAutoUpdate') || 'Enable Auto Update'
                             : t('options.autoUpdateUnavailable'),
@@ -443,11 +445,12 @@ const DesktopSettingsSubview: React.FC<DesktopSettingsSubviewProps> = ({
                 )}
 
                 <div className="text-[10px] opacity-45 px-1 leading-relaxed text-left" style={{ color: 'var(--text-secondary)' }}>
-                    {updateStatus?.autoUpdateSupported
+                    {updateStatus?.forkUpdate ? '支持 GitHub 和 Gitee；分片下载会自动合并，安装前仍需确认。' : updateStatus?.autoUpdateSupported
                         ? t('options.autoUpdateGithubNotice') || 'Auto update needs access to GitHub; if the network is unstable, keep a system proxy enabled.'
                         : t('options.updateCheckGithubNotice')}
                 </div>
 
+                {updateStatus?.forkUpdate && <ForkUpdateDetails status={updateStatus} />}
                 {updateStatus?.availableVersion && (
                     <div className={`p-4 rounded-xl border ${settingsCardClass} space-y-3`}>
                         <div className="flex items-center gap-2">
@@ -536,7 +539,7 @@ const DesktopSettingsSubview: React.FC<DesktopSettingsSubviewProps> = ({
                             <span className="px-1.5 text-[11px] opacity-50" style={{ color: 'var(--text-secondary)' }}>
                                 {t('options.downloadSources')}
                             </span>
-                            {electronSettings.UPDATE_CHANNEL === 'realeco' && updateStatus.platform !== 'linux' && (
+                            {!updateStatus.forkUpdate && electronSettings.UPDATE_CHANNEL === 'realeco' && updateStatus.platform !== 'linux' && (
                                 <>
                                     <button
                                         type="button"
@@ -565,7 +568,7 @@ const DesktopSettingsSubview: React.FC<DesktopSettingsSubviewProps> = ({
                                 style={{ color: 'var(--text-primary)' }}
                             >
                                 <ExternalLink size={12} />
-                                {updateStatus.autoUpdateSupported
+                                {updateStatus.forkUpdate ? '发行说明' : updateStatus.autoUpdateSupported
                                     ? t('options.githubRelease')
                                     : t('options.fullInstallerGithub')}
                             </button>
@@ -582,7 +585,7 @@ const DesktopSettingsSubview: React.FC<DesktopSettingsSubviewProps> = ({
                             )}
                         </div>
 
-                        {updateStatus.platform !== 'linux' && (
+                        {!updateStatus.forkUpdate && updateStatus.platform !== 'linux' && (
                             <div className="text-xs opacity-50 pt-1 text-left" style={{ color: 'var(--text-secondary)' }}>
                                 {t('options.chinaDownloadHint')}
                             </div>

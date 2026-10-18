@@ -1,6 +1,7 @@
 'use strict';
 
 // electron/spotify/desktopPlaybackFacts.cjs: validate public Spotify control facts, never infer local process ownership.
+const { CODES: routeErrorCodes } = require('./ownedRouteProtocol.cjs');
 const fail = code => Object.assign(new Error(code), { code });
 const errorCodes = new Set(['DESKTOP_SOURCE_UNQUALIFIED', 'SOURCE_EFFECT_UNKNOWN', 'SOURCE_OPERATION_UNSUPPORTED', 'SOURCE_OBSERVATION_STALE', 'AUTH_REQUIRED', 'SCOPES_UNKNOWN', 'SCOPE_REQUIRED', 'SESSION_CHANGED',
   'DEVICE_NOT_SELECTED', 'DEVICE_NOT_LISTED', 'DEVICE_NOT_COMPUTER', 'DEVICE_RESTRICTED', 'DUPLICATE_DEVICE_ID',
@@ -12,7 +13,7 @@ const errorCodes = new Set(['DESKTOP_SOURCE_UNQUALIFIED', 'SOURCE_EFFECT_UNKNOWN
   'PREPARED_TARGET_ACTIVITY_EXPIRED', 'PREPARED_TARGET_ACTIVITY_REQUIRED', 'SPOTIFY_ACTIVE_SESSION_NOT_ON_TARGET',
   'SESSION_OBSERVATION_UNTRUSTED', 'PAUSED_SOURCE_COMPLETE_SESSION_PROOF_REQUIRED', 'EXTERNAL_POLICY_CONFLICT', 'SPOTIFY_INSTANCE_CHANGED', 'BASE_OTHER_WRITER_PRESENT']);
 const failureCode = error => error?.name === 'AbortError' ? 'CANCELLED' : error?.name === 'TimeoutError' ? 'CONTROL_TIMEOUT'
-  : errorCodes.has(error?.code) ? error.code : 'API_UNAVAILABLE';
+  : (errorCodes.has(error?.code) || routeErrorCodes.has(error?.code)) ? error.code : 'API_UNAVAILABLE';
 const validDeviceId = value => typeof value === 'string' && value.length > 0 && value.length <= 256
   && !/[\u0000-\u001f\u007f]/.test(value);
 const validTrackId = value => typeof value === 'string' && /^[A-Za-z0-9]{22}$/.test(value);

@@ -1,6 +1,8 @@
 
 
 export default {
+ audioSignalPath: {title: "音频链路"},
+ spotifyExit: {title:"退出 Folia 时自动退出 Spotify",saveFailed:"设置保存失败，请重试。"},
  livePcmPrebuffer: {"title": "Spotify PCM 预缓冲", "description": "25–5000 毫秒，默认 350 毫秒。数值较低可能导致断音。WASAPI、ASIO 和 HQPlayer 的 Spotify PCM 共用此设置，下次播放／续播、拖动进度或准备曲目时生效；滑动不会打断当前播放。", "sharedHint": "预缓冲与 WASAPI、ASIO 共用，请在原生音频设置中调整“Spotify PCM 预缓冲”。"},
  spotifyCable: {
   "routeProbeFailed": "音频路由检查未能完成。请刷新后重试；仅凭此结果不能认定驱动或采集失败。",
@@ -174,7 +176,7 @@ export default {
   "silentDescription": "新设置默认开启。关闭时启动完整的 HQPlayer 前台窗口；保留你已保存的选择，仅影响 Folia 新启动的实例。"
 },
  hqpDsp: {"button":"HQPlayer设置","defaultsTitle":"默认升频设置","defaultsDescription":"保存后，每首歌曲加载前应用。浮窗中当前歌曲 / 下一首的设置优先于默认值。读取选项会连接或启动 HQPlayer。","saveDefaults":"保存为默认值","clearDefaults":"使用 HQPlayer 当前设置","defaultsSaved":"默认值已保存，后续歌曲生效。","defaultsCleared":"默认值已清除，保留 HQPlayer 当前设置。","title":"HQPlayer 升频设置","input":"输入：Folia 当前歌曲（文件 / 流媒体）","devices":"输入输出设备请在 HQPlayer Desktop 中选择；官方控制接口未提供设备切换。","mode":"升频模式","filter":"滤波器","shaper":"整形器 / 调制器","rate":"目标采样率","auto":"自动","current":"应用到当前歌曲","next":"下一首歌曲生效","applied":"已应用，保留当前播放位置。","queued":"已保存，下一首歌曲开始前生效。","loading":"正在读取 / 应用 HQPlayer 设置…","refresh":"刷新选项","stopToRead":"该模式的选项尚未读取。请在 HQPlayer 中停止播放后刷新；不会为读取选项中断当前歌曲。"},
-  loadProgress: {"details":"加载详情","closeDetails":"关闭加载详情","stage":"当前阶段","completion":"已完成","elapsed":"已用时","seconds":"{{value}} 秒","items":"{{value}} 项","megabytes":"{{value}} MB","unmeasured":"此阶段不提供百分比。","reasons":{"cache":"正在检查此音质是否已保存在本机。","inspect":"正在读取音频格式，为播放做好准备。","source":"正在向音乐平台获取本次播放地址与音源信息。","download":"音频正在从音乐平台传入；支持流式播放的输出可在下载继续时开始播放。","upload":"正在准备本地音频，供所选输出使用。","decode":"正在将传入的音频转换为可播放的声音数据。","validate":"正在检查准备好的音频是否有效。","connect":"正在等待播放服务建立连接。","load":"正在准备所选输出及其音频处理。","buffer":"正在等待足够的音频继续播放；此前正在播放时，缓冲恢复后会自动续播。"},inspect: '正在读取音频信息',"compatibility":"兼容模式","compatibilityDesc":"默认关闭。开启后在失败恢复时并行准备严格和容错解码结果；可能跳过损坏音频帧。","strictError":"当前歌曲严格解码失败。是否开启兼容模式重试？容错处理可能跳过损坏音频帧。","once":"仅当前歌曲","always":"后续保持开启","cancel":"取消","cache":"正在读取音频缓存","source":"正在获取流媒体地址","download":"正在下载音频","upload":"正在准备本地音频","decode":"正在解码音频","validate":"正在校验解码结果","connect":"正在连接播放服务","load":"正在加载音频","buffer":"正在等待播放缓冲"},
+  loadProgress: {"spotifyLaunch":"正在加载 Spotify","spotifyHandshake":"正在与 Spotify 建立握手","spotifyReady":"Spotify 握手成功","details":"加载详情","closeDetails":"关闭加载详情","stage":"当前阶段","completion":"已完成","elapsed":"已用时","seconds":"{{value}} 秒","items":"{{value}} 项","megabytes":"{{value}} MB","unmeasured":"此阶段不提供百分比。","reasons":{"spotifyLaunch":"正在启动或重新连接 Spotify。","spotifyHandshake":"正在确认桥接能力和本机播放器已就绪。","spotifyReady":"已连接，可以继续准备歌曲播放。","cache":"正在检查此音质是否已保存在本机。","inspect":"正在读取音频格式，为播放做好准备。","source":"正在向音乐平台获取本次播放地址与音源信息。","download":"音频正在从音乐平台传入；支持流式播放的输出可在下载继续时开始播放。","upload":"正在准备本地音频，供所选输出使用。","decode":"正在将传入的音频转换为可播放的声音数据。","validate":"正在检查准备好的音频是否有效。","connect":"正在等待播放服务建立连接。","load":"正在准备所选输出及其音频处理。","buffer":"正在等待足够的音频继续播放；此前正在播放时，缓冲恢复后会自动续播。"},inspect: '正在读取音频信息',"compatibility":"兼容模式","compatibilityDesc":"默认关闭。开启后在失败恢复时并行准备严格和容错解码结果；可能跳过损坏音频帧。","strictError":"当前歌曲严格解码失败。是否开启兼容模式重试？容错处理可能跳过损坏音频帧。","once":"仅当前歌曲","always":"后续保持开启","cancel":"取消","cache":"正在读取音频缓存","source":"正在获取流媒体地址","download":"正在下载音频","upload":"正在准备本地音频","decode":"正在解码音频","validate":"正在校验解码结果","connect":"正在连接播放服务","load":"正在加载音频","buffer":"正在等待播放缓冲"},
   "hqPlayer": {
   "selectPath": "选择程序路径…",
   "resetPath": "恢复自动检测",
@@ -898,6 +900,7 @@ export default {
       "hqplayer-reset-path": {"title":"自动检测 HQPlayer","description":"恢复自动查找已安装的 Desktop 版本"},
       "settings-hqplayer": {"title":"HQPlayer Desktop","description":"请在 HQPlayer 中启用 Allow control from network。输出设备和 DSP 参数仍在 HQPlayer 中配置；当前通过本机 4321 端口连接。"},
       "settings-native-audio": { "title": "WASAPI及ASIO独占播放", "description": "为本地文件和在线歌曲选择 WASAPI 独占或 ASIO 输出" },
+      "spotify-quit-with-folia": {"title":"退出 Folia 时自动退出 Spotify","description":"退出 Folia 时自动退出 Spotify"},
       "native-audio-signal-path-toggle": { "title": "显示音频链路", "description": "开启或关闭原生音频链路显示" },
       "native-audio-integer-direct-toggle": { "title": "原生音频整数直通", "description": "开启或关闭 WASAPI 独占与兼容 ASIO 驱动的纯整数 PCM 链路" },
       "search-current": { "title": "搜索歌曲", "description": "在当前来源搜索歌曲" },
@@ -1130,6 +1133,9 @@ export default {
       "settings-toggle-bottom-subtitle-overlay": { "title": "切换底部字幕层", "description": "显示或隐藏整个底部字幕层" },
       "settings-cycle-subtitle-content-mode": { "title": "切换翻译字幕状态", "description": "在翻译、罗马音、罗马音加翻译之间切换副字幕内容" },
       "settings-toggle-subtitle-background": { "title": "切换字幕背景", "description": "显示或隐藏提升字幕可读性的背景" },
+      "fork-update-check": {"title":"检查 Folia HiFi 更新","description":"检查专版正式发布与构建更新"},
+      "fork-update-source-gitee": {"title":"使用 Gitee 更新源","description":"切换国内更新源并检查更新"},
+      "fork-update-source-auto": {"title":"自动选择更新源","description":"优先 GitHub，失败后尝试 Gitee"},
       "settings-language-system": { "title": "跟随系统语言", "description": "使用浏览器或系统语言" },
       "settings-language-zh-CN": { "title": "切换为中文", "description": "界面使用简体中文" },
       "settings-language-en": { "title": "切换为英文", "description": "界面使用 English" },

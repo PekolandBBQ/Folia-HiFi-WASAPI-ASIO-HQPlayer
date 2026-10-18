@@ -13,6 +13,8 @@ if (process.env.FOLIA_LOCAL_PREVIEW === 'true') Object.assign(release, {
 
 // packaging/exclusive/build.cjs — assemble this fork without changing upstream's release channel.
 async function main() {
+    release.build = String(Date.now());
+    if (!release.forkTag) throw new Error('Fork release tag is required');
     const codeRoot = path.resolve(__dirname, '../..');
     // These external script inputs cannot be resolved by PowerShell inside ASAR.
     for (const name of ['desktopDiscovery.ps1', 'launchStore.ps1', 'StoreActivation.cs', 'installCable.ps1'])
@@ -109,6 +111,9 @@ async function main() {
         },
         publish: null,
     }, publish: 'never' });
+    if (process.env.FOLIA_ASSEMBLY_ONLY !== 'true') {
+      await require('./updateManifest.cjs').prepareUpdateArtifacts(output,release);
+    }
     console.log(JSON.stringify({ output, version: release.version, componentVersions: releases.map(r => r.version),
         spotifyComponentVersion: wrapper.bundleVersion }));
 }
