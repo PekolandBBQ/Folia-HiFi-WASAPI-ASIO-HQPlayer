@@ -35,12 +35,12 @@ test('copied uninstaller is not proof of an installed app',async t=>{
  const f=await fixture(t);await fs.writeFile(path.join(f.directory,'Uninstall Folia-HiFi-WASAPI-ASIO-HQPlayer.exe'),'fixture');
  const {isInstalled}=require('../../electron/forkUpdateIntegration.cjs');assert.equal(isInstalled(f.directory,()=>''),false);assert.equal(isInstalled(f.directory,()=>path.join(f.directory,'Uninstall Folia-HiFi-WASAPI-ASIO-HQPlayer.exe')),true);
 });
-test('installed confirmation uses normal quit and a detached waiter, not immediate installation',async t=>{
+test('installed confirmation waits for helper readiness before normal quit',async t=>{
  const f=await fixture(t);const {create}=require('../../electron/forkUpdateIntegration.cjs'),{EventEmitter}=require('node:events');let answer=0,quits=0;const launches=[];
- const service=create({current,installed:true,app:{getPath:()=>f.directory,quit:()=>quits++},publish:()=>{},shell:{},dialog:{showMessageBox:async()=>({response:answer})},session:{fromPartition:name=>{assert.equal(name,'folia-fork-update');return {fetch:async url=>url.includes('/releases/latest')?Response.json(release()):url.includes('folia-hifi-update.json')?Response.json(manifest()):new Response('data')};}},launch:(cmd,args,options)=>{launches.push({cmd,args,options});const child=new EventEmitter();child.unref=()=>{};setImmediate(()=>child.emit('spawn'));return child;}});
+ const service=create({current,installed:true,app:{getPath:()=>f.directory,quit:()=>quits++},publish:()=>{},shell:{},dialog:{showMessageBox:async()=>({response:answer})},session:{fromPartition:name=>{assert.equal(name,'folia-fork-update');return {fetch:async url=>url.includes('/releases/latest')?Response.json(release()):url.includes('folia-hifi-update.json')?Response.json(manifest()):new Response('data')};}},launch:(cmd,args,options)=>{launches.push({cmd,args,options});const child=new EventEmitter();child.unref=()=>{};setImmediate(()=>{assert.equal(quits,0);require('node:fs').writeFileSync(args[args.indexOf('-ReadyFile')+1],'ready');});return child;}});
  await service.check();await service.download();assert.equal(quits,0);assert.equal(await service.confirmInstall(),false);assert.equal(launches.length,0);
  answer=1;assert.equal(await service.confirmInstall(),true);assert.equal(quits,1);assert.equal(launches.length,1);assert.equal(launches[0].options.windowsHide,true);
- const script=await fs.readFile(path.join(f.directory,'updates/install-update.ps1'),'utf8');assert.ok(script.indexOf('WaitForExit(120000)')<script.indexOf('Start-Process'));assert.ok(!script.includes('Stop-Process'));
+ assert.equal(launches[0].options.detached,false);const script=await fs.readFile(launches[0].args[launches[0].args.indexOf('-File')+1],'utf8');assert.ok(script.indexOf('WaitForExit(120000)')<script.indexOf('Start-Process'));assert.ok(!script.includes('Stop-Process'));
 });
 const {sources}=require('../../electron/forkUpdateSources.cjs');
 async function mirrorFixture(t,{preference='auto',githubFails=true,mirrorBuild='1792300000001',empty=false,downloadFails=false}={}){
