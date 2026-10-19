@@ -63,6 +63,9 @@ jobs:
       - name: Run unit tests
         run: npm run test:unit
 
+      - name: Spotify resource recovery and packaged scripts
+        run: node --test test/node/spotifySearchRecovery.test.cjs test/node/spotifyOneClickConfiguration.test.cjs test/node/spotifyPackagedScripts.test.cjs test/node/spotifyUpgradeStatus.test.cjs test/node/spotifyFirstSetup.test.cjs test/node/spotifyComponentFreshness.test.cjs
+
   typecheck-sync-server:
     name: Typecheck sync-server
     if: github.event_name == 'push' || github.event.pull_request.draft == false
