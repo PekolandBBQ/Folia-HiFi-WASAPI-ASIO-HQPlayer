@@ -96,6 +96,9 @@ function mappedError(error) {
 }
 function publicError(error) {
   const result = mappedError(error);
+    const {errorFacts}=require('./controlDiagnostics.cjs');
+    if(error?.cause)result.cause=errorFacts(error.cause);
+    if(error?.cleanupError)result.cleanupError=errorFacts(error.cleanupError);
   for (const key of ['retryCount', 'retriesExhausted']) if (error?.[key] !== undefined) result[key] = error[key];
   for (const key of ['nativeCode', 'failureCode', 'stage']) if (typeof error?.[key] === 'string') result[key] = error[key];
   for (const key of ['stateMismatch','expectedPlaying','actualPlaying','expectedDurationMs','actualDurationMs','actualPositionMs'])

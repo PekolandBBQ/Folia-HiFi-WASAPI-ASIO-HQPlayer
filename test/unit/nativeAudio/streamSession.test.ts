@@ -326,3 +326,14 @@ it('suspending a replacement cancels its waiting play and permits a later prepar
         expect(await f.session.command('play', {})).toMatchObject({ position: 5, playing: true, streamGeneration: 2 });
     } finally { f.current.abort.abort(); await f.session.close(); }
 });
+
+it('does not expose a retired live pipe EOF as song end before source completion', async()=>{
+ const f=fixture();
+ Object.assign(f.source.state,{live:true});
+ try {
+  await f.session.prepare();
+  expect(f.session.observe({streaming:true,streamGeneration:0,ended:true,playing:false})).toBe(false);
+  f.source.state.complete=true;
+  expect(f.session.observe({streaming:true,streamGeneration:0,ended:true,playing:false})).toBe(true);
+ } finally {f.current.abort.abort();await f.session.close();}
+});

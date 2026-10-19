@@ -36,7 +36,7 @@ internal sealed class WindowsProductBackend : IProductRouteBackend, IDisposable
     }
 
     internal static bool CanReusePausedInspection(ProductDiscovery? found, RouteSelection requested, TimeSpan age) =>
-        found is not null && found.SourcePaused && found.Selection == requested && age >= TimeSpan.Zero
+        found is not null && (found.SourcePaused || !found.RequiresNativePauseObservation) && found.Selection == requested && age >= TimeSpan.Zero
         && age <= PreparationObservationLedger.MaximumAge;
     public ProductDiscovery InspectForAcquire(RouteSelection selection)
     {
@@ -300,7 +300,8 @@ internal sealed class WindowsProductBackend : IProductRouteBackend, IDisposable
             RequireComplete(fresh, process);
             if (fresh.Sessions.Length == 0) throw new RouteBlockedException("EXACT_SPOTIFY_AUDIO_PROCESS_UNPROVEN");
             Discovery = new(process, target, selection, originals.ToArray(), !fresh.Sessions.Any(row => row.Active),
-                originals.Take(2).All(value => value is null), true, ReadDefaultStatus().Unchanged, true, OriginalPolicySafe: true);
+                originals.Take(2).All(value => value is null), true, ReadDefaultStatus().Unchanged, true, OriginalPolicySafe: true)
+                { RequiresNativePauseObservation = !ProcessCaptureRouting.Enabled };
         }
         internal void RequireUnchangedInspection()
         {

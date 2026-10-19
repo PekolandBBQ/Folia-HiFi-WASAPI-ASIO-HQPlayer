@@ -205,6 +205,8 @@ function createStreamSession({ current, helper, executable, fetchImpl, progress,
             // A failed or cancelled producer can still receive its pipe's final EOF.
             // That retired output must never advance the queue as a natural end.
             if (current.abort.signal.aborted || decoder?.controller.signal.aborted) return false;
+            // Closing a live capture pipe for pause/seek is not song completion.
+            if (state.ended && source.state.live === true && source.state.complete !== true) return false;
             if (generationRevision !== revision) return false;
             if (state.streaming && state.streamGeneration !== undefined && state.streamGeneration !== generation) return false;
             state.preparationRevision = revision;

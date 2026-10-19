@@ -19,6 +19,12 @@ import { getStoredBoolean, setStoredBoolean } from './storagePrimitives';
 import { setStatusMessage } from './useStatusMessageStore';
 import i18n from '../i18n/config';
 
+// A source may own repeat state; only a confirmed remote value changes the icon.
+let sourceLoopController: (() => void) | undefined;
+export function registerSourceLoopController(controller: () => void) {
+    sourceLoopController = controller;
+    return () => { if (sourceLoopController === controller) sourceLoopController = undefined; };
+}
 let outputChange = 0;
 // Reconstructed from the authentic r31 client: all selections share one release barrier.
 let outputRelease: Promise<boolean> | null = null;
@@ -355,6 +361,7 @@ export const useAudioSettingsStore = create<AudioSettingsState>((set, get) => ({
         set({ isMuted: next });
     },
     handleToggleLoopMode: () => {
+        if (sourceLoopController) { sourceLoopController(); return; }
         const prev = get().loopMode;
         const next = prev === 'off'
             ? 'all'

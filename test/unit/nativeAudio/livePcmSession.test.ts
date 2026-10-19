@@ -157,7 +157,7 @@ it('suspends actual PCM on pause, keeps paused seeks parked and resumes using a 
 it('rejects a live producer which reaches EOF without delivering any PCM frame', async () => {
     const f = await fixture({ emptyFirst: true });
     await expect(f.session.prepare()).rejects.toMatchObject({ code: 'DECODE_FAILED' });
-    expect(f.session.source.state).toEqual({ complete: false, available: 0 });
+    expect(f.session.source.state).toEqual({ complete: false, available: 0, live: true });
     expect(f.readers[0].finished).toBe(true); expect(f.onError).not.toHaveBeenCalled();
     expect(Buffer.concat(f.connections[0]?.chunks || [])).toHaveLength(0);
 });

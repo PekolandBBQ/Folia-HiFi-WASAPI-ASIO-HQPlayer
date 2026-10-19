@@ -349,25 +349,28 @@ function createCableAudioPreparation({ captureHost, control, vault, cooldown, ge
     // observed above, but cannot hold this source request or publish its facts.
     return Promise.race([reads, cancelled]).finally(() => signal.removeEventListener('abort', abort));
   }
-  async function observeExternalSelection(record) {
+  async function observeExternalSelection(record, pausedOnly = false) {
     if(!onExternalSelection || !record?.prepared || !record.automaticRouting || record.releasing
       || record.externalTransition || record.playingSeek) return null;
     return enqueue(record,()=>own(record),async()=>{
-      const changed=await control.observeExternalSelection(record.session,async()=>{
+      if(pausedOnly && (record.read || !(record.externalSelection?.externalPause || record.pausedByConsumer)))return null;
+      let changed;
+      try { changed=await control.observeExternalSelection(record.session,async()=>{
         record.externalTransition=true;record.intent++;invalidateRead(record);
       },async facts=>{
         const route=record.sourceOwner?.route;
         if(!route)throw fail('ROUTE_PROOF_UNCONFIRMED');
-        await route.holdExternalSelection(facts.trackId);
+        if(facts.trackId===facts.previousTrackId){route.confirmPaused();await route.suspendPaused();}
+        else await route.holdExternalSelection(facts.trackId);
         record.heldRoute=route;record.preparationRoute=null;record.retiredReads.clear();
         record.externalSelection=facts;
-      });
+      }); } finally { record.externalTransition=false; }
       if(changed){
         record.externalTransition=false;
         onDiagnostic({phase:'external-track-held',session:record.session,previousTrackId:changed.previousTrackId,
           trackId:changed.trackId,positionMs:changed.positionMs});
         // Notify outside the control queue: releasing the output can itself ask to pause.
-        void Promise.resolve().then(()=>onExternalSelection(changed)).catch(error=>{
+        void Promise.resolve().then(()=>onExternalSelection(changed,()=>current===record&&!record.releasing)).catch(error=>{
           onDiagnostic({phase:'external-track-notification-failed',code:error?.code||'CONTROL_REJECTED'});
         });
       }
@@ -381,13 +384,25 @@ function createCableAudioPreparation({ captureHost, control, vault, cooldown, ge
         if (read.finishing) return;
         readOwned(record, read);
         if(onExternalSelection && await observeExternalSelection(record))return;
-        const facts = await control.readState(record.session, { expectedPlaying: true }); readOwned(record, read); requireFacts(facts, record, true);
+        let facts = await control.readState(record.session, onExternalSelection ? {} : { expectedPlaying: true });
+        readOwned(record, read);
+        if(onExternalSelection && facts.isPlaying===false){
+          if(await observeExternalSelection(record))return;
+          facts=await control.readState(record.session,{expectedPlaying:true});readOwned(record,read);
+        }
+        requireFacts(facts, record, true);
         if (read.finishing) return;
         if (read.capture.status) { await read.capture.status(); readOwned(record, read); }
         if (read.finishing) return;
         if (read.routeAudio) { await read.routeAudio.verifyActive(); readOwned(record, read); }
         schedulePoll(record, read);
       } catch (error) {
+        // A desktop change can land between the observation and exact-track read.
+        if (error?.code === 'TRACK_NOT_CURRENT' && current === record && !record.releasing) {
+          try { if (await observeExternalSelection(record)) return; } catch (handoffError) {
+            onDiagnostic({phase:'external-track-handoff-failed',code:handoffError.code,causeCode:error.code});
+          }
+        }
         if (record.read === read && !read.controller.signal.aborted) {
           read.failure = error; void revokeSession(record.session, error?.code || 'PLAYBACK_STATE_UNCONFIRMED');
         }
@@ -544,7 +559,7 @@ function createCableAudioPreparation({ captureHost, control, vault, cooldown, ge
     }
     function begin(signal) {
       if (signal?.aborted) throw fail('CANCELLED');
-      claim(); record.terminalCleanup = null; record.terminalStop = null; const intent = ++record.intent; invalidateRead(record);
+      claim(); record.pausedByConsumer=false; record.terminalCleanup = null; record.terminalStop = null; const intent = ++record.intent; invalidateRead(record);
       const guard = () => {
         own(record);
         if (record.intent !== intent || record.outputOwner !== consumer || signal?.aborted) throw fail('CANCELLED');
@@ -568,6 +583,7 @@ function createCableAudioPreparation({ captureHost, control, vault, cooldown, ge
           const paused = await control.pause(record.session); guard(); requireFacts(paused, record, false);
           confirmRoutePaused(record);
           await holdRoutes(record);
+          record.pausedByConsumer=true;
           if (terminalStop && record.automaticRouting) {
             const source = control.terminalCleanupCheckpoint?.(record.session);
             if (source?.isCurrent() && record.heldRoute?.heldPaused === true)
@@ -854,10 +870,16 @@ function createCableAudioPreparation({ captureHost, control, vault, cooldown, ge
           let observation;
           do {
             observation = await routeLifecycle.inspect(record.selection); own(record);
-            if (facts?.isPlaying !== false || observation.sourcePaused !== false) break;
-            if (performance.now() - started >= 4000) throw fail('ROUTE_SOURCE_PAUSE_UNCONFIRMED');
+            if (facts?.isPlaying !== false || observation.sourcePaused !== false
+              || observation.requiresNativePauseObservation === false) break;
+            if (performance.now() - started >= 4000) throw Object.assign(fail('ROUTE_SOURCE_PAUSE_UNCONFIRMED'),
+              { stage: 'route-native-inactivity', expectedPlaying: false, actualPlaying: facts.isPlaying });
             await waitForNative(60, undefined, { signal: record.controller.signal }); own(record);
           } while (true);
+          try { onDiagnostic({ phase: 'route-binding-observed', session: record.session,
+            sourcePlaying: facts?.isPlaying, nativeSourcePaused: observation.sourcePaused,
+            requiresNativePauseObservation: observation.requiresNativePauseObservation !== false,
+            elapsedMs: Math.round(performance.now() - started) }); } catch {}
           record.routeBinding = observation.binding;
           record.routeSourcePaused = observation.sourcePaused;
           Object.assign(record.selection, { expectedSpotifyProcessId: record.routeBinding.expectedSpotifyProcessId,
@@ -961,7 +983,7 @@ function createCableAudioPreparation({ captureHost, control, vault, cooldown, ge
     } finally { if (jobs.get(requestId) === record) jobs.delete(requestId); finishPreparation(); }
   }
   return {
-    observePausedExternalSelection:()=>current&&!current.read?observeExternalSelection(current):Promise.resolve(null),
+    observePausedExternalSelection:()=>current&&!current.read?observeExternalSelection(current,true):Promise.resolve(null),
     prepare(...args) { return track(run(...args)); }, lookup, revokeSession,
     cancel(requestId) { const record = jobs.get(requestId) || (current?.requestId === requestId ? current : null); if (record) { forgetMetadata(record); void track(release(record)); } },
     isSourceUrl(url) { return sourceUrls.has(sourceUrlKey(url)); },

@@ -246,6 +246,21 @@ it('finishes the seek state when output handoff replaces the metadata checkpoint
     expect(transport.currentTime).toBe(21.2); expect(transport.error).toBeNull();
 });
 
+it('a cancelled checkpoint seek releases its seeking flag and accepts later native progress', async () => {
+    vi.spyOn(performance, 'now').mockReturnValue(0);
+    const { transport, request, send } = fixture();
+    const original = request.getMockImplementation()!;
+    transport.setSource('https://example.com/live'); await transport.play();
+    request.mockImplementation(async args => {
+        if (args.action === 'seek') throw Object.assign(new Error('Seek replaced'), { code: 'CANCELLED' });
+        return original(args);
+    });
+    transport.currentTime = 1.332;
+    await vi.waitFor(() => expect(transport.seeking).toBe(false));
+    send({position: 40, bufferedStart: 40, bufferedEnd: 40.5});
+    expect(transport.currentTime).toBe(40); expect(transport.error).toBeNull();
+});
+
 it('prebuffers an HQPlayer streaming checkpoint before the first play so handoff never plays origin zero', async () => {
     vi.spyOn(performance, 'now').mockReturnValue(0);
     const { transport, request, state } = fixture('hqplayer');

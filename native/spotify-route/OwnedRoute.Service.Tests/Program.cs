@@ -12,6 +12,22 @@ object Key(ServiceReply r,int generation=1)=>new {session="product",generation,l
 object ResumeArgs(ServiceReply r,bool capture=true,bool mute=true)=>new {session="product",generation=1,leaseId=Lease(r).GetProperty("leaseId").GetString(),captureStarted=capture,monitorGainZero=mute,selectedSourceUri="spotify:track:owned"};
 void Restored(Fake p)=>Check(p.Values.SequenceEqual(p.Originals),"Originals did not match exact nullable/communication originals");
 
+Run("process discovery with an active endpoint reaches independent source pause verification",()=>{
+    var p=new Fake {DiscoveryNativePaused=false, RequiresNativePauseObservation=false};using var s=p.Service();
+    var r=Send(s,"acquire",AcquireArgs(p));
+    Check(r.Ok && r.State=="heldPaused","Endpoint activity incorrectly blocked process capture");
+    Check(Send(s,"release",Key(r)).Ok,"Process route cleanup failed");
+});
+Run("legacy discovery still refuses an active endpoint",()=>{
+    var p=new Fake {DiscoveryNativePaused=false};using var s=p.Service();
+    var r=Send(s,"acquire",AcquireArgs(p));
+    Check(!r.Ok && r.Code=="SOURCE_NOT_PAUSED" && p.Writes.Count==0,"Legacy pause check lost");
+});
+Run("process capture still refuses a genuinely playing source before policy writes",()=>{
+    var p=new Fake {Paused=false, RequiresNativePauseObservation=false};using var s=p.Service();
+    var r=Send(s,"acquire",AcquireArgs(p));
+    Check(!r.Ok && p.Writes.Count==0,"Actual source pause verification was bypassed");
+});
 Run("paused player waits for delayed native inactive session within budget",()=>{
     var p=new Fake {TransientActiveScans=2};var control=new SourceFake(p);
     new SourcePauseVerifier(control,p,p,()=>p.Now).RequirePaused(new("official-device","spotify:track:owned",p.Live));
@@ -342,10 +358,13 @@ sealed class Fake:IProductRouteBackend,IProductRouteLifetime,IVerifiedSpotifyRes
     private RouteRecord? record;
     private ProductDiscovery? opened;
     public ProductRouteService Service()=>new(this,()=>Now,()=>Now-new DateTimeOffset(2026,10,9,0,0,0,TimeSpan.Zero));
+    public bool? DiscoveryNativePaused;
+    public bool RequiresNativePauseObservation=true;
     public ProductDiscovery Inspect(RouteSelection selection)
     {
         Inspects++;
-        return new(Live,Endpoint,selection,Values.ToArray(),Paused,Values.Take(2).All(value=>value is null),true,true,NoOtherWriters,OriginalPolicySafe:PolicySafe);
+        return new(Live,Endpoint,selection,Values.ToArray(),DiscoveryNativePaused??Paused,Values.Take(2).All(value=>value is null),true,true,NoOtherWriters,OriginalPolicySafe:PolicySafe)
+            {RequiresNativePauseObservation=RequiresNativePauseObservation};
     }
     public IProductRouteLifetime Open(ProductDiscovery d) {opened=d;return this;}
     public IVerifiedSpotifyResolver Resolver=>this;

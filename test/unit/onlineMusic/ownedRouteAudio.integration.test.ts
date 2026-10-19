@@ -11,7 +11,15 @@ async function start(f: ReturnType<typeof audioFixture>) {
   const reader = opened.stream[Symbol.asyncIterator](), next = reader.next(); await tick();
   return { prepared, source, opened, reader, next };
 }
-it('waits for native inactivity after the source Pause ACK before acquisition', async () => {
+it('process capture accepts a paused player while its Windows session stays active', async () => {
+  const f = create();
+  Object.assign(f.inspection, { sourcePaused: false, requiresNativePauseObservation: false });
+  await expect(f.prepare()).resolves.toHaveProperty('url');
+  expect(f.events.filter(value => value === 'route:inspect')).toHaveLength(2);
+  expect(f.events.filter(value => value === 'route:acquire')).toHaveLength(1);
+  expect(f.state.is_playing).toBe(false);
+});
+it('legacy endpoint capture waits for native inactivity after the source Pause ACK before acquisition', async () => {
   const f = create(), native = f.host.request.getMockImplementation()!;
   let checks = 0;
   f.inspection.sourcePaused = false;
@@ -509,4 +517,42 @@ it('three silent preparation retries actually retire the old route owner before 
  const source=f.audio.lookup(prepared.url),opened=await source.openReadable();const next=opened.stream[Symbol.asyncIterator]().next();await tick();
  f.captures.at(-1).queue.push(Buffer.alloc(8,7));expect((await next).value).toEqual(Buffer.alloc(8,7));
  await source.stop();await f.audio.leaveProvider();expect(f.lease().state).toBe('restored');
+});
+
+it.each(['seek','pause'])('external Spotify %s retains the same route and never uses track replacement', async action => {
+  const changed=vi.fn(), f=create({onExternalSelection:changed,createSourceHarness:createRequire(import.meta.url)('../../fixtures/sharedRouteHarness.cjs').createSharedRouteHarness});
+  const {reader,next}=await start(f);
+  f.captures[0].queue.push(Buffer.alloc(8,1));await next;
+  // The first observation establishes the independent Spotify clock.
+  await new Promise(resolve=>setTimeout(resolve,2100));
+  if(action==='seek')f.state.progress_ms=45000;
+  else f.state.is_playing=false;
+  await vi.waitFor(()=>expect(changed).toHaveBeenCalled(),{timeout:3500});
+  const facts=changed.mock.calls[0][0];
+  expect(facts).toMatchObject({trackId,previousTrackId:trackId,[action==='seek'?'externalSeek':'externalPause']:true});
+  expect(f.events).not.toContain('route:holdExternalSelection');
+  expect(f.events).toContain('route:suspendPaused');
+  expect(f.state.is_playing).toBe(false);
+  if(action==='pause'){
+    await f.audio.observePausedExternalSelection();await f.audio.observePausedExternalSelection();
+    expect(changed).toHaveBeenCalledTimes(1);
+    f.state.progress_ms=35000;f.state.is_playing=true;
+    await f.audio.observePausedExternalSelection();await tick();
+    expect(changed).toHaveBeenCalledTimes(2);
+    expect(changed.mock.calls[1][0]).toMatchObject({externalResume:true,externalPause:false,trackId,positionMs:35000});
+    expect(f.events).not.toContain('route:holdExternalSelection');
+  }
+  await reader.return(undefined);
+},10000);
+
+it('background pause observer ignores the intentional pause before first PCM', async () => {
+ const changed=vi.fn(),f=create({onExternalSelection:changed,createSourceHarness:createRequire(import.meta.url)('../../fixtures/sharedRouteHarness.cjs').createSharedRouteHarness});
+ const prepared=await f.audio.prepare(trackId,'72345678-1234-1234-1234-123456789abc');
+ await f.audio.observePausedExternalSelection();await f.audio.observePausedExternalSelection();
+ expect(changed).not.toHaveBeenCalled();expect(f.events).not.toContain('route:suspendPaused');
+ const source=f.audio.lookup(prepared.url),opened=await source.openReadable();
+ const next=opened.stream[Symbol.asyncIterator]().next();await tick();
+ f.captures.at(-1).queue.push(Buffer.alloc(8,9));expect((await next).value).toEqual(Buffer.alloc(8,9));
+ await f.audio.observePausedExternalSelection();expect(changed).not.toHaveBeenCalled();
+ await source.stop();await f.audio.leaveProvider();
 });

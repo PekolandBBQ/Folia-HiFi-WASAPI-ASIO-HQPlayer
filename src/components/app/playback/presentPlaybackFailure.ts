@@ -1,3 +1,4 @@
+import { useSpotifyHandoffStore } from '../../../stores/useSpotifyHandoffStore';
 import { PlayerState, type StatusMessage } from '../../../types';
 import type { SkipPromptMessageKey } from '../../../types/appPlayback';
 import type { PlaybackFailure, PlaybackFailureContext } from '../../../types/playbackFailure';
@@ -36,6 +37,13 @@ export interface PlaybackFailurePresenterDeps {
 export const presentPlaybackFailure = (input: PlaybackFailurePresentation, deps: PlaybackFailurePresenterDeps): void => {
     const { failure, context, isCurrent, skipCount, retry, skip } = input;
     if (!isCurrent()) return;
+    if (failure.providerId === 'spotify' && failure.cause instanceof OnlineProviderError
+        && [failure.cause.details?.nativeCode, failure.cause.details?.causeCode].some(code => code === 'TRACK_NOT_CURRENT')
+        && useSpotifyHandoffStore.getState().pending) {
+        deps.setIsLyricsLoading(false);
+        deps.setStatusMsg(null);
+        return;
+    }
 
     const policy = resolvePlaybackFailurePolicy(failure, context);
     deps.setIsLyricsLoading(false);

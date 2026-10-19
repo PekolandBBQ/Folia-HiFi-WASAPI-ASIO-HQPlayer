@@ -29,7 +29,10 @@ public sealed record ProductDiscovery(SpotifyProcess Identity, BaseRenderEndpoin
     RouteSelection Selection, string?[] OriginalValues, bool SourcePaused, bool SourceOutputDefault,
     bool BaseCableVerified, bool DefaultsUnchanged, bool NoOtherWriters, bool OriginalPolicySafe=false)
 {
+    // Process capture proves pause through source control, not endpoint activity.
+    public bool RequiresNativePauseObservation { get; init; } = true;
     public object ToWire() => new { process=ProcessWire.From(Identity), sourcePaused=SourcePaused,
+        requiresNativePauseObservation=RequiresNativePauseObservation,
         sourceOutputDefault=SourceOutputDefault, baseCableVerified=BaseCableVerified,
         originalPolicySafe=OriginalPolicySafe,
         defaultsUnchanged=DefaultsUnchanged, noOtherWriters=NoOtherWriters,

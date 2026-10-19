@@ -1492,7 +1492,7 @@ export function usePlaybackQueueController({
     // Wrapped so the callbacks this hook hands back keep one identity for the app's lifetime. They
     // are all invoked from events or effects, and their churn was what kept every build*Model memo
     // in App.tsx from ever holding - see useStableCallbacks.ts.
-    useSpotifyDesktopHandoff(playSong, shouldAutoPlayRef);
+    useSpotifyDesktopHandoff(playSong, shouldAutoPlayRef, () => { void handleNextTrack({trigger: 'ended', allowStopOnMissing: true, shouldNavigateToPlayer: false}); });
     return useStableActionSurface({
         pendingUnavailableReplacement,
         setPendingUnavailableReplacement,

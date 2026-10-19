@@ -181,7 +181,7 @@ export function audioFixture(options: any = {}) {
   const media = { add: vi.fn(async () => { events.push('media:publish'); return { url: `http://127.0.0.1:1234/test-${++mediaSerial}`, revoke: vi.fn(async () => {}) }; }),
     close: vi.fn(async () => {}) };
   audio = createCableAudioPreparation({ captureHost, control, vault, cooldown, fetcher, media, routeLifecycle: routes.route,
-    getSelection: async () => ({ ...selection, automaticRouting: true }) });
+    getSelection: async () => ({ ...selection, automaticRouting: true }), onExternalSelection: options.onExternalSelection });
   return { ...routes, audio, control, controlPrepare, state, captures, captureHost, media, fetcher, sourceHarness,
     changeGrant: () => { credentialRevision++; },
     intercept: (value: typeof intercept) => { intercept = value; },

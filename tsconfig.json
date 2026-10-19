@@ -33,6 +33,10 @@
     "release",
     "docs/native-audio-validation/source-snapshot",
     "sync-server",
-    "original"
+    "original",
+    "build",
+    "dev-dist",
+    "dist-retained-*",
+    "test-results"
   ]
 }

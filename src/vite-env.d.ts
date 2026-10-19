@@ -788,7 +788,7 @@ declare global {
       spotify?: { request(input: import('./services/onlineMusic/spotifyTransport').SpotifyRequest): Promise<unknown>;
         browserPcm?(input: import('./services/onlineMusic/SoloistBrowserTransport').SoloistBrowserRequest): Promise<unknown>;
         onSetupRequired?(listener:()=>void):()=>void;
-        onExternalSelection?(listener:(value:{phase:'paused'|'follow';trackId:string;positionMs:number})=>void):()=>void;
+        onExternalSelection?(listener:(value:{phase:'paused'|'follow'|'advance'|'dismiss';token:number;previousTrackId?:string;naturalEnd?:boolean;externalSeek?:boolean;externalPause?:boolean;externalResume?:boolean;name?:string;error?:string;trackId:string;positionMs:number})=>void):()=>void;
         onProgress?(listener: (value: import('./services/onlineMusic/spotifyTransport').SpotifyProgress) => void): () => void };
       webUtils?: {
         /** Resolves the OS path of a dropped File (File.path was removed in modern Electron). */

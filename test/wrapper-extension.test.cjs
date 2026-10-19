@@ -158,3 +158,22 @@ test('account snapshot returns the current Spotify display name and profile imag
  f.request(1,'snapshot');await tick();assert.equal(f.replies[0].value.account,'account-id');assert.equal(f.replies[0].value.displayName,'测试用户');assert.equal(f.replies[0].value.images[0].url,'https://example.com/avatar.jpg');
  f.context.Spicetify.Platform.UserAPI.getUser=async()=>({username:'other-id'});f.request(2,'snapshot');await tick();assert.equal(f.replies[1].value.displayName,'other-id');assert.deepEqual(f.replies[1].value.images,[]);
 });
+
+for (const [index,mode] of ['off','all','one'].entries()) {
+ test('repeat '+mode+' reads and writes the actual Wrapper mode',async()=>{
+  const f=fixture(async()=>({}));let actual=index;
+  f.context.Spicetify.Player.getRepeat=()=>actual;
+  f.context.Spicetify.Player.setRepeat=async value=>{actual=value;};
+  f.request(1,'repeatMode');await tick();assert.equal(f.replies[0].value.mode,mode);
+  f.request(2,'repeatMode',{mode:['all','one','off'][index]});await tick();
+  assert.equal(f.replies[1].ok,true);assert.equal(actual,(index+1)%3);
+ });
+}
+test('unconfirmed repeat write does not report success',async()=>{
+ const f=fixture(async()=>({}));f.context.Spicetify.Player.getRepeat=()=>0;
+ f.context.Spicetify.Player.setRepeat=async()=>{};
+ f.context.setTimeout=fn=>setTimeout(fn,0);
+ f.request(1,'repeatMode',{mode:'one'});
+ while(!f.replies.length)await new Promise(r=>setTimeout(r,10));
+ assert.equal(f.replies[0].code,'REPEAT_MODE_UNCONFIRMED');
+});

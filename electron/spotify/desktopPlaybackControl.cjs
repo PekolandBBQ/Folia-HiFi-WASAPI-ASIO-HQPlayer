@@ -9,7 +9,7 @@ const { fail, failureCode, validDeviceId, validTrackId, validSessionId, sameStam
   normalizeDevices, requireDevice } = require('./desktopPlaybackFacts.cjs');
 
 // electron/spotify/desktopPlaybackControl.cjs: one explicit desktop target, with observed command completion and revocable leases.
-function createDesktopPlaybackControl({ onRevoke = () => {}, onFailureDiagnostic = () => {}, now = Date.now,
+function createDesktopPlaybackControl({ onRevoke = () => {}, onFailureDiagnostic = () => {}, onStateDiagnostic = () => {}, now = Date.now,
   wait = (ms, signal) => delay(ms, undefined, { signal }), settleTimeoutMs = 4000, settleIntervalMs = 400,
   selectionTimeoutMs = Math.min(settleTimeoutMs, 4000),
   readRoutePcmEvidence = () => false,
@@ -35,6 +35,7 @@ function createDesktopPlaybackControl({ onRevoke = () => {}, onFailureDiagnostic
     // A retained native source owner spans track controllers; its proof floor never resets.
     record.mutationEpoch = ++mutationGeneration;
     record.sourceObservation = undefined;
+    record.externalClock = undefined;
     record.observationRead = undefined;
     record.pausedHoldObservation = undefined;
     record.pausedResumeTransfer = undefined;
@@ -102,7 +103,7 @@ function createDesktopPlaybackControl({ onRevoke = () => {}, onFailureDiagnostic
       if (record.cleanupOnly && !cleanup) throw Object.assign(fail('PLAYBACK_STATE_UNCONFIRMED'), { stage: 'cleanup-required' });
       const result = await action(); own(record); return result; }
     catch (error) {
-      try { onFailureDiagnostic(error); } catch { /* Diagnostics cannot change cleanup. */ }
+      try { onFailureDiagnostic(error,{phase:'original',session:record.session,trackId:record.trackId,cleanupTrackId:record.routeCleanupTrack,cleanupOnly:record.cleanupOnly===true}); } catch { /* Diagnostics cannot change cleanup. */ }
       // A canceled pre-dispatch position cut has made no remote write. Keep
       // the exact owner alive so its newer Pause/Stop can fresh-read and park.
       if (failureCode(error) === 'CANCELLED' && preserveCancelled?.() === true
@@ -117,8 +118,11 @@ function createDesktopPlaybackControl({ onRevoke = () => {}, onFailureDiagnostic
           await settleAcknowledgedSelectionForRestore(record, currentState, parked);
           record.onRouteParked();
           parkedForCleanup = true;
-        } catch { error = Object.assign(fail('ROUTE_SOURCE_PAUSE_UNCONFIRMED'), { cause: fail(failureCode(error)),
-          retryCount: error?.retryCount, retriesExhausted: error?.retriesExhausted }); }
+        } catch (cleanupError) {
+          try { onFailureDiagnostic(cleanupError,{phase:'cleanup',session:record.session,trackId:record.trackId,cleanupTrackId:record.routeCleanupTrack,originalCode:failureCode(error)}); } catch {}
+          error = Object.assign(fail('ROUTE_SOURCE_PAUSE_UNCONFIRMED'), { cause: error, cleanupError,
+            stage:'cleanup-route-pause',retryCount: error?.retryCount, retriesExhausted: error?.retriesExhausted });
+        }
       }
       const code = failureCode(error);
       // The provider still needs this controller to retire capture and hold its
@@ -135,7 +139,8 @@ function createDesktopPlaybackControl({ onRevoke = () => {}, onFailureDiagnostic
       for (const key of ['retryCount', 'retriesExhausted', 'stateMismatch', 'expectedPlaying', 'actualPlaying']) if (error?.[key] !== undefined) failure[key] = error[key];
       for (const key of ['nativeCode', 'failureCode', 'stage'])
         if (typeof error?.[key] === 'string') failure[key] = error[key];
-      if (code === 'ROUTE_SOURCE_PAUSE_UNCONFIRMED' && error.cause) failure.cause = fail(failureCode(error.cause));
+      if (error.cause) failure.cause = error.cause;
+      if (error.cleanupError) failure.cleanupError = error.cleanupError;
       throw failure;
     }
   }
@@ -202,7 +207,7 @@ function createDesktopPlaybackControl({ onRevoke = () => {}, onFailureDiagnostic
     const budget = phaseBudgetMs * phases;
     const confirmation = { overallDeadline: now() + budget, phaseBudgetMs,
       overallSignal: AbortSignal.any([record.controller.signal, AbortSignal.timeout(budget)]),
-      timestampFloor: before?.serverTimestamp };
+      timestampFloor: before?.serverTimestamp, diagnosticBefore: require('./controlDiagnostics.cjs').stateFacts(before) };
     beginConfirmationPhase(confirmation);
     return confirmation;
   }
@@ -275,6 +280,8 @@ function createDesktopPlaybackControl({ onRevoke = () => {}, onFailureDiagnostic
     const diagnosticObservation = body => {
       confirmation.observationCount++;
       confirmation.lastObservation = {
+        ...(Number.isSafeInteger(body?.progress_ms)?{positionMs:body.progress_ms}:{}),
+        ...(typeof body?.timestamp==='number'?{serverTimestamp:body.timestamp}:{}),
         ...(validDeviceId(body?.device?.id) ? { deviceMatched: body.device.id === record.deviceId } : {}),
         ...(typeof body?.item?.uri === 'string' && /^spotify:track:[A-Za-z0-9]{22}$/.test(body.item.uri)
           ? { trackMatched: body.item.uri === `spotify:track:${record.trackId}` } : {}),
@@ -312,9 +319,11 @@ function createDesktopPlaybackControl({ onRevoke = () => {}, onFailureDiagnostic
   }
   async function confirmOperation(record, operation, acknowledgment, desired, options) {
     const { confirmation, positionMs, strictPair, strictPlaying } = options;
+    let observed, failure;
     try {
       const state = await confirm(record, desired, { ...options,
         unconfirmedCode: operation === 'seek' ? 'SEEK_UNCONFIRMED' : 'PLAYBACK_STATE_UNCONFIRMED' });
+      observed=state;
       reportConfirmed(operation, acknowledgment, confirmation, state, { trackMatched: true,
         stablePosition: !desired && strictPair,
         ...(positionMs != null ? { positionWithinTolerance: desired && strictPlaying
@@ -322,7 +331,13 @@ function createDesktopPlaybackControl({ onRevoke = () => {}, onFailureDiagnostic
         ...(desired && strictPlaying ? { progressPlausible: true } : {}),
       });
       return state;
-    } catch (error) { reportUnconfirmed(operation, acknowledgment, confirmation, error); throw error; }
+    } catch (error) { failure=error;reportUnconfirmed(operation, acknowledgment, confirmation, error); throw error; }
+    finally {
+      const {stateFacts,errorFacts}=require('./controlDiagnostics.cjs');
+      try {onStateDiagnostic({phase:'confirm-'+operation,session:record.session,trackId:record.trackId,expectedPlaying:desired,
+        before:confirmation.diagnosticBefore,after:stateFacts(observed),lastObservation:confirmation.lastObservation,
+        observationCount:confirmation.observationCount,elapsedMs:now()-confirmation.commandAt,error:errorFacts(failure)});}catch{}
+    }
   }
   async function setPlaying(record, playing, { positionMs, reusePreparedObservation = false } = {}) {
     const before = await read(record, { reusePreparedObservation });
@@ -353,19 +368,30 @@ function createDesktopPlaybackControl({ onRevoke = () => {}, onFailureDiagnostic
   }
   // Routing acquisition needs an observed paused desktop before selecting a new track, which itself starts playback.
   async function parkBeforeRoute(record, baseline) {
+    const started=now();let lastState=baseline,observationCount=0,acknowledged=false,outcome='failed',failure;
+    try {
     if (!baseline) throw fail('PLAYBACK_STATE_UNCONFIRMED');
-    if (!baseline.isPlaying) return baseline;
+    if (!baseline.isPlaying) {outcome='already-paused';return baseline;}
     if (baseline.disallows.pausing) throw fail('CONTROL_REJECTED');
     const confirmation = beginConfirmation(record, baseline);
     const acknowledgment = await command('pause', record, confirmation);
+    acknowledged=true;
     for (;;) {
       checkConfirmation(record, confirmation);
-      const state = await withinConfirmation(confirmation, () => read(record, { matchTrack: false, signal: confirmation.signal }));
+      const observed = await withinConfirmation(confirmation, () => read(record, { matchTrack: false, signal: confirmation.signal }));
+      const state = record.sourceObservation?.facts || observed;
+      lastState=state;observationCount++;
       checkConfirmation(record, confirmation); confirmation.observationCount++;
       if (state.trackId !== baseline.trackId) throw fail('TRACK_NOT_CURRENT');
       const paused = !state.isPlaying && timestampCurrent(confirmation, state);
-      if (paused) { record.mutationPending = false; return state; }
+      if (paused) { record.mutationPending = false;outcome='confirmed'; return state; }
       await withinConfirmation(confirmation, () => wait(settleIntervalMs, confirmation.signal));
+    }
+    } catch(error) {failure=error;throw error;}
+    finally {
+      const {stateFacts,errorFacts}=require('./controlDiagnostics.cjs');
+      try {onStateDiagnostic({phase:'route-pause',session:record.session,trackId:record.trackId,
+        elapsedMs:now()-started,outcome,acknowledged,observationCount,before:stateFacts(baseline),after:stateFacts(lastState),error:errorFacts(failure)});}catch{}
     }
   }
   async function selectTrack(record, baseline, positionMs) {
@@ -816,18 +842,29 @@ function createDesktopPlaybackControl({ onRevoke = () => {}, onFailureDiagnostic
     },
     async observeExternalSelection(session, beforePause, afterPause) { const record=get(session);
       return enqueue(record,async()=>{
-        const facts=await read(record,{matchTrack:false});
-        if(facts.trackId===record.trackId)return null;
+        const previousFacts=record.externalClock;
+        const observed=await read(record,{matchTrack:false});
+        // Some adapters zero the position in their cross-track projection.
+        // read() also records the same fresh sample against its observed identity.
+        const facts=record.sourceObservation?.facts||observed;
+        record.externalClock=facts;
+        const naturalEnd=require('./naturalTrackEnd.cjs').isNaturalTrackEnd(previousFacts,facts);
+        const externalSeek=!naturalEnd&&require('./naturalTrackEnd.cjs').isExternalSeek(previousFacts,facts);
+        const externalPause=!naturalEnd&&facts.trackId===record.trackId&&facts.isPlaying===false&&record.externalPaused!==true;
+        const externalResume=!naturalEnd&&facts.trackId===record.trackId&&facts.isPlaying===true&&record.externalPaused===true;
+        if(facts.trackId===record.trackId&&!naturalEnd&&!externalSeek&&!externalPause&&!externalResume)return null;
         if(!record.routeEngaged||!validTrackId(facts.trackId))throw fail('TRACK_NOT_CURRENT');
-        await beforePause(facts);own(record);
+        const transition={previousTrackId:record.trackId,naturalEnd,externalSeek,externalPause,externalResume};
+        await beforePause({...facts,...transition});own(record);
         const parked=await parkBeforeRoute(record,facts);own(record);
         const previous=record.trackId;
         // Explicit source handoff: ordinary reads keep their exact-track checks.
         record.trackId=parked.trackId;record.durationMs=parked.durationMs;
         record.routeCleanupTrack=parked.trackId;invalidateObservation(record);
-        await afterPause(parked);own(record);
+        await afterPause({...parked,...transition});own(record);
+        record.externalPaused=externalPause;
         record.routeBaselineUri=`spotify:track:${parked.trackId}`;record.routePreparedParked=undefined;
-        return {...parked,previousTrackId:previous};
+        return {...parked,previousTrackId:previous,naturalEnd,externalSeek,externalPause,externalResume};
       });
     },
     async readState(session, { forPreparation = false, expectedPlaying } = {}) { const record = get(session);

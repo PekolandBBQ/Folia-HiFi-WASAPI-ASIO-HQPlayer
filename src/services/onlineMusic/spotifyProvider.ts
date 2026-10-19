@@ -39,6 +39,12 @@ export const spotifyProvider: OnlineMusicProvider = {
         return normalizeSpotifyPage(await requestSpotify({ action: 'search', query, limit, offset }), offset, normalizeSpotifySong, true);
     } },
     playback: {
+        resolveExternalSelection: (token, choice) => requestSpotify({ action: 'externalSelection', token, choice }),
+        async repeatMode(mode) {
+            const result = await requestSpotify<{mode: import('../../types/onlineMusic').ProviderRepeatMode}>({action: 'repeatMode', mode});
+            if (!['off', 'all', 'one'].includes(result?.mode)) throw new Error('Spotify 未返回有效循环模式');
+            return result.mode;
+        },
         async leaveSource(options) {
             if (!spotifyAvailable()) return;
             const current = () => !options?.signal?.aborted && options?.isCurrent?.() !== false;
