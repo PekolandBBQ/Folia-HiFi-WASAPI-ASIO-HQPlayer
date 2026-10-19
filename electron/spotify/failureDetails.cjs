@@ -1,6 +1,8 @@
 'use strict';
 // Preserve bounded machine codes across IPC; messages explain the failed operation without exposing account data.
 const descriptions = {
+ SPOTIFY_COMPONENT_APP_UPDATE_REQUIRED: '已发布的组件与当前 Folia 内置音频组件不配套，组件升级需要配套的 Folia 版本；重新生成 Spotify 页面资源不需要升级音频组件。',
+ SPOTIFY_RESTART_REQUIRED: '音频驱动安装后需要重启 Windows；现有配置和备份已保留。',
  REPEAT_MODE_UNAVAILABLE: 'Spotify 尚未提供循环模式状态，请等待桥接完成连接后再切换。',
  REPEAT_MODE_UNCONFIRMED: '循环模式指令已发送，但 Spotify 回读仍未确认修改；没有将界面标记为成功。',
  INVALID_REPEAT_MODE: '请求的循环模式无效，支持关闭循环、列表循环和单曲循环。',
@@ -129,7 +131,8 @@ function failureDetails(error, operation) {
  const stageNames = { 'cleanup-previous-session': '停止上一轮采集', 'cleanup-required': '清理上一轮播放', 'scope': '读取本机播放状态', 'track-metadata': '读取歌曲信息', 'route-inspect': '检查应用输出路由', 'route-resume-preparation': '恢复采集准备', 'playback-facts': '确认播放状态', 'audio': '准备播放', 'browser-pcm': '交付音频' };
  const connectionReason=code==='SPOTIFY_BRIDGE_NOT_READY'&&['connection-key-mismatch','connection-timeout','origin-mismatch','connection-present'].includes(error?.connectionReason)?error.connectionReason:undefined;
  const connectionText=connectionReason==='connection-key-mismatch'?'Spotify 仍加载着旧连接信息，无法连接当前 Folia；自动重新加载后仍未恢复。':connectionReason==='connection-timeout'?'Spotify 已运行，但未在 30 秒内连接 Folia 桥接；自动重新加载后仍未恢复。':undefined;
- const text = connectionText || recoveryText || descriptions[code] || ((stageNames[stage] || '执行播放操作') + '未完成：组件没有提供已识别的原因，具体阶段及原始错误已记录在日志中。');
+ const setupNames = { search: '搜索 Spotify 在线曲库', desktopSetup: '配置 Spotify 连接', 'checking-updates': '检查组件更新', 'checking-resources': '检查 Spotify 页面资源', checking: '检查本机组件', stopping: '停止 Spotify 以更新资源', configuring: '生成 Spotify 页面资源', connecting: '连接 Spotify 桥接' };
+ const text = connectionText || recoveryText || descriptions[code] || ((stageNames[stage] || setupNames[stage] || '执行播放操作') + '未完成：组件没有提供已识别的原因，具体阶段及原始错误已记录在日志中。');
  const readback = code === 'FORMAT_LEASE_READBACK_MISMATCH'
    ? require('../debug/privatePreviewDiagnosticSchema.cjs').projectFormatLeaseReadback(error?.formatLeaseReadback) : undefined;
  const formatDetail = readback ? ` ${readback.endpointRole === 'render' ? '输出端' : '采集端'}请求 ${readback.requested.sampleRate} Hz／${readback.requested.channels} 声道，实际 ${readback.observed.sampleRate} Hz／${readback.observed.channels} 声道；差异字段：${readback.differingFields.map(field => ({ sampleRate: '采样率', channels: '声道数', bitsPerSample: '位深', validBitsPerSample: '有效位深', channelMask: '声道布局', formatTag: '格式标记', subFormat: '采样格式', blockAlign: '帧字节数', avgBytesPerSec: '每秒字节数' }[field] || '音频格式参数')).join('、')}。` : '';

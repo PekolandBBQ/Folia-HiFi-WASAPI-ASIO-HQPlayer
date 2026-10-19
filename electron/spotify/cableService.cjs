@@ -185,6 +185,7 @@ function registerCableSpotify({ app, ipcMain, isTrustedSender, createService = c
   }
   const publicFailure = (error, operation) => {
     const details = require('./failureDetails.cjs').failureDetails(error, operation);
+    try { require('../debug/debugHost.cjs').runtimeLine('SpotifyFailure', JSON.stringify({ operation, ...details })); } catch { /* Diagnostics cannot replace the original failure. */ }
     try {
       const logs = path.join(directory, 'diagnostics'); require('node:fs').mkdirSync(logs, { recursive: true });
       require('node:fs').appendFileSync(path.join(logs, new Date().toISOString().slice(0,10) + '.jsonl'), JSON.stringify({ at: Date.now(), operation, ...details }) + '\n');

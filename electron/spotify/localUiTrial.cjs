@@ -34,10 +34,10 @@ function registerLocalUiTrial(options){
   const log=global.__foliaTrialLog||((event,facts)=>{
     if(event==='audio-source' && facts?.phase==='route-binding-observed')
       require('../debug/debugHost.cjs').runtimeLine('SpotifyBridge',JSON.stringify({event,...facts}));
-    if(['external-handoff','external-handoff-choice','external-cleanup-failed','bridge-upgrade-rejected','spotify-connection-unavailable','spotify-auto-reconnect','spotify-background-ready','spotify-background-failed','bridge-connected'].includes(event)){
+    if(['spotify-search-resource-recovery','spotify-resource-version','external-handoff','external-handoff-choice','external-cleanup-failed','bridge-upgrade-rejected','spotify-connection-unavailable','spotify-auto-reconnect','spotify-background-ready','spotify-background-failed','bridge-connected'].includes(event)){
       try{const directory=path.join(require('electron').app.getPath('userData'),'spotify','diagnostics');fs.mkdirSync(directory,{recursive:true});fs.appendFileSync(path.join(directory,'connection.jsonl'),JSON.stringify({at:Date.now(),event,...facts})+'\n');}catch{}
     }
-    if(['control-original-failure','control-state','route-request-failed','external-handoff','external-handoff-choice','external-cleanup-failed','spotify-orphan-route-restored','spotify-background-retained','spotify-background-exit','spotify-background-exit-failed','spotify-resource-version','bridge-connected','bridge-disconnected','bridge-request-failed','bridge-runtime','spotify-background-failed','ui-online-search'].includes(event))
+    if(['spotify-search-resource-recovery','spotify-component-install','control-original-failure','control-state','route-request-failed','external-handoff','external-handoff-choice','external-cleanup-failed','spotify-orphan-route-restored','spotify-background-retained','spotify-background-exit','spotify-background-exit-failed','spotify-resource-version','bridge-connected','bridge-disconnected','bridge-request-failed','bridge-runtime','spotify-background-failed','ui-online-search'].includes(event))
       require('../debug/debugHost.cjs').runtimeLine('SpotifyBridge',JSON.stringify({event,...facts}));
   }), local=initialize(log);
   return require('./cableService.cjs').registerCableSpotify({...options,connectionMode:'wrapper',createService:settings=>createService(settings,local,log)});
@@ -105,11 +105,13 @@ function createService({beforeLeaveProvider},local,log){
   pausedObserver.unref?.();
   const song=t=>({id:t.id,name:t.name,durationMs:t.durationMs,artists:[{id:'',name:t.artist}],album:{id:'',name:t.album,coverUrl:t.coverUrl},sourceRef:{kind:'online',providerId:'spotify',mediaId:t.id,providerData:{sessionBoundAudio:true,metadataSource:'spicetify-local',uri:'spotify:track:'+t.id}}});
   async function leave(){const output=await beforeLeaveProvider();await browser.clear();await audio.leaveProvider('provider-exit');await output?.complete?.();}
+  const guideOptions={beforeConfigure:leave,desktop,bridge,apps:local.apps,capture,route,directory:path.join(profile,'spotify'),assetDirectory:runtimePaths().assetRoot,existingCli:process.env.FOLIA_WRAPPER_EXISTING_CLI,extension:local.extension,activateApps:local.activateApps,configureEndpoints,endpointsConfigured:endpoints=>Boolean(require('./cableEndpointSelection.cjs').selectCableEndpoints(endpoints,saved)),log};
+  const connectSearch=require('./searchConnectionRecovery.cjs').createSearchConnectionRecovery({ensure:progress=>desktop.ensure(progress),repair:()=>require('./desktopSetupGuide.cjs').repairResources(guideOptions),log});
   return {
     async request(input,progress){
       log('ui-spotify-request',{action:input.action,operation:input.operation,trackId:input.action==='audio'?input.id:undefined});
       if(input.action==='desktopSetup'&&input.operation==='preferences')return input.preferences?desktop.setPreferences(input.preferences):desktop.preferences();
-      if(input.action==='desktopSetup')return require('./desktopSetupGuide.cjs').request({input,progress,beforeConfigure:leave,desktop,bridge,apps:local.apps,capture,route,directory:path.join(profile,'spotify'),assetDirectory:runtimePaths().assetRoot,existingCli:process.env.FOLIA_WRAPPER_EXISTING_CLI,extension:local.extension,activateApps:local.activateApps,configureEndpoints,endpointsConfigured:endpoints=>Boolean(require('./cableEndpointSelection.cjs').selectCableEndpoints(endpoints,saved)),log});
+      if(input.action==='desktopSetup')return require('./desktopSetupGuide.cjs').request({...guideOptions,input,progress});
       if(input.action==='externalSelection')return handoff.decide(input.token,input.choice);
       if(input.action==='repeatMode'){
         await local.ready;
@@ -148,7 +150,7 @@ function createService({beforeLeaveProvider},local,log){
           selection:{...saved,connectDeviceId:s.deviceId},devices:{spotify:[{id:s.deviceId,name:'本机 Spotify',type:'Computer',isActive:s.isActive,restricted:s.restricted,selectable:s.restricted===false}],capture:devices.endpoints.filter(e=>e.supportedBaseCable&&e.flow==='capture'),render:devices.endpoints.filter(e=>e.supportedBaseCable&&e.flow==='render')},automaticRoute:{enabled:true,supported:c.supported,eligible:c.supported,productionQualified:false,trialAvailable:true,trialAuthorized:true}};
       }
       if(['search','likeSong','savedTracks'].includes(input.action)){
-        await local.ready;await desktop.ensure(progress);
+        await local.ready;await (input.action==='search'?connectSearch(progress):desktop.ensure(progress));
         if(['search','likeSong'].includes(input.action))await require('./wrapper/handshake.cjs').requireHandshake(bridge);
         if(input.action==='savedTracks'){
           const result=await bridge.request('likedTracks',{offset:input.offset||0,limit:input.limit||50});

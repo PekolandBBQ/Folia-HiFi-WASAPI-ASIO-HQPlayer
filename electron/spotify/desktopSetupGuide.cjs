@@ -83,7 +83,19 @@ function createGuide({ desktop, bridge, apps, capture, route, directory, assetDi
       await configureEndpoints();
     },
   });
-  return { async request(input, progress) {
+  return { async repairResources() {
+    // Join any existing installer before configuring; never start a second backup/apply owner.
+    await installer.settled();
+    installer.start('configure', { refreshResources: true });
+    await installer.settled();
+    const result = await installer.status();
+    if (result.phase !== 'complete') {
+      const error = fail(result.code || (result.restartRequired ? 'SPOTIFY_RESTART_REQUIRED' : 'SPOTIFY_COMPONENT_SETUP_INCOMPLETE'));
+      error.detail = result.detail;
+      error.stage = result.failureStage;
+      throw error;
+    }
+  }, async request(input, progress) {
     if (input.operation === 'open' && input.component === 'sound') await require('electron').shell.openExternal('ms-settings:sound');
     if (input.operation === 'choose') await desktop.choose(input.installation);
     if (input.operation === 'open' && links[input.component]) await require('electron').shell.openExternal(links[input.component]);
@@ -97,4 +109,8 @@ async function request(options) {
   if (!managers.has(options.desktop)) managers.set(options.desktop, createGuide(options));
   return managers.get(options.desktop).request(options.input, options.progress);
 }
-module.exports = { request, createGuide };
+async function repairResources(options) {
+  if (!managers.has(options.desktop)) managers.set(options.desktop, createGuide(options));
+  return managers.get(options.desktop).repairResources();
+}
+module.exports = { request, createGuide, repairResources };

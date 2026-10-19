@@ -14,12 +14,13 @@ function createComponentInstall({ directory, inspect, installSpicetify, configur
     state = { ...state, ...extra, bundleVersion: getBundle().version, phase, updatedAt: Date.now() };
     await fs.mkdir(directory, { recursive: true });
     const temporary = receipt + '.tmp'; await fs.writeFile(temporary, JSON.stringify(state)); await fs.rename(temporary, receipt);
-    log('spotify-component-install', { phase, bundleVersion: getBundle().version, code: state.code });
+    log('spotify-component-install', { phase, bundleVersion: getBundle().version, code: state.code, failureStage: state.failureStage, detail: state.detail });
   }
-  async function run(operation) {
+  async function run(operation, refreshResources = false) {
     await status();
-    await record('checking-updates', { code: undefined, detail: undefined, operation });
-    await checkLatest();
+    // Resource-only repair keeps the currently installed native/CLI bundle. It is not a component upgrade.
+    await record(refreshResources ? 'checking-resources' : 'checking-updates', { code: undefined, detail: undefined, failureStage: undefined, operation });
+    if (!refreshResources) await checkLatest();
     if (state.restartRequired) { await record('restart-required'); return; }
     await record('checking', { code: undefined, operation });
     let current = await inspect();
@@ -63,9 +64,9 @@ function createComponentInstall({ directory, inspect, installSpicetify, configur
   }
   return {
     status,
-    start(operation) {
+    start(operation, { refreshResources = false } = {}) {
       if (!['install', 'configure'].includes(operation)) throw fail('SPOTIFY_SETUP_OPERATION_INVALID');
-      if (!active) active = run(operation).catch(e => record('failed', { code: e.code || 'SPOTIFY_COMPONENT_SETUP_FAILED', detail: require('./failureDetails.cjs').failureDetails(e, state.phase).detail })).finally(() => { active = null; });
+      if (!active) active = run(operation, operation === 'configure' && refreshResources).catch(e => record('failed', { code: e.code || 'SPOTIFY_COMPONENT_SETUP_FAILED', failureStage: state.phase, detail: require('./failureDetails.cjs').failureDetails(e, state.phase).detail })).finally(() => { active = null; });
       return { ...state, busy: true };
     },
     settled: () => active,
