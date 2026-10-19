@@ -3,6 +3,8 @@ import { Disc, Pencil, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { getSizedCoverUrl } from '../../../../utils/coverUrl';
 import { useSidePanelBottomPx } from '../../../../hooks/usePlayerBottomBarBottomPx';
+import type { ProviderCollection } from '../../../../types/onlineMusic';
+import { CollectionSubscriptionButton } from '../../../../components/shared/CollectionSubscriptionButton';
 
 // src/library/suites/grid/artist/ArtistGridInfoCutInPanel.tsx
 // Presents ArtistGrid metadata in the same left-side cut-in pattern used by GridView.
@@ -17,6 +19,7 @@ type ArtistGridInfoCutInPanelProps = {
     entityId?: string;
     onClose: () => void;
     onEditEntity?: (entityId: string) => void;
+    collection?: ProviderCollection | null;
 };
 
 export const ArtistGridInfoCutInPanel = ({
@@ -29,6 +32,7 @@ export const ArtistGridInfoCutInPanel = ({
     entityId,
     onClose,
     onEditEntity,
+    collection,
 }: ArtistGridInfoCutInPanelProps) => {
     const { t } = useTranslation();
     const bottomBarBottomPx = useSidePanelBottomPx();
@@ -68,6 +72,7 @@ export const ArtistGridInfoCutInPanel = ({
                         {description && <p className="whitespace-pre-wrap break-words text-xs leading-relaxed opacity-65">{description}</p>}
                     </div>
 
+                    {collection && <div className="mt-4"><CollectionSubscriptionButton collection={collection} /></div>}
                     {entityId && onEditEntity && (
                         <div className="mt-4 border-t pt-4" style={{ borderTopColor: 'color-mix(in srgb, var(--text-primary) 12%, transparent)' }}>
                             <button

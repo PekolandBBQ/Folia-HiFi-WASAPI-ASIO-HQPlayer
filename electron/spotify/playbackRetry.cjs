@@ -7,6 +7,9 @@ const recoveryContext = new AsyncLocalStorage();
 // Never replay an arbitrary Play/Seek/route-write inside a failed transaction.
 const transient = new Set([
   'BOOTSTRAP_IDENTITY_UNCONFIRMED', 'EXACT_SPOTIFY_AUDIO_PROCESS_UNPROVEN', 'SPOTIFY_CANDIDATE_SET_CHANGED',
+  // A cold CoreAudio inventory can be incomplete while Spotify creates its session.
+  // Retry preparation after cleanup; partial observations never grant capture authority.
+  'COMPLETE_SPOTIFY_DISCOVERY_REQUIRED',
   'PLAYBACK_STATE_UNCONFIRMED', 'SEEK_UNCONFIRMED', 'BRIDGE_COMMAND_TIMEOUT', 'CONTROL_TIMEOUT', 'API_UNAVAILABLE',
   'SOURCE_EFFECT_UNKNOWN', 'SOURCE_OBSERVATION_STALE', 'SOURCE_BROKER_UNAVAILABLE', 'SOURCE_BROKER_FAILED',
   'ROUTE_SOURCE_PAUSE_UNCONFIRMED', 'CAPTURE_STOP_TIMEOUT', 'PCM_STOP_NOT_CONFIRMED',
@@ -47,13 +50,14 @@ async function retryPlayback(action, { signal, check = () => {}, wait = (ms, s) 
     } catch (error) {
       current();
       if (!canRetry(error)) throw error;
+      const stage = typeof error?.stage === 'string' && /^[a-z0-9-]{1,64}$/.test(error.stage) ? error.stage : undefined;
       if (budget.used === 3) {
         error.retryCount = 3; error.retriesExhausted = true;
-        emit({ phase: 'exhausted', retryCount: 3, code: codeOf(error) });
+        emit({ phase: 'exhausted', retryCount: 3, code: codeOf(error), ...(stage ? { stage } : {}) });
         throw error;
       }
       const retryIndex = budget.used++;
-      emit({ phase: 'retry', retryCount: budget.used, code: codeOf(error) });
+      emit({ phase: 'retry', retryCount: budget.used, code: codeOf(error), ...(stage ? { stage } : {}) });
       try { await wait([150, 350, 700][retryIndex], signal); }
       catch (error) { current(); throw error; }
     }

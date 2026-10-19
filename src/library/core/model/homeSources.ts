@@ -21,7 +21,7 @@ import { onlineHiddenScope } from './directoryVisibility';
 // 不可用原因（原先直接写在 Grid3D 的 JSX 里）；在线列表的加载态；本地导入的「忙」与扫描百分比。
 // 文案只给 i18n key（LibraryHomeMessage），由绑定翻译。
 
-const ONLINE_TABS: readonly LibraryHomeOnlineTab[] = ['playlist', 'radio', 'albums'];
+const ONLINE_TABS: readonly LibraryHomeOnlineTab[] = ['playlist', 'radio', 'albums', 'artists'];
 
 export const isOnlineHomeTab = (tab: LibraryHomeTabKey): tab is LibraryHomeOnlineTab => (
     (ONLINE_TABS as readonly string[]).includes(tab)
@@ -70,6 +70,7 @@ export const resolveHomeOnlineSource = ({
             : []),
         canUsePlaylists: capabilities.userLibrary && capabilities.playlists,
         canUseAlbums: capabilities.userLibrary && Boolean(capabilities.userAlbums),
+        canUseArtists: capabilities.userLibrary && Boolean(capabilities.userArtists),
         canUseRadio: capabilities.recommendations,
         hasPersonalFmModes: Boolean(capabilities.personalFmModes),
     };
@@ -77,12 +78,13 @@ export const resolveHomeOnlineSource = ({
 
 /** 某个在线页签为什么不可用（可用时为 undefined）。 */
 export const resolveOnlineTabUnavailableReason = (
-    source: Pick<LibraryHomeOnlineSource, 'providerLabel' | 'canUsePlaylists' | 'canUseAlbums' | 'canUseRadio'>,
+    source: Pick<LibraryHomeOnlineSource, 'providerLabel' | 'canUsePlaylists' | 'canUseAlbums' | 'canUseArtists' | 'canUseRadio'>,
     tab: LibraryHomeOnlineTab,
 ): LibraryHomeMessage | undefined => {
     const values = { provider: source.providerLabel };
     if (tab === 'playlist') return source.canUsePlaylists ? undefined : { key: 'status.providerLibraryUnavailable', values };
     if (tab === 'albums') return source.canUseAlbums ? undefined : { key: 'status.providerUserAlbumsUnavailable', values };
+    if (tab === 'artists') return source.canUseArtists ? undefined : { key: 'status.providerLibraryUnavailable', values };
     return source.canUseRadio ? undefined : { key: 'status.providerRecommendationsUnavailable', values };
 };
 
@@ -109,12 +111,13 @@ export const resolveHomeTabs = ({
 }: {
     visibility: LibraryHomeTabVisibility;
     navidromeEnabled: boolean;
-    online: Pick<LibraryHomeOnlineSource, 'providerLabel' | 'canUsePlaylists' | 'canUseAlbums' | 'canUseRadio'>;
+    online: Pick<LibraryHomeOnlineSource, 'providerLabel' | 'canUsePlaylists' | 'canUseAlbums' | 'canUseArtists' | 'canUseRadio'>;
     localAvailability: LibraryHomeLocalAvailability;
 }): LibraryHomeTab[] => [
     ...(visibility.playlist ? [{ key: 'playlist' as const, label: { key: 'home.playlists' }, disabledReason: resolveOnlineTabUnavailableReason(online, 'playlist') }] : []),
     ...(visibility.radio ? [{ key: 'radio' as const, label: { key: 'home.radio' }, disabledReason: resolveOnlineTabUnavailableReason(online, 'radio') }] : []),
     ...(visibility.albums ? [{ key: 'albums' as const, label: { key: 'home.albums' }, disabledReason: resolveOnlineTabUnavailableReason(online, 'albums') }] : []),
+    ...(visibility.albums && online.canUseArtists ? [{key:'artists' as const,label:{key:'localMusic.artists'}}] : []),
     ...(visibility.local ? [{ key: 'local' as const, label: { key: 'localMusic.folder' }, disabledReason: resolveLocalUnavailableReason(localAvailability) }] : []),
     ...(navidromeEnabled ? [{ key: 'navidrome' as const, label: { key: 'navidrome.title', fallback: 'Navidrome' } }] : []),
 ];
@@ -141,7 +144,7 @@ export const translateHomeTabs = (tabs: readonly LibraryHomeTab[], t: TFunction)
 
 /** 在线页签的标题文案 key。 */
 export const onlineHomeTitleKey = (tab: LibraryHomeOnlineTab): string => (
-    tab === 'playlist' ? 'home.playlists' : tab === 'albums' ? 'home.albums' : 'home.radio'
+    tab === 'playlist' ? 'home.playlists' : tab === 'albums' ? 'home.albums' : tab === 'artists' ? 'localMusic.artists' : 'home.radio'
 );
 
 /**
@@ -153,15 +156,18 @@ export const resolveOnlineHomeLoading = ({
     source,
     favoriteAlbumsLoading,
     radioFeedLoading,
+    favoriteArtistsLoading,
 }: {
     tab: LibraryHomeTabKey;
-    source: Pick<LibraryHomeOnlineSource, 'canUsePlaylists' | 'canUseAlbums' | 'canUseRadio' | 'collections' | 'user'>;
+    source: Pick<LibraryHomeOnlineSource, 'canUsePlaylists' | 'canUseAlbums' | 'canUseArtists' | 'canUseRadio' | 'collections' | 'user'>;
     favoriteAlbumsLoading: boolean;
     radioFeedLoading: boolean;
+    favoriteArtistsLoading?: boolean;
 }): boolean => (
     (tab === 'playlist' && source.canUsePlaylists && source.collections.length === 0 && source.user !== null)
     || (tab === 'albums' && source.canUseAlbums && favoriteAlbumsLoading)
     || (tab === 'radio' && source.canUseRadio && radioFeedLoading)
+    || (tab === 'artists' && source.canUseArtists === true && favoriteArtistsLoading === true)
 );
 
 /** 三个本地导入动作（导入文件夹、刷新、导入歌单文件）此刻是否都该禁用：任何一个在进行，或扫描在进行。 */

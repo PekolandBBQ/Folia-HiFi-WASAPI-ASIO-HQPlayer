@@ -90,6 +90,7 @@ const getSearchHistorySnapshot = (): NavigationHistoryState['search'] => {
     return searchState.isSearchOpen
         ? {
             query: searchState.searchQuery,
+            kind: searchState.searchKind,
             sourceTab: searchState.searchSourceTab,
             returnView: searchState.searchReturnView,
         }

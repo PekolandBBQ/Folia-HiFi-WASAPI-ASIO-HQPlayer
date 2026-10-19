@@ -4,10 +4,13 @@ import { getPlaybackSourceRef } from '../../utils/appPlaybackGuards';
 import { requestSpotify } from './spotifyTransport';
 import { getAllSpotifySavedTracks } from './spotifySavedTracks';
 import { SPOTIFY_LIKED_COLLECTION_ID } from './spotifyNormalize';
+import { setSpotifyCollectionSubscription } from './spotifyCollectionSubscriptions';
 
 // Serialize writes and server refresh together; only return Spotify-confirmed library snapshots.
 let writes: Promise<unknown> = Promise.resolve();
 export const spotifyMutations: OnlineMutationProvider = {
+    subscribeAlbum: (id, subscribed) => setSpotifyCollectionSubscription('album', id, subscribed),
+    subscribeArtist: (id, subscribed) => setSpotifyCollectionSubscription('artist', id, subscribed),
     likeSong(song, liked) {
         const source = typeof song === 'object' ? getPlaybackSourceRef(song) : null;
         const id = typeof song === 'object' ? source?.kind === 'online' && source.providerId === 'spotify' ? String(source.mediaId) : '' : String(song);

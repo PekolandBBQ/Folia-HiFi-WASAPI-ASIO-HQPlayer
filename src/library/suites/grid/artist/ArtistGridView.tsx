@@ -1298,6 +1298,7 @@ const ArtistGridView: React.FC<ArtistGridViewProps> = ({
             </div>
 
             <ArtistGridInfoCutInPanel
+                collection={collection.source === 'online' ? collection : null}
                 isOpen={showCutInPanel}
                 artistName={artistInfo?.name || collection.name}
                 coverUrl={artistInfo?.coverUrl}

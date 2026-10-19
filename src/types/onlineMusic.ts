@@ -48,6 +48,11 @@ export interface ProviderCapabilities {
     playlistTrackMutations?: boolean;
     likes?: boolean;
     userAlbums?: boolean;
+    userArtists?: boolean;
+    albumSearch?: boolean;
+    artistSearch?: boolean;
+    albumSubscription?: boolean;
+    artistSubscription?: boolean;
     /** The provider accepts a listening report for a track the user actually played. */
     playbackReports?: boolean;
 }
@@ -75,7 +80,7 @@ export interface ProviderAccountSummary {
 
 /** Metadata provenance and coverage are separate from playback availability. */
 export interface ProviderMetadataStatus {
-    metadataSource?: 'spotify-api' | 'spotify-public-embed';
+    metadataSource?: 'spotify-api' | 'spotify-public-embed' | 'spicetify-local-library';
     sourceUrl?: string;
     metadataCompleteness?: 'complete' | 'partial' | 'unknown';
     loadedCount?: number;
@@ -345,6 +350,8 @@ export class OnlineProviderError extends Error {
 
 export interface OnlineSearchProvider {
     searchSongs(query: string, limit: number, offset: number): Promise<ProviderPage<UnifiedSong>>;
+    searchAlbums?(query: string, limit: number, offset: number): Promise<ProviderPage<ProviderCollection>>;
+    searchArtists?(query: string, limit: number, offset: number): Promise<ProviderPage<ProviderCollection>>;
 }
 
 export type ProviderRepeatMode = 'off' | 'all' | 'one';
@@ -483,6 +490,7 @@ export interface OnlineLibraryProvider {
     /** Full liked-track records, used when a provider needs more than the song id (e.g. KuGou fileId). */
     getLikedSongs?(userId: MediaId): Promise<UnifiedSong[]>;
     getUserAlbums?(userId: MediaId, limit: number, offset: number): Promise<ProviderPage<ProviderCollection>>;
+    getUserArtists?(userId: MediaId, limit: number, offset: number): Promise<ProviderPage<ProviderCollection>>;
     getCloudCollection?(user?: ProviderUser): Promise<ProviderCollection | null>;
 }
 
@@ -497,7 +505,7 @@ export interface OnlineCatalogProvider {
     getArtistSongs?(id: MediaId, limit: number, offset: number): Promise<ProviderPage<UnifiedSong>>;
     getArtistAlbums?(id: MediaId, limit: number, offset: number): Promise<ProviderPage<ProviderCollection>>;
     getArtistDetail?(id: MediaId): Promise<ProviderCollection | null>;
-    getSubscriptionStatus?(type: 'playlist' | 'album', id: MediaId, collection?: ProviderCollection): Promise<boolean>;
+    getSubscriptionStatus?(type: 'playlist' | 'album' | 'artist', id: MediaId, collection?: ProviderCollection): Promise<boolean>;
 }
 
 /**
@@ -533,6 +541,7 @@ export interface OnlineMutationProvider {
     ): Promise<void>;
     subscribePlaylist?(playlist: MediaId | ProviderCollection, subscribed: boolean): Promise<void>;
     subscribeAlbum?(id: MediaId, subscribed: boolean): Promise<void>;
+    subscribeArtist?(id: MediaId, subscribed: boolean): Promise<void>;
 }
 
 export type ProviderConnectionSettings = { playbackMode?: 'wrapper' | 'oauth'; mode: 'shared' | 'custom'; clientId: string; redirectUri: string; readOnly?: boolean };

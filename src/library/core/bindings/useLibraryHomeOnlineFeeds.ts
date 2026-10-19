@@ -1,6 +1,7 @@
 import { useEffect, useSyncExternalStore } from 'react';
 import type { HomeViewTab } from '../../../types';
 import type { MediaId } from '../../../types/onlineMusic';
+import { createFavoriteArtistsFeed } from '../services/onlineHomeFeeds';
 import type {
     LibraryHomeFeedOwner,
     LibraryHomeFeedResource,
@@ -29,6 +30,7 @@ type OnlineHomeFeedsAttachment = {
     userId: MediaId | null | undefined;
     canUseAlbums: boolean;
     canUseRadio: boolean;
+    canUseArtists?: boolean;
 };
 
 /**
@@ -36,12 +38,14 @@ type OnlineHomeFeedsAttachment = {
  * 同一个归属、已经读过时什么都不做——换 suite 后新 surface 认领同一份数据不会再请求。
  */
 export const attachOnlineHomeFeeds = (
-    resources: Pick<LibraryHomeResources, 'favoriteAlbums' | 'radioFeed'>,
-    { tab, providerId, userId, canUseAlbums, canUseRadio }: OnlineHomeFeedsAttachment,
+    resources: Pick<LibraryHomeResources, 'favoriteAlbums' | 'favoriteArtists' | 'radioFeed'>,
+    { tab, providerId, userId, canUseAlbums, canUseArtists, canUseRadio }: OnlineHomeFeedsAttachment,
 ): void => {
     resources.favoriteAlbums.setOwner(ownerOf(providerId, userId, canUseAlbums));
+    resources.favoriteArtists?.setOwner(ownerOf(providerId,userId,canUseArtists===true));
     resources.radioFeed.setOwner(ownerOf(providerId, userId, canUseRadio));
     if (tab === 'albums') void resources.favoriteAlbums.ensure();
+    if (tab === 'artists') void resources.favoriteArtists?.ensure();
     if (tab === 'radio') void resources.radioFeed.ensure();
 };
 
@@ -52,22 +56,28 @@ export const useLibraryHomeOnlineFeeds = ({
     userId,
     canUseAlbums,
     canUseRadio,
+    canUseArtists,
 }: {
-    resources: Pick<LibraryHomeResources, 'favoriteAlbums' | 'radioFeed'>;
+    resources: Pick<LibraryHomeResources, 'favoriteAlbums' | 'favoriteArtists' | 'radioFeed'>;
     tab: HomeViewTab;
     providerId: string;
     /** 当前 provider 的已登录账户（没有账户时为 null：两份数据都没有归属）。 */
     userId: MediaId | null | undefined;
     canUseAlbums: boolean;
     canUseRadio: boolean;
+    canUseArtists?: boolean;
 }) => {
     const { favoriteAlbums, radioFeed } = resources;
+    const favoriteArtists=resources.favoriteArtists||EMPTY_ARTISTS;
     useEffect(() => {
-        attachOnlineHomeFeeds({ favoriteAlbums, radioFeed }, { tab, providerId, userId, canUseAlbums, canUseRadio });
-    }, [canUseAlbums, canUseRadio, favoriteAlbums, providerId, radioFeed, tab, userId]);
+        attachOnlineHomeFeeds({ favoriteAlbums, favoriteArtists, radioFeed }, { tab, providerId, userId, canUseAlbums, canUseArtists, canUseRadio });
+    }, [canUseAlbums, canUseArtists, canUseRadio, favoriteAlbums, favoriteArtists, providerId, radioFeed, tab, userId]);
 
     return {
         favoriteAlbums: useLibraryHomeFeed(favoriteAlbums),
+        favoriteArtists: useLibraryHomeFeed(favoriteArtists),
         radioFeed: useLibraryHomeFeed(radioFeed),
     };
 };
+
+const EMPTY_ARTISTS=createFavoriteArtistsFeed({});

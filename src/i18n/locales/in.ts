@@ -1,6 +1,8 @@
 
 
 export default {
+ catalogSearch: {kind:'Jenis pencarian',songs:'Lagu',artists:'Artis',albums:'Album'},
+ catalogSubscription: {follow:'Ikuti artis',unfollow:'Berhenti mengikuti',save:'Simpan album',unsave:'Hapus dari koleksi',retry:'Muat ulang status',failed:'Perubahan koleksi belum selesai. Status sebelumnya dipertahankan.'},
  audioSignalPath: {title: "Jalur sinyal audio"},
  spotifyExit: {title:"Tutup Spotify saat Folia ditutup",saveFailed:"Pengaturan gagal disimpan. Coba lagi."},
  livePcmPrebuffer: {"title": "Buffer awal PCM Spotify", "description": "25–5000 ms · Default 350 ms. Nilai rendah dapat menyebabkan audio terputus. Berlaku untuk PCM Spotify di WASAPI, ASIO, dan HQPlayer saat pemutaran, pelanjutan, pencarian posisi, atau persiapan lagu berikutnya; penggeser tidak mengganggu pemutaran.", "sharedHint": "Buffer awal dibagikan dengan WASAPI dan ASIO. Atur “Buffer awal PCM Spotify” di pengaturan audio native."},
@@ -998,6 +1000,7 @@ export default {
       "home-playlist": { "title": "Buka playlist", "description": "Buka tab playlist" },
       "home-local": { "title": "Buka musik lokal", "description": "Buka tab musik lokal" },
       "home-albums": { "title": "Buka album", "description": "Buka tab album" },
+      "home-artists": { "title": "Buka artis yang diikuti", "description": "Buka tab artis yang diikuti" },
       "home-navidrome": { "title": "Buka Navidrome", "description": "Buka tab Navidrome" },
       "home-radio": { "title": "Buka radio", "description": "Buka tab radio" },
       "grid-sort-file-name": { "title": "Urutkan berdasarkan nama berkas", "description": "Urutkan lagu lokal berdasarkan nama berkasnya" },

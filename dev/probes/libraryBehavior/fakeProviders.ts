@@ -414,6 +414,8 @@ const createHomeExtensions = (providerId: string) => ({
             providerId, 'userAlbums', `${providerId}:userAlbums`, { offset, limit },
             () => pageOf(homeFavoriteAlbums(providerId), limit, offset),
         ),
+        getUserArtists: (_userId:MediaId,limit:number,offset:number) => run(providerId,'userArtists',`${providerId}:userArtists`,{offset,limit},
+            ()=>pageOf(Object.values(ONLINE_ARTISTS).filter(rule=>rule.providerId===providerId).map(rule=>({providerId,id:rule.artistId,name:rule.name,type:'artist',coverUrl:rule.coverUrl})),limit,offset)),
         getCloudCollection: () => run(providerId, 'cloudCollection', `${providerId}:cloud`, {}, () => homeCloudCollection(providerId)),
     },
     getCloudTracks: (limit: number, offset: number) => run(
@@ -435,7 +437,8 @@ const createFakeProvider = (providerId: string, profile: FakeProviderProfile = '
     const home = createHomeExtensions(providerId);
     return {
         ...base,
-        capabilities: { ...base.capabilities, auth: true, userLibrary: true, userAlbums: true },
+        capabilities: { ...base.capabilities, auth: true, userLibrary: true, userAlbums: true,
+            userArtists:typeof window!=='undefined'&&(window as any).__homeFollowedArtists===true&&providerId===PROBE_PROVIDER_A },
         library: home.library,
         catalog: { ...base.catalog, getCloudTracks: home.getCloudTracks },
         recommendations: {

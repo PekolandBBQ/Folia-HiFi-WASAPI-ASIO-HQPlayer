@@ -1,7 +1,6 @@
 'use strict';
 const fs=require('node:fs'),path=require('node:path');
 // Local full-Folia trial: the normal Omni/IPC/player path owns all playback operations.
-const live=path.join(__dirname,'wrapper');
 const {createBridge}=require('./wrapper/bridge.cjs');
 const {createLocalSource}=require('./wrapper/source.cjs');
 const runtimePaths=()=>require('./wrapperPaths.cjs').wrapperPaths({resourcesPath:process.resourcesPath,profile:require('electron').app.getPath('userData')});
@@ -17,7 +16,7 @@ function initialize(log){
   const activateApps=async value=>{locations.saveApps(value);activeApps=value;};
   try{for(const item of JSON.parse(fs.readFileSync(cache,'utf8')))catalog.set(item.id,item);}catch{}
   const ready=bridge.start().then(config=>{
-    const extension=fs.readFileSync(path.join(live,'extension.js'),'utf8').replace('__FOLIA_LIVE_URL__',JSON.stringify(config.url));sessionExtension=extension;
+    const extension=require('./wrapper/extensionSource.cjs').extensionSource(config.url);sessionExtension=extension;
     const extensionPath=path.join(apps(),'xpui/extensions/folia-live-bridge.js');
     if(fs.existsSync(path.dirname(extensionPath)))fs.writeFileSync(extensionPath,extension);
     log('ui-bridge-ready',{controlPath:process.env.FOLIA_LOCAL_CONTROL_PATH||'wrapper',officialRequestsEnabled:false});
@@ -37,7 +36,7 @@ function registerLocalUiTrial(options){
     if(['spotify-search-resource-recovery','spotify-resource-version','external-handoff','external-handoff-choice','external-cleanup-failed','bridge-upgrade-rejected','spotify-connection-unavailable','spotify-auto-reconnect','spotify-background-ready','spotify-background-failed','bridge-connected'].includes(event)){
       try{const directory=path.join(require('electron').app.getPath('userData'),'spotify','diagnostics');fs.mkdirSync(directory,{recursive:true});fs.appendFileSync(path.join(directory,'connection.jsonl'),JSON.stringify({at:Date.now(),event,...facts})+'\n');}catch{}
     }
-    if(['spotify-search-resource-recovery','spotify-component-install','control-original-failure','control-state','route-request-failed','external-handoff','external-handoff-choice','external-cleanup-failed','spotify-orphan-route-restored','spotify-background-retained','spotify-background-exit','spotify-background-exit-failed','spotify-resource-version','bridge-connected','bridge-disconnected','bridge-request-failed','bridge-runtime','spotify-background-failed','ui-online-search'].includes(event))
+    if(['ui-library-read','spotify-search-resource-recovery','spotify-component-install','control-original-failure','control-state','route-request-failed','external-handoff','external-handoff-choice','external-cleanup-failed','spotify-orphan-route-restored','spotify-background-retained','spotify-background-exit','spotify-background-exit-failed','spotify-resource-version','bridge-connected','bridge-disconnected','bridge-request-failed','bridge-runtime','spotify-background-failed','ui-online-search'].includes(event))
       require('../debug/debugHost.cjs').runtimeLine('SpotifyBridge',JSON.stringify({event,...facts}));
   }), local=initialize(log);
   return require('./cableService.cjs').registerCableSpotify({...options,connectionMode:'wrapper',createService:settings=>createService(settings,local,log)});
@@ -107,9 +106,11 @@ function createService({beforeLeaveProvider},local,log){
   async function leave(){const output=await beforeLeaveProvider();await browser.clear();await audio.leaveProvider('provider-exit');await output?.complete?.();}
   const guideOptions={beforeConfigure:leave,desktop,bridge,apps:local.apps,capture,route,directory:path.join(profile,'spotify'),assetDirectory:runtimePaths().assetRoot,existingCli:process.env.FOLIA_WRAPPER_EXISTING_CLI,extension:local.extension,activateApps:local.activateApps,configureEndpoints,endpointsConfigured:endpoints=>Boolean(require('./cableEndpointSelection.cjs').selectCableEndpoints(endpoints,saved)),log};
   const connectSearch=require('./searchConnectionRecovery.cjs').createSearchConnectionRecovery({ensure:progress=>desktop.ensure(progress),repair:()=>require('./desktopSetupGuide.cjs').repairResources(guideOptions),log});
+  const libraryReader=require('./wrapper/libraryService.cjs').createLibraryService({bridge,catalog,song,connect:connectSearch,ready:local.ready,apps:local.apps,log});
   return {
     async request(input,progress){
       log('ui-spotify-request',{action:input.action,operation:input.operation,trackId:input.action==='audio'?input.id:undefined});
+      if(libraryReader.handles(input))return libraryReader.request(input,progress);
       if(input.action==='desktopSetup'&&input.operation==='preferences')return input.preferences?desktop.setPreferences(input.preferences):desktop.preferences();
       if(input.action==='desktopSetup')return require('./desktopSetupGuide.cjs').request({...guideOptions,input,progress});
       if(input.action==='externalSelection')return handoff.decide(input.token,input.choice);
@@ -139,7 +140,6 @@ function createService({beforeLeaveProvider},local,log){
         return result;
       }
       if(input.action==='leaveProvider'){await leave();await desktop.offerExit('source');return null;}
-      if(input.action==='status'){await desktop.ensure(progress);const s=await source.sample();return {id:s.account,display_name:s.displayName||s.account,images:s.images||[]};}
       if(input.action==='playbackSetup'){
         if(!['status','devices'].includes(input.operation))throw Object.assign(Error('SPOTIFY_WRAPPER_SETTINGS_AUTOMATIC'),{code:'SPOTIFY_WRAPPER_SETTINGS_AUTOMATIC'});
         const s=await source.sample(),c=await route.availability(),devices=await capture.devices();
@@ -173,7 +173,6 @@ function createService({beforeLeaveProvider},local,log){
       const page=items=>({items:items.slice(offset,offset+limit),total:items.length,next:offset+limit<items.length?'local-next':null});
       if(input.action==='song'){const t=catalog.get(input.id);if(!t)throw Error('Spotify: local-metadata-unavailable');return song(t);}
       const collection={id:'folia-local-queue',providerId:'spotify',name:'本机 Spotify 已加载曲目',description:'当前曲目与本机队列；不调用官方目录接口',coverUrl:tracks.find(t=>t.coverUrl)?.coverUrl,trackCount:tracks.length,providerData:{localQueue:true},type:'playlist'};
-      if(input.action==='playlists')return {items:[collection],total:1,next:null};
       if(input.action==='playlist')return collection;
       if(input.action==='playlistTracks')return page(tracks.map(song));
       throw Error('Spotify: local-trial-operation-unavailable');

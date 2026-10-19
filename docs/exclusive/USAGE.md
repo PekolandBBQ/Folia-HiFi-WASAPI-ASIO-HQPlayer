@@ -1,16 +1,16 @@
 <!-- docs/exclusive/USAGE.md -->
 # Folia-HiFi-WASAPI-ASIO-HQPlayer-Spotify 使用说明
 
-这是我维护的 Windows x64 正式专版，名称为 **Folia-HiFi-WASAPI-ASIO-HQPlayer-Spotify**，当前应用版本 **0.7.19**、专版修订 **r7**。它基于 Folia v0.7.19，保留原项目的许可证和署名。
+这是我维护的 Windows x64 正式专版，名称为 **Folia-HiFi-WASAPI-ASIO-HQPlayer-Spotify**，当前应用版本 **0.7.19**、专版修订 **r8**。它基于 Folia v0.7.19，保留原项目的许可证和署名。
 
 ## 安装与更新
 
-从 [0.7.19 r7 正式版](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/releases/tag/folia-hifi-v0.7.19-r7) 选择一种安装方式：
+从 [0.7.19 r8 正式版](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/releases/tag/folia-hifi-v0.7.19-r8) 选择一种安装方式：
 
 | 方式 | 下载与使用 |
 | --- | --- |
-| **EXE 安装版（推荐）** | 下载 [Folia-HiFi-WASAPI-ASIO-HQPlayer-0.7.19-win-x64-Setup.exe](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/releases/download/folia-hifi-v0.7.19-r7/Folia-HiFi-WASAPI-ASIO-HQPlayer-0.7.19-win-x64-Setup.exe)，运行安装向导并选择目录；安装后从开始菜单启动。仅为当前用户安装，提供 Windows“已安装的应用”卸载入口。 |
-| **ZIP 免安装版** | 下载 [Folia-HiFi-WASAPI-ASIO-HQPlayer-0.7.19-win-x64.zip](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/releases/download/folia-hifi-v0.7.19-r7/Folia-HiFi-WASAPI-ASIO-HQPlayer-0.7.19-win-x64.zip)，完整解压到可写目录，运行 `Folia-HiFi-WASAPI-ASIO-HQPlayer.exe`。不要在压缩包内直接运行，也不要单独移动 EXE。 |
+| **EXE 安装版（推荐）** | 下载 [Folia-HiFi-WASAPI-ASIO-HQPlayer-0.7.19-win-x64-Setup.exe](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/releases/download/folia-hifi-v0.7.19-r8/Folia-HiFi-WASAPI-ASIO-HQPlayer-0.7.19-win-x64-Setup.exe)，运行安装向导并选择目录；安装后从开始菜单启动。仅为当前用户安装，提供 Windows“已安装的应用”卸载入口。 |
+| **ZIP 免安装版** | 下载 [Folia-HiFi-WASAPI-ASIO-HQPlayer-0.7.19-win-x64.zip](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/releases/download/folia-hifi-v0.7.19-r8/Folia-HiFi-WASAPI-ASIO-HQPlayer-0.7.19-win-x64.zip)，完整解压到可写目录，运行 `Folia-HiFi-WASAPI-ASIO-HQPlayer.exe`。不要在压缩包内直接运行，也不要单独移动 EXE。 |
 
 两种方式包含相同程序、WASAPI/ASIO 组件 0.1.3-preview.3、独立 HQPlayer 组件 0.1.4-preview.7 和支持 PCM24/PCM32 的 FFmpeg，无需安装 Node 或 .NET SDK。ASIO 需要另行安装厂商的 x64 驱动，HQPlayer 需另行安装并授权。
 
@@ -32,7 +32,7 @@
 6. 等待自动启动并连接 Spotify，就绪后点击“完成并返回歌单”。随后在 Folia 打开 Spotify 歌单并点歌；Spotify 未运行时可后台拉起，左下角显示启动准备。
 7. 选择 WASAPI、ASIO 或 HQPlayer 输出后直接播放。Spotify 与其他音源使用同一输出选择；整数模式是 WASAPI/ASIO 的 PCM 处理选项，HQPlayer 的 DAC 和 DSP 仍在 Desktop 中配置。Spotify PCM 预缓冲在原生音频设置中统一调整，WASAPI、ASIO 和 HQPlayer 共用。
 
-组件组合：Spicetify **2.45.3**、VB-CABLE **Pack45 / 3.3.1.7**、路由 **0.19.0-dev.31**、采集 **0.1.5-capture.11**、统一组件包 **0.1.0-preview.4 / revision 6**。主程序正式修订与内部组件版本各自标记；正式发布不改写组件验证事实。
+组件组合：Spicetify **2.45.3**、VB-CABLE **Pack45 / 3.3.1.7**、路由 **0.19.0-dev.31**、采集 **0.1.5-capture.11**、统一组件包 **0.1.0-preview.4 / revision 8**。主程序正式修订与内部组件版本各自标记；正式发布不改写组件验证事实。
 
 ### 歌词与已知问题
 
@@ -43,6 +43,14 @@ Spotify 原歌词在当前歌曲卡片与详情页显示。确认没有可显示
 ### 自动连接与在线收藏
 
 已连接账号后，每次启动 Folia 自动检查并尝试完成缺失组件安装、配置及连接；正常状态复用，无需指定 Spotify 启动顺序。三次静默重试仍失败时，仅在打开 Spotify 歌单后显示配置向导与具体中文原因。Spotify 自行安装/登录、管理员授权和 Windows 重启仍需用户操作。在线搜索覆盖 Spotify 曲库，点赞/取消点赞在远端确认后刷新已点赞歌单。
+
+### 音乐库、推荐与分类搜索
+
+- 在 Spotify 音源下，歌单分类显示自建及收藏的他人歌单，专辑显示收藏专辑，艺术家显示已关注艺人。点开后继续使用 Folia 原有详情、曲目和队列操作。
+- “电台”分类展示 Spotify 当前账号返回的推荐歌单，如 Daily Mix、每周新发现、新歌雷达等；可用内容取决于账号、地区和客户端，不提供 AI DJ。
+- 搜索页选择 Spotify，再选择单曲、艺人或专辑；这是在线曲库搜索，不限于已点赞歌曲。艺人页可关注/取消关注，专辑页可收藏/取消收藏，歌曲仍使用点赞操作。
+- 写入经 Spotify 确认并重新读取完整收藏列表后，Folia 才更新收藏显示；可在 Spotify 客户端核对。请求失败或账号变化不会伪装成收藏成功。读取和播放不排在收藏写入后等待。
+- 分类切换、翻页和返回保留各自结果与位置；旧搜索响应不能覆盖新分类。需要刷新时重新打开对应收藏分类。
 
 ### 桌面换歌、跨音源与退出
 

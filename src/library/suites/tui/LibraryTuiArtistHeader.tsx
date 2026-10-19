@@ -2,6 +2,7 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import type { LibraryCollectionDescriptor } from '../../core/contracts/collection';
 import type { LibraryArtistCapabilities, LibraryArtistSnapshot } from '../../core/contracts/artist';
+import { CollectionSubscriptionButton } from '../../../components/shared/CollectionSubscriptionButton';
 
 // src/library/suites/tui/LibraryTuiArtistHeader.tsx
 // TUI 歌手页的状态栏：返回、歌手名（与别名）、来源、热门歌曲与专辑数、加载状态（加载中 / 专辑分页中 / 分页失败可续 /
@@ -65,6 +66,7 @@ const LibraryTuiArtistHeader: React.FC<LibraryTuiArtistHeaderProps> = ({
                     {`[← ${t('libraryTui.back')}]`}
                 </button>
                 <span className="font-bold" style={{ color: accentColor }} data-tui-title>{detail?.name || collection.name}</span>
+                {collection.source === 'online' && <CollectionSubscriptionButton collection={collection} />}
                 {alias && <span className="opacity-50">{alias}</span>}
                 <span className="opacity-50">{`${t('navidrome.artists') || 'Artists'} · ${sourceLabel(collection, t)}`}</span>
                 {detail && (

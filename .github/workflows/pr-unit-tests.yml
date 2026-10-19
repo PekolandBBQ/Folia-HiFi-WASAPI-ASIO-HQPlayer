@@ -64,7 +64,7 @@ jobs:
         run: npm run test:unit
 
       - name: Spotify resource recovery and packaged scripts
-        run: node --test test/node/spotifySearchRecovery.test.cjs test/node/spotifyOneClickConfiguration.test.cjs test/node/spotifyPackagedScripts.test.cjs test/node/spotifyUpgradeStatus.test.cjs test/node/spotifyFirstSetup.test.cjs test/node/spotifyComponentFreshness.test.cjs
+        run: node --test test/node/spotifyCollectionCatalog.test.cjs test/node/spotifyLibraryReader.test.cjs test/wrapper-extension.test.cjs test/wrapper-handshake.test.cjs test/wrapper-portability.test.cjs test/node/spotifyPlaybackRetry.test.cjs test/isolated/spotify/coldPausedInspectionHandoff.test.cjs test/node/spotifySearchRecovery.test.cjs test/node/spotifyOneClickConfiguration.test.cjs test/node/spotifyPackagedScripts.test.cjs test/node/spotifyUpgradeStatus.test.cjs test/node/spotifyFirstSetup.test.cjs test/node/spotifyComponentFreshness.test.cjs
 
   typecheck-sync-server:
     name: Typecheck sync-server

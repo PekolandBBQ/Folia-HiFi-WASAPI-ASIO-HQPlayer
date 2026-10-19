@@ -208,6 +208,10 @@ export const omni = {
         return typeof requireOnlineMusicProvider(providerId).recommendations?.getDailySongs === 'function';
     },
 
+    supportsPersonalFm(providerId: OmniProviderId): boolean {
+        return typeof requireOnlineMusicProvider(providerId).recommendations?.getPersonalFm === 'function';
+    },
+
     getProviderAvailability(providerId: OmniProviderId) {
         return requireOnlineMusicProvider(providerId).getAvailability?.() ?? { configured: true };
     },
@@ -269,6 +273,13 @@ export const omni = {
         const provider = requireOnlineMusicProvider(providerId);
         if (!provider.auth) return unsupported(providerId, 'auth');
         return provider.auth.getLoginStatus();
+    },
+
+    async searchProviderCollections(providerId: OmniProviderId, kind: 'album' | 'artist', query: string, page: PageInput): Promise<OmniPage<OmniCollection>> {
+        const provider = requireOnlineMusicProvider(providerId);
+        const search = kind === 'album' ? provider.search?.searchAlbums : provider.search?.searchArtists;
+        if (!providerSupports(provider, kind === 'album' ? 'albumSearch' : 'artistSearch') || !search) return unsupported(providerId, `${kind}-search`);
+        return search(query, page.limit, page.offset);
     },
 
     async logout(providerId: OmniProviderId): Promise<void> {
@@ -460,6 +471,8 @@ export const omni = {
 
     canSubscribeCollection(collection: OmniCollection): boolean {
         const provider = getOnlineMusicProvider(collection.providerId);
+        if (collection.type === 'artist') return providerSupports(provider, 'mutations') && providerSupports(provider, 'artistSubscription') && Boolean(provider?.mutations?.subscribeArtist);
+        if (collection.type === 'album' && providerSupports(provider, 'albumSubscription')) return providerSupports(provider, 'mutations') && Boolean(provider?.mutations?.subscribeAlbum);
         if (
             !providerSupports(provider, 'mutations')
             || !providerSupports(provider, 'playlistSubscription')
@@ -473,6 +486,10 @@ export const omni = {
 
     async getUserAlbums(userId: MediaId, page: PageInput): Promise<OmniPage<OmniCollection>> {
         return withActiveProvider(async provider => provider.library?.getUserAlbums?.(userId, page.limit, page.offset) ?? emptyPage(page.offset));
+    },
+
+    async getUserArtists(userId: MediaId, page: PageInput): Promise<OmniPage<OmniCollection>> {
+        return withActiveProvider(async provider => provider.library?.getUserArtists?.(userId, page.limit, page.offset) ?? emptyPage(page.offset));
     },
 
     async getLikedSongIds(userId: MediaId): Promise<MediaId[]> {
@@ -654,7 +671,7 @@ export const omni = {
     },
 
     async getSubscriptionStatus(collection: OmniCollection): Promise<boolean> {
-        const type = collection.type === 'album' ? 'album' : 'playlist';
+        const type = collection.type === 'artist' ? 'artist' : collection.type === 'album' ? 'album' : 'playlist';
         return providerForCollection(collection).catalog?.getSubscriptionStatus?.(type, collection.id, collection) ?? false;
     },
 
@@ -662,6 +679,10 @@ export const omni = {
         const mutations = providerForCollection(collection).mutations;
         if (!this.canSubscribeCollection(collection)) {
             return unsupported(collection.providerId, 'collection-subscription');
+        }
+        if (collection.type === 'artist') {
+            if (!mutations?.subscribeArtist) return unsupported(collection.providerId, 'artist-subscription');
+            return mutations.subscribeArtist(collection.id, subscribed);
         }
         if (collection.type === 'album') {
             if (!mutations?.subscribeAlbum) return unsupported(collection.providerId, 'album-subscription');

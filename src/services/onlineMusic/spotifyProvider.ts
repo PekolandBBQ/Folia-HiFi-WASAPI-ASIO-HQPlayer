@@ -13,7 +13,8 @@ export const spotifyProvider: OnlineMusicProvider = {
     id: 'spotify', displayName: 'Spotify', shortName: 'Spotify',
     getAvailability: () => ({ configured: spotifyAvailable(), ...(!spotifyAvailable() ? { reason: 'runtime-unavailable' as const } : {}) }),
     capabilities: { search: true, playback: true, lyrics: true, auth: true, userLibrary: true, playlists: true,
-        albums: true, artists: false, recommendations: false, mutations: true, wordByWordLyrics: false, likes: true },
+        albums: true, artists: true, userAlbums: true, userArtists: true, recommendations: true, mutations: true, wordByWordLyrics: false, likes: true,
+        albumSearch: true, artistSearch: true, albumSubscription: true, artistSubscription: true },
     mutations: spotifyMutations,
     normalizeSong: normalizeSpotifySong, normalizeCollection: normalizeSpotifyCollection,
     songMetadata: { getSongMetadata: createProviderSongMetadata },
@@ -35,7 +36,10 @@ export const spotifyProvider: OnlineMusicProvider = {
         const id = song.sourceRef?.mediaId || String(song.id);
         return normalizeSpotifyLyrics(await requestSpotify({ action: 'lyrics', id }), id);
     } },
-    search: { async searchSongs(query, limit, offset) {
+    search: {
+        searchAlbums: async (query,limit,offset) => normalizeSpotifyPage(await requestSpotify({action:'searchAlbums',query,limit,offset}),offset,normalizeSpotifyCollection),
+        searchArtists: async (query,limit,offset) => normalizeSpotifyPage(await requestSpotify({action:'searchArtists',query,limit,offset}),offset,normalizeSpotifyCollection),
+        async searchSongs(query, limit, offset) {
         return normalizeSpotifyPage(await requestSpotify({ action: 'search', query, limit, offset }), offset, normalizeSpotifySong, true);
     } },
     playback: {
@@ -75,8 +79,20 @@ export const spotifyProvider: OnlineMusicProvider = {
         },
         getLikedSongs: () => getAllSpotifySavedTracks(),
         getLikedSongIds: async () => (await getAllSpotifySavedTracks()).map(song => song.id),
+        getUserAlbums: async (_id, limit, offset) => normalizeSpotifyPage(await requestSpotify({action:'albums',limit,offset}),offset,normalizeSpotifyCollection),
+        getUserArtists: async (_id, limit, offset) => normalizeSpotifyPage(await requestSpotify({action:'artists',limit,offset}),offset,normalizeSpotifyCollection),
+    },
+    recommendations: {
+        getRecommendedCollections: async limit => (await requestSpotify<{items:unknown[]}>({action:'recommendations',limit})).items.map(normalizeSpotifyCollection),
     },
     catalog: {
+        getSubscriptionStatus: async (type,id) => {
+            if (type !== 'album' && type !== 'artist') throw new Error('当前 Spotify 收藏操作仅支持专辑和艺人');
+            return (await requestSpotify<{subscribed:boolean}>({action:'subscriptionStatus',collectionType:type,id:String(id)})).subscribed;
+        },
+        getArtistDetail: async id => normalizeSpotifyCollection(await requestSpotify({action:'artist',id:String(id)})),
+        getArtistSongs: async (id,limit,offset) => normalizeSpotifyPage(await requestSpotify({action:'artistSongs',id:String(id),limit,offset}),offset,normalizeSpotifySong,true),
+        getArtistAlbums: async (id,limit,offset) => normalizeSpotifyPage(await requestSpotify({action:'artistAlbums',id:String(id),limit,offset}),offset,normalizeSpotifyCollection),
         getPlaylistDetail: async id => {
             if (id === SPOTIFY_LIKED_COLLECTION_ID) return createSpotifyLikedCollection((await getSpotifySavedTracks(1, 0)).total);
             try { return normalizeSpotifyCollection(await requestSpotify({ action: 'playlist', id: String(id) })); }
@@ -89,9 +105,7 @@ export const spotifyProvider: OnlineMusicProvider = {
         },
         getAlbumDetail: async id => normalizeSpotifyCollection(await requestSpotify({ action: 'album', id: String(id) })),
         getAlbumTracks: async (id, limit = 50, offset = 0) => {
-            const album = await requestSpotify<Record<string, unknown>>({ action: 'album', id: String(id) });
-            return normalizeSpotifyPage(await requestSpotify({ action: 'albumTracks', id: String(id), limit, offset }), offset,
-                entry => normalizeSpotifySong({ ...(entry as object), album }), true);
+            return normalizeSpotifyPage(await requestSpotify({ action: 'albumTracks', id: String(id), limit, offset }), offset, normalizeSpotifySong, true);
         },
     },
 };

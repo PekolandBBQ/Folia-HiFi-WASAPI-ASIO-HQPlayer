@@ -1,10 +1,11 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { AlertCircle, Loader2, Search, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useShallow } from 'zustand/react/shallow';
 import type { Theme, UnifiedSong } from '../../../types';
-import type { MediaId } from '../../../types/onlineMusic';
+import type { MediaId, ProviderCollection } from '../../../types/onlineMusic';
+import { SearchCollectionResults } from './SearchCollectionResults';
 import {
     type SearchSource,
     useSearchNavigationStore,
@@ -26,6 +27,7 @@ type SearchWorkspaceProps = {
     onAddTrackToQueue: (track: UnifiedSong) => void;
     onOpenArtist: (track: UnifiedSong, artistName: string, artistId?: MediaId, entityId?: string) => void;
     onOpenAlbum: (track: UnifiedSong, albumName: string, albumId?: MediaId, entityId?: string) => void;
+    onOpenCollection?: (collection: ProviderCollection) => void;
     /**
      * 渲染前把结果重新套上当前的展示数据（本地曲目的歌手 / 专辑实体）。store 里的结果是提交那一刻的快照，
      * 本地曲库的实体目录在导入后要晚一拍才加载完，那之前搜到的行没有专辑、歌手链接是灰的；
@@ -44,6 +46,7 @@ const SearchWorkspace: React.FC<SearchWorkspaceProps> = ({
     onAddTrackToQueue,
     onOpenArtist,
     onOpenAlbum,
+    onOpenCollection,
     resolveTrackDisplay,
 }) => {
     const { t } = useTranslation();
@@ -51,6 +54,9 @@ const SearchWorkspace: React.FC<SearchWorkspaceProps> = ({
         searchQuery,
         searchSourceTab,
         searchResults,
+        searchCollections,
+        searchKind,
+        setSearchKind,
         isSearchOpen,
         isSearching,
         isLoadingMore,
@@ -59,10 +65,14 @@ const SearchWorkspace: React.FC<SearchWorkspaceProps> = ({
         scrollTop,
         setSearchQuery,
         setSearchScrollTop,
+        requestId,
     } = useSearchNavigationStore(useShallow(state => ({
         searchQuery: state.searchQuery,
         searchSourceTab: state.searchSourceTab,
         searchResults: state.searchResults,
+        searchCollections: state.searchCollections,
+        searchKind: state.searchKind,
+        setSearchKind: state.setSearchKind,
         isSearchOpen: state.isSearchOpen,
         isSearching: state.isSearching,
         isLoadingMore: state.isLoadingMore,
@@ -71,12 +81,18 @@ const SearchWorkspace: React.FC<SearchWorkspaceProps> = ({
         scrollTop: state.scrollTop,
         setSearchQuery: state.setSearchQuery,
         setSearchScrollTop: state.setSearchScrollTop,
+        requestId: state.requestId,
     })));
     const results = useMemo(() => {
         const raw = searchResults || [];
         return resolveTrackDisplay ? raw.map(resolveTrackDisplay) : raw;
     }, [resolveTrackDisplay, searchResults]);
     const activeOnlineProviderId = useOnlineProviderAccountStore(state => state.activeProviderId);
+    const capabilities = searchSourceTab === 'local' || searchSourceTab === 'navidrome' ? null : omni.getProviderCapabilities(searchSourceTab);
+    const resultCount = searchKind === 'songs' ? results.length : searchCollections?.length || 0;
+    const updateScrollTop = useCallback((top:number) => {
+        if (useSearchNavigationStore.getState().requestId === requestId) setSearchScrollTop(top);
+    },[requestId,setSearchScrollTop]);
     // Spotify transport supplies translated, actionable errors; do not replace them with a generic retry prompt.
     const searchFailureText = searchSourceTab === 'spotify' && /[\u3400-\u9fff]/.test(searchError || '')
         ? searchError : t('search.error');
@@ -178,6 +194,13 @@ const SearchWorkspace: React.FC<SearchWorkspaceProps> = ({
                                 </button>
                             ))}
                         </nav>
+                        {(capabilities?.artistSearch || capabilities?.albumSearch) && <nav aria-label={t('catalogSearch.kind')} className="flex gap-2 pb-1">
+                            {(['songs','artists','albums'] as const).filter(kind => kind === 'songs' || (kind === 'artists' ? capabilities?.artistSearch : capabilities?.albumSearch)).map(kind =>
+                                <button key={kind} type="button" aria-pressed={searchKind === kind} onClick={() => {setSearchKind(kind);onSubmitSearch();}}
+                                    className={`rounded-full border border-current/15 px-4 py-1.5 text-xs ${searchKind === kind ? 'bg-current/10 font-bold' : 'opacity-60'}`}>
+                                    {t(`catalogSearch.${kind}`)}
+                                </button>)}
+                        </nav>}
                     </header>
 
                     <div className="mx-auto mt-3 min-h-0 w-full max-w-5xl flex-1">
@@ -185,7 +208,7 @@ const SearchWorkspace: React.FC<SearchWorkspaceProps> = ({
                             <div className="flex h-full items-center justify-center">
                                 <Loader2 className="h-9 w-9 animate-spin opacity-45" />
                             </div>
-                        ) : searchError && results.length === 0 ? (
+                        ) : searchError && resultCount === 0 ? (
                             <div className="flex h-full flex-col items-center justify-center gap-3 text-center opacity-65">
                                 <AlertCircle size={32} />
                                 <p className="max-w-xl px-6 text-center">{searchFailureText}</p>
@@ -197,23 +220,23 @@ const SearchWorkspace: React.FC<SearchWorkspaceProps> = ({
                                     {t('search.retry')}
                                 </button>
                             </div>
-                        ) : results.length === 0 ? (
+                        ) : resultCount === 0 ? (
                             <div className="flex h-full items-center justify-center text-sm opacity-50">
                                 {t('home.noResults')}
                             </div>
                         ) : (
                             <div className="flex h-full flex-col">
                                 <div className="min-h-0 flex-1">
-                                    <SearchResultsList
+                                    {searchKind !== 'songs' ? <SearchCollectionResults collections={searchCollections || []} scrollTop={scrollTop} onScrollTopChange={updateScrollTop} onOpen={collection => onOpenCollection?.(collection)} /> : <SearchResultsList
                                         tracks={results}
                                         scrollTop={scrollTop}
                                         isDaylight={isDaylight}
-                                        onScrollTopChange={setSearchScrollTop}
+                                        onScrollTopChange={updateScrollTop}
                                         onPlayTrack={onPlayTrack}
                                         onAddTrackToQueue={onAddTrackToQueue}
                                         onOpenArtist={onOpenArtist}
                                         onOpenAlbum={onOpenAlbum}
-                                    />
+                                    />}
                                 </div>
                                 {searchError ? (
                                     <div className="flex shrink-0 items-center justify-center gap-3 py-3 text-sm">

@@ -2326,6 +2326,7 @@ export default function App() {
         handleSearchResultAddToQueue,
         handleSearchResultArtistOpen,
         handleSearchResultAlbumOpen,
+        handleSearchCollectionOpen: collection => navigateToCollection({...collection,source:'online'},'search'),
         resolveSearchResultDisplay,
         devDebugSnapshot,
         effectiveLoopMode,

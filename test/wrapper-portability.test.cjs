@@ -31,3 +31,17 @@ test('packaged bridge resolves app dependency and transports a real message usin
   client.on('message', bytes => { const input = JSON.parse(bytes); client.send(JSON.stringify({ id: input.id, ok: true, value: { operation: input.op } })); });
   assert.deepEqual(await bridge.request('snapshot'), { operation: 'snapshot' });
 });
+
+test('library failures retain their upstream reason in both host logs and rejected requests', async t => {
+  const logs=[],bridge=createBridge((event,value)=>logs.push({event,value}),{port:0});
+  t.after(()=>bridge.close());const {url}=await bridge.start();
+  const WebSocket=require('ws'),client=new WebSocket(url,{origin:'https://xpui.app.spotify.com'});
+  t.after(()=>client.terminate());
+  await new Promise((resolve,reject)=>{client.once('open',resolve);client.once('error',reject);});
+  const diagnostic={operation:'recommendations',queryName:'home',upstreamStatus:400,message:'Missing required variable: homeEndUserIntegration'};
+  client.on('message',bytes=>{const request=JSON.parse(bytes);client.send(JSON.stringify({id:request.id,ok:false,code:'LIBRARY_REQUEST_INVALID',diagnostic}));});
+  await assert.rejects(bridge.request('libraryRead',{operation:'recommendations'}),error=>{
+    assert.equal(error.code,'LIBRARY_REQUEST_INVALID');assert.deepEqual(error.diagnostic,diagnostic);return true;
+  });
+  const failure=logs.find(row=>row.event==='bridge-request-failed');assert.equal(failure.value.operation,'libraryRead');assert.deepEqual(failure.value.diagnostic,diagnostic);
+});

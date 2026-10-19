@@ -10,8 +10,8 @@ const validId = (id: unknown): id is string => typeof id === 'string' && /^[A-Za
 const cover = (raw: RecordValue) => Array.isArray(raw.images) ? raw.images.find((image: RecordValue) => typeof image?.url === 'string' && image.url.startsWith('https://'))?.url : undefined;
 // Only typed provider metadata leaves the adapter; unknown counts stay absent.
 const metadataStatus = (raw: RecordValue): ProviderMetadataStatus => ({
-    metadataSource: raw.metadataSource === 'spotify-public-embed' ? 'spotify-public-embed' : 'spotify-api',
-    ...(typeof raw.sourceUrl === 'string' && /^https:\/\/open\.spotify\.com\/(?:embed\/playlist|playlist|track|album)\/[A-Za-z0-9]{22}$/.test(raw.sourceUrl) ? { sourceUrl: raw.sourceUrl } : {}),
+    metadataSource: raw.metadataSource === 'spotify-public-embed' ? 'spotify-public-embed' : raw.metadataSource==='spicetify-local-library'?'spicetify-local-library':'spotify-api',
+    ...(typeof raw.sourceUrl === 'string' && /^https:\/\/open\.spotify\.com\/(?:embed\/playlist|playlist|track|album|artist)\/[A-Za-z0-9]{22}$/.test(raw.sourceUrl) ? { sourceUrl: raw.sourceUrl } : {}),
     ...(['complete', 'partial', 'unknown'].includes(raw.metadataCompleteness) ? { metadataCompleteness: raw.metadataCompleteness } : {}),
     ...(Number.isSafeInteger(raw.loadedCount) && raw.loadedCount >= 0 ? { loadedCount: raw.loadedCount } : {}),
 });
@@ -63,17 +63,18 @@ export function normalizeSpotifyCollection(value: unknown): ProviderCollection {
     if (raw.providerId === 'spotify') return value as ProviderCollection;
     const trackCount = raw.items?.total ?? raw.tracks?.total ?? raw.total_tracks;
     const owner = object(raw.owner);
-    return { id: raw.id, providerId: 'spotify', type: raw.type === 'album' ? 'album' : 'playlist', name: raw.name,
+    return { id: raw.id, providerId: 'spotify', type: raw.type === 'artist' ? 'artist' : raw.type === 'album' ? 'album' : 'playlist', name: raw.name,
         coverUrl: cover(raw), ...(typeof raw.description === 'string' ? { description: raw.description } : {}),
         ...(Number.isSafeInteger(trackCount) && trackCount >= 0 ? { trackCount } : {}),
         ...(typeof raw.isOwned === 'boolean' ? { isOwned: raw.isOwned } : {}),
+        ...(Array.isArray(raw.artists) ? {artists:raw.artists.map((artist:RecordValue)=>({id:String(artist.id||''),name:String(artist.name||'')}))}:{}),
         ...(typeof owner.id === 'string' && owner.id ? { creator: { id: owner.id, nickname: owner.display_name || owner.id } } : {}),
         providerData: { ...(raw.metadataSource === 'spotify-public-embed' && typeof raw.providerData?.metadataUrl === 'string'
                 && /^https:\/\/open\.spotify\.com\/embed\/playlist\/[A-Za-z0-9]{22}$/.test(raw.providerData.metadataUrl) ? { metadataUrl: raw.providerData.metadataUrl } : {}),
             ...(typeof raw.public === 'boolean' ? { public: raw.public } : {}),
             ...(typeof raw.collaborative === 'boolean' ? { collaborative: raw.collaborative } : {}),
             ...(typeof raw.providerData?.playlistRelationship === 'string' ? { playlistRelationship: raw.providerData.playlistRelationship } : {}) },
-        ...metadataStatus({ ...raw, sourceUrl: raw.sourceUrl || `https://open.spotify.com/${raw.type === 'album' ? 'album' : 'playlist'}/${raw.id}` }) };
+        ...metadataStatus({ ...raw, sourceUrl: raw.sourceUrl || `https://open.spotify.com/${raw.type === 'artist' ? 'artist' : raw.type === 'album' ? 'album' : 'playlist'}/${raw.id}` }) };
 }
 export function normalizeSpotifyUser(value: unknown): ProviderUser | null {
     if (value == null) return null;

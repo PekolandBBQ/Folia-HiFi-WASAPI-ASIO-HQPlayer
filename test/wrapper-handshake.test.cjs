@@ -5,7 +5,9 @@ const {expected,inspectHandshake,inspectRuntime,requireHandshake}=require('../el
 const bridge=value=>({connected:()=>true,request:async op=>{assert.equal(op,'hello');return value;}});
 test('runtime handshake requires protocol and declared capabilities, accepts compatible newer versions',async()=>{
  assert.equal((await inspectHandshake(bridge(expected))).state,'ready');
- assert.equal((await inspectHandshake(bridge({...expected,version:'1.2.0'}))).state,'ready');
+ assert.equal((await inspectHandshake(bridge({...expected,version:'1.4.0'}))).state,'ready');
+ assert.equal((await inspectHandshake(bridge({...expected,version:'1.2.1'}))).state,'outdated');
+ assert.equal((await inspectHandshake(bridge({...expected,version:'1.2.0'}))).state,'outdated');
  for(const value of [{},{...expected,protocol:2},{...expected,capabilities:['snapshot']}] )assert.equal((await inspectHandshake(bridge(value))).state,'outdated');
  await assert.rejects(requireHandshake(bridge({})),{code:'BRIDGE_UPDATE_REQUIRED'});
 });
@@ -21,11 +23,11 @@ test('disconnected startup evidence separates missing, wrong and unknown resourc
 });
 const fs=require('node:fs'),os=require('node:os'),path=require('node:path'),{EventEmitter}=require('node:events');
 const {createDesktopLifecycle}=require('../electron/spotify/desktopLifecycle.cjs');
-for(const initial of ['outdated','unmanaged','ready'])test('automatic connection handles '+initial+' without requiring manual Spotify restart',async()=>{
+for(const initial of ['outdated','old-version','unmanaged','ready'])test('automatic connection handles '+initial+' without requiring manual Spotify restart',async()=>{
  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'folia-auto-connect-'));fs.mkdirSync(path.join(dir,'xpui'));fs.writeFileSync(path.join(dir,'xpui/index.html'),'');
  let state=initial,running=true,starts=0,stops=0;const started=new Date().toISOString();
  const snapshot={local:true,wrapperReady:true,account:'test',deviceId:'local'};
- const b={connected:()=>running&&state!=='unmanaged',request:async op=>{if(op==='hello'){if(state==='outdated')throw Object.assign(Error(),{code:'SOURCE_OPERATION_UNSUPPORTED'});return expected;}return snapshot;}};
+ const b={connected:()=>running&&state!=='unmanaged',request:async op=>{if(op==='hello'){if(state==='outdated')throw Object.assign(Error(),{code:'SOURCE_OPERATION_UNSUPPORTED'});return state==='old-version'?{...expected,version:'1.2.0'}:expected;}return snapshot;}};
  const lifecycle=createDesktopLifecycle({directory:dir,apps:dir,ready:Promise.resolve(),bridge:b,log:()=>{},dialog:{showMessageBox:()=>assert.fail('no prompt')},parent:()=>null,
  discovery:async()=>({candidates:[{id:'desktop',exe:'test.exe',layout:'desktop'}],errors:[],running:running?[{pid:123,exe:'test.exe',started,mainProcess:true,commandLineKnown:true,appDirectory:state==='unmanaged'?null:dir}]:[]}),
  stop:async()=>{stops++;running=false;},start:()=>{starts++;state='ready';running=true;const child=Object.assign(new EventEmitter(),{pid:123,unref(){}});queueMicrotask(()=>child.emit('spawn'));return child;}});
