@@ -1,13 +1,14 @@
 'use strict';
 const path = require('node:path');
+const {compareVersions}=require('../../updateChannels.cjs');
 // Runtime evidence is independent of files and current playback state.
-const expected = {protocol:1,version:'1.1.3',capabilities:['snapshot','command','catalog','lyrics','likedTracks','searchTracks','setLiked','independentReads','accountProfile','repeatMode']};
+const expected = {protocol:1,version:'1.3.0',capabilities:['snapshot','command','catalog','lyrics','likedTracks','searchTracks','setLiked','independentReads','accountProfile','repeatMode','libraryCollections','collectionSearch','collectionSubscriptions']};
 async function inspectHandshake(bridge){
  try{
   const value=await bridge.request('hello');
   const version=typeof value?.version==='string'&&/^\d+\.\d+\.\d+$/.test(value.version)?value.version:undefined;
   const missing=expected.capabilities.filter(cap=>!Array.isArray(value?.capabilities)||!value.capabilities.includes(cap));
-  const ready=value?.protocol===expected.protocol&&Boolean(version)&&!missing.length;
+  const ready=value?.protocol===expected.protocol&&Boolean(version)&&compareVersions(version,expected.version)>=0&&!missing.length;
   return {state:ready?'ready':'outdated',version,expectedVersion:expected.version,missing,
    detail:ready?`已加载桥接 ${version}，播放、在线搜索和收藏能力已确认`:`运行中的桥接${version?' '+version:''}与当前 Folia 不匹配。请退出 Spotify 后回到 Folia 重试，由 Folia 自动拉起。`};
  }catch(error){

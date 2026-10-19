@@ -1,6 +1,8 @@
 
 
 export default {
+ catalogSearch: {kind:'Search type',songs:'Songs',artists:'Artists',albums:'Albums'},
+ catalogSubscription: {follow:'Follow artist',unfollow:'Unfollow',save:'Save album',unsave:'Remove from library',retry:'Reload status',failed:'The library change could not be completed. Your previous status is retained.'},
  audioSignalPath: {title: "Audio signal path"},
  spotifyExit: {title:"Quit Spotify when Folia exits",saveFailed:"Could not save the setting. Please retry."},
  livePcmPrebuffer: {"title": "Spotify PCM prebuffer", "description": "25–5000 ms · Default 350 ms. Lower values may cause dropouts. Applies to Spotify PCM on WASAPI, ASIO and HQPlayer at the next play/resume, seek or track preparation; moving this slider does not interrupt playback.", "sharedHint": "Prebuffer is shared with WASAPI and ASIO. Adjust “Spotify PCM prebuffer” in native audio settings."},
@@ -992,6 +994,7 @@ export default {
       "home-playlist": { "title": "Open playlists", "description": "Open playlist home tab" },
       "home-local": { "title": "Open local music", "description": "Open local music tab" },
       "home-albums": { "title": "Open albums", "description": "Open albums tab" },
+      "home-artists": { "title": "Open followed artists", "description": "Open followed artists tab" },
       "home-navidrome": { "title": "Open Navidrome", "description": "Open Navidrome tab" },
       "home-radio": { "title": "Open radio", "description": "Open radio tab" },
       "grid-sort-file-name": { "title": "Sort by file name", "description": "Order the local tracks by their file name" },

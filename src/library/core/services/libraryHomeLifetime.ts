@@ -13,6 +13,7 @@ import type { LibraryHomeResources, LibraryHomeTabKey } from '../contracts/homeM
 /** 首页整个离开：放掉在线数据的归属，让概览与文件夹树在回来时重读。 */
 export const releaseLibraryHomeResources = (resources: LibraryHomeResources): void => {
     resources.favoriteAlbums.setOwner(null);
+    resources.favoriteArtists?.setOwner(null);
     resources.radioFeed.setOwner(null);
     resources.navidromeOverview.invalidate();
     resources.localDirectoryTrees.invalidate();

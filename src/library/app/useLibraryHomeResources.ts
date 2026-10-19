@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { LibraryHomeResources } from '../core/contracts/homeModel';
 import type { HomeSurfaceProps } from '../../components/app/home/homeSurfaceTypes';
-import { createFavoriteAlbumsFeed, createRadioFeed } from '../core/services/onlineHomeFeeds';
+import { createFavoriteAlbumsFeed, createFavoriteArtistsFeed, createRadioFeed } from '../core/services/onlineHomeFeeds';
 import { onlineHomeFeedDeps } from '../core/services/onlineHomeFeedDeps';
 import { createLibraryHomeActions } from '../core/services/libraryHomeActions';
 import { createNavidromeHomeLibrary } from '../core/services/navidromeHomeLibrary';
@@ -11,6 +11,7 @@ import { localDirectoryTreesDeps } from '../core/services/localDirectoryTreesDep
 import { invalidateLeftHomeTab, releaseLibraryHomeResources } from '../core/services/libraryHomeLifetime';
 import { closeOpenLibraryDirectory } from '../core/state/useLibraryDirectorySessionStore';
 import { useSearchNavigationStore } from '../../stores/useSearchNavigationStore';
+import { subscribeOnlineLibraryChanges } from '../../services/onlineMusic/libraryChanges';
 import { createLibraryHomePort } from './createLibraryHomePort';
 
 // src/library/app/useLibraryHomeResources.ts
@@ -41,6 +42,7 @@ export const useLibraryHomeResources = (
     surfaceRef.current = surface;
     const [resources] = useState<LibraryHomeResources>(() => ({
         favoriteAlbums: createFavoriteAlbumsFeed(onlineHomeFeedDeps),
+        favoriteArtists: createFavoriteArtistsFeed(onlineHomeFeedDeps),
         radioFeed: createRadioFeed(onlineHomeFeedDeps),
         actions: createLibraryHomeActions(createLibraryHomePort(() => surfaceRef.current)),
         navidromeOverview: createNavidromeHomeLibrary(navidromeHomeLibraryDeps),
@@ -69,6 +71,11 @@ export const useLibraryHomeResources = (
         window.addEventListener(FAVORITE_ALBUMS_CHANGED_EVENT, reloadFavoriteAlbums);
         return () => window.removeEventListener(FAVORITE_ALBUMS_CHANGED_EVENT, reloadFavoriteAlbums);
     }, [resources]);
+
+    useEffect(() => subscribeOnlineLibraryChanges(change => {
+        const resource = change.kind === 'album' ? resources.favoriteAlbums : resources.favoriteArtists;
+        resource?.replace?.({providerId:change.providerId,userId:change.accountId},change.collections);
+    }), [resources]);
 
     return resources;
 };

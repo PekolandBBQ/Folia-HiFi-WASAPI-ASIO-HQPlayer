@@ -96,3 +96,22 @@ test('cold identity failure stops after three retries and preserves the real cau
  let calls=0;const runtime=await runtimeFixture(t,async()=>{calls++;throw Object.assign(publicError(fault('BOOTSTRAP_IDENTITY_UNCONFIRMED')),{failureCode:'EXACT_SPOTIFY_AUDIO_PROCESS_UNPROVEN'});});
  await assert.rejects(runtime.request({action:'audio',requestId:'cold'}),{failureCode:'EXACT_SPOTIFY_AUDIO_PROCESS_UNPROVEN',retryCount:3,retriesExhausted:true});assert.equal(calls,4);await runtime.close();
 });
+
+test('cold incomplete discovery re-enters real runtime preparation and returns the recovered session',async t=>{
+ let calls=0;const runtime=await runtimeFixture(t,async()=>{
+  if(++calls===1)throw publicError(Object.assign(fault('COMPLETE_SPOTIFY_DISCOVERY_REQUIRED'),{stage:'route-inspect'}));
+  return 'fresh-process-pcm';
+ });
+ assert.equal(await runtime.request({action:'audio',requestId:'cold-incomplete'}),'fresh-process-pcm');assert.equal(calls,2);
+ assert.equal(await runtime.request({action:'audio',requestId:'next'}),'fresh-process-pcm');assert.equal(calls,3);await runtime.close();
+});
+
+test('persistent incomplete discovery stops at the existing three-retry budget and logs its actual stage',async t=>{
+ let calls=0;const reports=[];
+ const action=()=>{calls++;throw publicError(Object.assign(fault('COMPLETE_SPOTIFY_DISCOVERY_REQUIRED'),{stage:'route-inspect'}));};
+ await assert.rejects(retryPlayback(action,{wait,report:value=>reports.push(value)}),error=>{
+  assert.equal(error.nativeCode,'COMPLETE_SPOTIFY_DISCOVERY_REQUIRED');assert.equal(error.retryCount,3);assert.equal(error.retriesExhausted,true);return true;
+ });
+ assert.equal(calls,4);assert.deepEqual(reports.map(value=>value.phase),['retry','retry','retry','exhausted']);
+ assert.ok(reports.every(value=>value.stage==='route-inspect'&&value.code==='COMPLETE_SPOTIFY_DISCOVERY_REQUIRED'));
+});

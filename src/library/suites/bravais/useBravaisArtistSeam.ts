@@ -99,16 +99,17 @@ export const useBravaisArtistSeam = (input: BravaisArtistSeamInput) => {
     } : undefined), [input.query, matchLabel, offers, t]);
 
     const seamCollection = useMemo<BravaisSeamCollection>(() => ({
+        subscribe: view.subscription.supported ? {subscribed:view.subscription.subscribed === true,pending:view.subscription.pending,title:view.subscription.label,onToggle:() => void latest.current.view.subscription.toggle()} : undefined,
         sync,
         status,
-        notice: notice.notice,
+        notice: view.subscription.error ? {seq:0,text:view.subscription.error,tone:'error'} : notice.notice,
         menu,
         moreLabel: t('libraryBravaisCollection.more'),
         listLabel: t('libraryBravaisCollection.list'),
         form: null,
     // status / sync 是每次渲染新算的小对象：按它们的文案比较，免得层描述白换身份。
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }), [menu, notice.notice, status?.tone, status?.text, sync?.state, sync?.label, t]);
+    }), [menu, notice.notice, status?.tone, status?.text, sync?.state, sync?.label, t,view.subscription.supported,view.subscription.subscribed,view.subscription.pending,view.subscription.label,view.subscription.error]);
 
     // 统计只有一行：「N 首歌 · M 张专辑」（详情里的总数；专辑数没有就用上游总数或已载的条数）。热门歌曲契约里固定 10 首，
     // 不是信息，不显示。书脊与元数据行用的也是它，完整信息条里它作为「关于艺术家」的附注，元数据行不再重复。

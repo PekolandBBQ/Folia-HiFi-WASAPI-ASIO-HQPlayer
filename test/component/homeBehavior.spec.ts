@@ -52,6 +52,17 @@ import '../../dev/probes/homeBehavior/probeApi';
 
 const SUITES = ['grid', 'tui', 'bravais'] as const;
 type Suite = (typeof SUITES)[number];
+
+test('followed artists use the shared home tab and open the existing artist surface',async({page,mount})=>{
+    await page.addInitScript(()=>{(window as any).__homeFollowedArtists=true;});
+    await mountHome(mount,page,'grid');
+    await expect.poll(()=>page.evaluate(()=>window.__homeProbe!.tabs().map(t=>t.key))).toContain('artists');
+    await page.evaluate(()=>window.__homeProbe!.setTab('artists' as any));
+    await expect.poll(()=>page.evaluate(()=>window.__homeProbe!.items().map(i=>i.id))).toContain('ar-1');
+    expect(await page.evaluate(()=>window.__homeProbe!.open('ar-1'))).toBe(true);
+    await expect.poll(()=>page.evaluate(()=>window.__homeProbe!.opened().at(-1)?.type)).toBe('artist');
+    await expect.poll(()=>page.evaluate(()=>window.__homeProbe!.stack().length)).toBeGreaterThan(0);
+});
 const A = PROBE_PROVIDER_A;
 const B = PROBE_PROVIDER_B;
 

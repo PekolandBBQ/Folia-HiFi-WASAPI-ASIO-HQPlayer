@@ -62,6 +62,6 @@
   "spotifyBackend": "wrapper",
   "wrapperPreview": false,
   "wrapperLocalValidation": false,
-  "forkTag": "folia-hifi-v0.7.19-r7",
-  "build": 1792432691458
+  "forkTag": "folia-hifi-v0.7.19-r8",
+  "build": 1792438909204
 }

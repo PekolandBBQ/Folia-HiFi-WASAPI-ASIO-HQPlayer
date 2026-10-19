@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { getNavidromeConfig, navidromeApi } from '../services/navidromeService';
 import type { HomeViewTab, LocalSong, SongResult, UnifiedSong } from '../types';
-import type { OnlineProviderId } from '../types/onlineMusic';
+import type { OnlineProviderId, ProviderCollection } from '../types/onlineMusic';
 import {
     applyLocalLibraryEntityDisplay,
     buildUnifiedLocalSong,
@@ -14,6 +14,7 @@ const LAST_HOME_VIEW_TAB_KEY = 'last_home_view_tab';
 const DEFAULT_SEARCH_LIMIT = 30;
 export type SearchSource = OnlineProviderId | 'local' | 'navidrome';
 export type SearchReturnView = 'home' | 'player';
+export type SearchResultKind = 'songs' | 'albums' | 'artists';
 
 type SearchExecutorDeps = {
     localSongs: LocalSong[];
@@ -23,12 +24,14 @@ type SearchExecutorDeps = {
 
 type SearchExecutionResult = {
     results: UnifiedSong[];
+    collections?: ProviderCollection[];
     hasMore: boolean;
     nextOffset: number;
 };
 
 type SearchCacheEntry = {
     results: UnifiedSong[];
+    collections?: ProviderCollection[];
     offset: number;
     hasMore: boolean;
     scrollTop: number;
@@ -39,6 +42,9 @@ interface SearchNavigationState {
     searchQuery: string;
     searchSourceTab: SearchSource;
     searchResults: UnifiedSong[] | null;
+    searchCollections: ProviderCollection[] | null;
+    searchKind: SearchResultKind;
+    setSearchKind: (kind: SearchResultKind) => void;
     searchReturnView: SearchReturnView;
     isSearchOpen: boolean;
     isSearching: boolean;
@@ -53,7 +59,7 @@ interface SearchNavigationState {
     setHomeViewTab: (tab: HomeViewTab) => void;
     setSearchQuery: (query: string) => void;
     setSearchScrollTop: (scrollTop: number) => void;
-    restoreSearch: (payload: { query: string; sourceTab: SearchSource; returnView?: SearchReturnView; }) => void;
+    restoreSearch: (payload: { query: string; sourceTab: SearchSource; returnView?: SearchReturnView; kind?: SearchResultKind; }) => void;
     hideSearchOverlay: () => void;
     resetRuntime: (onlineProviderId?: OnlineProviderId) => void;
     followOnlineProvider: (providerId: OnlineProviderId) => void;
@@ -61,15 +67,15 @@ interface SearchNavigationState {
     loadMoreSearchResults: (payload: { deps: SearchExecutorDeps; }) => Promise<void>;
 }
 
-const getSearchCacheKey = (query: string, sourceTab: SearchSource) => (
-    `${sourceTab}:${query.trim().toLowerCase()}`
+const getSearchCacheKey = (query: string, sourceTab: SearchSource, kind: SearchResultKind = 'songs') => (
+    `${sourceTab}:${kind === 'songs' ? '' : kind + ':'}${query.trim().toLowerCase()}`
 );
 
 export const resolveSearchSource = (tab: HomeViewTab | SearchSource): SearchSource => {
     if (tab === 'local' || tab === 'navidrome') {
         return tab;
     }
-    if (tab !== 'playlist' && tab !== 'albums' && tab !== 'radio') return tab as OnlineProviderId;
+    if (tab !== 'playlist' && tab !== 'albums' && tab !== 'artists' && tab !== 'radio') return tab as OnlineProviderId;
     return 'netease';
 };
 
@@ -153,7 +159,8 @@ const executeSearch = async (
     sourceTab: SearchSource,
     offset: number,
     limit: number,
-    deps: SearchExecutorDeps
+    deps: SearchExecutorDeps,
+    kind: SearchResultKind = 'songs',
 ): Promise<SearchExecutionResult> => {
     if (sourceTab === 'local') {
         return searchLocalSongs(deps, query);
@@ -163,6 +170,10 @@ const executeSearch = async (
         return searchNavidromeSongs(query);
     }
 
+    if (kind !== 'songs') {
+        const page = await omni.searchProviderCollections(sourceTab, kind === 'albums' ? 'album' : 'artist', query, {limit, offset});
+        return {results:[], collections:page.items, hasMore:page.hasMore, nextOffset:page.nextOffset};
+    }
     return searchOnlineProviderSongs(sourceTab, query, limit, offset);
 };
 
@@ -171,7 +182,7 @@ const getInitialHomeViewTab = (): HomeViewTab => {
         return 'playlist';
     }
     const savedTab = localStorage.getItem(LAST_HOME_VIEW_TAB_KEY);
-    return savedTab === 'playlist' || savedTab === 'local' || savedTab === 'albums' || savedTab === 'navidrome' || savedTab === 'radio'
+    return savedTab === 'playlist' || savedTab === 'local' || savedTab === 'albums' || savedTab === 'artists' || savedTab === 'navidrome' || savedTab === 'radio'
         ? savedTab
         : 'playlist';
 };
@@ -181,6 +192,9 @@ export const useSearchNavigationStore = create<SearchNavigationState>((set, get)
     searchQuery: '',
     searchSourceTab: 'netease',
     searchResults: null,
+    searchCollections: null,
+    searchKind: 'songs',
+    setSearchKind: kind => set({searchKind:kind}),
     searchReturnView: 'home',
     isSearchOpen: false,
     isSearching: false,
@@ -200,7 +214,7 @@ export const useSearchNavigationStore = create<SearchNavigationState>((set, get)
     },
     setSearchQuery: (query) => set({ searchQuery: query }),
     setSearchScrollTop: (scrollTop) => set(state => {
-        const cacheKey = getSearchCacheKey(state.searchQuery, state.searchSourceTab);
+        const cacheKey = getSearchCacheKey(state.searchQuery, state.searchSourceTab, state.searchKind);
         const cached = state.searchCache[cacheKey];
         return {
             scrollTop,
@@ -212,16 +226,19 @@ export const useSearchNavigationStore = create<SearchNavigationState>((set, get)
                 : state.searchCache,
         };
     }),
-    restoreSearch: ({ query, sourceTab, returnView = 'home' }) => set(state => {
-        const cached = state.searchCache[getSearchCacheKey(query, sourceTab)];
+    restoreSearch: ({ query, sourceTab, returnView = 'home', kind }) => set(state => {
+        const resultKind = kind ?? state.searchKind;
+        const cached = state.searchCache[getSearchCacheKey(query, sourceTab, resultKind)];
         // Completing a failed request still opens its history entry. Keep that current
         // failure visible instead of replacing it with an empty overlay or an older success.
-        const currentFailure = state.searchQuery === query && state.searchSourceTab === sourceTab && state.searchError !== null;
+        const currentFailure = state.searchQuery === query && state.searchSourceTab === sourceTab && state.searchKind === resultKind && state.searchError !== null;
         return {
             searchQuery: query,
+            searchKind: resultKind,
             searchSourceTab: sourceTab,
             searchReturnView: returnView,
             searchResults: currentFailure ? state.searchResults : cached?.results ?? null,
+            searchCollections: currentFailure ? state.searchCollections : cached?.collections ?? null,
             offset: currentFailure ? state.offset : cached?.offset ?? 0,
             hasMore: currentFailure ? state.hasMore : cached?.hasMore ?? false,
             scrollTop: currentFailure ? state.scrollTop : cached?.scrollTop ?? 0,
@@ -236,6 +253,8 @@ export const useSearchNavigationStore = create<SearchNavigationState>((set, get)
         searchQuery: '',
         searchSourceTab: onlineProviderId ?? state.searchSourceTab,
         searchResults: null,
+        searchCollections: null,
+        searchKind: 'songs',
         searchReturnView: 'home',
         isSearchOpen: false,
         isSearching: false,
@@ -253,7 +272,7 @@ export const useSearchNavigationStore = create<SearchNavigationState>((set, get)
     followOnlineProvider: (providerId) => set(state => (
         state.searchSourceTab === 'local' || state.searchSourceTab === 'navidrome' || state.searchSourceTab === providerId
             ? state
-            : { searchSourceTab: providerId }
+            : { searchSourceTab: providerId, searchKind: 'songs', searchCollections: null, requestId: state.requestId + 1 }
     )),
     submitSearch: async ({ query, sourceTab, deps, returnView = 'home' }) => {
         const trimmedQuery = (query ?? get().searchQuery).trim();
@@ -261,6 +280,12 @@ export const useSearchNavigationStore = create<SearchNavigationState>((set, get)
             return false;
         }
 
+        const requestedKind = get().searchKind;
+        let capabilities = null;
+        if (requestedKind !== 'songs' && sourceTab !== 'local' && sourceTab !== 'navidrome') {
+            try { capabilities = omni.getProviderCapabilities(sourceTab); } catch { /* Normal search reports a removed provider below. */ }
+        }
+        const kind = requestedKind === 'albums' && capabilities?.albumSearch || requestedKind === 'artists' && capabilities?.artistSearch ? requestedKind : 'songs';
         const requestId = get().requestId + 1;
         set({
             searchQuery: trimmedQuery,
@@ -272,25 +297,29 @@ export const useSearchNavigationStore = create<SearchNavigationState>((set, get)
             searchError: null,
             requestId,
             searchResults: null,
+            searchCollections: null,
+            searchKind: kind,
             offset: 0,
             hasMore: false,
             scrollTop: 0,
         });
 
         try {
-            const result = await executeSearch(trimmedQuery, sourceTab, 0, get().limit, deps);
+            const result = await executeSearch(trimmedQuery, sourceTab, 0, get().limit, deps, kind);
             if (get().requestId !== requestId) {
                 return true;
             }
             set(state => ({
                 searchResults: result.results,
+                searchCollections: result.collections ?? null,
                 hasMore: result.hasMore,
                 offset: result.nextOffset,
                 isSearching: false,
                 searchCache: {
                     ...state.searchCache,
-                    [getSearchCacheKey(trimmedQuery, sourceTab)]: {
+                    [getSearchCacheKey(trimmedQuery, sourceTab, kind)]: {
                         results: result.results,
+                        collections: result.collections,
                         hasMore: result.hasMore,
                         offset: result.nextOffset,
                         scrollTop: 0,
@@ -305,6 +334,7 @@ export const useSearchNavigationStore = create<SearchNavigationState>((set, get)
             }
             set({
                 searchResults: [],
+                searchCollections: [],
                 hasMore: false,
                 offset: 0,
                 isSearching: false,
@@ -318,6 +348,8 @@ export const useSearchNavigationStore = create<SearchNavigationState>((set, get)
             searchQuery,
             searchSourceTab,
             searchResults,
+            searchKind,
+            searchCollections,
             hasMore,
             isSearching,
             isLoadingMore,
@@ -340,21 +372,24 @@ export const useSearchNavigationStore = create<SearchNavigationState>((set, get)
         set({ isLoadingMore: true, searchError: null });
 
         try {
-            const result = await executeSearch(searchQuery, searchSourceTab, offset, limit, deps);
+            const result = await executeSearch(searchQuery, searchSourceTab, offset, limit, deps, searchKind);
             if (get().requestId !== requestId) {
                 return;
             }
             set(state => {
                 const results = [...(searchResults || []), ...result.results];
+                const collections = [...new Map([...(searchCollections || []), ...(result.collections || [])].map(item => [`${item.providerId}:${item.type}:${item.id}`,item])).values()];
                 return {
                     searchResults: results,
+                    searchCollections: searchKind === 'songs' ? null : collections,
                     hasMore: result.hasMore,
                     offset: result.nextOffset,
                     isLoadingMore: false,
                     searchCache: {
                         ...state.searchCache,
-                        [getSearchCacheKey(searchQuery, searchSourceTab)]: {
+                        [getSearchCacheKey(searchQuery, searchSourceTab, searchKind)]: {
                             results,
+                            collections: searchKind === 'songs' ? undefined : collections,
                             hasMore: result.hasMore,
                             offset: result.nextOffset,
                             scrollTop: state.scrollTop,

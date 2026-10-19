@@ -1,6 +1,8 @@
 
 
 export default {
+ catalogSearch: {kind:'搜索类型',songs:'单曲',artists:'艺人',albums:'专辑'},
+ catalogSubscription: {follow:'关注艺人',unfollow:'取消关注',save:'收藏专辑',unsave:'取消收藏',retry:'重新读取状态',failed:'关注或收藏操作未完成，请重试；原状态已保留。'},
  audioSignalPath: {title: "音频链路"},
  spotifyExit: {title:"退出 Folia 时自动退出 Spotify",saveFailed:"设置保存失败，请重试。"},
  livePcmPrebuffer: {"title": "Spotify PCM 预缓冲", "description": "25–5000 毫秒，默认 350 毫秒。数值较低可能导致断音。WASAPI、ASIO 和 HQPlayer 的 Spotify PCM 共用此设置，下次播放／续播、拖动进度或准备曲目时生效；滑动不会打断当前播放。", "sharedHint": "预缓冲与 WASAPI、ASIO 共用，请在原生音频设置中调整“Spotify PCM 预缓冲”。"},
@@ -992,6 +994,7 @@ export default {
       "home-playlist": { "title": "打开歌单", "description": "打开歌单首页 tab" },
       "home-local": { "title": "打开本地音乐", "description": "打开本地音乐 tab" },
       "home-albums": { "title": "打开专辑", "description": "打开专辑 tab" },
+      "home-artists": { "title": "打开收藏艺人", "description": "打开收藏艺人分类" },
       "home-navidrome": { "title": "打开 Navidrome", "description": "打开 Navidrome tab" },
       "home-radio": { "title": "打开电台", "description": "打开电台 tab" },
       "grid-sort-file-name": { "title": "按文件名排序", "description": "把本地曲目按文件名排列" },

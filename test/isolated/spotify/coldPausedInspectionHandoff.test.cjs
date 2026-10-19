@@ -132,6 +132,25 @@ test('missing native session retries while selected playback can materialize it 
   } finally { await f.control.dispose(); }
 });
 
+test('cold no-session followed by incomplete discovery cleans up before a fresh preparation can succeed',async()=>{
+ const {retryPlayback}=require('../../../electron/spotify/playbackRetry.cjs');
+ const f=fixture();let inspections=0,attempts=0;
+ f.hooks.inspect=facts=>{
+  inspections++;
+  if(inspections===1)throw fail('EXACT_SPOTIFY_AUDIO_PROCESS_UNPROVEN');
+  if(inspections===2)throw Object.assign(fail('COMPLETE_SPOTIFY_DISCOVERY_REQUIRED'),{stage:'route-inspect'});
+ };
+ try{
+  await retryPlayback(async()=>{
+   attempts++;
+   if(attempts===2){assert.equal(f.state.is_playing,false);assert.equal(f.events.includes('acquire'),false);}
+   return f.prepare();
+  },{wait:async()=>{}});
+  assert.equal(attempts,2);assert.equal(f.events.filter(event=>event==='acquire').length,1);
+  assert.equal(f.events.filter(event=>event==='complete').length,1);assert.equal(f.state.is_playing,false);
+ }finally{await f.control.dispose();}
+});
+
 test('cancellation during paused inspection never grants route or selection authority', async () => {
   const f = fixture(), abort = new AbortController();
   try {

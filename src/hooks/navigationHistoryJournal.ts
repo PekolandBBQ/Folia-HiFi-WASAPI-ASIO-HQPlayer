@@ -1,5 +1,5 @@
 import type { AppView } from '../stores/useAppViewStore';
-import type { SearchReturnView, SearchSource } from '../stores/useSearchNavigationStore';
+import type { SearchReturnView, SearchSource, SearchResultKind } from '../stores/useSearchNavigationStore';
 import type { CollectionNavigationSnapshot } from '../library/core/contracts/collection';
 import {
     isSameCollectionPath,
@@ -19,7 +19,7 @@ import {
 
 export type NavigationHistoryState = {
     view: AppView;
-    search?: { query: string; sourceTab: SearchSource; returnView?: SearchReturnView; } | null;
+    search?: { query: string; sourceTab: SearchSource; returnView?: SearchReturnView; kind?: SearchResultKind; } | null;
     collection?: CollectionNavigationSnapshot | null;
     appHistoryIndex: number;
     /** 写这条记录的页面会话（每次加载页面一个新值）；旧记录没有它。 */

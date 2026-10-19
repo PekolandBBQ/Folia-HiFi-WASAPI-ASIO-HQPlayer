@@ -9,7 +9,7 @@ function fixture(get,getTracks=async()=>({items:[],totalLength:0,limit:0})){
   const state={item:{uri:'spotify:track:0123456789012345678901'},timestamp:Date.now(),duration:90000,positionAsOfTimestamp:100,isPaused:true};
   const context={document:{createElement:()=>({style:{}}),body:{append(){}}},WebSocket:class{constructor(){ws=this;this.readyState=1;}send(value){replies.push(JSON.parse(value));}},
     performance,Date,setTimeout,clearTimeout,Spicetify:{CosmosAsync:{get},Player:{},Platform:{LibraryAPI:{getTracks},UserAPI:{getUser:async()=>({username:'test'})},PlayerAPI:{_state:state},ConnectAPI:{getState:()=>({activeDevice:{isLocal:true,connectStateId:'local'}})}}}};
-  vm.runInNewContext(fs.readFileSync(require('node:path').join(__dirname,'../electron/spotify/wrapper/extension.js'),'utf8').replace('__FOLIA_LIVE_URL__',JSON.stringify('ws://test')),context);
+  vm.runInNewContext(require('../electron/spotify/wrapper/extensionSource.cjs').extensionSource('ws://test'),context);
   return {context,replies,request:(id,op,args={})=>ws.onmessage({data:JSON.stringify({id,op,args})})};
 }
 const tick=()=>new Promise(resolve=>setImmediate(resolve));

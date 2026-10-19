@@ -1,5 +1,6 @@
-import React, { useEffect, useMemo, useRef } from 'react';
-import { List, useListRef } from 'react-window';
+import React, { useMemo } from 'react';
+import { List } from 'react-window';
+import { useSearchListScroll } from './useSearchListScroll';
 import type { UnifiedSong } from '../../../types';
 import type { MediaId } from '../../../types/onlineMusic';
 import SearchResultRow from './SearchResultRow';
@@ -29,25 +30,8 @@ const SearchResultsList: React.FC<SearchResultsListProps> = ({
     onScrollTopChange,
     ...rowProps
 }) => {
-    const listRef = useListRef(null);
-    const latestScrollTopRef = useRef(scrollTop);
-    const commitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const {listRef,onScroll} = useSearchListScroll(tracks,scrollTop,onScrollTopChange);
     const stableRowProps = useMemo(() => ({ tracks, ...rowProps }), [rowProps, tracks]);
-
-    useEffect(() => {
-        const element = listRef.current?.element;
-        if (element && Math.abs(element.scrollTop - scrollTop) > 1) {
-            element.scrollTop = scrollTop;
-        }
-        latestScrollTopRef.current = scrollTop;
-    }, [listRef, scrollTop, tracks]);
-
-    useEffect(() => () => {
-        if (commitTimerRef.current) {
-            clearTimeout(commitTimerRef.current);
-        }
-        onScrollTopChange(latestScrollTopRef.current);
-    }, [onScrollTopChange]);
 
     return (
         <List
@@ -59,15 +43,7 @@ const SearchResultsList: React.FC<SearchResultsListProps> = ({
             overscanCount={6}
             className="custom-scrollbar"
             style={{ height: '100%', width: '100%' }}
-            onScroll={(event) => {
-                latestScrollTopRef.current = event.currentTarget.scrollTop;
-                if (commitTimerRef.current) {
-                    clearTimeout(commitTimerRef.current);
-                }
-                commitTimerRef.current = setTimeout(() => {
-                    onScrollTopChange(latestScrollTopRef.current);
-                }, 120);
-            }}
+            onScroll={onScroll}
         />
     );
 };

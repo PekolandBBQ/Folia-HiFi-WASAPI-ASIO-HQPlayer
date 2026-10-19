@@ -12,7 +12,7 @@ import type { LibraryDirectoryNode, LibraryDirectorySelectionType, LibraryHidden
 /** 首页一级页签（与应用的 HomeViewTab 同一套）。 */
 export type LibraryHomeTabKey = HomeViewTab;
 /** 在线来源的三个页签。 */
-export type LibraryHomeOnlineTab = 'playlist' | 'radio' | 'albums';
+export type LibraryHomeOnlineTab = 'playlist' | 'radio' | 'albums' | 'artists';
 
 /** 待翻译的文案：core 只给 i18n key 与插值，翻译在绑定 / 端口里做（fallback 是翻译为空时的兜底）。 */
 export type LibraryHomeMessage = {
@@ -51,6 +51,7 @@ export type LibraryHomeOnlineSource = {
     collections: ProviderCollection[];
     canUsePlaylists: boolean;
     canUseAlbums: boolean;
+    canUseArtists?: boolean;
     canUseRadio: boolean;
     /** provider 支持私人 FM 模式（FM 卡的描述显示当前模式）。 */
     hasPersonalFmModes: boolean;
@@ -76,6 +77,7 @@ export type LibraryHomeFeedSnapshot<TData> = {
     /** 这个归属下至少成功读到过一次（ensure 据此决定要不要读）。 */
     loaded: boolean;
     data: TData;
+    error?: string;
 };
 
 /**
@@ -91,6 +93,8 @@ export interface LibraryHomeFeedResource<TData> {
     ensure(): Promise<void>;
     /** 不管读没读过都重新读（旧数据保留到新数据到达）；没有归属时什么都不做。 */
     reload(): Promise<void>;
+    /** Commit a complete server-confirmed snapshot only for its current account. */
+    replace?(owner: LibraryHomeFeedOwner, data: TData): void;
 }
 
 /** 电台页签的数据（omni.getHomeFeed 的结果；封面在读取时就按 provider 解析好）。 */
@@ -100,6 +104,7 @@ export type LibraryHomeRadioFeed = {
     dailyCount: number;
     /** 未声明时沿用旧 feed 的支持语义；默认环境装配会明确提供实际 provider 能力。 */
     supportsDailySongs?: boolean;
+    supportsPersonalFm?: boolean;
     recommended: ProviderCollection[];
 };
 
@@ -111,6 +116,7 @@ export type LibraryHomeRadioFeed = {
  */
 export type LibraryHomeResources = {
     favoriteAlbums: LibraryHomeFeedResource<ProviderCollection[]>;
+    favoriteArtists?: LibraryHomeFeedResource<ProviderCollection[]>;
     radioFeed: LibraryHomeFeedResource<LibraryHomeRadioFeed | null>;
     actions: LibraryHomeActionsController;
     /** Navidrome 页签的概览（进页签时 ensure；离开页签或首页时作废，下次进来重读）。 */

@@ -8,6 +8,8 @@
   const wait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
   const lyricsCache=new Map();let lyricsRateLimited=false;
   let libraryRateLimited=false, searchRateLimited=false, libraryWrites=Promise.resolve();
+  const readLibrary=globalThis.FoliaSpotifyLibraryReader?.(Spicetify,globalThis.FoliaSpotifyLibraryNormalize);
+  const writeLibrary=globalThis.FoliaSpotifyLibraryMutations?.(Spicetify,wait);
   // Native search and library operations stay independent of the playback command queue.
   const trackId=uri=>/^spotify:track:[A-Za-z0-9]{22}$/.test(uri||'')?uri.slice(14):null;
   function searchTrack(row){
@@ -121,7 +123,12 @@
       timing:{userMs:userDone-snapshotStarted,snapshotMs:performance.now()-snapshotStarted}};
   }
   async function handle(op,args, active=()=>true){
-    if(op==='hello')return {protocol:1,version:'1.1.3',capabilities:['snapshot','command','catalog','lyrics','likedTracks','searchTracks','setLiked','independentReads','accountProfile','repeatMode']};
+    if(op==='hello')return {protocol:1,version:'1.3.0',capabilities:['snapshot','command','catalog','lyrics','likedTracks','searchTracks','setLiked','independentReads','accountProfile','repeatMode',...(readLibrary?['libraryCollections','collectionSearch']:[]),...(writeLibrary?['collectionSubscriptions']:[])]};
+    if(op==='libraryRead'){if(!readLibrary)throw Error('BRIDGE_UPDATE_REQUIRED');return readLibrary(args);}
+    if(op==='setCollectionSubscription'){
+      if(!writeLibrary)throw Error('BRIDGE_UPDATE_REQUIRED');
+      const task=libraryWrites.then(()=>writeLibrary(args));libraryWrites=task.catch(()=>{});return task;
+    }
     if(op==='snapshot')return snapshot();
     if(op==='repeatMode'){
       await snapshot(); // Never change the repeat setting on another Spotify Connect device.
@@ -229,7 +236,8 @@
       reply({id:request.id,ok:true,value});}
       catch(error){reply({id:request.id,ok:false,code:/^[A-Z_]+$/.test(error.message)?error.message:'CONTROL_REJECTED',diagnostic:{
         operation:request.args?.operation,path:request.args?.path,errorName:error.name,
-        message:String(error.message).replace(/https?:\/\/\S+/g,'[url]').replace(/Bearer\s+\S+/gi,'[token]').slice(0,240),
+        queryName:error.queryName,upstreamStatus:error.status,
+        message:String(error.detail||error.message).replace(/https?:\/\/\S+/g,'[url]').replace(/Bearer\s+\S+/gi,'[token]').slice(0,500),
         wrapperOriginPresent:!!Spicetify.Player?.origin,wrapperPlayUriType:typeof Spicetify.Player?.playUri}});}
       finally{expired=true;if(timer)clearTimeout(timer);}};
     // Metadata network latency must never serialize pause, source preparation or seek.

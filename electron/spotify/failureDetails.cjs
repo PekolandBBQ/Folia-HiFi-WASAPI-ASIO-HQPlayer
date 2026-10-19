@@ -1,6 +1,17 @@
 'use strict';
 // Preserve bounded machine codes across IPC; messages explain the failed operation without exposing account data.
 const descriptions = {
+ SPOTIFY_LOGIN_REQUIRED: 'Spotify 尚未登录，请先在 Spotify 客户端登录账号。',
+ LIBRARY_ITEM_INVALID: '艺人或专辑标识无效，未修改 Spotify 收藏。',
+ LIBRARY_ACCOUNT_CHANGED: '操作期间 Spotify 账号已改变，未把原账号的收藏结果应用到当前账号；请重新读取。',
+ LIBRARY_FILTER_UNAVAILABLE: '当前 Spotify 客户端未提供此类音乐库筛选，无法读取该分类。',
+ LIBRARY_UNAVAILABLE: 'Spotify 音乐库读取服务尚未就绪，无法读取收藏内容；请稍后重试。',
+ LIBRARY_QUERY_UNAVAILABLE: '当前 Spotify 页面资源缺少所需的目录查询，请重试以重新连接当前客户端。',
+ LIBRARY_REQUEST_INVALID: 'Spotify 未接受音乐库或推荐查询的参数；具体缺失或无效字段已记录在日志中，播放连接不受影响。',
+ LIBRARY_ACCESS_DENIED: 'Spotify 未授权读取这项音乐库或推荐内容；具体权限或会话原因已记录在日志中。',
+ LIBRARY_QUERY_FAILED: 'Spotify 音乐库查询未完成，服务返回的具体原因已记录在日志中。',
+ LIBRARY_ITEM_UNAVAILABLE: 'Spotify 未返回该艺人或专辑，内容可能已移除或在当前账号地区不可用。',
+ RECOMMENDATIONS_SCHEMA_INVALID: 'Spotify 推荐页面未返回可识别的栏目，暂时无法显示推荐歌单。',
  SPOTIFY_COMPONENT_APP_UPDATE_REQUIRED: '已发布的组件与当前 Folia 内置音频组件不配套，组件升级需要配套的 Folia 版本；重新生成 Spotify 页面资源不需要升级音频组件。',
  SPOTIFY_RESTART_REQUIRED: '音频驱动安装后需要重启 Windows；现有配置和备份已保留。',
  REPEAT_MODE_UNAVAILABLE: 'Spotify 尚未提供循环模式状态，请等待桥接完成连接后再切换。',
@@ -18,7 +29,7 @@ const descriptions = {
  LIBRARY_WRITE_FAILED: 'Spotify 未完成收藏操作，本地收藏状态未标记成功。',
  LIBRARY_WRITE_UNCONFIRMED: 'Spotify 收藏请求已发送，但回读仍未确认目标状态，请刷新已点赞歌单确认。',
  LIBRARY_RATE_LIMITED: 'Spotify 暂时限制了歌单请求，本次未继续重试；当前播放不受影响。',
- LIBRARY_SCHEMA_INVALID: 'Spotify 返回的收藏状态格式无法识别，本地未标记成功。',
+ LIBRARY_SCHEMA_INVALID: 'Spotify 返回的音乐库数据格式无法识别，未将本次读取标记为成功。',
  ...require('./routeFailureDescriptions.cjs'),
  ...require('./captureFailureDescriptions.cjs'),
  AUTH_REQUIRED: 'Spotify 尚未登录，或登录凭据已失效，请登录 Spotify 后继续。',
@@ -131,8 +142,10 @@ function failureDetails(error, operation) {
  const stageNames = { 'cleanup-previous-session': '停止上一轮采集', 'cleanup-required': '清理上一轮播放', 'scope': '读取本机播放状态', 'track-metadata': '读取歌曲信息', 'route-inspect': '检查应用输出路由', 'route-resume-preparation': '恢复采集准备', 'playback-facts': '确认播放状态', 'audio': '准备播放', 'browser-pcm': '交付音频' };
  const connectionReason=code==='SPOTIFY_BRIDGE_NOT_READY'&&['connection-key-mismatch','connection-timeout','origin-mismatch','connection-present'].includes(error?.connectionReason)?error.connectionReason:undefined;
  const connectionText=connectionReason==='connection-key-mismatch'?'Spotify 仍加载着旧连接信息，无法连接当前 Folia；自动重新加载后仍未恢复。':connectionReason==='connection-timeout'?'Spotify 已运行，但未在 30 秒内连接 Folia 桥接；自动重新加载后仍未恢复。':undefined;
+ const metadataNames={searchArtists:'艺人搜索',searchAlbums:'专辑搜索',subscriptionStatus:'关注或收藏状态',subscribeCollection:'关注或收藏结果',recommendations:'推荐歌单',playlists:'收藏歌单',albums:'收藏专辑',artists:'收藏艺人',artist:'艺人详情',artistSongs:'艺人热门歌曲',artistAlbums:'艺人专辑',playlist:'歌单详情',playlistTracks:'歌单歌曲',album:'专辑详情',albumTracks:'专辑歌曲'};
+ const queryText=code==='CONTROL_REJECTED'&&metadataNames[operation]?`读取 Spotify ${metadataNames[operation]}失败：客户端返回了未识别的查询异常，原始原因已记录在日志中。`:undefined;
  const setupNames = { search: '搜索 Spotify 在线曲库', desktopSetup: '配置 Spotify 连接', 'checking-updates': '检查组件更新', 'checking-resources': '检查 Spotify 页面资源', checking: '检查本机组件', stopping: '停止 Spotify 以更新资源', configuring: '生成 Spotify 页面资源', connecting: '连接 Spotify 桥接' };
- const text = connectionText || recoveryText || descriptions[code] || ((stageNames[stage] || setupNames[stage] || '执行播放操作') + '未完成：组件没有提供已识别的原因，具体阶段及原始错误已记录在日志中。');
+ const text = connectionText || queryText || recoveryText || descriptions[code] || ((stageNames[stage] || setupNames[stage] || '执行播放操作') + '未完成：组件没有提供已识别的原因，具体阶段及原始错误已记录在日志中。');
  const readback = code === 'FORMAT_LEASE_READBACK_MISMATCH'
    ? require('../debug/privatePreviewDiagnosticSchema.cjs').projectFormatLeaseReadback(error?.formatLeaseReadback) : undefined;
  const formatDetail = readback ? ` ${readback.endpointRole === 'render' ? '输出端' : '采集端'}请求 ${readback.requested.sampleRate} Hz／${readback.requested.channels} 声道，实际 ${readback.observed.sampleRate} Hz／${readback.observed.channels} 声道；差异字段：${readback.differingFields.map(field => ({ sampleRate: '采样率', channels: '声道数', bitsPerSample: '位深', validBitsPerSample: '有效位深', channelMask: '声道布局', formatTag: '格式标记', subFormat: '采样格式', blockAlign: '帧字节数', avgBytesPerSec: '每秒字节数' }[field] || '音频格式参数')).join('、')}。` : '';

@@ -22,6 +22,7 @@ import {
 import { isSongUnavailable } from '../../../services/onlineMusic/songAvailability';
 import { addArtistTopSongsToQueue, selectQueueableTopSongs } from '../../../utils/artistTopSongsQueue';
 import { useLibrarySessionQuery } from './useLibrarySessionQuery';
+import { useOnlineCollectionSubscription } from '../../../hooks/useOnlineCollectionSubscription';
 
 // src/library/core/bindings/useArtistView.ts
 // 歌手页的视图与语义动作（P4.2），网格与 TUI 共用：筛选词读写浏览会话（换 suite 不丢），专辑按筛选只看名字，
@@ -57,6 +58,7 @@ export const useArtistView = ({
     setStatus,
 }: UseArtistViewParams) => {
     const { t } = useTranslation();
+    const subscription = useOnlineCollectionSubscription(collection.source === 'online' ? collection : null);
     const sessionKey = artistSessionKey(collection, resource);
     const { query, setQuery, port: queryPort } = useLibrarySessionQuery(sessionKey);
     const deferredQuery = useDeferredValue(query);
@@ -156,5 +158,6 @@ export const useArtistView = ({
         actions,
         surfaceState,
         runSurface,
+        subscription,
     };
 };
