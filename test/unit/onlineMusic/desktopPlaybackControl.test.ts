@@ -39,13 +39,14 @@ function fixture({ settleIntervalMs = 100, settleTimeoutMs = 400, selectionTimeo
     else if (url.pathname.endsWith('/seek')) state.progress_ms = Number(url.searchParams.get('position_ms'));
     return new Response(null, { status: 204 });
   });
+  const onFailureDiagnostic=vi.fn(), onStateDiagnostic=vi.fn();
   const onRevoke = vi.fn(), wait = vi.fn(async (ms: number) => { clock += ms; });
-  const control = createDesktopPlaybackControl({ vault, cooldown, fetcher, now: () => clock, wait, onRevoke,
+  const control = createDesktopPlaybackControl({ vault, cooldown, fetcher, now: () => clock, wait, onRevoke, onFailureDiagnostic, onStateDiagnostic,
     settleIntervalMs, settleTimeoutMs, selectionTimeoutMs });
   cleanups.push(() => control.dispose());
   const prepare = (extra: any = {}) => control.prepare({ session, deviceId: 'desktop-1', trackId, durationMs: 120000, ...extra });
   const writes = () => fetcher.mock.calls.filter(([, init]) => init.method === 'PUT');
-  return { control, prepare, state, vault, cooldown, fetcher, onRevoke, wait, writes,
+  return { control, prepare, state, vault, cooldown, fetcher, onRevoke, onFailureDiagnostic, onStateDiagnostic, wait, writes,
     inactiveTarget() {
       devices = [{ ...state.device, id: 'desktop-1', is_active: false },
         { id: 'phone-1', name: 'Phone', type: 'Smartphone', is_active: true, is_restricted: false }];
@@ -812,4 +813,12 @@ it('a transient playing-state lag does not immediately revoke an active source',
   });
   const state = await f.control.readState(session, { expectedPlaying: true });
   expect(state.isPlaying).toBe(true); expect(reads).toBe(4); expect(f.onRevoke).not.toHaveBeenCalled();
+});
+
+it('records the original rejected state without exposing credentials', async()=>{
+ const f=fixture(); f.state.actions.disallows={pausing:true};
+ await expect(f.prepare()).rejects.toBeDefined();
+ expect(f.onFailureDiagnostic).toHaveBeenCalled();
+ expect(f.onFailureDiagnostic.mock.calls[0][1]).toMatchObject({phase:'original',trackId});
+ expect(JSON.stringify(f.onFailureDiagnostic.mock.calls)).not.toContain('synthetic-token');
 });

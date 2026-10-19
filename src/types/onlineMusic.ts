@@ -347,7 +347,11 @@ export interface OnlineSearchProvider {
     searchSongs(query: string, limit: number, offset: number): Promise<ProviderPage<UnifiedSong>>;
 }
 
+export type ProviderRepeatMode = 'off' | 'all' | 'one';
+
 export interface OnlinePlaybackProvider {
+    resolveExternalSelection?(token: number, choice: 'follow' | 'pause' | 'spotify'): Promise<unknown>;
+    repeatMode?(mode?: ProviderRepeatMode): Promise<ProviderRepeatMode>;
     getSongDetail(id: MediaId): Promise<UnifiedSong | null>;
     getAudioSource(song: SongResult, quality: AudioQualityPreference, options?: AudioSourceRequestOptions): Promise<ProviderAudioSource | null>;
     leaveSource?(options?: { signal?: AbortSignal; isCurrent?: () => boolean }): Promise<void>;

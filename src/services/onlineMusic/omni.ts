@@ -184,6 +184,18 @@ export const omni = {
         return nextLiked;
     },
 
+    async resolveExternalSelection(providerId: OmniProviderId, token: number, choice: 'follow' | 'pause' | 'spotify') {
+        const operation = requireOnlineMusicProvider(providerId).playback?.resolveExternalSelection;
+        if (!operation) throw new OnlineProviderError('unsupported', '当前音源不支持追随', providerId);
+        return operation(token, choice);
+    },
+
+    async providerRepeatMode(providerId: OmniProviderId, mode?: import('../../types/onlineMusic').ProviderRepeatMode) {
+        const operation = requireOnlineMusicProvider(providerId).playback?.repeatMode;
+        if (!operation) throw new OnlineProviderError('unsupported', '当前音源不支持同步循环模式', providerId);
+        return operation(mode);
+    },
+
     getActiveCapabilities(): OmniProviderCapabilities {
         return activeProvider().capabilities;
     },

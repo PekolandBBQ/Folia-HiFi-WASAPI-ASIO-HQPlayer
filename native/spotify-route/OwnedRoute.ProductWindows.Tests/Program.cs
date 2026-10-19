@@ -24,6 +24,7 @@ Test("fresh paused discovery reuse requires exact selection and at most five sec
     Require(!WindowsProductBackend.CanReusePausedInspection(discovery, selection, TimeSpan.FromMilliseconds(5001)));
     Require(!WindowsProductBackend.CanReusePausedInspection(discovery, selection, TimeSpan.FromTicks(-1)));
     Require(!WindowsProductBackend.CanReusePausedInspection(discovery with { SourcePaused = false }, selection, TimeSpan.Zero));
+    Require(WindowsProductBackend.CanReusePausedInspection(discovery with { SourcePaused = false, RequiresNativePauseObservation = false }, selection, TimeSpan.Zero));
     Require(!WindowsProductBackend.CanReusePausedInspection(discovery, selection with { RenderDeviceId = "other" }, TimeSpan.Zero));
     Require(!WindowsProductBackend.CanReusePausedInspection(null, selection, TimeSpan.Zero));
 });

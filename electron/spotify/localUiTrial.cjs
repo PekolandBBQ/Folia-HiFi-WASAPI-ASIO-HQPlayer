@@ -32,10 +32,12 @@ function initialize(log){
 }
 function registerLocalUiTrial(options){
   const log=global.__foliaTrialLog||((event,facts)=>{
-    if(['bridge-upgrade-rejected','spotify-connection-unavailable','spotify-auto-reconnect','spotify-background-ready','spotify-background-failed','bridge-connected'].includes(event)){
+    if(event==='audio-source' && facts?.phase==='route-binding-observed')
+      require('../debug/debugHost.cjs').runtimeLine('SpotifyBridge',JSON.stringify({event,...facts}));
+    if(['external-handoff','external-handoff-choice','external-cleanup-failed','bridge-upgrade-rejected','spotify-connection-unavailable','spotify-auto-reconnect','spotify-background-ready','spotify-background-failed','bridge-connected'].includes(event)){
       try{const directory=path.join(require('electron').app.getPath('userData'),'spotify','diagnostics');fs.mkdirSync(directory,{recursive:true});fs.appendFileSync(path.join(directory,'connection.jsonl'),JSON.stringify({at:Date.now(),event,...facts})+'\n');}catch{}
     }
-    if(['spotify-orphan-route-restored','spotify-background-retained','spotify-background-exit','spotify-background-exit-failed','spotify-resource-version','bridge-connected','bridge-disconnected','bridge-request-failed','bridge-runtime','spotify-background-failed','ui-online-search'].includes(event))
+    if(['control-original-failure','control-state','route-request-failed','external-handoff','external-handoff-choice','external-cleanup-failed','spotify-orphan-route-restored','spotify-background-retained','spotify-background-exit','spotify-background-exit-failed','spotify-resource-version','bridge-connected','bridge-disconnected','bridge-request-failed','bridge-runtime','spotify-background-failed','ui-online-search'].includes(event))
       require('../debug/debugHost.cjs').runtimeLine('SpotifyBridge',JSON.stringify({event,...facts}));
   }), local=initialize(log);
   return require('./cableService.cjs').registerCableSpotify({...options,connectionMode:'wrapper',createService:settings=>createService(settings,local,log)});
@@ -63,40 +65,17 @@ function createService({beforeLeaveProvider},local,log){
     return pair;
   }
   const vault={stamp:source.stamp,token:async()=>{throw Error('Official HTTP disabled');},grantedScopes:async()=>{throw Error('Official scopes must not be used by local source');}},cooldown={load:async()=>0,defer:async()=>{throw Error('Official HTTP disabled');}};
-  let control,audio,closing,externalPrompt=0,launchIntent=0;
-  const externalSelection=async facts=>{
-    const prompt=++externalPrompt;
-    const output=await beforeLeaveProvider();await output?.complete?.();
-    await refresh();
-    const {BrowserWindow,dialog}=require('electron');
-    const windows=BrowserWindow.getAllWindows().filter(w=>!w.isDestroyed());
-    const send=value=>windows.forEach(w=>{if(!w.isDestroyed())w.webContents.send('spotify:external-selection',value);});
-    send({phase:'paused',trackId:facts.trackId,positionMs:facts.positionMs});
-    const name=catalog.get(facts.trackId)?.name||'Spotify 当前歌曲';
-    const choice=await dialog.showMessageBox(windows[0],{type:'question',title:'Spotify 已在桌面换歌',
-      message:`已暂停“${name}”并停止采集。是否追随 Spotify 的歌曲和进度？`,
-      detail:'暂不追随：双方保持暂停并保留路由。在 Spotify 中继续：恢复原输出路由，由 Spotify 播放。',
-      buttons:['追随 Spotify','暂不追随','在 Spotify 中继续播放'],defaultId:1,cancelId:1});
-    if(prompt!==externalPrompt||closing)return;
-    const actual=await source.sample();
-    if(choice.response===0&&actual.uri==='spotify:track:'+facts.trackId&&!actual.isPlaying){
-      send({phase:'follow',trackId:facts.trackId,positionMs:actual.positionMs});
-      log('ui-external-follow',{trackId:facts.trackId,positionMs:actual.positionMs});
-    }else if(choice.response===2&&actual.uri==='spotify:track:'+facts.trackId&&!actual.isPlaying){
-      // Explicit hand-back ends Folia's source ownership before Spotify can produce audio.
-      await leave();
-      desktop.handBack();
-      const stamp=source.stamp();
-      const current=()=>{if(closing||prompt!==externalPrompt||JSON.stringify(source.stamp())!==JSON.stringify(stamp))
-        throw Object.assign(Error('SESSION_CHANGED'),{code:'SESSION_CHANGED'});};
-      await source.request('play',{deviceId:actual.deviceId,trackId:facts.trackId},current,{matchTrackBeforeDispatch:true});
-      const until=Date.now()+4000;let playing;
-      do{current();playing=await source.sample();if(playing.uri!=='spotify:track:'+facts.trackId)throw Error('TRACK_NOT_CURRENT');
-        if(playing.isPlaying)break;await new Promise(resolve=>setTimeout(resolve,50));}while(Date.now()<until);
-      if(!playing.isPlaying)throw Error('PLAYBACK_STATE_UNCONFIRMED');
-      log('ui-external-spotify-continued',{trackId:facts.trackId,positionMs:playing.positionMs,originalRouteRestored:true});
-    }else log('ui-external-follow-declined',{trackId:facts.trackId,changedAgain:actual.uri!=='spotify:track:'+facts.trackId});
-  };
+  let control,audio,closing,launchIntent=0;
+  const handoff=require('./externalSelectionCoordinator.cjs').createExternalSelectionCoordinator({
+    send:value=>{for(const w of require('electron').BrowserWindow.getAllWindows())if(!w.isDestroyed())w.webContents.send('spotify:external-selection',value);},
+    stopOutput:beforeLeaveProvider,sample:source.sample,name:id=>catalog.get(id)?.name||'Spotify 当前歌曲',log,
+    continueSpotify:async(actual,isCurrent)=>{
+      await leave();if(!isCurrent())return;desktop.handBack();
+      const current=()=>{if(closing||!isCurrent())throw Object.assign(Error('CANCELLED'),{code:'CANCELLED'});};
+      await source.request('play',{deviceId:actual.deviceId,trackId:actual.uri.slice(14)},current,{matchTrackBeforeDispatch:true});
+    }
+  });
+  const externalSelection=(facts,isCurrent)=>handoff.notify(facts,isCurrent);
   const capture=require('./cableCaptureHost.cjs').createCableCaptureHost({helperPath:process.env.FOLIA_LOCAL_CAPTURE_HELPER || runtimePaths().capture,fastInitialEpoch:true,requireProcessCapture:true,onDiagnostic:d=>log('capture',d),onControlDiagnostic:d=>log('capture-control',d)});
   const showOutputGuide=()=>{for(const w of require('electron').BrowserWindow.getAllWindows())if(!w.isDestroyed())w.webContents.send('spotify:setup-required');};
   const host=require('./ownedRouteHost.cjs').createOwnedRouteHost({processCapture:true,componentDirectory:process.env.FOLIA_LOCAL_ROUTE_COMPONENT || runtimePaths().route,onConfigurationRequired:showOutputGuide,onSourceControl:(i,o)=>control.routeSourceControl(i,o)});host.setTrialEnabled(true);
@@ -106,7 +85,9 @@ function createService({beforeLeaveProvider},local,log){
   void Promise.all([capture.supportsPositionEpoch(),capability]).catch(e=>log('ui-prewarm-failed',{code:e.code}));
   control=require('./desktopPlaybackControl.cjs').createDesktopPlaybackControl({vault,cooldown,createSourceApi:()=>source,reuseColdTrack:true,settleIntervalMs:50,selectionTimeoutMs:30000,
     readRoutePcmEvidence:(s,g)=>route.pcmStopped(s,g),readSeekParkEvidence:(s,g,t,k)=>route.seekParkEvidence(s,g,t,k),
-    onRevoke:value=>audio?.revokeSession(value.session,value.code),onFailureDiagnostic:e=>log('control-original-failure',{code:e.code,diagnostic:e.diagnostic})});
+    onRevoke:value=>audio?.revokeSession(value.session,value.code),
+    onStateDiagnostic:facts=>log('control-state',facts),
+    onFailureDiagnostic:(e,context)=>log('control-original-failure',{...context,...require('./controlDiagnostics.cjs').errorFacts(e),diagnostic:e.diagnostic})});
   audio=require('./cableAudioPreparation.cjs').createCableAudioPreparation({captureHost:capture,control,vault,cooldown,routeLifecycle:route,
     onExternalSelection:externalSelection,
     localSourceMetadata:async id=>{await refresh();const t=catalog.get(id);if(!t)throw Object.assign(Error('TRACK_NOT_CURRENT'),{code:'TRACK_NOT_CURRENT'});return {trackId:id,durationMs:t.durationMs};},
@@ -129,8 +110,16 @@ function createService({beforeLeaveProvider},local,log){
       log('ui-spotify-request',{action:input.action,operation:input.operation,trackId:input.action==='audio'?input.id:undefined});
       if(input.action==='desktopSetup'&&input.operation==='preferences')return input.preferences?desktop.setPreferences(input.preferences):desktop.preferences();
       if(input.action==='desktopSetup')return require('./desktopSetupGuide.cjs').request({input,progress,beforeConfigure:leave,desktop,bridge,apps:local.apps,capture,route,directory:path.join(profile,'spotify'),assetDirectory:runtimePaths().assetRoot,existingCli:process.env.FOLIA_WRAPPER_EXISTING_CLI,extension:local.extension,activateApps:local.activateApps,configureEndpoints,endpointsConfigured:endpoints=>Boolean(require('./cableEndpointSelection.cjs').selectCableEndpoints(endpoints,saved)),log});
+      if(input.action==='externalSelection')return handoff.decide(input.token,input.choice);
+      if(input.action==='repeatMode'){
+        await local.ready;
+        // Reading settings must not launch Spotify. Startup owns reconnection.
+        if(!bridge.connected())throw Object.assign(Error('SPOTIFY_BRIDGE_NOT_READY'),{code:'SPOTIFY_BRIDGE_NOT_READY'});
+        return bridge.request('repeatMode',input.mode===undefined?{}:{mode:input.mode});
+      }
       if(input.action==='audio'){
         const intent=++launchIntent;
+        await handoff.cancel();
         const current=()=>{if(closing||intent!==launchIntent)throw Object.assign(Error('CANCELLED'),{code:'CANCELLED'});};
         await desktop.ensure(progress);current();let prepared;
         const recovery=require('./orphanRouteRecovery.cjs');
@@ -187,10 +176,10 @@ function createService({beforeLeaveProvider},local,log){
       if(input.action==='playlistTracks')return page(tracks.map(song));
       throw Error('Spotify: local-trial-operation-unavailable');
     },
-    async prepareSourceOutput(url,backend){if(audio.lookup(url)){return;}await leave();await desktop.offerExit('source');},
+    async prepareSourceOutput(url,backend){if(audio.lookup(url)){return;}await handoff.cancel();await leave();await desktop.offerExit('source');},
     lookupSoloistPcmSource:url=>audio.lookup(url),requestBrowserPcm:input=>browser.request(input),
     canRetryClose:()=>true,
-    close(){if(closing)return closing;externalPrompt++;closing=(async()=>{await leave();await audio.clear();await route.releaseBeforeClose();await capture.close();route.captureHelperExited();await route.close();await control.dispose();await desktop.offerExit('quit');clearInterval(pausedObserver);bridge.close();log('quit-restoration-complete',{});})();closing.catch(()=>{closing=null;});return closing;},
+    close(){if(closing)return closing;void handoff.cancel();closing=(async()=>{await leave();await audio.clear();await route.releaseBeforeClose();await capture.close();route.captureHelperExited();await route.close();await control.dispose();await desktop.offerExit('quit');clearInterval(pausedObserver);bridge.close();log('quit-restoration-complete',{});})();closing.catch(()=>{closing=null;});return closing;},
   };
 }
 module.exports={registerLocalUiTrial};

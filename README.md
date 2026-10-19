@@ -2,9 +2,9 @@
 
 基于 [Folia](https://github.com/chthollyphile/folia-major) 的个人公益、非商业维护 fork，由 [PekolandBBQ](https://github.com/PekolandBBQ) 维护。保留原有歌词与音乐库体验，追加 Windows WASAPI/ASIO 独占输出、HQPlayer 连接、整数 PCM、音频链路，以及 **Spotify 桌面客户端接入**。
 
-当前正式发行件为 **0.7.19 r5**，标签为 `folia-hifi-v0.7.19-r5`，已同步上游稳定版 **0.7.19** 并保留 HiFi 与 Spotify Wrapper 功能。修订号用于区分本 fork 的发行件，原项目署名和许可证保留，专版独立维护。
+当前正式发行件为 **0.7.19 r6**，标签为 `folia-hifi-v0.7.19-r6`，已同步上游稳定版 **0.7.19** 并保留 HiFi 与 Spotify Wrapper 功能。修订号用于区分本 fork 的发行件，原项目署名和许可证保留，专版独立维护。
 
-[下载 Windows x64 正式版](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/releases/tag/folia-hifi-v0.7.19-r5) · [使用说明](docs/exclusive/USAGE.md) · [本次更新说明](docs/exclusive/releases/0.7.19-r5.md) · [验证结果](docs/exclusive/VALIDATION.md) · [反馈问题](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/issues)
+[下载 Windows x64 正式版](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/releases/tag/folia-hifi-v0.7.19-r6) · [使用说明](docs/exclusive/USAGE.md) · [本次更新说明](docs/exclusive/releases/0.7.19-r6.md) · [验证结果](docs/exclusive/VALIDATION.md) · [反馈问题](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/issues)
 
 **Spotify 进程专属采集适用平台：Windows 11 x64（Windows 应用进程回环 API 要求构建号至少 20348）。不绑定某台机器的内核版本；常规 Windows 10 不支持本次采集入口。**
 
@@ -34,7 +34,7 @@ Spotify 搜索覆盖在线曲库；点赞或取消点赞会写入 Spotify，并�
 
 ## 下载与开始使用
 
-1. 从 [0.7.19 r5 Release](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/releases/tag/folia-hifi-v0.7.19-r5) 下载 **[EXE 安装版](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/releases/download/folia-hifi-v0.7.19-r5/Folia-HiFi-WASAPI-ASIO-HQPlayer-0.7.19-win-x64-Setup.exe)**，或 **[ZIP 免安装版](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/releases/download/folia-hifi-v0.7.19-r5/Folia-HiFi-WASAPI-ASIO-HQPlayer-0.7.19-win-x64.zip)**。ZIP 完整解压后运行其中的 EXE；更新前先退出旧版。
+1. 从 [0.7.19 r6 Release](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/releases/tag/folia-hifi-v0.7.19-r6) 下载 **[EXE 安装版](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/releases/download/folia-hifi-v0.7.19-r6/Folia-HiFi-WASAPI-ASIO-HQPlayer-0.7.19-win-x64-Setup.exe)**，或 **[ZIP 免安装版](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/releases/download/folia-hifi-v0.7.19-r6/Folia-HiFi-WASAPI-ASIO-HQPlayer-0.7.19-win-x64.zip)**。ZIP 完整解压后运行其中的 EXE；更新前先退出旧版。
 2. 两种方式共用 `%APPDATA%\Folia HiFi`。已有配置保留；旧 `FoliaExclusive` 仅在目标目录不存在时复制迁移，不合并或覆盖。
 3. 使用 Spotify 时，先自行安装官网桌面版或 Microsoft Store 版，启动并登录账号。在 Folia 点击“连接 Spotify”，按向导选择安装版本。
 4. 联网后按顺序点击“① 一键安装”及“② 一键配置”。组件版本一致且文件完整才复用；首次安装/重装 VB-CABLE 后按提示重启，再“重新检查”。Windows 默认输出回落到 VB-CABLE 不再阻断 Spotify 的原生输出。配置时 Folia 自动暂停并退出受控 Spotify；旧版中断的备份保留，修正版使用新的私有资源目录完成首次配置。
@@ -50,9 +50,9 @@ Spotify 内暂停、停止、切歌、Seek 和后端切换保留路由；暂停/
 - 修复快速点歌、上一首/下一首和旧曲结束事件交错时的歌曲错位。拼贴页切歌后留在歌单，定位展开当前歌曲卡片并显示滚动歌词；仅明确进入播放页时跳转，定位沿用上游最小平移。
 - 改善 Spotify 原歌词等待与缓存，过期请求不覆盖新歌；确认没有歌词时，详情页和卡片显示“当前歌曲无歌词或为纯音乐，请欣赏”。加载中与请求失败不显示这条提示。
 - 可恢复的短暂故障先做有界静默重试，界面显示具体中文原因，原始错误码与阶段留在日志。
-- r5 新增双源更新、首次冷启动恢复与连接进度；验证范围和保留的问题见 [r5 更新说明](docs/exclusive/releases/0.7.19-r5.md)。
+- r6 修复 Spotify 暂停/续播、桌面 Seek 与追随进度同步，补齐循环模式同步及应用内更新说明和下载确认；验证范围和保留的问题见 [r6 更新说明](docs/exclusive/releases/0.7.19-r6.md)。
 
-**已知问题：Spotify 经 HQPlayer 输出目前仍可能出现断续播放，r5 尚未解决。增加预缓冲或降低 DSP 负载可能缓解，但不视为修复。三秒性能和历史偶发 Seek 继续观察。**
+**已知问题：Spotify 经 HQPlayer 输出目前仍可能出现断续播放，r6 尚未解决。增加预缓冲或降低 DSP 负载可能缓解，但不视为修复。三秒性能和历史偶发 Seek 继续观察。**
 
 ## 实际界面
 
@@ -99,7 +99,7 @@ Spotify 内暂停、停止、切歌、Seek 和后端切换保留路由；暂停/
 
 源码、构建、验证与维护约束见 [MAINTAINING](docs/exclusive/MAINTAINING.md)。
 
-Folia-HiFi-WASAPI-ASIO-HQPlayer-Spotify is an independently maintained, personal noncommercial Windows x64 fork of Folia. Version 0.7.19 r5 integrates upstream 0.7.19 while retaining Spotify Wrapper, WASAPI/ASIO, HQPlayer, integer PCM and signal-path reporting. It fixes first-time Spicetify configuration for desktop and Store layouts and checks Folia's latest validated component manifest and installed file integrity before installation. Spotify process capture requires Windows 11 x64 (API build 20348 or newer). Intermittent Spotify playback through HQPlayer remains a known issue in r5. The fork uses a separate release tag.
+Folia-HiFi-WASAPI-ASIO-HQPlayer-Spotify is an independently maintained, personal noncommercial Windows x64 fork of Folia. Version 0.7.19 r6 integrates upstream 0.7.19 while retaining Spotify Wrapper, WASAPI/ASIO, HQPlayer, integer PCM and signal-path reporting. It fixes first-time Spicetify configuration for desktop and Store layouts and checks Folia's latest validated component manifest and installed file integrity before installation. Spotify process capture requires Windows 11 x64 (API build 20348 or newer). Intermittent Spotify playback through HQPlayer remains a known issue in r5. The fork uses a separate release tag.
 
 ---
 

@@ -60,7 +60,7 @@ function createLivePcmSession({ source, experiment, connectPipe = name => net.cr
         ? createHQPlayerExperimentDiagnostics({ current: options.current, source, settings: experiment?.enabled ? experiment
             : { prebufferMs: options.current.livePcmPrebufferMs ?? 350, startupDelayMs: 0 } }) : null;
     const verifiedLive = options.current?.backend === 'hqplayer' && !experiment?.enabled;
-    const memorySource = { state: { complete: false, available: 0 }, downloaded: Promise.resolve() };
+    const memorySource = { state: { complete: false, available: 0, live: true }, downloaded: Promise.resolve() };
     async function decode({ signal, position, onFormat, preparationRevision, prebufferMs }) {
         // Completion and byte counts belong to this reader, not a previously ended generation.
         memorySource.state.complete = false; memorySource.state.available = 0;

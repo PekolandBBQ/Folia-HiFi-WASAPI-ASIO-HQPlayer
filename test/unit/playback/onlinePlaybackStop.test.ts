@@ -9,6 +9,10 @@ const stateSetters = vi.hoisted(() => [] as Mock[]);
 // 按调用顺序在多次“渲染”（多次调用 controller()）之间保留 ref，和 React 一样。
 const hookRefs = vi.hoisted(() => ({ list: [] as { current: unknown }[], index: 0 }));
 
+// Desktop subscriptions are exercised with a real React root in useSpotifyDesktopHandoff.test.ts.
+// This queue-only harness deliberately invokes the controller without rendering React.
+vi.mock('@/hooks/useSpotifyDesktopHandoff', () => ({ useSpotifyDesktopHandoff: () => {} }));
+
 vi.mock('react', () => ({
     useCallback: (callback: unknown) => callback,
     useMemo: (factory: () => unknown) => factory(),

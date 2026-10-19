@@ -133,7 +133,8 @@ function createOwnedRouteLifecycle({ host, heartbeatMs = 4000, onDiagnostic = ()
         let value;
         try { value = await host.request('inspect', { captureDeviceId: selection.captureDeviceId, renderDeviceId: selection.renderDeviceId }); }
         catch (error) { throw error?.noPolicyWrites && error.failureCode ? failure(error.failureCode) : error; }
-        return { binding: preflight(value.inspection, selection), held: false, sourcePaused: value.inspection.sourcePaused };
+        return { binding: preflight(value.inspection, selection), held: false, sourcePaused: value.inspection.sourcePaused,
+          requiresNativePauseObservation: value.inspection.requiresNativePauseObservation !== false };
       });
     },
     acquire({ session, selection, binding, sourcePaused, sourceDeviceId, expectedSourceUri, selectedSourceUri, signal, onFailure } = {}) {

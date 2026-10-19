@@ -820,7 +820,7 @@ public sealed class ProductRouteService : IDisposable
 		RouteSelection routeSelection = Selection(payload);
 		ProductDiscovery found = backend.InspectForAcquire(routeSelection);
 		RequireDiscovery(found, routeSelection);
-		if (!found.SourcePaused)
+		if (found.RequiresNativePauseObservation && !found.SourcePaused)
 		{
 			throw new RouteBlockedException("SOURCE_NOT_PAUSED");
 		}

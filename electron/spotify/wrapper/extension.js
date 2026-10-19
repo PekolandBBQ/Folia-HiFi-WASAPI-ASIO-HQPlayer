@@ -121,8 +121,28 @@
       timing:{userMs:userDone-snapshotStarted,snapshotMs:performance.now()-snapshotStarted}};
   }
   async function handle(op,args, active=()=>true){
-    if(op==='hello')return {protocol:1,version:'1.1.2',capabilities:['snapshot','command','catalog','lyrics','likedTracks','searchTracks','setLiked','independentReads','accountProfile']};
+    if(op==='hello')return {protocol:1,version:'1.1.3',capabilities:['snapshot','command','catalog','lyrics','likedTracks','searchTracks','setLiked','independentReads','accountProfile','repeatMode']};
     if(op==='snapshot')return snapshot();
+    if(op==='repeatMode'){
+      await snapshot(); // Never change the repeat setting on another Spotify Connect device.
+      const player=wrapperPlayer(),modes=['off','all','one'];
+      if(typeof player?.getRepeat!=='function')throw Error('REPEAT_MODE_UNAVAILABLE');
+      if(args.mode!==undefined){
+        const index=modes.indexOf(args.mode);
+        if(index<0)throw Error('INVALID_REPEAT_MODE');
+        if(typeof player.setRepeat!=='function')throw Error('REPEAT_MODE_UNAVAILABLE');
+        await player.setRepeat(index);
+        for(let attempt=0;attempt<20;attempt++){
+          if(!active())throw Error('BRIDGE_COMMAND_TIMEOUT');
+          if(player.getRepeat()===index)return {mode:args.mode};
+          await wait(100);
+        }
+        throw Error('REPEAT_MODE_UNCONFIRMED');
+      }
+      const mode=modes[player.getRepeat()];
+      if(!mode)throw Error('REPEAT_MODE_UNAVAILABLE');
+      return {mode};
+    }
     if(op==='lyrics')return nativeLyrics(args);
     if(op==='searchTracks')return searchTracks(args);
     if(op==='setLiked'){
@@ -213,7 +233,7 @@
         wrapperOriginPresent:!!Spicetify.Player?.origin,wrapperPlayUriType:typeof Spicetify.Player?.playUri}});}
       finally{expired=true;if(timer)clearTimeout(timer);}};
     // Metadata network latency must never serialize pause, source preparation or seek.
-    if(request.op!=='command')void run();else queue=queue.catch(()=>{}).then(run);
+    if(request.op!=='command'&&!(request.op==='repeatMode'&&request.args?.mode!==undefined))void run();else queue=queue.catch(()=>{}).then(run);
   };
   }
   connect();

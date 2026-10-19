@@ -1,6 +1,9 @@
 'use strict';
 // Preserve bounded machine codes across IPC; messages explain the failed operation without exposing account data.
 const descriptions = {
+ REPEAT_MODE_UNAVAILABLE: 'Spotify 尚未提供循环模式状态，请等待桥接完成连接后再切换。',
+ REPEAT_MODE_UNCONFIRMED: '循环模式指令已发送，但 Spotify 回读仍未确认修改；没有将界面标记为成功。',
+ INVALID_REPEAT_MODE: '请求的循环模式无效，支持关闭循环、列表循环和单曲循环。',
  SPOTIFY_RESOURCE_VERSION_CHANGED: 'Spotify 已升级，但 Folia 的页面资源仍属于旧版本，需要为当前客户端生成独立资源；原配置和备份会保留。',
  BRIDGE_COMMAND_TIMEOUT: 'Spotify 未在等待时间内完成播放指令；控制队列已释放，搜索与状态读取不受影响。',
  SEARCH_API_UNAVAILABLE: '当前 Spotify 客户端尚未提供在线搜索接口，请重启 Spotify 以加载新版桥接；不会退回已点赞歌曲冒充在线结果。',
@@ -111,6 +114,7 @@ function failureDetails(error, operation) {
  const safe = value => typeof value === 'string' && /^[A-Z][A-Z0-9_]{1,127}$/.test(value) ? value : undefined;
  const nativeCode = safe(error?.nativeCode) || safe(error?.code);
  const causeCode = safe(error?.failureCode) || safe(error?.cause?.nativeCode) || safe(error?.cause?.code);
+ const cleanupCode = safe(error?.cleanupError?.nativeCode) || safe(error?.cleanupError?.code);
  const stage = typeof error?.stage === 'string' && /^[a-z0-9-]{1,64}$/.test(error.stage) ? error.stage : operation;
  const code = causeCode || nativeCode;
  const mismatchNames = { 'duration-mismatch': '歌曲时长不一致', 'position-invalid': '进度超出当前歌曲范围', 'playing-mismatch': '播放/暂停状态不一致' };
@@ -129,8 +133,8 @@ function failureDetails(error, operation) {
  const readback = code === 'FORMAT_LEASE_READBACK_MISMATCH'
    ? require('../debug/privatePreviewDiagnosticSchema.cjs').projectFormatLeaseReadback(error?.formatLeaseReadback) : undefined;
  const formatDetail = readback ? ` ${readback.endpointRole === 'render' ? '输出端' : '采集端'}请求 ${readback.requested.sampleRate} Hz／${readback.requested.channels} 声道，实际 ${readback.observed.sampleRate} Hz／${readback.observed.channels} 声道；差异字段：${readback.differingFields.map(field => ({ sampleRate: '采样率', channels: '声道数', bitsPerSample: '位深', validBitsPerSample: '有效位深', channelMask: '声道布局', formatTag: '格式标记', subFormat: '采样格式', blockAlign: '帧字节数', avgBytesPerSec: '每秒字节数' }[field] || '音频格式参数')).join('、')}。` : '';
- return { nativeCode, causeCode, stage, ...(error?.retriesExhausted === true ? { retryCount: 3, retriesExhausted: true } : {}), ...(mismatch ? { stateMismatch: mismatch, ...stateFacts } : {}), ...(readback ? { formatLeaseReadback: readback } : {}),
+ return { nativeCode, causeCode, cleanupCode, stage, ...(error?.retriesExhausted === true ? { retryCount: 3, retriesExhausted: true } : {}), ...(mismatch ? { stateMismatch: mismatch, ...stateFacts } : {}), ...(readback ? { formatLeaseReadback: readback } : {}),
    ...(connectionReason?{connectionReason}:{}),...(Number.isInteger(error?.hresult) ? { hresult: error.hresult } : {}),
-   detail: text + (mismatch ? ' 具体差异：' + mismatchNames[mismatch] + '。' : '') + formatDetail + (error?.retriesExhausted === true ? ' 已自动重试三次，仍未恢复。' : '') };
+   detail: text + (cleanupCode ? ' 清理旧会话时另有失败：' + (descriptions[cleanupCode] || '未完成暂停状态确认，具体状态已写入日志。') : '') + (mismatch ? ' 具体差异：' + mismatchNames[mismatch] + '。' : '') + formatDetail + (error?.retriesExhausted === true ? ' 已自动重试三次，仍未恢复。' : '') };
 }
 module.exports = { failureDetails, descriptions };

@@ -3,7 +3,9 @@ import type { ProviderErrorCode, AudioSourceRequestOptions, ProviderConnectionSe
 
 // The renderer sees metadata and opaque login handles, never a Spotify bearer token.
 export type SpotifyRequest = { action: 'loginBegin' | 'loginImage' | 'loginCheck' | 'loginCancel' | 'status' | 'logout'
-    | 'desktopSetup' | 'search' | 'likeSong' | 'playlists' | 'savedTracks' | 'song' | 'lyrics' | 'playlist' | 'playlistTracks' | 'album' | 'albumTracks' | 'audio' | 'cancelAudio' | 'configuration' | 'configure' | 'playbackSetup' | 'sourceRevision' | 'leaveProvider';
+    | 'externalSelection' | 'repeatMode' | 'desktopSetup' | 'search' | 'likeSong' | 'playlists' | 'savedTracks' | 'song' | 'lyrics' | 'playlist' | 'playlistTracks' | 'album' | 'albumTracks' | 'audio' | 'cancelAudio' | 'configuration' | 'configure' | 'playbackSetup' | 'sourceRevision' | 'leaveProvider';
+    mode?: import('../../types/onlineMusic').ProviderRepeatMode;
+    token?: number; choice?: 'follow' | 'pause' | 'spotify';
     liked?: boolean; preferences?: {quitOnFoliaExit:boolean};
     expectedSourceRevision?: number; key?: string; id?: string; query?: string; quality?: import('../../types/onlineMusic').AudioQualityPreference; streaming?: boolean; limit?: number; offset?: number; requestId?: string; settings?: ProviderConnectionSettings;
     operation?: ProviderPlaybackSetupRequest['operation'] | 'preferences' | 'choose' | 'open' | 'launch' | 'install' | 'configure'; component?: string; installation?: string; keyValue?: string; selection?: import('../../types/onlineMusic').ProviderCableSelection };

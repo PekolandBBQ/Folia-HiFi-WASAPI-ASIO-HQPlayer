@@ -123,7 +123,21 @@ export class NativeAudioTransport extends EventTarget {
         void this.command('seek', { position: this.position }).then(state => {
             if (revision !== this.revision) return;
             this.seeking = false; this.presentedTime = state.position; this.apply(state); this.emit('seeked'); this.emit('timeupdate');
-        }).catch(error => { if (revision === this.revision) this.fail(error, 'seek'); });
+        }).catch(error => {
+            if (revision !== this.revision) return;
+            // A cancelled checkpoint has no newer setter to clear its flag. Keep the
+            // acknowledged output clock authoritative and allow subsequent state ticks.
+            this.seeking = false;
+            if (getNativeErrorCode(error) === 'CANCELLED' || error instanceof DOMException && error.name === 'AbortError') {
+                this.position = this.nativePosition; this.presentedTime = this.nativePosition;
+                console.info('[NativeAudioSeek]', { outcome: 'cancelled-checkpoint-released', session: this.session,
+                    requestedPosition: this.seekIntent?.position, acknowledgedPosition: this.nativePosition,
+                    revision, preparationRevision: this.preparationRevision });
+                this.emit('seeked'); this.emit('timeupdate');
+                return;
+            }
+            this.fail(error, 'seek');
+        });
     }
     get volume() { return this.level; }
     set volume(value: number) { this.level = Math.max(0, Math.min(1, value)); this.syncVolume(); }

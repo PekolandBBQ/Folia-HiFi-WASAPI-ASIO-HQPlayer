@@ -1,3 +1,5 @@
+import SpotifyHandoffDialog from './SpotifyHandoffDialog';
+import ForkUpdateDialog from './ForkUpdateDialog';
 import React from 'react';
 import { createPortal } from 'react-dom';
 import { AlertCircle, CheckCircle2, Sparkles } from 'lucide-react';
@@ -22,6 +24,8 @@ const AppDialogs: React.FC<AppDialogsProps> = ({ model }) => {
 
     return (
         <>
+            <SpotifyHandoffDialog />
+            <ForkUpdateDialog />
             {createPortal(
                 <AnimatePresence>
                     {statusToast && (
