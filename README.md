@@ -1,4 +1,4 @@
-# Folia-HiFi-WASAPI-ASIO-HQPlayer-Spotify
+# Folia-HiFi（支持Spotify接入-WASAPI及ASIO独占-HQPlayer升频）
 
 基于 [Folia](https://github.com/chthollyphile/folia-major) 的个人公益、非商业维护 fork，由 [PekolandBBQ](https://github.com/PekolandBBQ) 维护。保留原有歌词与音乐库体验，追加 Windows WASAPI/ASIO 独占输出、HQPlayer 连接、整数 PCM、音频链路，以及 **Spotify 桌面客户端接入**。
 

@@ -1,7 +1,7 @@
 <!-- docs/exclusive/USAGE.md -->
-# Folia-HiFi-WASAPI-ASIO-HQPlayer-Spotify 使用说明
+# Folia-HiFi（支持Spotify接入-WASAPI及ASIO独占-HQPlayer升频）使用说明
 
-这是我维护的 Windows x64 正式专版，名称为 **Folia-HiFi-WASAPI-ASIO-HQPlayer-Spotify**，当前应用版本 **0.7.19**、专版修订 **r8**。它基于 Folia v0.7.19，保留原项目的许可证和署名。
+这是我维护的 Windows x64 正式专版，名称为 **Folia-HiFi（支持Spotify接入-WASAPI及ASIO独占-HQPlayer升频）**，当前应用版本 **0.7.19**、专版修订 **r8**。它基于 Folia v0.7.19，保留原项目的许可证和署名。
 
 ## 安装与更新
 
