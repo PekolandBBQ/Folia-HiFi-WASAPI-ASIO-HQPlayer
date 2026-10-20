@@ -119,7 +119,7 @@ it.each([204, 200])('parks via real PUT pause %s and a fresh GET before publishi
     'request:play', 'request:state', 'observed:playing']);
   f.captures[0].queue.push(Buffer.alloc(8, 1)); expect((await block).value).toEqual(Buffer.alloc(8, 1));
   await source.pause(); await reader.return();
-  expect(f.captureDiagnostics).toEqual([]);
+  expect(f.captureDiagnostics).toEqual([expect.objectContaining({phase:'capture-boundary',trackId})]);
   expect(JSON.stringify(prepared)).not.toMatch(/synthetic-private-token|synthetic-desktop|Synthetic/);
 });
 
@@ -277,7 +277,8 @@ it('keeps the resume 200 GET immediate after a delayed remote start and consumes
   });
   const source = f.audio.lookup(prepared.url), opened = await source.openReadable(), reader = opened.stream[Symbol.asyncIterator]();
   expect((await reader.next()).value).toEqual(Buffer.alloc(32768, 3));
-  expect(reads).toBe(1); expect(f.wait).not.toHaveBeenCalled(); expect(f.captureDiagnostics).toEqual([]);
+  expect(reads).toBe(1); expect(f.wait).not.toHaveBeenCalled();
+  expect(f.captureDiagnostics).toEqual([expect.objectContaining({phase:'capture-boundary',trackId})]);
   f.intercept(undefined); await source.pause(); await reader.return();
 });
 

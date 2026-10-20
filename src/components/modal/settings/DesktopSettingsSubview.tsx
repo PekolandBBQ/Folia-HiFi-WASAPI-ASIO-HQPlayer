@@ -517,7 +517,7 @@ const DesktopSettingsSubview: React.FC<DesktopSettingsSubviewProps> = ({
                                     style={{ color: 'var(--text-primary)' }}
                                 >
                                     <Download size={14} />
-                                    {t('options.downloadUpdate') || 'Download Update'}
+                                    {updateStatus.forkUpdate && (updateStatus.downloadCancelled || updateStatus.status === 'error') ? '重新下载' : t('options.downloadUpdate') || 'Download Update'}
                                 </button>
                             )}
                             {updateStatus.autoUpdateSupported && updateStatus.status === 'downloaded' && (

@@ -16,7 +16,8 @@ export type NativeAudioState = {
     processingMode?: NativeAudioProcessingMode; outputFormat?: string; outputMode?: string; hqplayerGainDb?: number; outputRateReported?: boolean; volumeDb?: number;
     sourceSampleRate?: number; sourceBitsPerSample?: number; sourceCodec?: string; sourceBitrate?: number;
     requestedQuality?: AudioQualityPreference; sourceQuality?: AudioQualityPreference; sourceProviderLevel?: string;
-    sourceEncodingVerified?: boolean; preparedSource?: boolean;
+    sourceEncodingVerified?: boolean; preparedSource?: boolean; sourceOrigin?: ProviderAudioMetadata['sourceOrigin'];
+    hqplayerInputContainer?: 'wav';
     // Decoded transport input is separate from the provider's original encoding and engine output.
     preparedAudio?: ProviderAudioMetadata['preparedAudio'];
     effectiveGain?: number; replayGain?: number; volume?: number; sampleValuesPreserved?: boolean;

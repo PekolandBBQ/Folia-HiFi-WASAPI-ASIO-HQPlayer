@@ -1,4 +1,7 @@
 import { omni } from '../../../services/onlineMusic/omni';
+import { spotifyActivation } from '../../../services/onlineMusic/spotifyActivation';
+import { spotifyReadiness } from '../../../services/onlineMusic/spotifyReadiness';
+import { setStatusMessage } from '../../../stores/useStatusMessageStore';
 import { useSpotifyConnectionStore } from '../../../stores/useSpotifyConnectionStore';
 import { useNeteaseApiStatusStore } from '../../../stores/useNeteaseApiStatusStore';
 import { useOnlineProviderAccountStore } from '../../../stores/useOnlineProviderAccountStore';
@@ -30,7 +33,10 @@ export const accountStorePort: LibraryAccountStorePort = {
     listProviders: () => omni.getProviderSummaries(),
     getProviderLabel: providerId => omni.getProviderLabel(providerId),
     getStoredActiveProviderId: () => useOnlineProviderAccountStore.getState().activeProviderId,
-    setActiveProviderId: providerId => useOnlineProviderAccountStore.getState().setActiveProviderId(providerId),
+    setActiveProviderId: providerId => {
+        useOnlineProviderAccountStore.getState().setActiveProviderId(providerId);
+        if(providerId!=='spotify')setStatusMessage(message=>message?.providerId==='spotify'?null:message);
+    },
     invalidateActiveRequests: () => omni.invalidateActiveRequests(),
     subscribe: listener => {
         const unsubscribeStore = useOnlineProviderAccountStore.subscribe(() => listener());
@@ -89,6 +95,10 @@ export type ProviderAccountHostPorts = {
 
 /** 组装 controller 的全部依赖：宿主端口 + 上面的默认端口。 */
 export const createProviderAccountDeps = (host: ProviderAccountHostPorts): LibraryAccountControllerDeps => ({
+    onProviderSelected: providerId => { if (providerId === 'spotify') {
+        const selected=spotifyActivation.selected();spotifyActivation.select();
+        if(selected){spotifyReadiness.reset();void spotifyReadiness.run();}
+    } },
     startExternalLogin: providerId => {
         if (providerId !== 'spotify') return false;
         useSpotifyConnectionStore.getState().begin();

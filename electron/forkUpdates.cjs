@@ -31,20 +31,21 @@ function selectUpdate(release,manifest,current,installed,source='github'){
  downloadAsset:available?{name:selected.name,size:selected.size,url:selected.browser_download_url,...(selected.parts?{parts:selected.parts}:{})}:null};
 }
 function createForkUpdates({current,installed,fetcher,directory,publish,openExternal,openDownloaded=()=>{},install,timeoutMs=10000,getSource=()=> 'auto'}){
- let pending,downloading,downloaded=null,selection=null;
+ let pending,downloading,downloadAttempt,downloaded=null,selection=null;
  const request=async(url,signal)=>{const response=await fetcher(url,{signal,headers:{Accept:'application/json','User-Agent':'Folia-HiFi'}});if(!response.ok)throw Error(response.status===404?'更新源尚未发布所需文件，请等待同步。':response.status===429||response.status===403?'更新源暂时限制访问，请稍后再试。':`更新服务请求失败（HTTP ${response.status}）。`);return response;};
  async function downloadRequest(url,signal){
   const controller=new AbortController(),abort=()=>controller.abort();signal.addEventListener('abort',abort,{once:true});
   const timer=setTimeout(abort,timeoutMs);if(signal.aborted)abort();
   try{return await request(url,controller.signal);}finally{clearTimeout(timer);signal.removeEventListener('abort',abort);}
  }
- async function discover(source){
-  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),timeoutMs);
+ async function discover(source,parentSignal){
+  const controller=new AbortController(),abort=()=>controller.abort(),timer=setTimeout(abort,timeoutMs);
+  parentSignal?.addEventListener('abort',abort,{once:true});if(parentSignal?.aborted)abort();
   try{const r=await loadRelease(source,request,controller.signal);
    const ma=asset(r,manifestName,source),manifest=ma?await(await request(ma.browser_download_url+'?check='+Date.now(),controller.signal)).json():null;
    if(source==='gitee'&&!ma)throw Error('Gitee 尚未同步更新构建清单。');
    return selectUpdate(r,manifest,current,installed,source);
-  }finally{clearTimeout(timer);}
+  }finally{clearTimeout(timer);parentSignal?.removeEventListener('abort',abort);}
  }
  const reason=e=>e.name==='AbortError'?'连接超时':/fetch failed|Failed to fetch/i.test(e.message)?'网络连接失败':e.message;
  return {
@@ -57,7 +58,7 @@ function createForkUpdates({current,installed,fetcher,directory,publish,openExte
     for(const source of order){try{
      const next=await discover(source);selection=next;
      if(downloaded?.identity===next.tag+'#'+next.availableBuild&&fs.existsSync(downloaded.file))next.status='downloaded';
-     publish({...next,error:null,lastCheckedAt:Date.now(),downloadProgress:null});return;
+     publish({...next,error:null,downloadCancelled:false,lastCheckedAt:Date.now(),downloadProgress:null});return;
     }catch(e){failures.push(sources[source].label+'：'+reason(e));}}
     publish({...(manual?{status:'error',error:failures.join('；')}:{ }),lastCheckedAt:Date.now()});
    }finally{pending=null;}
@@ -67,32 +68,37 @@ function createForkUpdates({current,installed,fetcher,directory,publish,openExte
   if(downloading)return downloading;
   if(!selection?.downloadAsset)return Promise.resolve();
   if(!installed&&!selection.downloadAsset.parts)return openExternal(selection.downloadUrl);
-  const selected=selection.downloadAsset;
-  downloading=(async()=>{let partial;const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),30*60*1000);
-   try{await fsp.mkdir(directory,{recursive:true});const folder=await fsp.mkdtemp(path.join(directory,'download-'));const file=path.join(folder,installed?'Folia-HiFi-Setup.exe':'Folia-HiFi-portable.zip');partial=file+'.partial';
-    publish({status:'downloading',error:null,downloadProgress:{percent:0}});
+  const selected=selection.downloadAsset, identity=selection.tag+'#'+selection.availableBuild;
+  const attempt={controller:new AbortController(),cancelled:false};downloadAttempt=attempt;
+  downloading=(async()=>{let partial,folder;const controller=attempt.controller,timer=setTimeout(()=>controller.abort(),30*60*1000);
+   try{await fsp.mkdir(directory,{recursive:true});folder=await fsp.mkdtemp(path.join(directory,'download-'));const file=path.join(folder,installed?'Folia-HiFi-Setup.exe':'Folia-HiFi-portable.zip');partial=file+'.partial';
+    controller.signal.throwIfAborted();
+    publish({status:'downloading',error:null,downloadCancelled:false,downloadProgress:{percent:0}});
     let response,active=selected;
     try{response=await downloadRequest((active.parts?.[0]||active).url,controller.signal);}catch(error){
-     if(getSource()!=='auto'||!selection.availableBuild)throw error;
-     const alternate=await discover(selection.updateSource==='github'?'gitee':'github');
+     if(controller.signal.aborted||getSource()!=='auto'||!selection.availableBuild)throw error;
+     const alternate=await discover(selection.updateSource==='github'?'gitee':'github',controller.signal);
      if(alternate.tag!==selection.tag||alternate.availableBuild!==selection.availableBuild||alternate.downloadAsset?.name!==selected.name||alternate.downloadAsset?.size!==selected.size)throw Error('备用源尚未同步同一构建，请稍后重试下载。');
-     active=alternate.downloadAsset;response=await downloadRequest((active.parts?.[0]||active).url,controller.signal);publish({updateSource:alternate.updateSource});
+     controller.signal.throwIfAborted();active=alternate.downloadAsset;response=await downloadRequest((active.parts?.[0]||active).url,controller.signal);publish({updateSource:alternate.updateSource});
     }
     let transferred=0,last=0;
     // Append each original byte range in manifest order; never run an incomplete merged package.
     const parts=active.parts||[active];
     for(let i=0;i<parts.length;i++){
      if(i)response=await downloadRequest(parts[i].url,controller.signal);
-     let partBytes=0;const input=Readable.fromWeb(response.body);input.on('data',chunk=>{partBytes+=chunk.length;transferred+=chunk.length;if(Date.now()-last>250){last=Date.now();publish({status:'downloading',downloadProgress:{transferred,total:selected.size,percent:selected.size?Math.min(100,transferred/selected.size*100):0}});}});
+     controller.signal.throwIfAborted();
+     let partBytes=0;const input=Readable.fromWeb(response.body);input.on('data',chunk=>{partBytes+=chunk.length;transferred+=chunk.length;if(!controller.signal.aborted&&Date.now()-last>250){last=Date.now();publish({status:'downloading',downloadProgress:{transferred,total:selected.size,percent:selected.size?Math.min(100,transferred/selected.size*100):0}});}});
      await pipeline(input,fs.createWriteStream(partial,{flags:i?'a':'wx'}),{signal:controller.signal});
      if(parts[i].size&&partBytes!==parts[i].size)throw Error(`下载文件不完整：${parts[i].name}。请重新下载。`);
     }
     if(!transferred||selected.size&&transferred!==selected.size)throw Error('安装包下载不完整，请重新下载。');
-    await fsp.rename(partial,file);downloaded={file,url:selected.url,identity:selection.tag+'#'+selection.availableBuild};publish({status:'downloaded',error:null,downloadProgress:null});if(!installed)await openDownloaded(file);
-   }catch(e){if(partial)await fsp.rm(partial,{force:true}).catch(()=>{});publish({status:'error',error:e.name==='AbortError'?'下载超时，请重新下载。':reason(e),downloadProgress:null});}
-   finally{clearTimeout(timer);downloading=null;}
+    controller.signal.throwIfAborted();await fsp.rename(partial,file);
+    controller.signal.throwIfAborted();downloaded={file,url:selected.url,identity};publish({status:'downloaded',error:null,downloadProgress:null});if(!installed)await openDownloaded(file);
+   }catch(e){if(folder&&path.dirname(path.resolve(folder))===path.resolve(directory))await fsp.rm(folder,{recursive:true,force:true}).catch(()=>{});else if(partial)await fsp.rm(partial,{force:true}).catch(()=>{});publish(attempt.cancelled?{status:'available',error:null,downloadCancelled:true,downloadProgress:null}:{status:'error',error:e.name==='AbortError'?'下载超时，请重新下载。':reason(e),downloadProgress:null});}
+   finally{clearTimeout(timer);downloadAttempt=null;downloading=null;}
   })();return downloading;
  },
+ async cancelDownload(){if(!downloadAttempt)return;downloadAttempt.cancelled=true;downloadAttempt.controller.abort();await downloading;},
  async confirmInstall(){if(!installed||!downloaded||downloaded.identity!==selection?.tag+'#'+selection?.availableBuild||!fs.existsSync(downloaded.file))return false;return install(downloaded.file);}
  };
 }

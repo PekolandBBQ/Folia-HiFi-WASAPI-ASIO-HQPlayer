@@ -24,10 +24,10 @@ test('follow returns refreshed position, and a second desktop change requires ne
  assert.equal((await f.service.decide(1,'follow')).changed,true);assert.equal(f.events.at(-1).trackId,c);
  await f.service.decide(1,'follow');assert.equal(f.events.at(-1).phase,'follow');assert.equal(f.events.at(-1).positionMs,900);
 });
-test('natural completion advances once; a stale source never pauses new playback',async()=>{
- const f=fixture();await f.service.notify({...facts,naturalEnd:true});
- assert.deepEqual(f.events.map(e=>e.phase),['paused','advance']);
- await f.service.notify(facts,()=>false);assert.equal(f.events.length,2);
+test('natural capture end retains the old output; only native drained EOF may advance the queue',async()=>{
+ let stopped=0;const f=fixture(async()=>{stopped++;return {};});await f.service.notify({...facts,naturalEnd:true});
+ assert.deepEqual(f.events,[]);assert.equal(stopped,0);
+ await f.service.notify(facts,()=>false);assert.equal(f.events.length,0);
 });
 test('explicit Spotify continuation restores output before requesting playback',async()=>{
  const f=fixture();await f.service.notify(facts);await f.service.decide(1,'spotify');assert.equal(f.handedBack(),1);assert.equal(f.events.at(-1).phase,'dismiss');

@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { spotifyProvider } from '@/services/onlineMusic/spotifyProvider';
+import { spotifyActivation } from '@/services/onlineMusic/spotifyActivation';
 import { buildOnlineRadioCards, buildOnlinePlaylistCards, onlineCardCollection } from '@/library/core/model/homeCards';
 import { createFavoriteArtistsFeed } from '@/library/core/services/onlineHomeFeeds';
 import { resolveHomeOnlineSource, resolveHomeTabs } from '@/library/core/model/homeSources';
@@ -7,7 +8,7 @@ import type { TFunction } from 'i18next';
 // Exercise the provider adapter and shared home model with realistic bridge records.
 const id='0123456789012345678901';
 const raw=(type:string)=>({id,type,name:'Test '+type,images:[{url:'https://i.scdn.co/image/test'}],metadataSource:'spicetify-local-library',artists:[{id,name:'Artist'}]});
-function runtime(value:unknown){const request=vi.fn(async()=>value);vi.stubGlobal('window',{electron:{spotify:{request}}});return request;}
+function runtime(value:unknown){spotifyActivation.select();const request=vi.fn(async()=>value);vi.stubGlobal('window',{electron:{spotify:{request}}});return request;}
 afterEach(()=>vi.unstubAllGlobals());
 describe('Spotify library collections in existing Folia surfaces',()=>{
     it('retains playlist ownership, creator, images and client provenance',async()=>{

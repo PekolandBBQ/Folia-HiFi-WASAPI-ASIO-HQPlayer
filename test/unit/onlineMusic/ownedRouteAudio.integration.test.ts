@@ -262,7 +262,7 @@ it('finishes an in-flight route poll before EOF stops capture and retains the ro
   expect(f.captures[0].stop).not.toHaveBeenCalled();
   expect(f.captures[0].stopVerified).not.toHaveBeenCalled();
   release.resolve(undefined); await expect(end).resolves.toMatchObject({ done: true });
-  expect(f.events.indexOf('poll:finished')).toBeLessThan(f.events.indexOf('capture:stop'));
+  expect(f.events.indexOf('poll:finished')).toBeLessThan(f.events.indexOf('capture:stop-verified'));
   expect(f.lease().state).toBe('pausedHeld');
   expect(f.events).not.toContain('route:release');
 }, 10000);

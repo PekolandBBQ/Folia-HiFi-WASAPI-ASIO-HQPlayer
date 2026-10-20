@@ -4,7 +4,6 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 const { unzipSync } = require('fflate');
 const { prepareProfile } = require('./profile.cjs');
-const { HQPLAYER_ARCHIVE_FILE } = require('./hqplayer/archiveContract.cjs');
 
 // packaging/exclusive/exclusive-entry.cjs — fork-only distribution with an isolated profile and pinned offline components.
 const resources = path.join(process.resourcesPath, 'exclusive-native-audio');
@@ -108,34 +107,8 @@ const hqpCatalog = { schema: 1, releases: [
 const hqpCatalogPath = path.join(profile, 'hqplayer-component-catalog.json');
 fs.writeFileSync(hqpCatalogPath, JSON.stringify(hqpCatalog));
 const hqpDirectory = path.join(profile, 'components', 'hqplayer');
-let previousHqp = null;
-try { previousHqp = JSON.parse(fs.readFileSync(path.join(hqpDirectory, 'active.json'), 'utf8')); } catch {}
-const bundledUpgrade = previousHqp && previousHqp.archiveSha256 !== hqpCatalog.releases[0].sha256
-    && hqpCatalog.releases.some(item => item.sha256 === previousHqp.archiveSha256);
 // Known released components upgrade once; explicit user disable and retained old files remain respected.
-if ((!fs.existsSync(path.join(hqpDirectory, 'active.json')) || bundledUpgrade) && !fs.existsSync(path.join(hqpDirectory, 'inactive.json'))) {
-    const approved = hqpCatalog.releases[0], bytes = fs.readFileSync(approved.localPath);
-    if (hash(bytes) !== approved.sha256) throw new Error('HQPlayer archive integrity failed');
-    const files = unzipSync(bytes);
-    const info = JSON.parse(Buffer.from(files['component.json']).toString('utf8'));
-    if (info.id !== 'hqplayer' || info.version !== approved.version || info.protocolMajor !== 1
-        || hash(files['hqplayer-component.cjs']) !== approved.entrySha256) throw new Error('HQPlayer manifest integrity failed');
-    const destination = path.join(hqpDirectory, `${approved.version}-${approved.sha256.slice(0, 12)}`);
-    fs.mkdirSync(destination, { recursive: true });
-    for (const [name, data] of Object.entries(files)) {
-        if (!HQPLAYER_ARCHIVE_FILE.test(name)) throw new Error('Unexpected HQPlayer archive entry');
-        fs.writeFileSync(path.join(destination, name), data);
-    }
-    if (bundledUpgrade) {
-        const receipts = path.join(hqpDirectory, 'upgrade-receipts'); fs.mkdirSync(receipts, { recursive: true });
-        const retained = path.join(receipts, `${previousHqp.archiveSha256}.json`);
-        if (!fs.existsSync(retained)) fs.writeFileSync(retained, JSON.stringify({ active: previousHqp,
-            previous: fs.existsSync(path.join(hqpDirectory, 'previous.json')) ? JSON.parse(fs.readFileSync(path.join(hqpDirectory, 'previous.json'), 'utf8')) : null }));
-        fs.writeFileSync(path.join(hqpDirectory, 'previous.json'), JSON.stringify(previousHqp));
-    }
-    fs.writeFileSync(path.join(hqpDirectory, 'active.json.tmp'), JSON.stringify({ archiveSha256: approved.sha256, executableSha256: approved.entrySha256 }));
-    fs.renameSync(path.join(hqpDirectory, 'active.json.tmp'), path.join(hqpDirectory, 'active.json'));
-}
+require('./hqplayer/bundledUpgrade.cjs').installBundledHQPlayer({directory:hqpDirectory,resources,releases:hqpCatalog.releases});
 const hqpModule = require('./hqplayer/componentManager.cjs');
 const createHqpManager = hqpModule.createHQPlayerComponentManager;
 hqpModule.createHQPlayerComponentManager = options => createHqpManager({ ...options,

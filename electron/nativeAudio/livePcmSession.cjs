@@ -53,7 +53,7 @@ const UNAVAILABLE_SOURCE_CODES = new Set(['APPLIANCE_UNAVAILABLE', 'CONTROL_TIME
 // electron/nativeAudio/livePcmSession.cjs — bounded, main-owned PCM directly to the output pipe.
 function createLivePcmSession({ source, experiment, connectPipe = name => net.createConnection({ path: `\\\\.\\pipe\\${name}`, allowHalfOpen: true }), ...options }) {
     let parked = null, lastState = null, closed = false, intent = 0, queueSamplePending = false, lastQueueSample = -Infinity;
-    let retirement = null, outputReleased = false, closeTask = null, preparing = null;
+    let retirement = null, outputReleased = false, closeTask = null, preparing = null, drainLogged = false, endLogged = false;
     const parkedControls = new Map();
     // Observe the shipping live path too; the legacy diagnostic event name does not enable an experiment.
     const observations = options.current?.backend === 'hqplayer'
@@ -64,6 +64,7 @@ function createLivePcmSession({ source, experiment, connectPipe = name => net.cr
     async function decode({ signal, position, onFormat, preparationRevision, prebufferMs }) {
         // Completion and byte counts belong to this reader, not a previously ended generation.
         memorySource.state.complete = false; memorySource.state.available = 0;
+        drainLogged = false; endLogged = false;
         let socket;
         const pcmDiagnostic = createPcmDiagnosticCounter({ session: options.current?.id, backend: options.current?.backend, channels: source.channels });
         const abort = () => socket?.destroy();
@@ -114,6 +115,10 @@ function createLivePcmSession({ source, experiment, connectPipe = name => net.cr
             signal.throwIfAborted();
             if (!memorySource.state.available) throw audioError('DECODE_FAILED', 'Live producer ended without PCM frames');
             memorySource.state.complete = true;
+            if (options.current?.backend === 'hqplayer') console.info('[SpotifyOutputEnd]', JSON.stringify({phase:'capture-eof',
+                session:options.current.id,trackId:source.trackId,originSeconds:origin,pcmBytes:memorySource.state.available,
+                capturedEndSeconds:origin+memorySource.state.available/(source.sampleRate*source.channels*4),
+                action:'finish-input-and-wait-for-hqplayer-ended'}));
             socket.end(); await once(socket, 'close', { signal });
         } catch (error) {
             if (signal.aborted) throw audioError('CANCELLED');
@@ -283,6 +288,13 @@ function createLivePcmSession({ source, experiment, connectPipe = name => net.cr
             if (!base.observe(state)) return false;
             Object.assign(state, savedState(state));
             lastState = state;
+            if (options.current?.backend === 'hqplayer' && memorySource.state.complete && (!drainLogged || state.ended && !endLogged)) {
+                console.info('[SpotifyOutputEnd]', JSON.stringify({phase:state.ended?'output-drained':'output-draining',
+                    session:options.current.id,trackId:source.trackId,generation:state.streamGeneration,
+                    position:state.position,duration:state.duration,bufferedEnd:state.bufferedEnd,
+                    playing:state.playing,ended:state.ended,latency:state.latency,producerComplete:state.producerComplete}));
+                drainLogged = true; if (state.ended) endLogged = true;
+            }
             // Component events describe decoded lead. Read the actual loopback queue separately,
             // at most once a second, and discard any reply that belongs to a replaced generation.
             if (observations && !closed && !options.current.abort.signal.aborted && isPreviewDiagnosticsEnabled() && state.playing && !queueSamplePending && Date.now() - lastQueueSample >= 1000) {
@@ -295,13 +307,14 @@ function createLivePcmSession({ source, experiment, connectPipe = name => net.cr
             }
             return true;
         },
-        async close({ retainSource = false } = {}) {
+        async close({ retainSource = false, providerExit = false } = {}) {
             if (closeTask) return closeTask;
             closed = true; ++intent;
             closeTask = (async () => {
                 await retirement?.catch(() => {});
                 const stopping = base.suspend();
-                const restore = retainSource
+                const detached = providerExit && source.detachOutputForProviderExit?.() === true;
+                const restore = detached ? Promise.resolve() : retainSource
                     ? pauseAtHeardCheckpoint()
                     : source.stop ? source.stop() : source.pause();
                 const results = await Promise.allSettled([Promise.resolve(restore).catch(error => { throw sourceLifecycleError(error); }), stopping]);

@@ -7,6 +7,18 @@ import zh from '../../../src/i18n/locales/zh-CN';
 
 // test/unit/nativeAudio/signalPath.test.ts — clock packets must not repeatedly render the disclosure.
 describe('signal telemetry', () => {
+    it('identifies the Spotify process source, explains the absent original tier and reports WAV separately', () => {
+        const t = ((key: string) => key.split('.').reduce((value: any, part) => value?.[part], zh) || key) as TFunction;
+        const state = {session:'source',backend:'hqplayer',deviceId:'hqplayer-local',channels:2,sampleRate:44100,
+            requestedQuality:'hires' as const,preparedSource:true,sourceEncodingVerified:false,sourceOrigin:'spotify-process' as const,
+            preparedAudio:{representation:'s32le',sampleRate:44100,channels:2,bitDepth:32},hqplayerInputContainer:'wav' as const};
+        const rows = buildSignalPath(state,'hqplayer',t).rows;
+        expect(rows.find(row=>row.title==='音源来源')?.value).toContain('专属进程采集');
+        expect(rows.find(row=>row.title==='流媒体音源音质')?.value).toContain('原始音质档位未提供');
+        expect(rows.find(row=>row.title==='流媒体音源音质')?.value).not.toContain('请求: HiRes');
+        expect(rows.find(row=>row.title==='HQPlayer 输入封装')?.value).toContain('WAV · s32le');
+        expect(rows[0].value).toBe(zh.signalPath.originalUnknown);
+    });
     it('keeps a failed load explicit until retry and ignores failures from an older session', () => {
         beginSignalPath('failed');
         failSignalPath('failed', 'HQPLAYER_COMMAND_REJECTED');

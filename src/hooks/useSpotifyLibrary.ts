@@ -8,6 +8,7 @@ import { revokeProviderPlayback } from '../services/onlineMusic/revokeProviderPl
 import { collectProviderPages } from '../services/onlineMusic/providerPagination';
 import { createSpotifyLikedCollection } from '../services/onlineMusic/spotifyNormalize';
 import { spotifyLikedCover } from '../services/onlineMusic/spotifyLikedCover';
+import { spotifyActivation } from '../services/onlineMusic/spotifyActivation';
 
 // Spotify uses the same account store and playlist snapshots as other providers, through Omni.
 export function useSpotifyLibrary() {
@@ -27,7 +28,7 @@ export function useSpotifyLibrary() {
         if (failed?.status === 'rejected') throw failed.reason;
     }, [enqueue]);
     const refresh = useCallback(async (): Promise<boolean> => {
-        if (!registered()) return false;
+        if (!registered() || !spotifyActivation.selected()) return false;
         if (pending.current) return pending.current;
         const observation = createSpotifyLibraryObservation('spotify', useOnlineProviderAccountStore.getState().accounts.spotify?.collections);
         const expected = generation.current;
@@ -125,9 +126,10 @@ export function useSpotifyLibrary() {
             if (cached) observeSpotifyLibraryHydration(cached.collections, beforeHydration === useOnlineProviderAccountStore.getState().accounts.spotify);
             if (cached && beforeHydration === useOnlineProviderAccountStore.getState().accounts.spotify) useOnlineProviderAccountStore.getState().updateAccount('spotify', { ...cached,
                 status: 'authenticated', hydration: 'ready', freshness: 'stale', lastUpdatedAt: cached.savedAt });
-            await refresh();
+            if (spotifyActivation.selected()) await refresh();
         })();
-        return () => { generation.current++; pending.current = null; };
+        const unsubscribe = spotifyActivation.subscribe(() => { void refresh(); });
+        return () => { unsubscribe(); generation.current++; pending.current = null; };
     }, [refresh, connectionRevision, enqueue]);
     return { refresh, logout };
 }

@@ -14,7 +14,7 @@ const { admitted } = require('./ownedRouteTrial.cjs');
 
 // electron/spotify/cableAudioPreparation.cjs: official desktop control bound to a revocable, memory-only CABLE source.
 function createCableAudioPreparation({ captureHost, control, vault, cooldown, getSelection, prefetchSelection, routeLifecycle, fetcher = fetch,
-  media, officialMetadata, localSourceMetadata, onExternalSelection, now = Date.now, pollMs = 2000, cleanupTimeoutMs = 6000, onDiagnostic = () => {} } = {}) {
+  media, officialMetadata, localSourceMetadata, onExternalSelection, processCaptureProviderExit = false, now = Date.now, pollMs = 2000, cleanupTimeoutMs = 6000, onDiagnostic = () => {} } = {}) {
   if (!captureHost || !['inspectRoute', 'open'].every(key => typeof captureHost[key] === 'function')
     || !control || !['prepare', 'readState', 'play', 'pause', 'seek', 'close'].every(key => typeof control[key] === 'function')
     || !vault || !['token', 'stamp', 'grantedScopes'].every(key => typeof vault[key] === 'function')
@@ -26,7 +26,7 @@ function createCableAudioPreparation({ captureHost, control, vault, cooldown, ge
   media ||= require('./soloistPcmProxy.cjs').createSoloistPcmProxy();
   const ownedAudio = routeLifecycle && createOwnedRouteAudio({ routeLifecycle, captureHost,
     beginPausedHoldProof: session => control.beginPausedHoldProof?.(session) });
-  let current, revision = 0, disposed = false, providerOwner, leaving, preparationBarrier = Promise.resolve();
+  let current, revision = 0, disposed = false, providerOwner, leaving, waitingPrepare, preparationBarrier = Promise.resolve();
   const sourceUrls = new Set();
   function sourceUrlKey(value) {
     try {
@@ -352,11 +352,19 @@ function createCableAudioPreparation({ captureHost, control, vault, cooldown, ge
   async function observeExternalSelection(record, pausedOnly = false) {
     if(!onExternalSelection || !record?.prepared || !record.automaticRouting || record.releasing
       || record.externalTransition || record.playingSeek) return null;
-    return enqueue(record,()=>own(record),async()=>{
+    const reading = record.read;
+    const task = enqueue(record,()=>own(record),async()=>{
       if(pausedOnly && (record.read || !(record.externalSelection?.externalPause || record.pausedByConsumer)))return null;
       let changed;
-      try { changed=await control.observeExternalSelection(record.session,async()=>{
-        record.externalTransition=true;record.intent++;invalidateRead(record);
+      try { changed=await control.observeExternalSelection(record.session,async facts=>{
+        record.externalTransition=true;
+        if (facts.naturalEnd) {
+          // Stop publication without cancelling the decoder/output generation.
+          // Its already captured PCM and HQPlayer DSP tail must finish normally.
+          if (reading && record.read === reading) {
+            reading.naturalEndPending = true; reading.finishing = true; clearTimeout(reading.poll);
+          }
+        } else { record.intent++;invalidateRead(record); }
       },async facts=>{
         const route=record.sourceOwner?.route;
         if(!route)throw fail('ROUTE_PROOF_UNCONFIRMED');
@@ -364,11 +372,13 @@ function createCableAudioPreparation({ captureHost, control, vault, cooldown, ge
         else await route.holdExternalSelection(facts.trackId);
         record.heldRoute=route;record.preparationRoute=null;record.retiredReads.clear();
         record.externalSelection=facts;
+        if (reading?.naturalEndPending && record.read === reading) reading.naturalEnd = true;
       }); } finally { record.externalTransition=false; }
       if(changed){
         record.externalTransition=false;
         onDiagnostic({phase:'external-track-held',session:record.session,previousTrackId:changed.previousTrackId,
-          trackId:changed.trackId,positionMs:changed.positionMs});
+          trackId:changed.trackId,positionMs:changed.positionMs,naturalEnd:changed.naturalEnd===true,
+          outputAction:changed.naturalEnd?'drain-existing-output':'stop-for-handoff'});
         // Notify outside the control queue: releasing the output can itself ask to pause.
         void Promise.resolve().then(()=>onExternalSelection(changed,()=>current===record&&!record.releasing)).catch(error=>{
           onDiagnostic({phase:'external-track-notification-failed',code:error?.code||'CONTROL_REJECTED'});
@@ -376,6 +386,9 @@ function createCableAudioPreparation({ captureHost, control, vault, cooldown, ge
       }
       return changed;
     });
+    record.externalTransitionTask = task;
+    void task.finally(() => { if (record.externalTransitionTask === task) record.externalTransitionTask = null; }).catch(() => {});
+    return task;
   }
   function schedulePoll(record, read) {
     if (read.finishing) return;
@@ -485,6 +498,9 @@ function createCableAudioPreparation({ captureHost, control, vault, cooldown, ge
       // lead outside the remaining-song budget instead of truncating the tail.
       // The official position is an approximate observation, not sample timing.
       read.maximumBytes = (prefixFrames + Math.max(1, Math.ceil((record.durationMs - playing.positionMs) * RATE / 1000))) * FRAME_BYTES;
+      onDiagnostic({phase:'capture-boundary',session:record.session,trackId:record.trackId,
+        originMs:read.positionMs,observedPositionMs:playing.positionMs,durationMs:record.durationMs,
+        prefixFrames,maximumBytes:read.maximumBytes,sampleRate:RATE,frameBytes:FRAME_BYTES});
       // The host drains continuously into a bounded ring while this official
       // observation settles. Nothing is published before it confirms playing.
       schedulePoll(record, read);
@@ -505,9 +521,13 @@ function createCableAudioPreparation({ captureHost, control, vault, cooldown, ge
         let delivered = 0;
         for await (const block of read.capture.stream) {
           readOwned(record, read);
+          // Once the next identity is observed, no subsequent capture block
+          // belongs to this output. Keep its existing PCM, stop the iterator,
+          // then await the separately owned handoff/stop receipt below.
+          if (read.naturalEndPending) break;
           if (!Buffer.isBuffer(block) || !block.length || block.length > 65536 || block.length % FRAME_BYTES) throw fail('CAPTURE_FRAME_INVALID');
           const accepted = Math.min(block.length, maximum - delivered);
-          delivered += accepted;
+          delivered += accepted; read.deliveredBytes = delivered;
           yield accepted === block.length ? block : Buffer.from(block.subarray(0, accepted));
           if (delivered === maximum) {
             // Returning the capture iterator stops its native keeper. Finish an
@@ -517,25 +537,60 @@ function createCableAudioPreparation({ captureHost, control, vault, cooldown, ge
             await read.polling; readOwned(record, read); complete = true; break;
           }
         }
+        if (!complete && read.naturalEndPending) {
+          await record.externalTransitionTask;
+          readOwned(record, read); complete = read.naturalEnd === true;
+        }
         if (!complete) throw fail('CAPTURE_PIPE_CLOSED');
       } catch (error) {
-        const initial = read.failure || error;
-        const capture = read.capture || read.routeAudio?.capture;
-        // A pipe may close just before the same capture reports its native cause.
-        // The host already stopped publication and started cleanup synchronously.
-        const cause = capture?.resolveFailure ? await capture.resolveFailure(initial, read.outputSignal) : initial;
-        throw operationError(record, cause);
+        if (read.naturalEndPending && !read.failure && ['CANCELLED','CAPTURE_PIPE_CLOSED'].includes(error?.code)) {
+          await record.externalTransitionTask;
+          readOwned(record, read);
+          if (read.naturalEnd === true) complete = true;
+        }
+        if (!complete) {
+          const initial = read.failure || error;
+          const capture = read.capture || read.routeAudio?.capture;
+          // A pipe may close just before the same capture reports its native cause.
+          // The host already stopped publication and started cleanup synchronously.
+          const cause = capture?.resolveFailure ? await capture.resolveFailure(initial, read.outputSignal) : initial;
+          throw operationError(record, cause);
+        }
       } finally {
         if (record.read === read) {
-          invalidateRead(record);
+          if (complete) {
+            read.finishing = true; clearTimeout(read.poll); await read.polling;
+            // Retire only capture ownership. The completed output's reader
+            // capability remains bound to this consumer/intent until drain.
+            if (record.automaticRouting) record.retiredReads.add(read);
+            else await read.capture?.stop();
+            read.routeAudio?.publicationStopped(); read.detach?.(); record.read = null;
+          } else invalidateRead(record);
           const intent = record.intent, owner = read.owner;
           // A completed or disconnected old consumer cannot pause a replacement.
           const guard = () => { if (record.intent !== intent || record.outputOwner !== owner) throw fail('CANCELLED'); };
-          const cleanup = enqueue(record, guard, async () => {
-            const paused = await control.pause(record.session); guard(); requireFacts(paused, record, false); confirmRoutePaused(record);
-            await holdRoutes(record);
-            return paused;
-          }).catch(error => {
+          const cleanup = (async () => {
+            for (let attempt = 1; ; attempt++) {
+              guard();
+              if (complete && onExternalSelection && !record.externalSelection) await observeExternalSelection(record);
+              guard();
+              if (record.externalSelection && record.heldRoute?.heldPaused === true) break;
+              try {
+                await enqueue(record, guard, async () => {
+                  const paused = await control.pause(record.session); guard(); requireFacts(paused, record, false); confirmRoutePaused(record);
+                  await holdRoutes(record);
+                });
+                break;
+              } catch (error) {
+                if (!complete || !onExternalSelection || error?.code !== 'TRACK_NOT_CURRENT' || attempt >= 3) throw error;
+                onDiagnostic({phase:'capture-end-identity-race',session:record.session,trackId:record.trackId,attempt,
+                  action:'observe-current-selection-without-old-track-pause'});
+              }
+            }
+            if (complete) onDiagnostic({phase:'capture-complete-awaiting-output',session:record.session,trackId:record.trackId,
+              nextTrackId:record.externalSelection?.trackId,routeHeld:record.heldRoute?.heldPaused===true,
+              capturedBoundaryBytes:read.maximumBytes,deliveredBytes:read.deliveredBytes,naturalTransition:read.naturalEnd===true});
+          })().catch(error => {
             const mapped = current === record && record.intent === intent && !record.releasing
               ? operationError(record, error) : publicError(error);
             if (complete) throw mapped;
@@ -600,6 +655,15 @@ function createCableAudioPreparation({ captureHost, control, vault, cooldown, ge
     }
     return {
       trackId: record.trackId, durationMs: record.durationMs, sampleRate: RATE, channels: 2, bitDepth: 32,
+      ...(processCaptureProviderExit ? { sourceOrigin: 'spotify-process' } : {}),
+      detachOutputForProviderExit() {
+        const owner = record.sourceOwner;
+        if (!processCaptureProviderExit || !owner) return false;
+        // This main-only source object cannot authorize Play or erase the route
+        // journal. It only acknowledges local capture retirement on provider exit.
+        return owner.released === true || owner.route?.restored === true
+          || owner.exitDeferred === true && owner.localCaptureStopped === true;
+      },
       assertReader(reader) {
         if (!reader || reader !== latestReader) throw fail('CANCELLED');
         reader.assertCurrent();
@@ -627,6 +691,14 @@ function createCableAudioPreparation({ captureHost, control, vault, cooldown, ge
         return park({ positionMs });
       },
       async openReadable({ positionMs = 0, signal } = {}) {
+        // Native single-song repeat reopens this exact source after output EOF.
+        // A natural same-track rewind can reuse its held owner; an adopted
+        // different track still requires a new selection/controller from Folia.
+        if (!record.externalTransition && record.externalSelection?.naturalEnd === true
+          && record.externalSelection.trackId === record.trackId && record.heldRoute?.heldPaused === true) {
+          own(record); record.externalSelection = null;
+          onDiagnostic({phase:'natural-repeat-reopen',session:record.session,trackId:record.trackId,positionMs});
+        }
         if(record.externalTransition || record.externalSelection)throw publicError(fail('CANCELLED'));
         if (!position(positionMs, record.durationMs)) throw publicError(fail('INVALID_POSITION'));
         try {
@@ -954,6 +1026,7 @@ function createCableAudioPreparation({ captureHost, control, vault, cooldown, ge
       own(record); onProgress({ stage: 'validate' });
       return { url: record.handle.url, fetchedAt: now(), requestedQuality: quality, quality: null, actualQuality: null,
         streaming: true, sessionBoundAudio: true, playbackTransport: 'cable-pcm', durationMs: record.durationMs,
+          ...(processCaptureProviderExit ? { sourceOrigin: 'spotify-process' } : {}),
         sourceInfo: { codec: null, container: null, encodingVerified: false, sampleRate: null, channels: null,
           bitDepth: null, bitrate: null, bitrateKind: null, lossless: null },
         preparedAudio: { codec: 'PCM', representation: 's32le', sampleFormat: 's32le', sampleRate: RATE, channels: 2, bitDepth: 32 },
@@ -982,12 +1055,78 @@ function createCableAudioPreparation({ captureHost, control, vault, cooldown, ge
       throw failure;
     } finally { if (jobs.get(requestId) === record) jobs.delete(requestId); finishPreparation(); }
   }
+  function leaveProvider(reason = 'provider-exit', { verifyCaptureStop = false, deferRestore = processCaptureProviderExit && reason === 'provider-exit' } = {}) {
+    if (reason !== 'spotify-reenter' && waitingPrepare) waitingPrepare.cancelled = true;
+    if (leaving) return leaving;
+    leaving = Promise.resolve().then(async () => {
+      metadataCache.clear(); metadataStamp = undefined;
+      ++revision; const previous = current; current = null;
+      const owner = providerOwner;
+      const records = new Set([...cleanupRecords, ...jobs.values(), ...(previous ? [previous] : []), ...(owner?.record ? [owner.record] : [])]);
+      // Once this provider is leaving, a late old capture/control callback must not
+      // publish its failure over the next provider's successful playback.
+      if (processCaptureProviderExit) for (const record of records) record.failureReported = true;
+      const results = await Promise.allSettled([...records].map(record => release(record)));
+      await preparationBarrier;
+      await Promise.allSettled([...pending]);
+      try {
+        // Native independently proves quiescence and exact originals, including
+        // recovery after a failed local hold; only this receipt retires the owner.
+        await owner?.route?.close();
+        const released = owner && typeof routeLifecycle?.releaseRetained === 'function'
+          ? await routeLifecycle.releaseRetained() : null;
+        if (owner?.route && owner.route.restored !== true && released?.released !== true)
+          throw fail('ROUTE_RESTORE_UNCONFIRMED');
+      } catch (error) {
+        return require('./providerExitRecovery.cjs').deferSourceRestore({ error, owner, captureHost,
+          enabled: processCaptureProviderExit && deferRestore, diagnostic: onDiagnostic });
+      }
+      if (owner) owner.released = true;
+      if (verifyCaptureStop) {
+        await previous?.queue.catch(() => {});
+        if (typeof captureHost.verifyStopped !== 'function') throw fail('CAPTURE_HELPER_EXIT_UNCONFIRMED');
+        await captureHost.verifyStopped();
+      }
+      if ((providerOwner ?? null) !== (owner ?? null)) throw fail('ROUTE_PROOF_UNCONFIRMED');
+      if (owner?.exitDeferred) {
+        try { onDiagnostic({ phase: 'provider-exit-recovered', session: owner.record?.session, routeSession: owner.session,
+          routeRestored: true, captureStopped: true }); } catch { /* Diagnostics do not change cleanup. */ }
+      }
+      owner?.controller.abort(); providerOwner = null;
+      for (const record of records) {
+        await boundedCleanup(Promise.resolve().then(() => control.close(record.session)));
+        record.controlController.abort(); cleanupRecords.delete(record);
+      }
+      const failed = results.find(result => result.status === 'rejected');
+      if (failed && !owner?.route) throw failed.reason;
+    });
+    const task = leaving;
+    void task.finally(() => { if (leaving === task) leaving = null; }).catch(() => {});
+    return task;
+  }
   return {
     observePausedExternalSelection:()=>current&&!current.read?observeExternalSelection(current,true):Promise.resolve(null),
-    prepare(...args) { return track(run(...args)); }, lookup, revokeSession,
-    cancel(requestId) { const record = jobs.get(requestId) || (current?.requestId === requestId ? current : null); if (record) { forgetMetadata(record); void track(release(record)); } },
+    async prepare(...args) {
+      // Restore before registering the new prepare task: exit waits pending work,
+      // so registering this task first would make recovery wait for itself.
+      const restoring = providerOwner?.exitDeferred || waitingPrepare && leaving;
+      if (waitingPrepare) waitingPrepare.cancelled = true;
+      if (restoring) {
+        const waiting = { requestId: args[1], cancelled: false }; waitingPrepare = waiting;
+        try {
+          await leaveProvider('spotify-reenter', { deferRestore: false });
+          if (waiting.cancelled || disposed) throw publicError(fail('CANCELLED'));
+          if (providerOwner?.exitDeferred) throw providerOwner.exitFailure;
+        } catch (error) { if (waiting.cancelled) throw publicError(fail('CANCELLED')); throw error; }
+        finally { if (waitingPrepare === waiting) waitingPrepare = null; }
+      }
+      return track(run(...args));
+    }, lookup, revokeSession,
+    cancel(requestId) { if (waitingPrepare?.requestId === requestId) waitingPrepare.cancelled = true;
+      const record = jobs.get(requestId) || (current?.requestId === requestId ? current : null); if (record) { forgetMetadata(record); void track(release(record)); } },
     isSourceUrl(url) { return sourceUrls.has(sourceUrlKey(url)); },
     async invalidate(reason = 'SESSION_CHANGED') {
+      if (waitingPrepare) waitingPrepare.cancelled = true;
       metadataCache.clear(); metadataStamp = undefined;
       ++revision; const previous = current; current = null;
       if (providerOwner) providerOwner.failure ||= fail(reason);
@@ -996,39 +1135,7 @@ function createCableAudioPreparation({ captureHost, control, vault, cooldown, ge
       const failed = results.find(result => result.status === 'rejected');
       if (failed) throw failed.reason;
     },
-    leaveProvider(_reason = 'provider-exit', { verifyCaptureStop = false } = {}) {
-      if (leaving) return leaving;
-      leaving = Promise.resolve().then(async () => {
-        metadataCache.clear(); metadataStamp = undefined;
-        ++revision; const previous = current; current = null;
-        const owner = providerOwner;
-        const records = new Set([...cleanupRecords, ...jobs.values(), ...(previous ? [previous] : [])]);
-        const results = await Promise.allSettled([...records].map(record => release(record)));
-        await preparationBarrier;
-        await Promise.allSettled([...pending]);
-        // Native independently proves quiescence and exact originals, including
-        // recovery after a failed local hold; only this receipt retires the owner.
-        await owner?.route?.close();
-        const released = owner && typeof routeLifecycle?.releaseRetained === 'function'
-          ? await routeLifecycle.releaseRetained() : null;
-        if (owner?.route && owner.route.restored !== true && released?.released !== true)
-          throw fail('ROUTE_RESTORE_UNCONFIRMED');
-        if (owner) owner.released = true;
-        if (verifyCaptureStop) {
-          await previous?.queue.catch(() => {});
-          if (typeof captureHost.verifyStopped !== 'function') throw fail('CAPTURE_HELPER_EXIT_UNCONFIRMED');
-          await captureHost.verifyStopped();
-        }
-        if ((providerOwner ?? null) !== (owner ?? null)) throw fail('ROUTE_PROOF_UNCONFIRMED');
-        owner?.controller.abort(); providerOwner = null;
-        for (const record of records) cleanupRecords.delete(record);
-        const failed = results.find(result => result.status === 'rejected');
-        if (failed && !owner?.route) throw failed.reason;
-      });
-      const task = leaving;
-      void task.finally(() => { if (leaving === task) leaving = null; }).catch(() => {});
-      return task;
-    },
+    leaveProvider,
     clear(options) { return this.leaveProvider('clear', options); },
     async close() {
       disposed = true;

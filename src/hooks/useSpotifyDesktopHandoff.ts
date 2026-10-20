@@ -10,6 +10,7 @@ import { setStatusMessage } from '../stores/useStatusMessageStore';
 import { PlayerState, type SongResult } from '../types';
 import type { PlaybackNavigationOptions } from '../types/appPlayback';
 import { spotifyReadiness } from '../services/onlineMusic/spotifyReadiness';
+import { spotifyActivation } from '../services/onlineMusic/spotifyActivation';
 
 // React side of the main-process paused route handoff; normal metadata/playback stays in Omni.
 export function useSpotifyDesktopHandoff(
@@ -20,7 +21,7 @@ export function useSpotifyDesktopHandoff(
     useSpotifyRepeatMode();
     const play = useRef(playSong); play.current = playSong;
     const next = useRef(nextTrack); next.current = nextTrack;
-    useEffect(() => window.electron?.spotify?.onSetupRequired?.(() => { if (spotifyReadiness.state().status === 'ready') spotifyReadiness.reset(); void spotifyReadiness.run(); }), []);
+    useEffect(() => window.electron?.spotify?.onSetupRequired?.(() => { if (!spotifyActivation.selected()) return; if (spotifyReadiness.state().status === 'ready') spotifyReadiness.reset(); void spotifyReadiness.run(); }), []);
     useEffect(() => {
         let revision = 0, disposed = false;
         const unsubscribe = window.electron?.spotify?.onExternalSelection?.(event => {

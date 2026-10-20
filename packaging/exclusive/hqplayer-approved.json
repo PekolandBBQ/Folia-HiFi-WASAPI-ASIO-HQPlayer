@@ -1,12 +1,15 @@
 {
-  "version": "0.1.4-preview.7",
+  "version": "0.1.4-preview.8",
   "protocolMajor": 1,
   "platform": "win32-x64",
-  "sha256": "a01a4da1c697051b85610333043bf391c48d988f1c47c1cd428cb8fae1d70d44",
-  "entrySha256": "33c2cd882914c51062060252afef000b809911be885bfd07dca1407e94c6148f",
+  "sha256": "0d2f153d4cff0928a312ac512bfcb23fa4120a70aef8f57ce258b01c462500b9",
+  "entrySha256": "43b29c4a278f247a5d541057ed8f7165f34181d1631e865fadf7ff6adc668c76",
+  "container": "wav",
   "previous": {
-    "version": "0.1.4-preview.6",
-    "sha256": "c3fda6ab85dae762cfb516f0fd3daed47a7bd172f270510039c876ee9c14b069",
-    "entrySha256": "e6a2dbbf170ec798d05a0bb73803395f033bf312923cd9ce1fec3b9423814290"
+    "version": "0.1.4-preview.7",
+    "protocolMajor": 1,
+    "platform": "win32-x64",
+    "sha256": "a01a4da1c697051b85610333043bf391c48d988f1c47c1cd428cb8fae1d70d44",
+    "entrySha256": "33c2cd882914c51062060252afef000b809911be885bfd07dca1407e94c6148f"
   }
 }

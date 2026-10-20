@@ -98,12 +98,21 @@ function createDesktopPlaybackControl({ onRevoke = () => {}, onFailureDiagnostic
     if (current.cleanupOnly && !cleanup) throw Object.assign(fail('PLAYBACK_STATE_UNCONFIRMED'), { stage: 'cleanup-required' });
     return current;
   }
-  async function guarded(record, action, { preserveCancelled, cleanup = false } = {}) {
+  async function guarded(record, action, { preserveCancelled, cleanup = false, passiveIdentityChange = false } = {}) {
+    const startingMutation = record.mutationEpoch;
     try { own(record);
       if (record.cleanupOnly && !cleanup) throw Object.assign(fail('PLAYBACK_STATE_UNCONFIRMED'), { stage: 'cleanup-required' });
       const result = await action(); own(record); return result; }
     catch (error) {
-      try { onFailureDiagnostic(error,{phase:'original',session:record.session,trackId:record.trackId,cleanupTrackId:record.routeCleanupTrack,cleanupOnly:record.cleanupOnly===true}); } catch { /* Diagnostics cannot change cleanup. */ }
+      const readOnlyIdentityChange = passiveIdentityChange && failureCode(error) === 'TRACK_NOT_CURRENT'
+        && startingMutation === record.mutationEpoch && !record.mutationPending && !api.hasUnsettledWrites();
+      try { onFailureDiagnostic(error,{phase:'original',session:record.session,trackId:record.trackId,cleanupTrackId:record.routeCleanupTrack,cleanupOnly:record.cleanupOnly===true,
+        ...(readOnlyIdentityChange ? {readOnlyIdentityChange:true,observedTrackId:record.sourceObservation?.facts.trackId,
+          action:'defer-to-selection-handoff-without-pause'} : {})}); } catch { /* Diagnostics cannot change cleanup. */ }
+      // A read that discovers the next song has made no command to compensate.
+      // Preserve this owner so the explicit handoff can check/adopt that identity.
+      // A command already dispatched still takes the ordinary failure/cleanup path.
+      if (readOnlyIdentityChange) throw error;
       // A canceled pre-dispatch position cut has made no remote write. Keep
       // the exact owner alive so its newer Pause/Stop can fresh-read and park.
       if (failureCode(error) === 'CANCELLED' && preserveCancelled?.() === true
@@ -855,6 +864,10 @@ function createDesktopPlaybackControl({ onRevoke = () => {}, onFailureDiagnostic
         if(facts.trackId===record.trackId&&!naturalEnd&&!externalSeek&&!externalPause&&!externalResume)return null;
         if(!record.routeEngaged||!validTrackId(facts.trackId))throw fail('TRACK_NOT_CURRENT');
         const transition={previousTrackId:record.trackId,naturalEnd,externalSeek,externalPause,externalResume};
+        try { onStateDiagnostic({phase:'selection-transition',session:record.session,...transition,
+          before:require('./controlDiagnostics.cjs').stateFacts(previousFacts),
+          after:require('./controlDiagnostics.cjs').stateFacts(facts),
+          pausePurpose:naturalEnd?'hold-confirmed-next-song-for-output-drain':'external-selection-handoff'}); } catch {}
         await beforePause({...facts,...transition});own(record);
         const parked=await parkBeforeRoute(record,facts);own(record);
         const previous=record.trackId;
@@ -869,7 +882,7 @@ function createDesktopPlaybackControl({ onRevoke = () => {}, onFailureDiagnostic
     },
     async readState(session, { forPreparation = false, expectedPlaying } = {}) { const record = get(session);
       return enqueue(record, () => read(record, { expectedPlaying,
-        reusePreparedObservation: forPreparation && record.preparationObservationOpen === true })); },
+        reusePreparedObservation: forPreparation && record.preparationObservationOpen === true }), { passiveIdentityChange: true }); },
     async routeSourceControl(input, { signal: callerSignal } = {}) {
       const record = routeSources.get(input?.session);
       if (!record) throw fail('STALE_SESSION');
@@ -1149,13 +1162,16 @@ function createDesktopPlaybackControl({ onRevoke = () => {}, onFailureDiagnostic
         const state = await confirmOperation(record, 'play', acknowledgment, true,
           { positionMs: target, confirmation, strictPair: false, strictPlaying: true });
         checkIntent(); record.preparationObservationOpen = false;
+        // Seed the clock with the confirmed playing receipt. A seek into the
+        // final milliseconds can naturally advance before the first poll.
+        record.externalClock = state;
         return state;
       }, { preserveCancelled: () => !dispatched });
     },
     async play(session) { const record = get(session); return enqueue(record, async () => {
       if (record.pendingPositionStart) throw fail('PLAYBACK_STATE_UNCONFIRMED');
       const state = await setPlaying(record, true, { reusePreparedObservation: record.preparationObservationOpen === true });
-      record.preparationObservationOpen = false; return state;
+      record.preparationObservationOpen = false; record.externalClock = state; return state;
     }); },
     async pause(session, { forPreparation = false, completedPause } = {}) { const record = get(session, { cleanup: true });
       return enqueue(record, async () => {
@@ -1183,7 +1199,7 @@ function createDesktopPlaybackControl({ onRevoke = () => {}, onFailureDiagnostic
         if (record.pausedHoldObservation === observed && observed)
           record.completedPause = { state, observation: observed };
         return state;
-      }, { cleanup: true }); },
+      }, { cleanup: true, passiveIdentityChange: true }); },
     terminalCleanupCheckpoint(session) {
       const record = get(session), observed = usableObservation(record), queue = mutation;
       if (!observed || observed.facts.isPlaying !== false || observed.facts.trackId !== record.trackId

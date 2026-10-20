@@ -87,6 +87,13 @@ async function fixture({ finiteFirst = false, emptyFirst = false, hq = false, ma
     return { session, source, helper, outputHelper, current, readers, connections, progress, onError };
 }
 
+it('closes its pipe/output on provider exit without sending another remote pause after private capture acknowledgement',async()=>{
+    const f=await fixture();await f.session.prepare();
+    Object.assign(f.source,{detachOutputForProviderExit:()=>true});
+    f.source.pause.mockRejectedValueOnce(Error('Remote phone must not be paused'));
+    await expect(f.session.close({providerExit:true})).resolves.toBeUndefined();
+    expect(f.source.pause).not.toHaveBeenCalled();expect(f.readers[0].finished).toBe(true);
+});
 it('retires old HQ audio before waiting for remote seek and resets only with the fresh reader descriptor', async () => {
     const f = await fixture({ hq: true }); await f.session.prepare(); await f.session.command('play');
     const first = f.helper.request.mock.calls.find(([request]) => request.action === 'stream-load')![0].livePcmReader;
@@ -216,6 +223,23 @@ it('replays from zero through a fresh output pipe after finite PCM and the curre
     expect(f.session.source.state).toMatchObject({ complete: false, available: 16 });
     expect(Buffer.concat(f.connections[1].chunks)).toEqual(Buffer.alloc(16, 2));
     expect(f.session.observe(deviceEof)).toBe(false); expect(f.onError).not.toHaveBeenCalled();
+});
+
+it('capture EOF leaves HQPlayer playing through its buffered tail and reports drained only on current output EOF', async () => {
+    const info = vi.spyOn(console,'info').mockImplementation(()=>{});
+    const f = await fixture({finiteFirst:true,hq:true}); const first = await f.session.prepare();
+    await vi.waitFor(()=>expect(f.session.source.state.complete).toBe(true)); await f.session.command('play');
+    const tail = {...first,streaming:true,streamGeneration:1,position:114,duration:120,bufferedEnd:120,
+        producerComplete:true,playing:true,ended:false,latency:5.5};
+    expect(f.session.observe(tail)).toBe(true);
+    expect(f.source.pause).not.toHaveBeenCalled();
+    expect(f.helper.request.mock.calls.some(([r])=>r.action==='stop')).toBe(false);
+    expect(f.readers[0].signal.aborted).toBe(false);
+    expect(info.mock.calls.some(([tag,raw])=>tag==='[SpotifyOutputEnd]'&&JSON.parse(String(raw)).phase==='output-drained')).toBe(false);
+    expect(f.session.observe({...tail,streamGeneration:0,playing:false,ended:true})).toBe(false);
+    expect(f.session.observe({...tail,position:120,playing:false,ended:true})).toBe(true);
+    expect(info.mock.calls.filter(([tag,raw])=>tag==='[SpotifyOutputEnd]'&&JSON.parse(String(raw)).phase==='output-drained')).toHaveLength(1);
+    expect(f.onError).not.toHaveBeenCalled();
 });
 
 it('does not let an older delayed pause park or abort a newer seek', async () => {

@@ -133,12 +133,8 @@ export const isStartupLatticeDeferred = ({
 // startup view is chosen; a deferred Lattice launch waits at most this long for it.
 const STARTUP_LATTICE_RESTORE_WINDOW_MS = 10000;
 
-const getStartupView = (): ViewState => resolveStartupView({
-    openPlayerOnLaunch: localStorage.getItem(OPEN_PLAYER_ON_LAUNCH_KEY) === 'true',
-    playbackEntryView: usePlaybackEntryViewStore.getState().playbackEntryView,
-    isFmMode: usePlaybackStore.getState().isFmMode,
-    queueLength: usePlaybackStore.getState().playQueue.length,
-});
+// HiFi always opens home for source selection. Retain the saved playback/view preferences.
+const getStartupView = (): ViewState => 'home';
 
 const LOCAL_MUSIC_LAST_ROW_KEY = 'folia_local_music_last_row';
 

@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import React, { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { useSpotifyLibrary } from '@/hooks/useSpotifyLibrary';
+import { spotifyActivation } from '@/services/onlineMusic/spotifyActivation';
 import { useHomeProviderRefresh } from '@/hooks/useHomeProviderRefresh';
 import { omni } from '@/services/onlineMusic/omni';
 import { spotifyProvider } from '@/services/onlineMusic/spotifyProvider';
@@ -42,6 +43,7 @@ let root: Root | undefined, host: HTMLDivElement, current: ReturnType<typeof use
 let persisted: Omit<ProviderAccountSnapshot, 'version' | 'savedAt'> | null;
 
 async function mount(strict = false) {
+    spotifyActivation.select();
     function Probe() {
         current = useSpotifyLibrary();
         useOnlineProviderAccountStore(state => state.accounts.spotify);

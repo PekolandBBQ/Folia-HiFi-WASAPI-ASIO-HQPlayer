@@ -42,6 +42,12 @@ it('carries received PCM separately without promoting it to original or output f
     expect(state.outputFormat).toBeUndefined();
     expect(state.sampleRate).toBeUndefined();
 });
+it('preserves bounded source origin separately from unknown original encoding', async () => {
+    const metadata=normalizeSourceMetadata({sourceOrigin:'spotify-process',preparedAudio:{representation:'s32le',sampleRate:44100,channels:2,bitDepth:32}});
+    const state=await readOriginalSourceInfo({sourceMetadata:metadata},vi.fn());
+    expect(state.sourceOrigin).toBe('spotify-process');expect(state.sourceEncodingVerified).toBe(false);expect(state.sourceQuality).toBeUndefined();
+    expect(normalizeSourceMetadata({sourceOrigin:'unknown'})).not.toHaveProperty('sourceOrigin');
+});
 it('keeps provider fallback distinct from verified FLAC headers', async () => {
     const state = await readOriginalSourceInfo({ input: 'original.flac', sourceMetadata: normalizeSourceMetadata({
         requestedQuality: 'hires', quality: 'lossless', providerLevel: 'lossless', sourceFormat: { codec: 'FLAC' },

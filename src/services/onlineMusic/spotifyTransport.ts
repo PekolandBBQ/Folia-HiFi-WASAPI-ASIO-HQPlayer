@@ -1,4 +1,5 @@
 import { OnlineProviderError } from '../../types/onlineMusic';
+import { spotifyActivation } from './spotifyActivation';
 import type { ProviderErrorCode, AudioSourceRequestOptions, ProviderConnectionSettings, ProviderPlaybackSetupRequest } from '../../types/onlineMusic';
 
 // The renderer sees metadata and opaque login handles, never a Spotify bearer token.
@@ -13,6 +14,11 @@ export type SpotifyProgress = Parameters<NonNullable<AudioSourceRequestOptions['
 export const spotifyAvailable = () => typeof window !== 'undefined' && typeof window.electron?.spotify?.request === 'function';
 export async function requestSpotify<T>(request: SpotifyRequest, options?: AudioSourceRequestOptions): Promise<T> {
     if (!spotifyAvailable()) throw new OnlineProviderError('unavailable', 'Spotify desktop runtime unavailable', 'spotify');
+    // A saved account, restored queue, recommendations or status poll is not source selection.
+    if (['search', 'searchAlbums', 'searchArtists', 'audio', 'loginBegin', 'configure', 'likeSong', 'subscribeCollection'].includes(request.action)
+        || request.action === 'desktopSetup' && ['launch', 'install', 'configure', 'choose'].includes(request.operation || '')) spotifyActivation.select();
+    if (!spotifyActivation.selected() && !['configuration', 'sourceRevision', 'leaveProvider', 'cancelAudio', 'loginCancel', 'logout'].includes(request.action))
+        await spotifyActivation.wait(options?.signal);
     const bridge = window.electron!.spotify!;
     const setupStart = request.action === 'playbackSetup' && ['start', 'probe'].includes(request.operation || '');
     const desktopLaunch = request.action === 'desktopSetup' && request.operation === 'launch';

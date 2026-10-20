@@ -15,6 +15,7 @@ import { setCurrentSong, setPlayQueue, usePlaybackStore } from '../stores/usePla
 import { useAudioSettingsStore } from '../stores/useAudioSettingsStore';
 import { omni } from '../services/onlineMusic/omni';
 import { cancelPlaybackSourceRequest, playbackSourceRequestRevision } from '../services/playbackSourceRequest';
+import { spotifyActivation } from '../services/onlineMusic/spotifyActivation';
 
 // src/hooks/useSessionRestoreController.ts
 
@@ -167,7 +168,8 @@ export function useSessionRestoreController({
 
                 // Read at restore time rather than subscribed: this effect runs once, and the
                 // switch only ever has to answer for this one launch.
-                const autoPlayOnLaunch = useAudioSettingsStore.getState().autoPlayOnLaunch;
+                const autoPlayOnLaunch = useAudioSettingsStore.getState().autoPlayOnLaunch
+                    && (lastSong.sourceRef?.kind !== 'online' || lastSong.sourceRef.providerId !== 'spotify' || spotifyActivation.selected());
                 if (autoPlayOnLaunch) {
                     // Arm before the source lands. The bridge's autoplay effect fires on the commit
                     // that gives the deck its src, and it spends this flag there; setting it after

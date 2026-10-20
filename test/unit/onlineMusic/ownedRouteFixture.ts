@@ -54,6 +54,12 @@ export function routeFixture(options: any = {}) {
       }
       if (command === 'validateHeld') return { ok: true, state: 'pausedHeld', ready: false, lease: structuredClone(nativeLease),
         heldOwnerValidated: true, code: 'HELD_ROUTE_VALIDATED', intervalEpoch, intervalArmed: false, intervalId: null };
+      if (command === 'holdExternalSelection') {
+        nativeLease.state = 'pausedHeld'; intervalId = null;
+        nativeLease.sourceEpoch = payload.sourceEpoch; nativeLease.expectedSourceUri = payload.selectedSourceUri;
+        return { ok: true, ready: false, state: 'pausedHeld', code: 'PAUSED_ROUTE_HELD', lease: structuredClone(nativeLease),
+          pausedHeld: true, resumeAuthorized: false, intervalEpoch, intervalArmed: false, intervalId: null };
+      }
       if (command === 'rebindPreparedSelection') {
         expect(payload.intervalEpoch).toBe(intervalEpoch + 1); intervalEpoch = payload.intervalEpoch;
         nativeLease.state = 'preparedSelection'; nativeLease.sourceEpoch = payload.sourceEpoch;
@@ -141,6 +147,10 @@ export function audioFixture(options: any = {}) {
     if (['authorizePreparedSelection', 'rebindPreparedSelection'].includes(command)) sourceTarget = { ...sourceTarget, expectedSourceUri: payload.selectedSourceUri,
       pausedPreviousUri: sourceTarget.expectedSourceUri, allowPreviousPaused: true };
     if (['completePreparedSelection', 'resumePreparation'].includes(command)) sourceTarget = { ...sourceTarget, pausedPreviousUri: null, allowPreviousPaused: false };
+    if (command === 'holdExternalSelection') {
+      expect(state.item.uri).toBe(payload.selectedSourceUri); expect(state.is_playing).toBe(false);
+      sourceTarget = { ...sourceTarget, expectedSourceUri: payload.selectedSourceUri, pausedPreviousUri: null, allowPreviousPaused: false };
+    }
     if (command === 'release') {
       events.push('native:release-proof');
       let status = await control.routeSourceControl(sourceTarget);
@@ -181,7 +191,8 @@ export function audioFixture(options: any = {}) {
   const media = { add: vi.fn(async () => { events.push('media:publish'); return { url: `http://127.0.0.1:1234/test-${++mediaSerial}`, revoke: vi.fn(async () => {}) }; }),
     close: vi.fn(async () => {}) };
   audio = createCableAudioPreparation({ captureHost, control, vault, cooldown, fetcher, media, routeLifecycle: routes.route,
-    getSelection: async () => ({ ...selection, automaticRouting: true }), onExternalSelection: options.onExternalSelection });
+    getSelection: async () => ({ ...selection, automaticRouting: true }), onExternalSelection: options.onExternalSelection,
+    processCaptureProviderExit: options.processCaptureProviderExit === true, onDiagnostic: options.onDiagnostic });
   return { ...routes, audio, control, controlPrepare, state, captures, captureHost, media, fetcher, sourceHarness,
     changeGrant: () => { credentialRevision++; },
     intercept: (value: typeof intercept) => { intercept = value; },

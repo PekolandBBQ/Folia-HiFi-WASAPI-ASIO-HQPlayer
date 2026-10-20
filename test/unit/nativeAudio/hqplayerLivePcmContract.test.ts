@@ -34,7 +34,7 @@ function fixture({ version = '0.1.4-preview.7', capability = true, releaseCapabi
     return { host, request, reply, event: (value: any) => event(value) };
 }
 
-it.each([{ version: '0.1.4-preview.3' }, { version: '0.1.4-preview.4' }, { version: '0.1.4-preview.6' }, { version: '0.1.4-preview.8' }, { capability: false }, { releaseCapability: false }])
+it.each([{ version: '0.1.4-preview.3' }, { version: '0.1.4-preview.4' }, { version: '0.1.4-preview.6' }, { version: '0.1.4-preview.9' }, { capability: false }, { releaseCapability: false }])
 ('requires the exact component version and live contract capability: %j', async options => {
     const f = fixture(options);
     expect(await f.host.supportsStreaming({ sourceKind: 'spotify-live' })).toBe(false);
@@ -58,6 +58,12 @@ it('accepts the independently observed matching input and passes only the exact 
         state: { sampleRate: 705600, bitDepth: 32 } }));
     expect(await f.host.streamStatus('live', 1)).toMatchObject({ ready: true,
         receiverInput: { sampleRate: 44100, channels: 2, containerBits: 32 } });
+});
+it('accepts the WAV release and the explicitly retained rollback version with all live ownership capabilities',async()=>{
+    for(const version of ['0.1.4-preview.8','0.1.4-preview.7']){
+        const f=fixture({version});expect(await f.host.supportsStreaming({sourceKind:'spotify-live'})).toBe(true);
+        await expect(f.host.streamPrepare(spec)).resolves.toMatchObject({generation:1,transport});
+    }
 });
 
 it.each([{ ready: true, receiverInput: null }, { ready: true, receiverInput: { sampleRate: 705600, channels: 2, containerBits: 32 } },

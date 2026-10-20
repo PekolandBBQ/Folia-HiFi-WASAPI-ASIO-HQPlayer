@@ -27,6 +27,7 @@ export function normalizeSpotifyAudioSource(raw: Record<string, any> | null | un
         ...(actual ? { quality: actual } : {}),
         ...(format && Object.keys(format).length ? { sourceFormat: format } : {}),
         ...(preparedAudio ? { preparedAudio } : {}),
+        ...(raw.sourceOrigin === 'spotify-process' ? { sourceOrigin: 'spotify-process' as const } : {}),
         ...(isSpotifyLivePcm(raw.playbackTransport) ? { playbackTransport: raw.playbackTransport as 'soloist-pcm' | 'cable-pcm' } : {}),
         ...(raw.streaming === true ? { streaming: true } : {}),
     };

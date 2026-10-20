@@ -61,6 +61,15 @@ async function main() {
     const hqpPin = require('./hqplayer-approved.json');
     const hqpCatalog = JSON.parse(await fs.readFile(process.env.FOLIA_HQPLAYER_COMPONENT_CATALOG || path.resolve(codeRoot, '../folia-hqplayer-component/artifacts/development-catalog.json'), 'utf8'));
     const hqpReleases = [];
+    if (hqpPin.container === 'wav') {
+        const baseline = hqpCatalog.releases.find(item => item.version === hqpPin.previous.version && item.sha256 === hqpPin.previous.sha256);
+        if (!baseline) throw new Error('WAV release baseline is missing');
+        const generated = await require('./buildWavReleaseComponent.cjs').buildWavReleaseComponent(await fs.readFile(baseline.localPath), hqpPin.version);
+        if (generated.release.sha256 !== hqpPin.sha256 || generated.release.entrySha256 !== hqpPin.entrySha256)
+            throw new Error('WAV component sources differ from the approved release');
+        const localPath = path.join(staging, 'generated-hqplayer.zip');
+        await fs.writeFile(localPath, generated.bytes); hqpCatalog.releases.unshift({ ...generated.release, localPath });
+    }
     for (const pin of [hqpPin, ...(hqpPin.previous ? [hqpPin.previous] : [])]) {
         const item = hqpCatalog.releases.find(r => r.version === pin.version && r.sha256 === pin.sha256 && r.entrySha256 === pin.entrySha256);
         if (!item) throw new Error('Pinned HQPlayer component is missing');

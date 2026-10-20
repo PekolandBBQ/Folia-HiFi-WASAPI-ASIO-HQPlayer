@@ -30,7 +30,8 @@ function createGuide({ desktop, bridge, apps, capture, route, directory, assetDi
     const issue = (stage, error) => issues.push(require('./failureDetails.cjs').failureDetails(error, stage));
     try { devices = await capture.devices(); captureAvailable = true; endpoints = devices.endpoints || []; driver = endpoints.some(e => e.supportedBaseCable && e.flow === 'capture'); } catch (error) { issue('capture-devices', error); }
     const systemOutput = systemOutputCheck(devices);
-    try { const availability = await route.availability(); engine = availability.supported === true; if (!engine) issue('route-component', { code: availability.code || 'ROUTE_HELPER_UNAVAILABLE' }); } catch (error) { issue('route-component', error); }
+    // An outstanding Spotify route is runtime recovery, not a missing component.
+    try { const availability = await (route.componentAvailability?.() || route.availability()); engine = availability.supported === true; if (!engine) issue('route-component', { code: availability.code || 'ROUTE_HELPER_UNAVAILABLE' }); } catch (error) { issue('route-component', error); }
     engine = engine && captureAvailable;
     const currentApps = apps();
     try { wrapper = digest(await fs.readFile(path.join(currentApps, 'xpui/helper/spicetifyWrapper.js'))) === currentBundle.spicetify.wrapperSha256; } catch {}

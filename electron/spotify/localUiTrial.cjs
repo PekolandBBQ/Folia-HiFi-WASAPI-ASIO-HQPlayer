@@ -31,15 +31,17 @@ function initialize(log){
 }
 function registerLocalUiTrial(options){
   const log=global.__foliaTrialLog||((event,facts)=>{
-    if(event==='audio-source' && facts?.phase==='route-binding-observed')
+    if(event==='audio-source' && ['route-binding-observed','provider-exit-deferred','provider-exit-recovered','capture-boundary',
+      'capture-end-identity-race','capture-complete-awaiting-output','external-track-held','natural-repeat-reopen'].includes(facts?.phase))
       require('../debug/debugHost.cjs').runtimeLine('SpotifyBridge',JSON.stringify({event,...facts}));
     if(['spotify-search-resource-recovery','spotify-resource-version','external-handoff','external-handoff-choice','external-cleanup-failed','bridge-upgrade-rejected','spotify-connection-unavailable','spotify-auto-reconnect','spotify-background-ready','spotify-background-failed','bridge-connected'].includes(event)){
       try{const directory=path.join(require('electron').app.getPath('userData'),'spotify','diagnostics');fs.mkdirSync(directory,{recursive:true});fs.appendFileSync(path.join(directory,'connection.jsonl'),JSON.stringify({at:Date.now(),event,...facts})+'\n');}catch{}
     }
-    if(['ui-library-read','spotify-search-resource-recovery','spotify-component-install','control-original-failure','control-state','route-request-failed','external-handoff','external-handoff-choice','external-cleanup-failed','spotify-orphan-route-restored','spotify-background-retained','spotify-background-exit','spotify-background-exit-failed','spotify-resource-version','bridge-connected','bridge-disconnected','bridge-request-failed','bridge-runtime','spotify-background-failed','ui-online-search'].includes(event))
+    if(['spotify-output-repaired','spotify-playback-recovery','ui-library-read','spotify-search-resource-recovery','spotify-component-install','control-original-failure','control-state','route-request-failed','external-handoff','natural-end-awaiting-output','external-handoff-choice','external-cleanup-failed','spotify-orphan-route-restored','spotify-background-retained','spotify-background-exit','spotify-background-exit-failed','spotify-resource-version','bridge-connected','bridge-disconnected','bridge-request-failed','bridge-runtime','spotify-background-failed','ui-online-search'].includes(event))
       require('../debug/debugHost.cjs').runtimeLine('SpotifyBridge',JSON.stringify({event,...facts}));
-  }), local=initialize(log);
-  return require('./cableService.cjs').registerCableSpotify({...options,connectionMode:'wrapper',createService:settings=>createService(settings,local,log)});
+  });
+  // Opening Folia alone must not bind the bridge or handshake with an already running Spotify.
+  return require('./cableService.cjs').registerCableSpotify({...options,connectionMode:'wrapper',createService:settings=>createService(settings,initialize(log),log)});
 }
 function createService({beforeLeaveProvider},local,log){
   const {source,bridge,catalog,refresh,desktop}=local;
@@ -88,7 +90,7 @@ function createService({beforeLeaveProvider},local,log){
     onStateDiagnostic:facts=>log('control-state',facts),
     onFailureDiagnostic:(e,context)=>log('control-original-failure',{...context,...require('./controlDiagnostics.cjs').errorFacts(e),diagnostic:e.diagnostic})});
   audio=require('./cableAudioPreparation.cjs').createCableAudioPreparation({captureHost:capture,control,vault,cooldown,routeLifecycle:route,
-    onExternalSelection:externalSelection,
+    onExternalSelection:externalSelection,processCaptureProviderExit:true,onDiagnostic:facts=>log('audio-source',facts),
     localSourceMetadata:async id=>{await refresh();const t=catalog.get(id);if(!t)throw Object.assign(Error('TRACK_NOT_CURRENT'),{code:'TRACK_NOT_CURRENT'});return {trackId:id,durationMs:t.durationMs};},
     fetcher:async()=>{throw Error('Official HTTP disabled');},getSelection:async()=>{
 
@@ -124,10 +126,11 @@ function createService({beforeLeaveProvider},local,log){
         const intent=++launchIntent;
         await handoff.cancel();
         const current=()=>{if(closing||intent!==launchIntent)throw Object.assign(Error('CANCELLED'),{code:'CANCELLED'});};
-        await desktop.ensure(progress);current();let prepared;
-        const recovery=require('./orphanRouteRecovery.cjs');
-        prepared=await recovery.prepareWithOrphanRecovery(()=>audio.prepare(input.id,input.requestId,progress,input.quality),
-          ()=>recovery.recoverOrphanRoute({componentDirectory:process.env.FOLIA_LOCAL_ROUTE_COMPONENT||runtimePaths().route,source,current,log}),current);
+        const recovery=require('./playbackConnectionRecovery.cjs');
+        const prepared=await recovery.prepareWithConnectionRecovery({current,log,ensure:()=>connectSearch(progress),
+          prepare:()=>audio.prepare(input.id,input.requestId,progress,input.quality),
+          repairOutput:async()=>{await capture.verifyStopped();current();return recovery.repairSpotifyOutput({componentDirectory:process.env.FOLIA_LOCAL_ROUTE_COMPONENT||runtimePaths().route,current,log});},
+          configure:()=>require('./desktopSetupGuide.cjs').repairResources(guideOptions)});
         require('./playbackHealth.cjs').prepared();return prepared;
       }
       if(input.action==='cancelAudio'){launchIntent++;audio.cancel(input.requestId);return null;}

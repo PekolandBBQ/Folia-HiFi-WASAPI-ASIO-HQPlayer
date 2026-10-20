@@ -98,6 +98,7 @@ function createOwnedRouteLifecycle({ host, heartbeatMs = 4000, onDiagnostic = ()
       if (current) { current.captureStage = 'stopped'; current.publicationClosed = true; current.captureParkReceipt = null; }
     },
     setTrialEnabled(value) { return host.setTrialEnabled(value); },
+    componentAvailability() { return host.capabilities(); },
     async availability() {
       if (blocked || current?.rebindFailed) return { supported: false, productionQualified: false, code: blocked?.code || 'ROUTE_PROOF_UNCONFIRMED' };
       if (current?.restoreRequested && !current.safeToRestore)

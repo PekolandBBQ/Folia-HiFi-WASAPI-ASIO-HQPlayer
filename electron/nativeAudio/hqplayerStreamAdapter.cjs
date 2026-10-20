@@ -23,6 +23,7 @@ function createHQPlayerStreamAdapter({ hqplayer, current }) {
             : Number.isFinite(state.bufferedEnd) ? state.bufferedEnd : position + Math.max(0, Number(status.bufferedSeconds) || 0);
         const bufferedSeconds = status.ready === false ? 0 : Math.max(0, decodedEnd - position);
         const result = { ...state, session: current.id, backend: 'hqplayer', deviceId: 'hqplayer-local',
+            ...(status.inputContainer === 'wav' ? { hqplayerInputContainer: 'wav' } : {}),
             streaming: true, streamGeneration: status.generation ?? streamGeneration,
             ready: status.ready !== false, producerComplete: Boolean(status.producerComplete),
             position, duration: Math.max(0, Number(state.duration ?? status.durationHint) || 0),

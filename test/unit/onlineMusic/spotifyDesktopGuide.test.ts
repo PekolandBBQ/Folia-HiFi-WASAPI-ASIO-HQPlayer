@@ -6,6 +6,7 @@ import SpotifyDesktopSetup from '@/components/app/home/SpotifyDesktopSetup';
 import SpotifyConnectionModal from '@/components/app/home/SpotifyConnectionModal';
 import type { SpotifyConnection } from '@/hooks/useSpotifyConnection';
 import type { DesktopSetupStatus } from '@/components/app/home/spotifyDesktopSetupModel';
+import { spotifyActivation } from '@/services/onlineMusic/spotifyActivation';
 
 // Real Wrapper UI with a synthetic IPC boundary; no installer or backup executes.
 vi.mock('react-i18next', async importOriginal => ({ ...await importOriginal<typeof import('react-i18next')>(), useTranslation: () => ({ t: (key: string) => key }) }));
@@ -20,6 +21,7 @@ async function mount(modal = false) {
     return connection;
 }
 beforeEach(() => {
+    spotifyActivation.select();
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
     host = document.createElement('div'); document.body.append(host); root = createRoot(host);
     status = { enabled: true, installations: [{ id: 'desktop', layout: 'desktop', version: 'test' }, { id: 'store', layout: 'store', version: 'test' }],

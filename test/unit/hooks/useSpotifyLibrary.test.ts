@@ -6,10 +6,12 @@ import type { ProviderCollection } from '@/types/onlineMusic';
 // Drive the real hook with the same small React hook runtime used by the existing hook tests.
 
 const fixture = vi.hoisted(() => ({
+    selected: true,
     slots: [] as Array<{ current: unknown }>, cursor: 0,
     account: {} as OnlineProviderAccountState,
     playlists: vi.fn(), liked: vi.fn(), status: vi.fn(), save: vi.fn(), clear: vi.fn(),
 }));
+vi.mock('@/services/onlineMusic/spotifyActivation', () => ({ spotifyActivation: { selected: () => fixture.selected, subscribe: () => () => {} } }));
 vi.mock('react', () => ({
     useRef: (initial: unknown) => { const index = fixture.cursor++; return fixture.slots[index] ??= { current: initial }; },
     useCallback: (callback: unknown) => callback,
@@ -38,6 +40,7 @@ import { useSpotifyLibrary } from '@/hooks/useSpotifyLibrary';
 const collection = (index: number): ProviderCollection => ({ providerId: 'spotify', id: String(index), type: 'playlist', name: `Playlist ${index}` });
 
 beforeEach(() => {
+    fixture.selected = true;
     fixture.slots = []; fixture.cursor = 0;
     fixture.account = { user: { id: 'user', nickname: 'Listener' }, collections: [collection(-1)], likedSongIds: [], likedSongFileIds: {},
         status: 'authenticated', hydration: 'ready', freshness: 'stale', connectionRevision: 0 };
@@ -47,6 +50,12 @@ beforeEach(() => {
 });
 
 describe('Spotify library completeness through the real refresh hook', () => {
+    it('keeps cached library data and does not contact Spotify before explicit selection', async () => {
+        fixture.selected = false;
+        await expect(useSpotifyLibrary().refresh()).resolves.toBe(false);
+        expect(fixture.status).not.toHaveBeenCalled(); expect(fixture.playlists).not.toHaveBeenCalled();
+        expect(fixture.account.collections).toHaveLength(1);
+    });
     it('refreshes beyond 1000 playlists before publishing a fresh snapshot', async () => {
         fixture.playlists.mockImplementation(async (_provider, _user, { offset, limit }) => ({
             items: Array.from({ length: Math.min(limit, 1050 - offset) }, (_, index) => collection(offset + index)),

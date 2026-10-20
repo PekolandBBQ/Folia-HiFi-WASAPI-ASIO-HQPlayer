@@ -496,6 +496,7 @@ export const createProviderAccountController = (deps: LibraryAccountControllerDe
     const selectProvider = async (providerId: OnlineProviderId): Promise<LibrarySelectProviderResult> => {
         const selection = resolveProviderSelection(findProvider(providerId));
         if (selection.kind === 'unavailable') return { action: 'unavailable', providerId, reason: selection.reason };
+        deps.onProviderSelected?.(providerId);
         if (selection.kind === 'switch') return { action: 'switch', result: await openSwitchRequest(providerId, 'switch') };
         return { action: 'login', result: await startLogin(providerId) };
     };

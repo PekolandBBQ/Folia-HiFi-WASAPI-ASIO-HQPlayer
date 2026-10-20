@@ -84,7 +84,8 @@ test.beforeEach(async ({ page }) => {
 
 test('installs then configures Wrapper, connects, completes library activation and disconnects', async ({ page, mount }) => {
     await mount('spotifyAccount');
-    await expect(page.getByTestId('account-state')).toHaveText('anonymous');
+    await expect(page.getByTestId('account-state')).toHaveText('unknown');
+    expect(await page.evaluate(() => (window as any).spotifyConnectionProbe.operations)).toEqual([]);
     await page.getByRole('button', { name: 'Connect Spotify', exact: true }).click();
     await expect(page.getByRole('button', { name: '② 一键配置', exact: true })).toBeDisabled();
     await page.getByRole('button', { name: '① 一键安装', exact: true }).click();
@@ -171,6 +172,9 @@ test('an unreadable account does not delete its saved grant', async ({ page, mou
         };
     });
     await mount('spotifyAccount');
+    await expect(page.getByTestId('account-state')).toHaveText('unknown');
+    expect(await page.evaluate(() => (window as any).spotifyConnectionProbe.operations)).toEqual([]);
+    await page.getByRole('button', { name: 'Connect Spotify', exact: true }).click();
     await expect(page.getByTestId('account-state')).toHaveText('anonymous');
     expect(await page.evaluate(() => (window as any).spotifyLogoutCalls)).toBe(0);
 });

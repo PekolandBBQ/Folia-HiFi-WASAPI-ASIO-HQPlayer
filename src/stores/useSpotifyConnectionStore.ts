@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { spotifyActivation } from '../services/onlineMusic/spotifyActivation';
 
 // Only an unfinished marker survives restart. Account grants and personal keys
 // remain in their existing main-process vaults; progress is re-read through Omni.
@@ -17,7 +18,7 @@ const savePending = (pending: boolean) => {
 const pending = readPending();
 export const useSpotifyConnectionStore = create<ConnectionState>(set => ({
     open: false, pending, authorizeOnOpen: false,
-    begin: () => { savePending(true); set({ open: true, pending: true, authorizeOnOpen: true, failureDetail: undefined }); },
+    begin: () => { spotifyActivation.select(); savePending(true); set({ open: true, pending: true, authorizeOnOpen: true, failureDetail: undefined }); },
     dismiss: () => set({ open: false, authorizeOnOpen: false }),
     complete: () => { savePending(false); set({ open: false, pending: false, authorizeOnOpen: false }); },
 }));

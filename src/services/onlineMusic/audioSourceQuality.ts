@@ -15,6 +15,7 @@ export function rememberAudioSourceQuality(song: SongResult, source: ProviderAud
         ...(source.sourceFormat ? { sourceFormat: { ...source.sourceFormat } } : {}),
         ...(source.preparedAudio ? { preparedAudio: { ...source.preparedAudio } } : {}),
         ...(source.playbackTransport ? { playbackTransport: source.playbackTransport } : {}),
+        ...(source.sourceOrigin ? { sourceOrigin: source.sourceOrigin } : {}),
     });
     while (sources.size > 512) sources.delete(sources.keys().next().value!);
 }

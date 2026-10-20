@@ -142,6 +142,7 @@ export function createSoloistBrowserApi(bridge: SoloistBrowserBridge, beforeOutp
                     sampleRate: 0, channels: 2, latency: context?.baseLatency ?? 0, backend: 'browser', deviceId: '',
                     streaming: true, buffering: false, bufferedStart: 0, bufferedEnd: 0, producerComplete: false,
                     sourceEncodingVerified: false, preparedSource: true, requestedQuality: metadata?.requestedQuality,
+                    ...(metadata?.sourceOrigin ? { sourceOrigin: metadata.sourceOrigin } : {}),
                     preparedAudio: { representation: 's32le', sampleRate: 44100, channels: 2, bitDepth: 32 },
                     volume: 1, replayGain: 1, outputRateReported: false, outputMode: 'PCM' };
                 return snapshot();

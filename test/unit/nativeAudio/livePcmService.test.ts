@@ -44,8 +44,32 @@ async function fixture({ streaming = true, portable = false, hqPrepare = async (
         app.emit('before-quit'); await new Promise(resolve => setTimeout(resolve, 25));
         await rm(directory, { recursive: true, force: true });
     });
-    return { request, app, source, live, liveStreamFactory, hqCallbacks, decode, download, mkdtempSpy, writeFile, directory, helper, url };
+    return { request, app, source, live, liveStreamFactory, hqCallbacks, decode, download, mkdtempSpy, writeFile, directory, helper, url, service, sender };
 }
+
+it('does not publish a delayed old Spotify HQPlayer failure against a new HQPlayer source',async()=>{
+    const f=await fixture({portable:true});
+    await f.request({action:'begin',session:'known',backend:'hqplayer',deviceId:'hqplayer-local',url:f.url});
+    await f.request({action:'finish',session:'known'});f.sender.send.mockClear();
+    f.hqCallbacks.onError({code:'HQPLAYER_CONTROL_UNAVAILABLE'},'old-spotify-owner');
+    expect(f.sender.send).not.toHaveBeenCalled();
+    f.hqCallbacks.onError({code:'HQPLAYER_CONTROL_UNAVAILABLE'},'known');
+    expect(f.sender.send).toHaveBeenCalledWith('native-audio:event',expect.objectContaining({session:'known',event:'error'}));
+});
+
+it('completes native output retirement after provider-side capture stop without another remote Spotify pause',async()=>{
+    const f=await fixture({portable:true});let detached=false;
+    Object.assign(f.source,{detachOutputForProviderExit:()=>detached});
+    const pause=vi.fn(async()=>{throw Object.assign(Error('remote phone owns playback'),{code:'SOURCE_RESTORE_UNCONFIRMED'});});
+    f.live.close.mockImplementation(async(options?:any)=>{if(!options?.providerExit)await pause();});
+    await f.request({action:'begin',session:'known',backend:'asio',deviceId:'test',url:f.url});
+    await f.request({action:'finish',session:'known'});
+    const output=await f.service.releaseProviderOutput();expect(output.complete).toBeTypeOf('function');
+    expect(pause).toHaveBeenCalledOnce();detached=true; // Provider confirmed its exact capture stopped; its journal is still retained.
+    await output.complete();expect(pause).toHaveBeenCalledOnce();
+    expect(f.live.close).toHaveBeenLastCalledWith({retainSource:false,providerExit:true});
+    await expect(f.request({action:'begin',session:'other-source',backend:'wasapi-exclusive',deviceId:'test',url:'https://example.invalid/qq.flac'})).resolves.toMatchObject({ok:true});
+});
 
 it('waits for Desktop connection before starting the bounded live producer', async () => {
     let connected!: () => void;

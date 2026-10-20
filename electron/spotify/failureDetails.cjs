@@ -1,6 +1,10 @@
 'use strict';
 // Preserve bounded machine codes across IPC; messages explain the failed operation without exposing account data.
 const descriptions = {
+ SPOTIFY_OUTPUT_REPAIR_FAILED: 'Spotify 应用输出自动修复未完成，原输出记录已保留；具体失败步骤已记录。',
+ SPOTIFY_OUTPUT_RESET_UNCONFIRMED: 'Spotify 应用输出已尝试恢复为系统默认，但 Windows 回读未确认，原输出记录已保留。',
+ SPOTIFY_OUTPUT_CHANGED_DURING_REPAIR: '修复期间 Spotify 的应用输出发生变化，已停止本次修复并保留原值。',
+ SPOTIFY_APPLICATION_AMBIGUOUS: '同时运行了不同安装来源的 Spotify，无法确定需要修复哪一个；请保留你要使用的一个客户端。',
  SPOTIFY_LOGIN_REQUIRED: 'Spotify 尚未登录，请先在 Spotify 客户端登录账号。',
  LIBRARY_ITEM_INVALID: '艺人或专辑标识无效，未修改 Spotify 收藏。',
  LIBRARY_ACCOUNT_CHANGED: '操作期间 Spotify 账号已改变，未把原账号的收藏结果应用到当前账号；请重新读取。',
