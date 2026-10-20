@@ -1,25 +1,32 @@
 import SpotifyExitSetting from './SpotifyExitSetting';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
+import { spotifyActivation } from '../../../services/onlineMusic/spotifyActivation';
+import { requestSpotify } from '../../../services/onlineMusic/spotifyTransport';
 import { type DesktopSetupStatus, installError, installPhase } from './spotifyDesktopSetupModel';
 // Wrapper prerequisites stay visible even without a running or authenticated desktop.
 export default function SpotifyDesktopSetup({ onMode, onReady, finishing = false, showCompletion = true }: { onMode: (enabled: boolean) => void; onReady: () => void; finishing?: boolean; showCompletion?: boolean }) {
     const [status, setStatus] = useState<DesktopSetupStatus | null>(null), [busy, setBusy] = useState(false), [error, setError] = useState('');
+    const selected = useSyncExternalStore(spotifyActivation.subscribe, spotifyActivation.selected, spotifyActivation.selected);
     async function run(operation: 'status' | 'choose' | 'open' | 'launch' | 'install' | 'configure' = 'status', extra: Record<string, string> = {}) {
         setBusy(true); setError('');
         try {
-            const value = await window.electron?.spotify?.request({ action: 'desktopSetup', operation, ...extra }) as DesktopSetupStatus | undefined;
+            const value = await requestSpotify<DesktopSetupStatus>({ action: 'desktopSetup', operation, ...extra });
             if ((value as unknown as { spotifyError?: { detail?: string; message?: string } })?.spotifyError) { const failure = (value as unknown as { spotifyError: { detail?: string; message?: string } }).spotifyError; throw new Error(failure.detail || failure.message || 'SPOTIFY_SETUP_FAILED'); }
             if (value?.enabled) { setStatus(value); onMode(true); }
             else { onMode(true); setError('无法完成本机组件检测，请重新检查。'); }
         } catch (failure) { setError(failure instanceof Error ? failure.message : 'SPOTIFY_SETUP_FAILED'); }
         finally { setBusy(false); }
     }
-    useEffect(() => { onMode(true); void run(); }, []);
+    useEffect(() => { onMode(true); if (selected) void run(); }, [selected]);
     useEffect(() => {
         if (!status || busy) return;
         const timer = setTimeout(() => void run(), status.install.busy ? 1500 : 5000);
         return () => clearTimeout(timer);
     }, [status, busy]);
+    if (!selected) return <section aria-label="Spotify 组件安装向导" className="space-y-3 text-sm">
+        <p>本次尚未选择 Spotify。选择后会自动准备组件并连接，其他音源不受影响。</p>
+        <button className="spotify-setup-button rounded-full border px-4 py-2 text-xs" onClick={() => spotifyActivation.select()}>连接 Spotify</button>
+    </section>;
     if (!status) return <section aria-label="Spotify 组件安装向导" className="space-y-3 text-sm">
         <p role="status">{busy ? '正在检测 Spotify 和本机组件…' : error || '组件检测尚未完成。'}</p>
         <button className="spotify-setup-button rounded-full border px-4 py-2 text-xs" disabled={busy} onClick={() => void run()}>重新检查</button>

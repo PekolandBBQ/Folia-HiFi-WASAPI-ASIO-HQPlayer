@@ -392,6 +392,7 @@ export type LibraryAccountLogger = (
 
 /** 账户 controller 的全部依赖。 */
 export type LibraryAccountControllerDeps = {
+    onProviderSelected?: (providerId: OnlineProviderId) => void;
     startExternalLogin?: (providerId: OnlineProviderId) => boolean;
     auth: LibraryAccountAuthPort;
     accounts: LibraryAccountStorePort;

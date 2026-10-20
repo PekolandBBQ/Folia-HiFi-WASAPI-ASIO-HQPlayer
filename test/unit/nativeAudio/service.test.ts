@@ -28,7 +28,8 @@ async function fixture(decode: (exe: string, input: string, directory: string, s
     finally { Object.defineProperty(process, 'platform', platform); }
     cleanups.push(async () => {
         app.emit('before-quit');
-        await new Promise(resolve => setTimeout(resolve, 20));
+        // Quit cleanup removes cached originals asynchronously; a fixed delay races it on Windows.
+        await vi.waitFor(async () => expect(await readdir(directory)).toEqual([]), { timeout: 3500 });
         await rm(directory, { recursive: true, force: true });
     });
     const request = (payload: Record<string, unknown>) => service.handle(event, payload);

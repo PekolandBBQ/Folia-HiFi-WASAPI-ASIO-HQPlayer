@@ -87,7 +87,7 @@ export const presentPlaybackFailure = (input: PlaybackFailurePresentation, deps:
         dismiss: () => deps.setStatusMsg(null),
     });
     if (failure.cause instanceof OnlineProviderError && failure.cause.providerId === 'spotify') {
-        built = { ...built, text: createOnlinePlaybackFailureStatus(failure.cause, deps.t as TFunction).text };
+        built = { ...built, providerId: 'spotify', text: createOnlinePlaybackFailureStatus(failure.cause, deps.t as TFunction).text };
     }
     deps.setStatusMsg(built);
 };

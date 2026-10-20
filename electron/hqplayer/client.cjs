@@ -1,16 +1,16 @@
 const { createHQPlayerComponentManager } = require('./componentManager.cjs');
 const { createRpc, handshake } = require('./rpc.cjs');
 const { audioError } = require('../nativeAudio/errors.cjs');
-const { LIVE_PCM_CONTRACT, LIVE_PCM_COMPONENT_VERSION, LIVE_PCM_RELEASE_CONTRACT, requireLivePcmTransport, requireLivePcmReply } = require('../nativeAudio/livePcmFormat.cjs');
+const { LIVE_PCM_CONTRACT, LIVE_PCM_COMPONENT_VERSIONS, LIVE_PCM_RELEASE_CONTRACT, requireLivePcmTransport, requireLivePcmReply } = require('../nativeAudio/livePcmFormat.cjs');
 const { publishPreviewDiagnostic, isPreviewDiagnosticsEnabled, previewSessionRef } = require('../debug/privatePreviewDiagnosticBus.cjs');
 
 // Optional HQPlayer facade. No component process starts in the browser/WASAPI/ASIO playback path.
 function createHQPlayerComponentHost({ app, configPath, onState = () => {}, onError = () => {},
-    manager = createHQPlayerComponentManager({ app }), rpcFactory = createRpc } = {}) {
+    manager = require('./wavCandidateManager.cjs').withWavCandidate(createHQPlayerComponentManager({ app }), { app }), rpcFactory = createRpc } = {}) {
     let rpc = null, starting = null, silent = true, generation = 0, managing = false, optionalCapabilities = new Set();
     let streamAuthority = null, pendingStream = null, streamRevision = 0;
     const closingStreams = new Map();
-    let componentVersion, reportedInput;
+    let componentVersion, reportedInput, loggedInput;
     let workerStarted = false;
     const revokeStream = () => { streamAuthority = null; pendingStream = null; reportedInput = null; ++streamRevision; };
     function reportInput(result, phase, errorCode) {
@@ -30,6 +30,12 @@ function createHQPlayerComponentHost({ app, configPath, onState = () => {}, onEr
             throw error;
         }
         if (result.ready === true) reportInput(result, 'accepted');
+        if (result.ready === true && loggedInput !== `${result.session}:${result.generation}`) {
+            loggedInput = `${result.session}:${result.generation}`;
+            console.info('[HQPlayer input]', JSON.stringify({ session: result.session, generation: result.generation,
+                container: result.inputContainer || 'raw', receiverInput: result.receiverInput,
+                pcmSampleFormat: transport.sampleFormat, framingToComponent: transport.framing }));
+        }
     }
     async function ensure() {
         if (managing) throw audioError('INVALID_REQUEST');
@@ -42,6 +48,10 @@ function createHQPlayerComponentHost({ app, configPath, onState = () => {}, onEr
             workerStarted = true;
             const next = rpcFactory(installed.executable, { onEvent: event => {
                 if (ticket !== generation) return;
+                if (event.event === 'diagnostic' && event.detail?.event === 'wav-http') {
+                    console.info('[HQPlayer WAV HTTP]', JSON.stringify(event.detail));
+                    return;
+                }
                 if (event.event === 'diagnostic' && event.detail?.event === 'live-pcm-input') {
                     const detail = event.detail;
                     const authority = streamAuthority?.session === detail.session ? streamAuthority : null;
@@ -68,7 +78,7 @@ function createHQPlayerComponentHost({ app, configPath, onState = () => {}, onEr
                     return;
                 }
                 if (event.event === 'state') onState(event.state);
-                if (event.event === 'error') { if (['COMPONENT_CRASHED', 'COMPONENT_TIMEOUT'].includes(event.errorCode)) { rpc = null; revokeStream(); } onError(audioError(event.errorCode)); }
+                if (event.event === 'error') { if (['COMPONENT_CRASHED', 'COMPONENT_TIMEOUT'].includes(event.errorCode)) { rpc = null; revokeStream(); } onError(audioError(event.errorCode), event.session); }
             } });
             try {
                 const hello = await handshake(next, installed.version);
@@ -86,7 +96,7 @@ function createHQPlayerComponentHost({ app, configPath, onState = () => {}, onEr
         const streaming = ['pcm-streaming', 'pcm32-named-pipe'].every(capability => optionalCapabilities.has(capability));
         // Normal live playback requires this independently versioned wire contract.
         // The old opt-in experiment remains separate and never grants normal authority.
-        const confirmedRelease = componentVersion === LIVE_PCM_COMPONENT_VERSION && optionalCapabilities.has(LIVE_PCM_RELEASE_CONTRACT);
+        const confirmedRelease = LIVE_PCM_COMPONENT_VERSIONS.includes(componentVersion) && optionalCapabilities.has(LIVE_PCM_RELEASE_CONTRACT);
         const verifiedLive = confirmedRelease && optionalCapabilities.has(LIVE_PCM_CONTRACT);
         const supported = streaming && (sourceKind === 'finite' || confirmedRelease && (allowUnverifiedRaw === true || verifiedLive));
         if (required && !supported) throw audioError(streaming ? 'HQPLAYER_RAW_FORMAT_UNVERIFIED' : 'COMPONENT_INCOMPATIBLE');

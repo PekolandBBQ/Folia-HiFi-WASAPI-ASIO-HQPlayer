@@ -36,5 +36,10 @@ export function useForkUpdatePrompt() {
         catch { setError('未能启动更新，请稍后重试。'); }
         finally { setBusy(false); }
     };
-    return { status, open, busy, error, close: () => setOpen(false), download, install };
+    const cancelDownload = async () => {
+        setError('');
+        try { const value = await window.electron?.cancelUpdateDownload(); if (value) setStatus(value); }
+        catch { setError('未能取消下载，请重试。'); }
+    };
+    return { status, open, busy, error, close: () => setOpen(false), download, cancelDownload, install };
 }

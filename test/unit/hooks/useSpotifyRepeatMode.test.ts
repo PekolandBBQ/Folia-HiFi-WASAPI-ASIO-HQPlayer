@@ -5,12 +5,13 @@ import {afterEach,beforeEach,expect,it,vi} from 'vitest';
 import {useSpotifyRepeatMode} from '@/hooks/useSpotifyRepeatMode';
 import {useOnlineProviderAccountStore as accounts} from '@/stores/useOnlineProviderAccountStore';
 import {useAudioSettingsStore as audio} from '@/stores/useAudioSettingsStore';
+import {spotifyActivation} from '@/services/onlineMusic/spotifyActivation';
 const request=vi.hoisted(()=>vi.fn());
 vi.mock('@/services/onlineMusic/omni',()=>({omni:{providerRepeatMode:request}}));
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT=true;
 let root:Root;
 async function mount(){root=createRoot(document.createElement('div'));await act(async()=>{root.render(React.createElement(function Probe(){useSpotifyRepeatMode();return null;}));});}
-beforeEach(()=>{vi.useFakeTimers();request.mockReset();accounts.setState({activeProviderId:'netease'});audio.setState({loopMode:'off'});});
+beforeEach(()=>{spotifyActivation.select();vi.useFakeTimers();request.mockReset();accounts.setState({activeProviderId:'netease'});audio.setState({loopMode:'off'});});
 afterEach(()=>{act(()=>root?.unmount());vi.useRealTimers();});
 for(const mode of ['off','all','one'] as const)it('imports actual '+mode+' when switching to Spotify',async()=>{
  request.mockResolvedValue(mode);await mount();expect(request).not.toHaveBeenCalled();

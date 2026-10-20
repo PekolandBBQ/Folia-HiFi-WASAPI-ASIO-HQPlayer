@@ -120,12 +120,13 @@ export interface ProviderAudioSource {
     };
     /** Describes a generated transport container, independently of the original encoding. */
     preparedAudio?: { representation: string; sampleRate?: number; channels?: number; bitDepth?: number };
+    sourceOrigin?: 'spotify-process';
     /** Selects a controlled PCM transport; generated PCM alone is not sufficient. */
     playbackTransport?: 'soloist-pcm' | 'cable-pcm';
     streaming?: boolean;
     replayGain?: ReplayGainInfo;
 }
-export type ProviderAudioMetadata = Pick<ProviderAudioSource, 'quality' | 'requestedQuality' | 'providerLevel' | 'sourceFormat' | 'preparedAudio' | 'playbackTransport'>;
+export type ProviderAudioMetadata = Pick<ProviderAudioSource, 'quality' | 'requestedQuality' | 'providerLevel' | 'sourceFormat' | 'preparedAudio' | 'playbackTransport' | 'sourceOrigin'>;
 
 export type ProviderSongAvailabilityState = 'playable' | 'unavailable' | 'unknown';
 

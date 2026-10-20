@@ -89,3 +89,32 @@ test('release splitting retains every original byte and publishes one manifest f
  for(const kind of ['installer','portable']){assert.deepEqual(m.parts[kind].map(p=>p.size),[3,3,1]);assert.equal(Buffer.concat(await Promise.all(m.parts[kind].map(p=>fs.readFile(path.join(directory,p.name))))).toString(),'abcdefg');}
 });
 
+for(const stage of ['headers','body'])test(`cancel during ${stage} clears partial data, skips fallback and permits a fresh download`,async t=>{
+ const directory=await fs.mkdtemp(path.join(os.tmpdir(),'folia-cancel-'));t.after(()=>fs.rm(directory,{recursive:true,force:true}));
+ const states=[],calls=[];let block=true,started;const ready=new Promise(resolve=>started=resolve);
+ const service=createForkUpdates({current,installed:true,directory,publish:s=>states.push(s),install:async()=>true,fetcher:async(url,{signal})=>{
+  calls.push(url);if(url.includes('/releases/latest'))return Response.json(release());if(url.includes('folia-hifi-update.json'))return Response.json(manifest());
+  if(!block)return new Response('data');
+  if(stage==='headers'){started();return new Promise((resolve,reject)=>signal.addEventListener('abort',()=>reject(new DOMException('cancelled','AbortError')),{once:true}));}
+  return new Response(new ReadableStream({start(controller){controller.enqueue(new TextEncoder().encode('da'));started();}}));
+ }});
+ await service.check();const task=service.download();await ready;await service.cancelDownload();await task;
+ assert.equal(states.at(-1).status,'available');assert.equal(states.at(-1).downloadCancelled,true);assert.equal(states.at(-1).error,null);
+ assert.equal(await service.confirmInstall(),false);assert.deepEqual(await fs.readdir(directory),[]);assert.equal(calls.filter(u=>u.includes('gitee')).length,0);
+ block=false;await service.download();assert.equal(states.at(-1).status,'downloaded');assert.equal(await service.confirmInstall(),true);
+ await service.cancelDownload();assert.equal(states.at(-1).status,'downloaded');
+});
+
+test('actual HTTP download abort closes the connection; retry downloads a complete fresh package',async t=>{
+ const http=require('node:http'),{once}=require('node:events');
+ const directory=await fs.mkdtemp(path.join(os.tmpdir(),'folia-http-update-'));t.after(()=>fs.rm(directory,{recursive:true,force:true}));
+ let begin,closed,requests=0;const started=new Promise(r=>begin=r),disconnected=new Promise(r=>closed=r);
+ const server=http.createServer((req,res)=>{requests++;res.writeHead(200,{'Content-Length':'4'});if(requests===1){res.on('close',closed);res.write('da');begin();}else res.end('data');});
+ server.listen(0,'127.0.0.1');await once(server,'listening');t.after(()=>new Promise(resolve=>{server.closeAllConnections();server.close(resolve);}));
+ const states=[];let installer;
+ const service=createForkUpdates({current,installed:true,directory,getSource:()=> 'github',publish:s=>states.push(s),install:async file=>{installer=file;return true;},fetcher:async(url,options)=>url.includes('/releases/latest')?Response.json(release()):url.includes('folia-hifi-update.json')?Response.json(manifest()):fetch(`http://127.0.0.1:${server.address().port}/package`,options)});
+ await service.check();const task=service.download();await started;await service.cancelDownload();await task;await disconnected;
+ assert.equal(states.at(-1).downloadCancelled,true);assert.deepEqual(await fs.readdir(directory),[]);assert.equal(await service.confirmInstall(),false);
+ await service.download();assert.equal(await service.confirmInstall(),true);assert.equal(await fs.readFile(installer,'utf8'),'data');assert.equal(requests,2);
+});
+

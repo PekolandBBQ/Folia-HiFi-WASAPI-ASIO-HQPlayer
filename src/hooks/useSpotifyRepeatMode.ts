@@ -1,4 +1,5 @@
-import { useEffect } from 'react';
+import { useEffect, useSyncExternalStore } from 'react';
+import { spotifyActivation } from '../services/onlineMusic/spotifyActivation';
 import { omni } from '../services/onlineMusic/omni';
 import { useOnlineProviderAccountStore } from '../stores/useOnlineProviderAccountStore';
 import { registerSourceLoopController, useAudioSettingsStore } from '../stores/useAudioSettingsStore';
@@ -7,8 +8,9 @@ import { setStatusMessage } from '../stores/useStatusMessageStore';
 // Spotify owns its repeat setting. Other providers retain their saved Folia queue preference.
 export function useSpotifyRepeatMode() {
     const provider = useOnlineProviderAccountStore(state => state.activeProviderId);
+    const selected = useSyncExternalStore(spotifyActivation.subscribe, spotifyActivation.selected, spotifyActivation.selected);
     useEffect(() => {
-        if (provider !== 'spotify') return;
+        if (provider !== 'spotify' || !selected) return;
         const previous = useAudioSettingsStore.getState().loopMode;
         let disposed = false, reading = false, writing = false, epoch = 0;
         const read = async () => {
@@ -40,5 +42,5 @@ export function useSpotifyRepeatMode() {
         });
         void read(); const timer = setInterval(() => void read(), 2000);
         return () => { disposed = true; ++epoch; clearInterval(timer); unbind(); useAudioSettingsStore.setState({ loopMode: previous }); };
-    }, [provider]);
+    }, [provider, selected]);
 }

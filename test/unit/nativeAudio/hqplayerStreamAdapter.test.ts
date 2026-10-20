@@ -64,6 +64,12 @@ it('counts decoded PCM already held inside HQPlayer even when the HTTP queue is 
         bufferedSeconds: 0, state: { position: 12.25, playing: true } } as any);
     expect(await adapter.request({ action: 'status', session: current.id })).toMatchObject({ bufferedStart: 12.25, bufferedEnd: 13 });
 });
+
+it('reports WAV only from the component acknowledgement, independently of the raw named-pipe format', async () => {
+    const {adapter,current,hqplayer}=fixture();
+    hqplayer.streamStatus.mockResolvedValueOnce({ready:true,inputContainer:'wav',state:{position:0}} as any);
+    expect(await adapter.request({action:'status',session:current.id})).toMatchObject({hqplayerInputContainer:'wav'});
+});
 it.each([false, true])('derives the finite/live category only from the main-owned source (live=%s)', async live => {
     const { adapter, current, hqplayer } = fixture();
     Object.assign(current, { livePcmSource: live ? {} : null, hqplayerSpotifyExperiment: { enabled: true } });

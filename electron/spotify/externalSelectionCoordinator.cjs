@@ -6,6 +6,14 @@ function createExternalSelectionCoordinator({send,stopOutput,sample,continueSpot
   previousTrackId:entry.facts.previousTrackId,positionMs:entry.facts.positionMs,name:name(entry.facts.trackId),...extra});
  function notify(facts,isCurrent=()=>true){
   if(!isCurrent())return;
+  if(facts.naturalEnd){
+   // The source has stopped capture and held the positively identified next
+   // selection. Native EOF owns the queue advance after the old output drains.
+   // Emitting paused/advance here would discard HQPlayer's buffered tail.
+   log('natural-end-awaiting-output',{trackId:facts.previousTrackId,nextTrackId:facts.trackId,
+    positionMs:facts.positionMs,action:'keep-output-until-native-ended'});
+   return Promise.resolve();
+  }
   const previous=pending;
   if(previous)facts={...facts,previousTrackId:previous.facts.previousTrackId,naturalEnd:false,externalSeek:false};
   const entry={token:++epoch,facts,isCurrent};pending=entry;
@@ -17,8 +25,7 @@ function createExternalSelectionCoordinator({send,stopOutput,sample,continueSpot
    const output=await stopOutput();await output?.complete?.();
    if(pending!==entry||!isCurrent())return;
    entry.ready=true;
-   if(facts.naturalEnd){pending=null;emit(entry,'advance');}
-   else if(facts.externalSeek||facts.externalResume){pending=null;emit(entry,'follow',{externalSeek:true,externalResume:facts.externalResume===true});}
+   if(facts.externalSeek||facts.externalResume){pending=null;emit(entry,'follow',{externalSeek:true,externalResume:facts.externalResume===true});}
    else if(facts.externalPause){pending=null;emit(entry,'dismiss');}
   }).catch(error=>{
    log('external-cleanup-failed',{code:error.code,message:error.message});

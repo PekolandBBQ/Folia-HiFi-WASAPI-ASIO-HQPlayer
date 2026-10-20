@@ -1150,6 +1150,8 @@ export interface StatusMessage {
   onCancel?: () => void;
   /** Stable semantic key for scoped dismissal; message identity distinguishes newer failures. */
   statusKey?: 'spotify-cold-volume-recovery-required';
+  /** Scope provider failures without clearing another provider's newer message. */
+  providerId?: string;
   persistent?: boolean;
 }
 

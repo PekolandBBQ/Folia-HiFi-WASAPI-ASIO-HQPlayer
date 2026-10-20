@@ -45,3 +45,10 @@ it('accepts the cable transport without claiming source encoding or lossless qua
     expect(value).toMatchObject({ playbackTransport: 'cable-pcm', preparedAudio: { sampleRate: 44100 } });
     expect(value?.quality).toBeUndefined(); expect(value?.sourceFormat).toBeUndefined();
 });
+
+it('retains explicit process-capture origin without inventing original quality', () => {
+    const value = normalizeSpotifyAudioSource({ url: 'http://127.0.0.1/pcm', playbackTransport: 'cable-pcm',
+        sourceOrigin: 'spotify-process', actualQuality: 'hires', preparedAudio: {representation:'s32le',sampleRate:44100,channels:2,bitDepth:32} }, 'hires');
+    expect(value?.sourceOrigin).toBe('spotify-process'); expect(value?.quality).toBeUndefined();
+    expect(value?.sourceFormat).toBeUndefined();
+});

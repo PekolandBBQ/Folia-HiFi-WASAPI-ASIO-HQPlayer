@@ -209,6 +209,9 @@ export default {
     "source": "Original source resolution", "processing": "Processing", "format": "Engine-reported format", "output": "Playback engine",
     "prepared": "Received PCM", "preparedConversion": "Received PCM → engine sample rate",
     "originalUnknown": "Original codec, sample rate and bit depth not reported",
+    "captureSource": "Source origin", "spotifyProcessSource": "Spotify desktop client → process capture → PCM",
+    "spotifyQualityUnreported": "Spotify-decoded PCM; original quality tier is not supplied (controlled by Spotify quality settings)",
+    "hqInput": "HQPlayer input container",
     "integer": "Integer direct",
     "compatibility": "PCM24 preparation → floating-point processing → device format", "streamingCompatibility": "PCM32 streaming decode → floating-point processing → device format", "browserProcessing": "Integer PCM input → Web Audio floating-point processing → system output", "browser": "Browser / system output",
     "caveat": "Received PCM is a decoded transport format, not proof of a lossless original source. Engine telemetry is not a DAC measurement. Integer mode alone does not prove bit-perfect output. Unreported source and resampling details are not inferred."

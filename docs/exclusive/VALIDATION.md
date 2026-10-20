@@ -190,3 +190,20 @@ Release 的 evidence ZIP 包含本轮原始结果 JSON、运行日志、失败�
 本轮基于 Spotify Catalog 候选装配，renderer、Wrapper 1.3.0 及其新增模块共同入包；发布阶段仅更新 forkTag、构建号及组件清单 revision 8。原生二进制保持候选内容，外部脚本从最终 ASAR 同步。用户配置、Spotify 资源目录和 backup 未改写。完整实现与失败/通过边界见 [音乐库候选](SPOTIFY-LIBRARY-CANDIDATE-20261020.md)及[分类搜索候选](SPOTIFY-CATALOG-CANDIDATE-20261020.md)。
 
 全量记录 build/r8-full-unit.log：824 个文件通过、1 个文件跳过；类型检查 build/r8-typecheck.log。先前专项记录保留，未上传含账号信息的原始运行日志。最新实机 UTC 19:30:17 艺人搜索 30/101，19:30:36 专辑搜索 30/185；19:31:16 专辑未收藏状态及 13 首曲目读取；19:35:13 艺人已关注状态，随后 86 张专辑按 50+36 分页返回。日志未见 subscribeCollection 完成事件，因此不声称实际写入往返验收。
+
+## 2026-10-21 r9：正式 WAV 组件、首页启动与更新下载控制
+
+实际失败与修复边界见 [首页与跨音源隔离](SPOTIFY-HOME-WAV-CANDIDATE-20261020.md)、[WAV 读取](SPOTIFY-WAV-READ-CANDIDATE-20261021.md)、[请求地址](SPOTIFY-WAV-ADDRESS-CANDIDATE-20261021.md)及[自然结尾](SPOTIFY-WAV-TAIL-CANDIDATE-20261021.md)。保留早期失败记录，不用后续通过覆盖此前失败。用户已确认 WAV 可正常播放《赴大荒》，不再出现 RAW 路径的类似爆音，本次授权按当前版本发布；没有重新操作用户播放器或扩大声称所有设备已实播。
+
+正式包不再依赖试听目录开关：HQPlayer 0.1.4-preview.8 把 WAV 及读取兼容辅助代码一并纳入已批准 worker；旧版 preview.7 保留回退。已知旧组件按完整发布身份升级，先验证和装配再原子切换，保留设置、backup、升级收据与上一版；显式停用和未知版本不被强行覆盖，未引用的已知旧目录才清理。Spotify 统一组件清单 revision 9 对应当前包内路由与采集，桥接和资源沿用既有恢复流程，配置与 Spotify backup 不重做。
+
+针对性结果：
+
+- 更新 Node 回归 19 项通过，包括真正 HTTP 连接取消、请求中与正文中取消、取消后无备用源继续下载、清理半包、从头重试、分片中断重试和确认安装边界。UI 使用实际弹窗与 hook 验证下载未完成时仍可取消、取消后重试、完整下载后才显示确认更新。
+- 首次首页、历史播放偏好保留、Spotify 未明确选中时不建立握手，以及正式组件升级、回退与 Live PCM 契约回归通过。首页使用原有 home 视图；不修改卡片定位或播放页入口。
+- 正式 app.asar 与实际 ZIP 的离线装配验证：临时配置目录从 preview.7 升至 preview.8，真实子进程握手报告新版及 live-pcm／confirmed-stop-owner 能力；真实本地管道送入 PCM，WAV 全量重复读取 2 次、Range 读取 3 次保持 PCM；5.5 秒模拟 DSP 延迟补尾 253575 帧，采集 EOF 未先停止输出。此项使用受控 HQ 接收器，不等同于额外硬件实播。
+- 根项目类型检查、sync-server 构建及 renderer 构建通过。Spotify Node 专项 176 项通过（新增真实 HTTP 取消用例另计）。外部四个 PowerShell／C# 脚本从最终 ASAR 同步，原生配对用正式装配入口校验。
+
+全量回归首轮保留了主题同步导入超时及其后继失败；单独复查 3 项通过。第二轮保留 Windows 临时目录删除冲突，单独复查 13 项通过；测试夹具改为等待真实缓存清理完成，替代固定 20 毫秒。最终全量与 CI 结果在发布完成时补录，不以单独复查替代全量门禁。
+
+最终本机全量门禁：835 个文件通过、1 个文件跳过；9778 项通过、2 项按原设计跳过，记录 build/r9-full-unit-final.log。根类型检查 build/r9-typecheck.log、sync-server build/r9-sync-server.log、renderer build/r9-renderer.log 均通过。真实发行包组件边界报告位于发行产物 package-verification.json；报告不包含用户账号、会话凭据或原始运行日志。

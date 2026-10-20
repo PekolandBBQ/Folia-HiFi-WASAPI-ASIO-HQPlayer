@@ -31,8 +31,19 @@ export function createSpotifyAutoConnect(request: Request, wait = (ms: number) =
    status = await request('configure'); blocked = await settle(); if (blocked) return blocked;
    if (status.install.phase === 'failed') return failure(status.install.detail || 'Spotify 自动配置未完成，请在向导中查看具体原因。');
   }
-  if (!status.connected) status = await request('launch');
+  if (!status.connected) {
+   try { status = await request('launch'); }
+   catch (error) {
+    const failure = error as { code?: string; details?: { nativeCode?: string } };
+    const code=failure.details?.nativeCode || failure.code;
+    if(!['SPOTIFY_BRIDGE_NOT_READY','SPOTIFY_BRIDGE_TIMEOUT','SPOTIFY_PLAYER_NOT_READY','BRIDGE_UPDATE_REQUIRED','BRIDGE_TIMEOUT','SPOTIFY_RESOURCE_VERSION_CHANGED'].includes(code || ''))throw error;
+    status = await request('configure'); blocked = await settle(); if(blocked)return blocked;
+    if(status.install.phase==='failed')return failureResult(status.install.detail);
+    status = await request('launch');
+   }
+  }
   return { ready: status.ready, detail: status.issues?.find(issue => issue.detail)?.detail || 'Spotify 尚未连接成功，请在向导中查看具体原因。' };
+ function failureResult(detail?:string){return failure(detail || 'Spotify 自动配置未完成，具体失败步骤已记录。');}
  };
 }
 export const autoConnectSpotify = createSpotifyAutoConnect(async operation => {

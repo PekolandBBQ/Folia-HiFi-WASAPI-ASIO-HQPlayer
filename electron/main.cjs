@@ -5895,6 +5895,11 @@ ipcMain.handle('updates-download', () => {
   return downloadAvailableUpdate();
 });
 
+ipcMain.handle('updates-cancel-download', async () => {
+  if (forkRelease) await (await getForkUpdater()).cancelDownload();
+  return getUpdateStatus();
+});
+
 ipcMain.handle('updates-quit-and-install', async () => {
   if (forkRelease) return (await getForkUpdater()).confirmInstall();
   const updater = ensureAutoUpdater();

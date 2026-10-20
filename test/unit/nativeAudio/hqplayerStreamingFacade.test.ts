@@ -5,13 +5,14 @@ import { createRequire } from 'node:module';
 const { createHQPlayerComponentHost } = createRequire(import.meta.url)('../../../electron/hqplayer/client.cjs');
 const required = ['local-file', 'playback-control', 'dsp-settings', 'single-instance', 'launch-options'];
 function fixture(streaming: boolean) {
+    let emit: (event: unknown) => void = () => {};
     const version = streaming ? '0.1.4-preview.1' : '0.1.3';
     const request = vi.fn(async (action: string) => action === 'hello'
         ? { id: 'hqplayer', protocolMajor: 1, componentVersion: version,
             capabilities: [...required, ...(streaming ? ['pcm-streaming', 'pcm32-named-pipe'] : [])] } : { ok: true });
     const rpc = { request, dispose: vi.fn(async () => {}) };
     const manager = { status: vi.fn(async () => ({ available: true, version, executable: 'verified-component.cjs' })) };
-    return { host: createHQPlayerComponentHost({ manager, rpcFactory: () => rpc, configPath: 'candidate-path.json' }), request, rpc };
+    return { host: createHQPlayerComponentHost({ manager, rpcFactory: (_entry: string, options: any) => { emit = options.onEvent; return rpc; }, configPath: 'candidate-path.json' }), request, rpc, emit: (event: unknown) => emit(event) };
 }
 it('keeps old0.1.3 handshake and file loading compatible without claiming PCM streaming', async () => {
     const { host, request } = fixture(false);
@@ -22,6 +23,16 @@ it('keeps old0.1.3 handshake and file loading compatible without claiming PCM st
         await expect(host.streamPrepare({ session: 'old', sourceKind: 'finite' })).rejects.toMatchObject({ code: 'COMPONENT_INCOMPATIBLE' });
         expect(request.mock.calls.some(([action]) => action === 'stream-prepare')).toBe(false);
     } finally { await host.dispose(); }
+});
+
+it('forwards WAV request, range and close facts from the worker into the normal runtime log', async () => {
+    const { host, emit } = fixture(true), info = vi.spyOn(console, 'info').mockImplementation(() => {});
+    const detail = { event: 'wav-http', phase: 'reader-close', session: 'owned-session', streamGeneration: 2,
+        requestId: 4, status: 206, start: 44, end: 843, reason: 'peer-disconnected', sourceRetained: true, sentBytes: 800 };
+    try {
+        await host.supportsStreaming(); emit({ event: 'diagnostic', detail });
+        expect(info).toHaveBeenCalledWith('[HQPlayer WAV HTTP]', JSON.stringify(detail));
+    } finally { await host.dispose(); info.mockRestore(); }
 });
 it('preserves finite preview.3 streaming fields and generation controls without a live experiment waiver', async () => {
     const { host, request } = fixture(true);

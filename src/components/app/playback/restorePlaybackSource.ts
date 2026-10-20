@@ -1,4 +1,5 @@
 import { markPassivePlaybackSource } from '../../../services/playbackSourceIntent';
+import { spotifyActivation } from '../../../services/onlineMusic/spotifyActivation';
 import { preparePlaybackSourceCommit } from '../../../services/playbackSourceCommit';
 import i18n from '../../../i18n/config';
 import type { Dispatch, MutableRefObject, SetStateAction } from 'react';
@@ -369,6 +370,7 @@ const restorePlaybackSource = async (
         const effectiveUserId = songProviderId
             ? (useOnlineProviderAccountStore.getState().accounts[songProviderId]?.user?.id ?? userId)
             : userId;
+        if (songProviderId === 'spotify' && !spotifyActivation.selected()) return 'restored';
         const processed = await omni.getLyrics(song, { userId: effectiveUserId });
         if (!isCurrent()) return 'stale';
         const resolvedLyrics = resolveOnlineLyrics(onlineLyricsState, processed.lyrics);

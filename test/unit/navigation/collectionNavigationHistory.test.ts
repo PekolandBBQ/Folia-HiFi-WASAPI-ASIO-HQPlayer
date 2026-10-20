@@ -74,6 +74,27 @@ const settle = () => act(async () => {
 });
 const run = (fn: () => void) => act(() => { fn(); });
 
+it('opens home even when the previous player startup preference is saved, without changing that preference', () => {
+    act(() => reactRoot.unmount());
+    localStorage.setItem('open_player_on_launch','true');
+    localStorage.setItem('last_app_view','player');
+    useAppViewStore.setState({view:'player'});
+    reactRoot=createRoot(container);
+    act(() => reactRoot.render(React.createElement(Harness)));
+    expect(useAppViewStore.getState().view).toBe('home');
+    expect(historyState().view).toBe('home');
+    expect(localStorage.getItem('open_player_on_launch')).toBe('true');
+});
+
+it('opens the upstream home route on a fresh profile instead of following a stale player URL', () => {
+    act(() => reactRoot.unmount());
+    localStorage.clear();window.history.replaceState({view:'player'},'', '#player');
+    reactRoot=createRoot(container);
+    act(() => reactRoot.render(React.createElement(Harness)));
+    expect(useAppViewStore.getState().view).toBe('home');
+    expect(historyState().view).toBe('home');expect(window.location.hash).toBe('');
+});
+
 beforeEach(() => {
     localStorage.clear();
     useCollectionNavigationStore.setState({ snapshot: null });

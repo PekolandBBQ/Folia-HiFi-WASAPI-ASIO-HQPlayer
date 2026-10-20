@@ -400,6 +400,7 @@ declare global {
     sourcePreference?: 'auto' | 'github' | 'gitee';
     updateSource?: 'github' | 'gitee';
     downloadUrl?: string | null;
+    downloadCancelled?: boolean;
     releaseNotes?: string | null;
     availableBuild?: string | null;
     status: ElectronUpdateStatusValue;
@@ -870,6 +871,7 @@ declare global {
       openUpdateReleasePage: (version?: string | null) => Promise<boolean>;
       openExternalUrl: (url: string) => Promise<boolean>;
       downloadUpdate: () => Promise<ElectronUpdateStatus>;
+      cancelUpdateDownload: () => Promise<ElectronUpdateStatus>;
       quitAndInstallUpdate: () => Promise<boolean>;
       onUpdateStatusChanged: (callback: (status: ElectronUpdateStatus) => void) => () => void;
       getAudioCache: (cacheKey: string) => Promise<ElectronAudioCacheEntry>;

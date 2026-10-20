@@ -455,7 +455,12 @@ it('does not pause a different externally chosen track', async () => {
   f.state.item.uri = `spotify:track:${otherId}`; f.state.is_playing = true;
   await expect(f.control.pause(session)).rejects.toMatchObject({ code: 'TRACK_NOT_CURRENT' });
   expect(f.writes()).toHaveLength(0); expect(f.state.is_playing).toBe(true);
-  expect(f.onRevoke).toHaveBeenCalledWith({ session, code: 'TRACK_NOT_CURRENT' });
+  expect(f.onRevoke).not.toHaveBeenCalled();
+  // This no-write mismatch preserves the controller for an explicit handoff.
+  await expect(f.control.readState(session)).rejects.toMatchObject({code:'TRACK_NOT_CURRENT'});
+  expect(f.writes()).toHaveLength(0);
+  const before = vi.fn(), after = vi.fn();
+  await expect(f.control.observeExternalSelection(session, before, after)).rejects.toMatchObject({code:'TRACK_NOT_CURRENT'});
 });
 
 it('rejects an external device switch observed after an accepted seek', async () => {

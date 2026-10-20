@@ -17,10 +17,11 @@ export default function ForkUpdateDialog() {
         maxWidthClass="max-w-xl"
         footer={<div className="flex flex-wrap justify-end gap-2">
             <button className={button} onClick={update.close}>{downloading ? '后台下载' : '稍后再说'}</button>
+            {downloading && <button className={button} onClick={() => void update.cancelDownload()}>取消下载</button>}
             {downloaded && status.autoUpdateSupported
                 ? <button className={button} disabled={update.busy} onClick={() => void update.install()}>退出并更新</button>
                 : !downloaded && <button className={button} disabled={update.busy || downloading} onClick={() => void update.download()}>
-                    {downloading ? `正在下载 ${Math.round(status.downloadProgress?.percent || 0)}%` : '下载更新'}
+                    {downloading ? `正在下载 ${Math.round(status.downloadProgress?.percent || 0)}%` : status.downloadCancelled || status.status === 'error' ? '重新下载' : '下载更新'}
                 </button>}
         </div>}>
         <div className="max-h-72 overflow-auto whitespace-pre-wrap text-sm leading-relaxed">{status.releaseNotes?.trim() || '此版本未提供更新说明。'}</div>
@@ -28,5 +29,6 @@ export default function ForkUpdateDialog() {
             ? status.autoUpdateSupported ? '安装包已就绪。确认更新后会停止播放并退出，配置和备份保留。' : '便携包已下载，请退出旧版后解压使用。'
             : '是否下载此更新？下载不会中断播放，安装前还需确认。'}</p>
         {(update.error || status.error) && <p role="alert" className="mt-3 text-sm text-amber-500">{update.error || status.error}</p>}
+        {status.downloadCancelled && <p role="status" className="mt-3 text-sm opacity-70">已取消下载，可随时重新下载。</p>}
     </ThemedDialog>;
 }

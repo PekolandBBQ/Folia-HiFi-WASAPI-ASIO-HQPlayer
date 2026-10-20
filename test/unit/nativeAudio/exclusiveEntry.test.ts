@@ -76,6 +76,7 @@ async function fixture() {
             if (id === './release.json') return { version: '0.7.19', upstreamVersion: '0.7.19', productName: 'FoliaEntryTest', profile: 'FoliaEntryTest', legacyProfile: 'FoliaEntryLegacy', compatibleNativeReleases: legacyNativeReleases, compatibleHQPlayerReleases: legacyHqpReleases };
             if (id === './nativeAudio/componentManager.cjs') return nativeModule;
             if (id === './hqplayer/archiveContract.cjs') return require('../../../electron/hqplayer/archiveContract.cjs');
+            if (id === './hqplayer/bundledUpgrade.cjs') return require('../../../electron/hqplayer/bundledUpgrade.cjs');
             if (id === './hqplayer/componentManager.cjs') return hqpModule;
             if (id === 'electron-store') return class { set = storeSet; get = () => undefined; };
             if (id === './main.cjs') { mainRequested(); return {}; }
@@ -157,5 +158,33 @@ describe('packaged exclusive entry with real approved ZIP artifacts', () => {
         expect(await fs.readFile(path.join(f.hqpDirectory, 'active.json'))).toEqual(before);
         expect(f.mainRequested).not.toHaveBeenCalled(); expect(f.verifyStaged).not.toHaveBeenCalled();
         expect(await f.manager().status()).toMatchObject({ available: true, version: old.release.version });
+    });
+    it.each(['0.1.3','0.1.4-preview.3','0.1.4-preview.4','0.1.4-preview.5','0.1.4-preview.6','0.1.4-preview.7'])('upgrades known %s activation to the WAV release and retains rollback', async version => {
+        const f=await fixture(),old=await f.publishHqp(version);await f.seedHqp(old);
+        await f.publishHqp('0.1.4-preview.8');f.execute();
+        expect(await f.manager().status()).toMatchObject({available:true,version:'0.1.4-preview.8',rollbackAvailable:true});
+        expect(JSON.parse(await fs.readFile(path.join(f.hqpDirectory,'previous.json'),'utf8'))).toEqual(pointer(old.release));
+    });
+    it('prunes only obsolete known component folders and retains settings, backups, rollback and receipts', async()=>{
+        const f=await fixture(),old=await f.publishHqp('0.1.4-preview.4');await f.seedHqp(old);
+        const older=await f.publishHqp('0.1.4-preview.6');await f.seedHqp(older);
+        const previous=await f.publishHqp('0.1.4-preview.7');await f.seedHqp(previous);
+        await fs.writeFile(path.join(f.hqpDirectory,'previous.json'),JSON.stringify(pointer(older.release)));
+        await fs.mkdir(path.join(f.hqpDirectory,'backups'));await fs.writeFile(path.join(f.hqpDirectory,'backups/saved.txt'),'keep');
+        await fs.writeFile(path.join(f.profile,'hqplayer.json'),'saved DAC and DSP settings');
+        const current=await f.publishHqp('0.1.4-preview.8');f.execute();
+        for(const r of [old,older])expect(syncFs.existsSync(path.join(f.hqpDirectory,`${r.release.version}-${r.release.sha256.slice(0,12)}`))).toBe(false);
+        expect(await fs.readFile(path.join(f.hqpDirectory,'backups/saved.txt'),'utf8')).toBe('keep');
+        expect(await fs.readFile(path.join(f.profile,'hqplayer.json'),'utf8')).toBe('saved DAC and DSP settings');
+        expect(JSON.parse(await fs.readFile(path.join(f.hqpDirectory,'upgrade-receipts',previous.release.sha256+'.json'),'utf8')).previous).toEqual(pointer(older.release));
+        expect(await f.manager().rollback()).toMatchObject({available:true,version:previous.release.version});
+        expect(syncFs.existsSync(path.join(f.hqpDirectory,`${current.release.version}-${current.release.sha256.slice(0,12)}`))).toBe(true);
+    });
+    it('preserves an explicitly disabled HQPlayer component',async()=>{
+        const f=await fixture(),old=await f.publishHqp('0.1.4-preview.7');await f.seedHqp(old);
+        await fs.rename(path.join(f.hqpDirectory,'active.json'),path.join(f.hqpDirectory,'inactive.json'));
+        await f.publishHqp('0.1.4-preview.8');f.execute();
+        expect(syncFs.existsSync(path.join(f.hqpDirectory,'active.json'))).toBe(false);
+        expect(JSON.parse(await fs.readFile(path.join(f.hqpDirectory,'inactive.json'),'utf8'))).toEqual(pointer(old.release));
     });
 });

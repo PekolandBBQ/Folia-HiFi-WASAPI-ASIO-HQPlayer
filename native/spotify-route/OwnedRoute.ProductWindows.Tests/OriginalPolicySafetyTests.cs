@@ -18,6 +18,11 @@ internal static class OriginalPolicySafetyTests
         var raw=Policy(id).ToLowerInvariant();
         EndpointInfo Endpoint(string endpoint)=>new(endpoint,"untrusted name",1,0,1,"",new("unsupported"),Policy(endpoint),48000,2);
         var endpoint=Endpoint(id);var endpoint2=Endpoint(second);
+        Test("output repair preserves system default without resolving a DAC",()=>Require(!SpotifyOutputRepair.NeedsReset(null,[],_=>throw new Exception("Default requires no endpoint"))));
+        Test("output repair preserves a healthy explicit physical output",()=>Require(!SpotifyOutputRepair.NeedsReset(raw,[endpoint],_=>id)));
+        Test("output repair clears stale explicit virtual output",()=>Require(SpotifyOutputRepair.NeedsReset(raw,[endpoint with{BaseIdentity=new("verified","base-owner")}],_=>id)));
+        Test("output repair clears unavailable explicit physical output",()=>Require(SpotifyOutputRepair.NeedsReset(raw,[endpoint with{State=2}],_=>id)));
+        Test("output repair clears unresolved explicit output",()=>Require(SpotifyOutputRepair.NeedsReset(raw,[],_=>null)));
         var target=new BaseRenderEndpoint("base","base-policy","base-owner","base-driver",true,true,true);
         string?[] defaults=[id,id,id,null,null,null];
         string? Map(string value)=>AudioReadOnly.TryMapPolicy(value,out var result)?result:null;

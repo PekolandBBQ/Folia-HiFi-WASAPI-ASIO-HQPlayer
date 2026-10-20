@@ -209,6 +209,9 @@ export default {
     "source": "原始音源规格", "processing": "音频处理", "format": "播放引擎回报格式", "output": "播放引擎",
     "prepared": "接收 PCM", "preparedConversion": "接收 PCM → 引擎采样率",
     "originalUnknown": "原始编码、采样率和位深未回报",
+    "captureSource": "音源来源", "spotifyProcessSource": "Spotify 桌面客户端 → 专属进程采集 → PCM",
+    "spotifyQualityUnreported": "Spotify 客户端解码 PCM；原始音质档位未提供（由 Spotify 音质设置决定）",
+    "hqInput": "HQPlayer 输入封装",
     "integer": "整数直通",
     "compatibility": "PCM24 准备 → 浮点处理 → 设备格式", "streamingCompatibility": "PCM32 流式解码 → 浮点处理 → 设备格式", "browserProcessing": "PCM 整数输入 → Web Audio 浮点处理 → 系统输出", "browser": "浏览器／系统输出",
     "caveat": "接收 PCM 是解码后的传输格式，不证明原始音源为无损。引擎回报不等于 DAC 实测。整数模式本身不代表全链路位完美；未回报的音源和升频参数不作推断。"

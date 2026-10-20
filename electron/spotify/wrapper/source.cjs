@@ -7,7 +7,11 @@ function createLocalSource(bridge,log,{now=Date.now}={}) {
     const readStartedAt=now();
     const value=await bridge.request('snapshot');
     if(value.local!==true||!value.account||!value.deviceId)throw fail('DEVICE_INACTIVE');
-    if(account && (value.account!==account||value.deviceId!==device)){stamp.revision++;throw fail('SESSION_CHANGED');}
+    if(account && (value.account!==account||value.deviceId!==device)){
+      // Retire old command authority once, then allow the next explicit recovery
+      // to authorize the newly loaded local client instead of failing forever.
+      stamp.revision++;account=value.account;device=value.deviceId;throw fail('SESSION_CHANGED');
+    }
     account=value.account;device=value.deviceId;
     if(/^spotify:track:[A-Za-z0-9]{22}$/.test(value.uri||'')&&Number.isSafeInteger(value.durationMs))tracks.set(value.uri.slice(14),{trackId:value.uri.slice(14),durationMs:value.durationMs});
     // A producer clock must not create a future host observation. The host

@@ -19,6 +19,7 @@ function normalizeSourceMetadata(value) {
     if (value == null) return undefined;
     if (typeof value !== 'object' || Array.isArray(value)) throw audioError('INVALID_REQUEST', 'Invalid source metadata');
     const result = {};
+    if (value.sourceOrigin === 'spotify-process') result.sourceOrigin = value.sourceOrigin;
     for (const field of ['requestedQuality', 'quality']) {
         if (value[field] == null) continue;
         if (!['standard', 'high', 'lossless', 'hires'].includes(value[field])) throw audioError('INVALID_REQUEST', 'Invalid source quality');
@@ -59,6 +60,7 @@ async function readOriginalSourceInfo(current, read = readSourceInfo) {
         for (const [key, value] of Object.entries(measured)) if (value !== undefined) original[key] = value;
     }
     return { ...original, requestedQuality: metadata.requestedQuality, sourceQuality: metadata.quality,
+        ...(metadata.sourceOrigin ? { sourceOrigin: metadata.sourceOrigin } : {}),
         sourceProviderLevel: metadata.providerLevel, sourceEncodingVerified: Boolean(original.sourceCodec),
         preparedSource: Boolean(metadata.preparedAudio),
         ...(metadata.preparedAudio ? { preparedAudio: { ...metadata.preparedAudio } } : {}) };

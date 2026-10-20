@@ -1588,7 +1588,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                                                                 className="text-zinc-100 hover:text-white font-bold inline-flex items-center gap-1 transition-colors disabled:opacity-40"
                                                             >
                                                                 <Download size={12} />
-                                                                {t('options.downloadUpdate')}
+                                                                {updateStatus.forkUpdate && (updateStatus.downloadCancelled || updateStatus.status === 'error') ? '重新下载' : t('options.downloadUpdate')}
                                                             </button>
                                                         )
                                                     )}

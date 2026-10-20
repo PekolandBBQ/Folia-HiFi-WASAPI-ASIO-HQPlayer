@@ -30,10 +30,13 @@ export function buildSignalPath(state: SignalSnapshot | null, selected: string, 
         const multiplier = formatHQPlayerRate(hz, true).match(/x(\d+)$/)?.[1];
         return multiplier ? `DSD ${multiplier}` : `DSD ${hz / 1000000} MHz`;
     };
+    const spotifyCapture = state?.sourceOrigin === 'spotify-process';
     const rows = [
         { title: t('signalPath.source'), value: state?.preparedSource && !source?.sourceCodec && !source?.sourceSampleRate && !bits && !bitrate
             ? t('signalPath.originalUnknown') : [source?.sourceCodec || unknown, rate, bits, bitrate].filter(Boolean).join(' · ') },
         ...(prepared ? [{ title: t('signalPath.prepared'), value: preparedFormat }] : []),
+        ...(spotifyCapture ? [{ title: t('signalPath.captureSource'), value: t('signalPath.spotifyProcessSource') }] : []),
+        ...(state?.hqplayerInputContainer === 'wav' ? [{ title: t('signalPath.hqInput'), value: `WAV · ${preparedFormat}` }] : []),
         { title: t('signalPath.processing'), value: state ? hq ? t('signalPath.hqProcessing') : browser ? t('signalPath.browserProcessing') : t(state.processingMode === 'integer-direct' ? 'signalPath.integer' : state.streaming ? 'signalPath.streamingCompatibility' : 'signalPath.compatibility') : unknown },
         { title: t(prepared ? 'signalPath.preparedConversion' : 'signalPath.conversion'), value: outputKnown && inputRate && state?.sampleRate
             ? `${format(inputRate, sourceDsd)} → ${format(state.sampleRate, outputDsd)}` : unknown },
@@ -45,9 +48,11 @@ export function buildSignalPath(state: SignalSnapshot | null, selected: string, 
     if (state?.requestedQuality || state?.sourceQuality || state?.sourceProviderLevel || state?.preparedSource) {
         const requested = state.requestedQuality ? t(`signalPath.qualities.${state.requestedQuality}`) : unknown;
         const actual = state.sourceQuality ? t(`signalPath.qualities.${state.sourceQuality}`)
+            : spotifyCapture ? t('signalPath.spotifyQualityUnreported')
             : state.sourceProviderLevel ? `${unknown} (${state.sourceProviderLevel})` : unknown;
         rows.splice(1, 0, { title: t('signalPath.streamingQuality'),
-            value: `${t('signalPath.requestedQuality')}: ${requested} · ${t('signalPath.returnedQuality')}: ${actual}` });
+            value: spotifyCapture ? `${t('signalPath.returnedQuality')}: ${actual}`
+                : `${t('signalPath.requestedQuality')}: ${requested} · ${t('signalPath.returnedQuality')}: ${actual}` });
     }
     return { rows, brief };
 }

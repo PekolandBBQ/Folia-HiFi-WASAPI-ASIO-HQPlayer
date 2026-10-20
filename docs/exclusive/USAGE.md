@@ -1,22 +1,24 @@
 <!-- docs/exclusive/USAGE.md -->
 # Folia-HiFi（支持Spotify接入-WASAPI及ASIO独占-HQPlayer升频）使用说明
 
-这是我维护的 Windows x64 正式专版，名称为 **Folia-HiFi（支持Spotify接入-WASAPI及ASIO独占-HQPlayer升频）**，当前应用版本 **0.7.19**、专版修订 **r8**。它基于 Folia v0.7.19，保留原项目的许可证和署名。
+这是我维护的 Windows x64 正式专版，名称为 **Folia-HiFi（支持Spotify接入-WASAPI及ASIO独占-HQPlayer升频）**，当前应用版本 **0.7.19**、专版修订 **r9**。它基于 Folia v0.7.19，保留原项目的许可证和署名。
 
 ## 安装与更新
 
-从 [0.7.19 r8 正式版](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/releases/tag/folia-hifi-v0.7.19-r8) 选择一种安装方式：
+从 [0.7.19 r9 正式版](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/releases/tag/folia-hifi-v0.7.19-r9) 选择一种安装方式：
 
 | 方式 | 下载与使用 |
 | --- | --- |
-| **EXE 安装版（推荐）** | 下载 [Folia-HiFi-WASAPI-ASIO-HQPlayer-0.7.19-win-x64-Setup.exe](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/releases/download/folia-hifi-v0.7.19-r8/Folia-HiFi-WASAPI-ASIO-HQPlayer-0.7.19-win-x64-Setup.exe)，运行安装向导并选择目录；安装后从开始菜单启动。仅为当前用户安装，提供 Windows“已安装的应用”卸载入口。 |
-| **ZIP 免安装版** | 下载 [Folia-HiFi-WASAPI-ASIO-HQPlayer-0.7.19-win-x64.zip](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/releases/download/folia-hifi-v0.7.19-r8/Folia-HiFi-WASAPI-ASIO-HQPlayer-0.7.19-win-x64.zip)，完整解压到可写目录，运行 `Folia-HiFi-WASAPI-ASIO-HQPlayer.exe`。不要在压缩包内直接运行，也不要单独移动 EXE。 |
+| **EXE 安装版（推荐）** | 下载 [Folia-HiFi-WASAPI-ASIO-HQPlayer-0.7.19-win-x64-Setup.exe](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/releases/download/folia-hifi-v0.7.19-r9/Folia-HiFi-WASAPI-ASIO-HQPlayer-0.7.19-win-x64-Setup.exe)，运行安装向导并选择目录；安装后从开始菜单启动。仅为当前用户安装，提供 Windows“已安装的应用”卸载入口。 |
+| **ZIP 免安装版** | 下载 [Folia-HiFi-WASAPI-ASIO-HQPlayer-0.7.19-win-x64.zip](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/releases/download/folia-hifi-v0.7.19-r9/Folia-HiFi-WASAPI-ASIO-HQPlayer-0.7.19-win-x64.zip)，完整解压到可写目录，运行 `Folia-HiFi-WASAPI-ASIO-HQPlayer.exe`。不要在压缩包内直接运行，也不要单独移动 EXE。 |
 
-两种方式包含相同程序、WASAPI/ASIO 组件 0.1.3-preview.3、独立 HQPlayer 组件 0.1.4-preview.7 和支持 PCM24/PCM32 的 FFmpeg，无需安装 Node 或 .NET SDK。ASIO 需要另行安装厂商的 x64 驱动，HQPlayer 需另行安装并授权。
+两种方式包含相同程序、WASAPI/ASIO 组件 0.1.3-preview.3、独立 HQPlayer 组件 0.1.4-preview.8 和支持 PCM24/PCM32 的 FFmpeg，无需安装 Node 或 .NET SDK。ASIO 需要另行安装厂商的 x64 驱动，HQPlayer 需另行安装并授权。
 
 两种方式共用 `%APPDATA%\Folia HiFi`，首次运行在新目录不存在时，将旧 `%APPDATA%\FoliaExclusive` 完整复制迁移，保留旧目录作为备份；新目录已存在则不合并、不覆盖。迁移前请退出旧版。不会自动导入官方版或旧人工验证版的账号、曲库。ZIP 免安装不等于配置随身携带，不要同时运行安装版和 ZIP 版。
 
 更新前先退出专版。EXE 用户重新运行新版安装程序；ZIP 用户将新版完整解压到新目录。配置保留，正常卸载安装版也保留配置。专版仅检查本 fork 的正式发行版，支持 GitHub、Gitee 或自动选择。安装版可在应用内下载并确认后更新；便携版下载 ZIP 后自行解压。检查更新不阻塞播放，不自动安装。源码 ZIP 与证据 ZIP 用于审查，不是运行包。
+
+应用内下载期间，更新提示和设置页均可“取消下载”。取消会清理未完成的安装包，选择“重新下载”从头下载；下载失败同样可重试，不影响播放。完整安装包就绪后，仍需主动确认更新。
 
 发行包尚未进行代码签名。Windows 可能显示未知发布者；请从本仓库的 Release 下载。
 
@@ -32,17 +34,17 @@
 6. 等待自动启动并连接 Spotify，就绪后点击“完成并返回歌单”。随后在 Folia 打开 Spotify 歌单并点歌；Spotify 未运行时可后台拉起，左下角显示启动准备。
 7. 选择 WASAPI、ASIO 或 HQPlayer 输出后直接播放。Spotify 与其他音源使用同一输出选择；整数模式是 WASAPI/ASIO 的 PCM 处理选项，HQPlayer 的 DAC 和 DSP 仍在 Desktop 中配置。Spotify PCM 预缓冲在原生音频设置中统一调整，WASAPI、ASIO 和 HQPlayer 共用。
 
-组件组合：Spicetify **2.45.3**、VB-CABLE **Pack45 / 3.3.1.7**、路由 **0.19.0-dev.31**、采集 **0.1.5-capture.11**、统一组件包 **0.1.0-preview.4 / revision 8**。主程序正式修订与内部组件版本各自标记；正式发布不改写组件验证事实。
+组件组合：Spicetify **2.45.3**、VB-CABLE **Pack45 / 3.3.1.7**、路由 **0.19.0-dev.31**、采集 **0.1.5-capture.11**、统一组件包 **0.1.0-preview.4 / revision 9**。主程序正式修订与内部组件版本各自标记；正式发布不改写组件验证事实。
 
-### 歌词与已知问题
+### 歌词与 HQPlayer 播放
 
 Spotify 原歌词在当前歌曲卡片与详情页显示。确认没有可显示歌词时显示“当前歌曲无歌词或为纯音乐，请欣赏”；加载中、权限或网络错误不当作无歌词。拼贴页上下首和自动切歌留在歌单，沿用最小平移定位当前卡片。
 
-**Spotify → HQPlayer 仍可能出现断续播放，本版未解决。** 预缓冲不能保证消除断续，也不代表已解决供数抖动。三秒性能与历史偶发 Seek 继续观察。
+r9 已解决报告中的 Spotify → HQPlayer 爆音／断续问题。Spotify 实时 PCM 经 WAV 封装输入 HQPlayer，歌曲采集结束后保留输出，等待尾音排空再进入下一首。
 
 ### 自动连接与在线收藏
 
-已连接账号后，每次启动 Folia 自动检查并尝试完成缺失组件安装、配置及连接；正常状态复用，无需指定 Spotify 启动顺序。三次静默重试仍失败时，仅在打开 Spotify 歌单后显示配置向导与具体中文原因。Spotify 自行安装/登录、管理员授权和 Windows 重启仍需用户操作。在线搜索覆盖 Spotify 曲库，点赞/取消点赞在远端确认后刷新已点赞歌单。
+启动 Folia 先显示主页；明确选择 Spotify 后，自动检查并尝试完成准备、配置及连接；正常状态复用，无需指定 Spotify 启动顺序。三次静默重试仍失败时，仅在打开 Spotify 歌单后显示配置向导与具体中文原因。Spotify 自行安装/登录、管理员授权和 Windows 重启仍需用户操作。在线搜索覆盖 Spotify 曲库，点赞/取消点赞在远端确认后刷新已点赞歌单。
 
 ### 音乐库、推荐与分类搜索
 

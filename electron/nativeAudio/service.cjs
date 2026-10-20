@@ -66,11 +66,12 @@ function registerNativeAudio({ app, ipcMain, isTrustedSender, helperFactory = cr
             observeState(current, state);
             current.sender.send('native-audio:event', { event: 'state', session: current.id, state: publicAudioState(state, current.sourceInfo) });
         },
-        onError: error => {
+        onError: (error, sourceSession) => {
             if (isCancellation(error)) return;
             diagnostic(error);
             const current = active;
             if (!current || current.backend !== 'hqplayer' || current.sender.isDestroyed()) return;
+            if (sourceSession && sourceSession !== current.id) return;
             observeError(current, error);
             current.sender.send('native-audio:event', { event: 'error', session: current.id, errorCode: errorCode(error) });
         },
@@ -162,8 +163,11 @@ function registerNativeAudio({ app, ipcMain, isTrustedSender, helperFactory = cr
             // Healthy same-song handoff keeps the route. A failed source may already
             // be blocked; acknowledge its exact quiescence instead of pausing a revoked reader.
             const closeSource = async retain => {
-                if (session.stream) await session.stream.close({ retainSource: retain });
+                const providerExit = releaseReason === 'provider-change' && session.outputReleased === true
+                    && session.livePcmSource?.detachOutputForProviderExit?.() === true;
+                if (session.stream) await session.stream.close({ retainSource: retain, ...(providerExit ? { providerExit: true } : {}) });
                 else if (session.livePcmSource) {
+                    if (providerExit) return;
                     if (retain) await session.livePcmSource.pause();
                     else if (session.livePcmSource.stop) await session.livePcmSource.stop();
                     else await session.livePcmSource.pause();
@@ -273,7 +277,13 @@ function registerNativeAudio({ app, ipcMain, isTrustedSender, helperFactory = cr
             // A renderer's sourceFormat/quality cannot turn captured PCM into
             // verified original Spotify encoding or authorize its HQ wire format.
             current.sourceMetadata = { requestedQuality: sourceMetadata?.requestedQuality, preparedAudio: { representation: 's32le',
-                sampleRate: current.livePcmSource.sampleRate, channels: current.livePcmSource.channels, bitDepth: 32 } };
+                sampleRate: current.livePcmSource.sampleRate, channels: current.livePcmSource.channels, bitDepth: 32 },
+                ...(current.livePcmSource.sourceOrigin === 'spotify-process' ? { sourceOrigin: 'spotify-process' } : {}) };
+            try { require('../debug/debugHost.cjs').runtimeLine('SpotifyAudioSource', JSON.stringify({
+                trackId: current.livePcmSource.trackId, backend: current.backend,
+                sourceOrigin: current.sourceMetadata.sourceOrigin || 'unspecified-live-pcm',
+                actualQuality: null, originalEncoding: null, reason: 'desktop-capture-does-not-report-original-encoding',
+                preparedAudio: current.sourceMetadata.preparedAudio })); } catch {}
             return { ok: true };
         }
         current.creating = fs.mkdtemp(path.join(app.getPath('temp'), 'folia-native-audio-'));
@@ -628,10 +638,13 @@ function registerNativeAudio({ app, ipcMain, isTrustedSender, helperFactory = cr
             await outputTransition;
             if (previous) { previous.abort.abort(); await stopOutput(previous); }
             const complete = async () => {
-                await release(null);
+                if (blockedRelease?.livePcmSource && blockedRelease.outputReleased === true)
+                    await release(blockedRelease, 'provider-change');
+                else await release(null);
                 await release(previous, 'provider-change');
                 for (const [id, retained] of retainedSources) {
-                    try { if (retained.source.stop) await retained.source.stop(); else await retained.source.pause(); }
+                    try { if (retained.source.detachOutputForProviderExit?.() === true) { /* Spotify retains its own deferred journal. */ }
+                        else if (retained.source.stop) await retained.source.stop(); else await retained.source.pause(); }
                     catch (error) { throw sourceLifecycleError(error); }
                     if (retainedSources.get(id) === retained) retainedSources.delete(id);
                 }
