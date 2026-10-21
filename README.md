@@ -1,92 +1,64 @@
 # Folia-HiFi（支持Spotify接入-WASAPI及ASIO独占-HQPlayer升频）
 
-基于 [Folia](https://github.com/chthollyphile/folia-major) 的个人公益、非商业维护 fork，由 [PekolandBBQ](https://github.com/PekolandBBQ) 维护。保留原有歌词与音乐库体验，追加 Windows WASAPI/ASIO 独占输出、HQPlayer 连接、整数 PCM、音频链路，以及 **Spotify 桌面客户端接入**。
+基于 [Folia](https://github.com/chthollyphile/folia-major) 的个人公益、非商业专版，由 [PekolandBBQ](https://github.com/PekolandBBQ) 维护。保留 Folia 的歌词与音乐库体验，追加 **Spotify 接入、WASAPI / ASIO 独占、HQPlayer 升频、整数直通与音频链路展示**。
 
-当前正式发行件为 **0.7.19 r9**，标签为 `folia-hifi-v0.7.19-r9`，已同步上游稳定版 **0.7.19** 并保留 HiFi 与 Spotify Wrapper 功能。修订号用于区分本 fork 的发行件，原项目署名和许可证保留，专版独立维护。
+**当前版本：0.7.19 r9** · Windows x64 · Spotify 接入需要 Windows 11 x64
 
-[下载 Windows x64 正式版](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/releases/tag/folia-hifi-v0.7.19-r9) · [使用说明](docs/exclusive/USAGE.md) · [本次更新说明](docs/exclusive/releases/0.7.19-r9.md) · [验证结果](docs/exclusive/VALIDATION.md) · [反馈问题](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/issues)
-
-**Spotify 进程专属采集适用平台：Windows 11 x64（Windows 应用进程回环 API 要求构建号至少 20348）。不绑定某台机器的内核版本；常规 Windows 10 不支持本次采集入口。**
+[GitHub 下载](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/releases/tag/folia-hifi-v0.7.19-r9) · [Gitee 国内下载](https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/releases/tag/folia-hifi-v0.7.19-r9) · [使用说明](docs/exclusive/USAGE.md) · [更新说明](docs/exclusive/releases/0.7.19-r9.md) · [反馈问题](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/issues)
 
 ## 我追加了哪些功能
 
 | 功能 | 实际体验 |
 | --- | --- |
-| **Spotify 流媒体接入** | 通过 Wrapper、Spicetify 桥接和 Spotify 专属进程采集，接入 WASAPI、ASIO、HQPlayer 与整数模式；支持自建及收藏歌单、收藏专辑、关注艺人、Daily Mix 和每周新发现等推荐，以及单曲／艺人／专辑在线搜索。点赞、关注、收藏及取消操作写入 Spotify，回读后刷新列表；保留原歌词、拼贴卡片滚动歌词和无歌词提示。明确选择 Spotify 后自动准备与连接，提供一键配置、有界静默恢复及桌面歌曲／进度协同，退出 Folia 默认保留 Spotify；推荐内容以账号实际返回为准，暂不接入 AI DJ |
-| **WASAPI / ASIO 独占输出** | 选择实际设备，切换输出保留歌曲、位置与播放意图；本地、QQ、网易云等音源沿用 Folia 原有播放链路 |
-| **流媒体升频与流式输出** | 将 Spotify、QQ、网易云等音源送入 HQPlayer，按已选 DAC 和 DSP 设置升频到 PCM 或 DSD。支持渐进准备的音源边下载、边解码、边输出；Spotify 使用实时 PCM，经 WAV 封装交付，支持预缓冲与自然结尾排空；不要求实时音源提前下载整首歌曲 |
-| **HQPlayer 独立连接** | 自动发现或选择本机 HQPlayer Desktop，支持后台静默启动、显示／隐藏窗口、当前曲／下一曲应用 DSP、输出切换续播及官方时钟回报；连接设置独立于 WASAPI／ASIO |
-| **整数 PCM 与音频链路** | 保留整数 PCM 处理、音量与 ReplayGain；显示实际返回的音源、采集格式、处理路径、升频结果和增益，未知的原始编码与音质不作推断 |
-
-## Spotify 在线搜索与自动连接
-
-Spotify 搜索可切换**单曲、艺人、专辑**，覆盖在线曲库。艺人结果打开原有艺人页，专辑结果打开原有专辑页，可继续浏览热门歌曲与专辑曲目。点赞/取消点赞、关注/取消关注艺人、收藏/取消收藏专辑会写入 Spotify；回读确认后刷新收藏列表，失败不冒充成功。
-
-首页沿用 Folia 的歌单、专辑、艺术家与电台分类：自建歌单、收藏的他人歌单、收藏专辑及关注艺人分别显示；“电台”展示 Spotify 实际返回的推荐歌单，包括当前账号可用的 Daily Mix、每周新发现等。推荐随账号、地区和 Spotify 返回内容变化，AI DJ 暂不接入。
-
-启动 Folia 先进入主页，由用户选择音源；明确选择 Spotify 后才自动尝试完成准备、配置和连接，正常状态直接复用。切换音源不弹出关闭 Spotify 的询问；只有打开 Spotify 歌单且三次静默重试仍失败时才显示原因和配置入口。Spotify 尚未安装、登录或 Windows 驱动授权/重启仍需用户操作。
-
-## 双源更新
-
-[GitHub 正式发行版](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/releases/latest) · [Gitee 国内下载](https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/releases)
-
-启动后后台检查本 fork 的正式版本，可选择 GitHub、Gitee 或自动换源。安装版支持应用内下载，确认后正常退出并安装；便携版提供 ZIP 下载。内部构建编号用于识别同版本覆盖，不会自动安装或阻塞播放。Gitee 从 r5 开始同步同一次构建的安装包、便携包和更新清单，源码结构及说明与 GitHub 保持一致。
+| **Spotify 流媒体接入** | 浏览自建与收藏歌单、收藏专辑、关注艺人，以及 Daily Mix、每周新发现等推荐；在线搜索单曲、艺人和专辑，点赞与收藏同步到 Spotify。支持拼贴卡片滚动歌词、全屏歌词和桌面播放协同 |
+| **WASAPI / ASIO 独占输出** | 本地、Spotify、QQ、网易云等音源可选择 WASAPI / ASIO 设备独占播放 |
+| **HQPlayer 升频与流式输出** | 将 Spotify、QQ、网易云等音源送入 HQPlayer，按所选 DAC、滤波器和整形器升频到 PCM 或 DSD；支持的音源可边下载边播放 |
+| **HQPlayer 独立连接** | 自动发现或选择本机 HQPlayer Desktop，支持后台启动、窗口显示与隐藏，以及当前曲或下一曲应用 DSP 设置 |
+| **整数 PCM 与音频链路** | 支持整数处理、音量与 ReplayGain，直观查看音源、采集格式、处理路径、升频结果和增益 |
 
 ## 下载与开始使用
 
-1. 从 [0.7.19 r9 Release](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/releases/tag/folia-hifi-v0.7.19-r9) 下载 **[EXE 安装版](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/releases/download/folia-hifi-v0.7.19-r9/Folia-HiFi-WASAPI-ASIO-HQPlayer-0.7.19-win-x64-Setup.exe)**，或 **[ZIP 免安装版](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/releases/download/folia-hifi-v0.7.19-r9/Folia-HiFi-WASAPI-ASIO-HQPlayer-0.7.19-win-x64.zip)**。ZIP 完整解压后运行其中的 EXE；更新前先退出旧版。
-2. 两种方式共用 `%APPDATA%\Folia HiFi`。已有配置保留；旧 `FoliaExclusive` 仅在目标目录不存在时复制迁移，不合并或覆盖。
-3. 使用 Spotify 时，先自行安装官网桌面版或 Microsoft Store 版，启动并登录账号。在 Folia 点击“连接 Spotify”，按向导选择安装版本。
-4. 联网后按顺序点击“① 一键安装”及“② 一键配置”。组件版本一致且文件完整才复用；首次安装/重装 VB-CABLE 后按提示重启，再“重新检查”。Windows 默认输出回落到 VB-CABLE 不再阻断 Spotify 的原生输出。配置时 Folia 自动暂停并退出受控 Spotify；旧版中断的备份保留，修正版使用新的私有资源目录完成首次配置。
-5. 配置完成后自动启动并连接 Spotify，就绪后“完成并返回歌单”，在 Folia 点歌。需要 HQPlayer 时自行安装、授权 Desktop，配置 DAC/DSP 和 `Allow control from network`，再启用 Folia 的 HQPlayer 连接。
+1. 在发行页选择 **EXE 安装版**或 **ZIP 便携版**；便携版完整解压后运行。更新保留已有配置。
+2. 启动后进入首页，选择本地或流媒体音源。使用 Spotify 前，请安装桌面客户端并登录账号，再按 Folia 向导完成一键安装与配置。
+3. 使用 HQPlayer 前，请安装并授权 HQPlayer Desktop，选择 DAC 与 DSP 设置，开启网络控制，然后在 Folia 中连接。
 
-Spotify 内暂停、停止、切歌、Seek 和后端切换保留路由；暂停/停止会停止采集。仅退出 Folia、实际播放其他流媒体/本地音源，或明确交还 Spotify 播放时恢复路由。Folia 不自动查询或修改 Spotify 音量。
+应用会后台检查更新，在应用内展示更新说明；由你决定是否下载和安装。下载可取消、可重试，支持 GitHub 与 Gitee 更新源。
 
-完整步骤、组件版本、桌面协同和退出说明见 [使用方法](docs/exclusive/USAGE.md)。HQPlayer Desktop 与 Spotify 客户端不包含在发行包内；Spicetify、VB-CABLE 按 Folia 已验证组件组合由向导准备，无需用户安装 Node 或 .NET SDK。
-
-## 本次修复与验证
-
-- 统一 Spotify 进程采集的准备、续播、Seek 和输出切换条件；临时无活动端点会话不再误判失败。保留进程身份与清理检查，避免旧失败持续拦住后续播放。
-- 修复快速点歌、上一首/下一首和旧曲结束事件交错时的歌曲错位。拼贴页切歌后留在歌单，定位展开当前歌曲卡片并显示滚动歌词；仅明确进入播放页时跳转，定位沿用上游最小平移。
-- 改善 Spotify 原歌词等待与缓存，过期请求不覆盖新歌；确认没有歌词时，详情页和卡片显示“当前歌曲无歌词或为纯音乐，请欣赏”。加载中与请求失败不显示这条提示。
-- 可恢复的短暂故障先做有界静默重试，界面显示具体中文原因，原始错误码与阶段留在日志。
-- r9 解决 Spotify 经 HQPlayer 输出的爆音／断续问题，改用兼容的 WAV 输入，并将采集完成、输出尾音排空、下一首启动分开处理。启动先进入首页，切换其他音源不再被 Spotify 旧会话阻塞；应用内更新下载支持取消与重试，正式组件自动升级并保留回退，详见 [r9 更新说明](docs/exclusive/releases/0.7.19-r9.md)。
+Gitee 网页提供分卷包，首次手动下载时请取齐同组分片，用 7-Zip 打开首个分片合并；应用内更新会自动合并。更多操作见[使用说明](docs/exclusive/USAGE.md)。
 
 ## 实际界面
 
-图片展示本 fork 的操作入口；HQPlayer 设置图由当前代码离线渲染，其余截图来自本机实际界面。播放、恢复和性能结论见 [验证结果](docs/exclusive/VALIDATION.md)。
+**Spotify 首次使用向导**：选择客户端，完成组件安装与连接。
 
-**Spotify 首次使用向导**：检测桌面版 / Microsoft Store 版，安装前联网核对已验证组件组合，显示版本与配置状态；按“一键安装 → 一键配置”的顺序完成准备，随后自动启动并连接。
+![Spotify 首次配置向导](https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/docs/exclusive/images/0.7.19-r1/spotify-setup.png)
 
-![Spotify 最新已验证组件检查与首次配置](docs/exclusive/images/0.7.19-r1/spotify-setup.png)
+**Spotify 歌单封面**：已点赞歌曲以九宫格封面展示。
 
-**Spotify 歌单封面**：已点赞歌曲使用九首歌曲封面组成九宫格；右侧为本机 Spotify 已加载曲目入口。图中歌单来自已有本机资料。
+![Spotify 已点赞歌曲与本机曲目](https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/docs/exclusive/images/r4/spotify-library.png)
 
-![Spotify 已点赞歌曲九宫格封面与本机曲目](docs/exclusive/images/r4/spotify-library.png)
+**Spotify 音乐库**：浏览自建歌单、收藏歌单、年度歌曲和已点赞歌曲。
 
-**Spotify 音乐库**：自建和收藏歌单、年度歌曲歌单、已点赞歌曲沿用拼贴页展示。下图来自维护者保存的实际界面，内容以当前账号为准。
-
-![Spotify 收藏歌单、年度歌曲与已点赞歌曲](docs/exclusive/images/r8/spotify-playlists.png)
+![Spotify 收藏歌单、年度歌曲与已点赞歌曲](https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/docs/exclusive/images/r8/spotify-playlists.png)
 
 <details>
 <summary>查看收藏专辑与关注艺人</summary>
 
-![Spotify 收藏专辑](docs/exclusive/images/r8/spotify-albums.png)
-![Spotify 关注艺人](docs/exclusive/images/r8/spotify-artists.png)
+![Spotify 收藏专辑](https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/docs/exclusive/images/r8/spotify-albums.png)
+![Spotify 关注艺人](https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/docs/exclusive/images/r8/spotify-artists.png)
 
 </details>
 
-**Spotify 推荐歌单**：在原有“电台”分类展示 Daily Mix、每周新发现、新歌雷达及 Spotify 返回的其他推荐；点开后使用原有歌单与播放界面。
+**Spotify 推荐歌单**：在“电台”中浏览 Daily Mix、每周新发现、新歌雷达等个性推荐。
 
-![Spotify Daily Mix、每周新发现与推荐歌单](docs/exclusive/images/r8/spotify-recommendations.png)
+![Spotify Daily Mix、每周新发现与推荐歌单](https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/docs/exclusive/images/r8/spotify-recommendations.png)
 
-**在线分类搜索**：同一搜索词可切换单曲、艺人和专辑，结果进入各自原有页面。
+**在线分类搜索**：切换单曲、艺人和专辑，进入对应页面浏览与收藏。
 
 <table>
   <tr>
-    <td width="33%"><img src="docs/exclusive/images/r8/spotify-search-tracks.png" alt="Spotify 单曲搜索" /></td>
-    <td width="33%"><img src="docs/exclusive/images/r8/spotify-search-artists.png" alt="Spotify 艺人搜索" /></td>
-    <td width="33%"><img src="docs/exclusive/images/r8/spotify-search-albums.png" alt="Spotify 专辑搜索" /></td>
+    <td width="33%"><img src="https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/docs/exclusive/images/r8/spotify-search-tracks.png" alt="Spotify 单曲搜索" /></td>
+    <td width="33%"><img src="https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/docs/exclusive/images/r8/spotify-search-artists.png" alt="Spotify 艺人搜索" /></td>
+    <td width="33%"><img src="https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/docs/exclusive/images/r8/spotify-search-albums.png" alt="Spotify 专辑搜索" /></td>
   </tr>
   <tr><td align="center">单曲</td><td align="center">艺人</td><td align="center">专辑</td></tr>
 </table>
@@ -94,60 +66,46 @@ Spotify 内暂停、停止、切歌、Seek 和后端切换保留路由；暂停/
 <details>
 <summary>查看艺人、专辑详情与流媒体账号切换</summary>
 
-![Spotify 艺人详情、热门歌曲与专辑](docs/exclusive/images/r8/spotify-artist-detail.png)
-![Spotify 专辑详情与曲目](docs/exclusive/images/r8/spotify-album-detail.png)
+![Spotify 艺人详情、热门歌曲与专辑](https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/docs/exclusive/images/r8/spotify-artist-detail.png)
+![Spotify 专辑详情与曲目](https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/docs/exclusive/images/r8/spotify-album-detail.png)
 
-账号菜单显示已登录用户的头像和用户名，可切换 Spotify、网易云、QQ 等音源。
+账号菜单展示头像与用户名，可切换 Spotify、网易云、QQ 等音源。
 
-<img src="docs/exclusive/images/r8/streaming-accounts.png" alt="Spotify 与其他流媒体账号切换" width="480" />
+<img src="https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/docs/exclusive/images/r8/streaming-accounts.png" alt="Spotify 与其他流媒体账号切换" width="480" />
 
 </details>
 
-**保留 Folia 歌词体验**：拼贴页播放时在当前歌曲卡片显示滚动歌词；主动进入播放页可使用 Folia 原有歌词动效。下图展示已有歌词界面，歌词可用性取决于对应音源。
+**Folia 歌词体验**：在歌曲卡片内显示滚动歌词，或进入播放页欣赏全屏歌词动效。
 
-![歌曲卡片内滚动歌词](docs/exclusive/images/r8/lyrics-card.png)
+![歌曲卡片内滚动歌词](https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/docs/exclusive/images/r8/lyrics-card.png)
 
 <details>
 <summary>查看全屏歌词动效</summary>
 
-![Folia 全屏动态歌词实际界面](docs/exclusive/images/r8/lyrics-animation.png)
+![Folia 全屏动态歌词](https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/docs/exclusive/images/r8/lyrics-animation.png)
 
 </details>
 
-**WASAPI / ASIO 输出**：从实际枚举的设备中选择输出，Spotify PCM 预缓冲可调；整数处理与音频链路显示在同一区域设置。
+**WASAPI / ASIO 输出**：选择播放设备，调整 Spotify 缓存，开启整数处理与音频链路展示。
 
-![WASAPI 与 ASIO 实际输出设备](docs/exclusive/images/r4/native-output.png)
-![整数 PCM 与音频链路显示开关](docs/exclusive/images/r4/integer-mode.png)
+![WASAPI 与 ASIO 输出设备](https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/docs/exclusive/images/r4/native-output.png)
+![整数 PCM 与音频链路开关](https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/docs/exclusive/images/r4/integer-mode.png)
 
-**流式输出与实际链路**：Spotify 实时 PCM 经初始缓冲后持续交付 WASAPI / ASIO；其他支持渐进解码的在线音源可在下载继续时播放。无需另开“流式模式”，左下角分阶段显示准备与缓冲，音频链路显示实际处理和输出格式；遇到需完整文件索引的格式会先完整准备。
+**流式播放**：左下角显示准备与缓冲进度，音频链路展示当前处理与输出格式。
 
-![Spotify 实时 PCM 与 WASAPI 流式输出链路](docs/exclusive/images/r4/streaming-output.png)
+![Spotify 与 WASAPI 流式输出链路](https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/docs/exclusive/images/r4/streaming-output.png)
 
-**流媒体升频与音频链路**：下图来自本机实际界面，展示 Spotify 专属进程采集的 PCM 经 HQPlayer 升频为 DSD 512，并回报滤波器、增益和播放引擎；原始编码与音质档位未回报时如实保留未知。
+**HQPlayer 独立连接**：管理连接与窗口显示，在 DSP 面板选择当前曲或下一曲应用设置。
 
-![HQPlayer 流媒体升频与实际音频链路](docs/exclusive/images/r9/hqplayer-streaming-signal-path.png)
-
-**HQPlayer 独立连接**：检测组件与 Desktop，选择连接和窗口行为；播放时还可在 DSP 面板选择应用于当前曲或下一曲。Spotify 与其他音源一样，选择 HQPlayer 输出后直接播放；Spotify PCM 预缓冲与 WASAPI / ASIO 共用。
-
-![HQPlayer 独立组件、连接与窗口设置](docs/exclusive/images/r4/hqplayer-settings.png)
+![HQPlayer 连接与窗口设置](https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/docs/exclusive/images/r4/hqplayer-settings.png)
 
 <details>
-<summary>查看 HQPlayer DSP 播放面板（此前已保存的实际界面）</summary>
+<summary>查看 HQPlayer DSP 播放面板</summary>
 
-![HQPlayer 浮窗、DSP 和窗口显示开关](docs/exclusive/images/hqplayer-floating.png)
+![HQPlayer 浮窗、DSP 和窗口显示开关](https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/docs/exclusive/images/hqplayer-floating.png)
 
 </details>
 
-## 使用边界
-
-- Windows x64 专版；本次不提供 macOS/Linux 的这些原生扩展。Spotify 的系统范围与验证边界见页首。
-- Spotify 使用实时 PCM；其他流媒体可采用渐进准备，具体由源和后端决定。没有承诺无缝切歌、外部后端 automix 或三秒内实际出声。
-- 整数处理不等于源文件到 DAC 全链路 bit-perfect；软件增益、Windows 混音、Spotify 客户端和 HQPlayer DSP 都会影响链路，补静音区间另行记录。
-- 当前硬件证据主要来自 XingCore DAC 与 HQPlayer Desktop 6；其他驱动与 DSP 配置需要各自验证。发行件尚未代码签名，请从本仓库 Release 下载。
-
-源码、构建、验证与维护约束见 [MAINTAINING](docs/exclusive/MAINTAINING.md)。
-
-Folia-HiFi-WASAPI-ASIO-HQPlayer-Spotify is an independently maintained, personal noncommercial Windows x64 fork of Folia. Version 0.7.19 r9 integrates upstream 0.7.19 while retaining Spotify Wrapper, WASAPI/ASIO, HQPlayer, integer PCM and signal-path reporting. It fixes first-time Spicetify configuration for desktop and Store layouts and checks Folia's latest validated component manifest and installed file integrity before installation. Spotify process capture requires Windows 11 x64 (API build 20348 or newer). r8 adds Spotify saved playlists, albums, followed artists, personalized playlist recommendations, and online track/artist/album search with confirmed library writes. r9 resolves the reported Spotify/HQPlayer crackling with WAV input, preserves the DSP tail before advancing, and upgrades bundled components while retaining settings and rollback. The fork uses a separate release tag.
 
 ---
 
@@ -195,7 +153,7 @@ Folia是一个以全屏沉浸式歌词播放为核心的在线音乐播放器，
 
 ## 展示
 
-![visualizer](./img/visualizer.png)
+![visualizer](https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/img/visualizer.png)
 
 ### 演示视频
 
@@ -210,10 +168,10 @@ https://github.com/user-attachments/assets/704f195a-2194-434b-86e8-8f36290e5cc4
 <table>
   <tr>
     <td width="50%">
-      <img src="./img/preview-fume.png" alt="Fume 主题预览" />
+      <img src="https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/img/preview-fume.png" alt="Fume 主题预览" />
     </td>
     <td width="50%">
-      <img src="./img/preview-lumi.png" alt="Lumi 主题预览" />
+      <img src="https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/img/preview-lumi.png" alt="Lumi 主题预览" />
     </td>
   </tr>
   <tr>
@@ -222,10 +180,10 @@ https://github.com/user-attachments/assets/704f195a-2194-434b-86e8-8f36290e5cc4
   </tr>
   <tr>
     <td width="50%">
-      <img src="./img/preview-cad.png" alt="Cad 主题预览" />
+      <img src="https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/img/preview-cad.png" alt="Cad 主题预览" />
     </td>
     <td width="50%">
-      <img src="./img/preview-pat.png" alt="Pat 主题预览" />
+      <img src="https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/img/preview-pat.png" alt="Pat 主题预览" />
     </td>
   </tr>
   <tr>
@@ -234,10 +192,10 @@ https://github.com/user-attachments/assets/704f195a-2194-434b-86e8-8f36290e5cc4
   </tr>
   <tr>
     <td width="50%">
-      <img src="./img/preview-cappella.jpg" alt="群唱 主题预览" />
+      <img src="https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/img/preview-cappella.jpg" alt="群唱 主题预览" />
     </td>
     <td width="50%">
-      <img src="./img/preview-tilt.png" alt="Tilt 主题预览" />
+      <img src="https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/img/preview-tilt.png" alt="Tilt 主题预览" />
     </td>
   </tr>
   <tr>
@@ -246,10 +204,10 @@ https://github.com/user-attachments/assets/704f195a-2194-434b-86e8-8f36290e5cc4
   </tr>
     <tr>
     <td width="50%">
-      <img src="./img/preview-diorama.png" alt="镜台 主题预览" />
+      <img src="https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/img/preview-diorama.png" alt="镜台 主题预览" />
     </td>
     <td width="50%">
-      <img src="./img/preview-pendolo.png" alt="时计 主题预览" />
+      <img src="https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/img/preview-pendolo.png" alt="时计 主题预览" />
     </td>
   </tr>
   <tr>
@@ -392,6 +350,9 @@ Folia 会读取音频文件元数据、同目录歌词和封面，并可通过�
 
 ## 项目基础与致谢
 
+<details>
+<summary>查看项目与贡献者署名</summary>
+
 感谢以下项目的作者、贡献者和维护者。本 fork 在 Folia 的基础上扩展 HiFi 输出与 Spotify 接入；下表列出主要项目及其实际用途，相关署名与许可证保留在源码、依赖和发行材料中。
 
 | 项目 / 仓库 | 关系与用途 |
@@ -418,4 +379,4 @@ Folia 会读取音频文件元数据、同目录歌词和封面，并可通过�
 
 相关官方软件与资料：[Signalyst HQPlayer Control 源码与接口资料](https://www.signalyst.eu/custom.html)用于 HQPlayer 控制接入；[VB-Audio VB-CABLE](https://vb-audio.com/Cable/)用于 Spotify 的受控音频路由与格式准备。感谢两者提供的工具与资料。
 
-Gitee 单附件限制为 100 MB，因此安装包和便携包以分片保存；Folia 从 Gitee 下载时按清单自动合并完整文件。GitHub 提供相同构建的完整文件。安装版合并完成后仍需确认才安装；便携版合并为 ZIP 并打开保存目录，用户自行退出旧版、完整解压。首次从 Gitee 网页手动下载安装包时，请下载全部 `.exe.001` 起的同组分片，放在同一目录并用 7-Zip 打开 `.001`，合并得到完整 EXE 后再运行。便携包同理，下载全部 `.zip.001` 起的分片并用 7-Zip 打开 `.001` 合并解包。已支持新版更新器的 Folia 会自动完成合并，无需手工处理。
+</details>
