@@ -66,8 +66,8 @@ Gitee 网页提供分卷包，首次手动下载时请取齐同组分片，用 7
 <details>
 <summary>查看艺人、专辑详情与流媒体账号切换</summary>
 
-![Spotify 艺人详情、热门歌曲与专辑](https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/docs/exclusive/images/r8/spotify-artist-detail.png)
-![Spotify 专辑详情与曲目](https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/docs/exclusive/images/r8/spotify-album-detail.png)
+![Spotify 艺人详情、热门歌曲与专辑](https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/docs/exclusive/images/r8/spotify-artist-detail.webp)
+![Spotify 专辑详情与曲目](https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/docs/exclusive/images/r8/spotify-album-detail.webp)
 
 账号菜单展示头像与用户名，可切换 Spotify、网易云、QQ 等音源。
 
@@ -77,7 +77,7 @@ Gitee 网页提供分卷包，首次手动下载时请取齐同组分片，用 7
 
 **Folia 歌词体验**：在歌曲卡片内显示滚动歌词，或进入播放页欣赏全屏歌词动效。
 
-![歌曲卡片内滚动歌词](https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/docs/exclusive/images/r8/lyrics-card.png)
+![歌曲卡片内滚动歌词](https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/docs/exclusive/images/r8/lyrics-card.webp)
 
 <details>
 <summary>查看全屏歌词动效</summary>
