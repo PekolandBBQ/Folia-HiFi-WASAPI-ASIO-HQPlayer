@@ -1,6 +1,6 @@
 # Folia-HiFi（支持Spotify接入-WASAPI及ASIO独占-HQPlayer升频）
 
-基于 [Folia](https://github.com/chthollyphile/folia-major) 的个人公益、非商业维护 fork，由 [PekolandBBQ](https://github.com/PekolandBBQ) 维护。保留原有歌词与音乐库体验，追加 Windows WASAPI/ASIO 独占输出、HQPlayer 连接、整数 PCM、音频链路，以及 **Spotify 桌面客户端接入**。
+基于 [Folia](https://github.com/chthollyphile/folia-major) 的个人公益、非商业维护 fork，由 [PekolandBBQ](https://github.com/PekolandBBQ) 维护。保留原有歌词与音乐库体验，追加 Windows WASAPI/ASIO 独占输出、HQPlayer 连接、整数直通、音频链路展示，以及 **Spotify 桌面客户端接入**。
 
 当前正式发行件为 **0.7.19 r9**，标签为 `folia-hifi-v0.7.19-r9`，已同步上游稳定版 **0.7.19** 并保留 HiFi 与 Spotify Wrapper 功能。修订号用于区分本 fork 的发行件，原项目署名和许可证保留，专版独立维护。
 
@@ -12,9 +12,9 @@
 
 | 功能 | 实际体验 |
 | --- | --- |
-| **Spotify 流媒体接入** | 通过 Wrapper、Spicetify 桥接和 Spotify 专属进程采集，接入 WASAPI、ASIO、HQPlayer 与整数模式；支持自建及收藏歌单、收藏专辑、关注艺人、Daily Mix 和每周新发现等推荐，以及单曲／艺人／专辑在线搜索。点赞、关注、收藏及取消操作写入 Spotify，回读后刷新列表；保留原歌词、拼贴卡片滚动歌词和无歌词提示。明确选择 Spotify 后自动准备与连接，提供一键配置、有界静默恢复及桌面歌曲／进度协同，退出 Folia 默认保留 Spotify；推荐内容以账号实际返回为准，暂不接入 AI DJ |
-| **WASAPI / ASIO 独占输出** | 选择实际设备，切换输出保留歌曲、位置与播放意图；本地、QQ、网易云等音源沿用 Folia 原有播放链路 |
-| **流媒体升频与流式输出** | 将 Spotify、QQ、网易云等音源送入 HQPlayer，按已选 DAC 和 DSP 设置升频到 PCM 或 DSD。支持渐进准备的音源边下载、边解码、边输出；Spotify 使用实时 PCM，经 WAV 封装交付，支持预缓冲与自然结尾排空；不要求实时音源提前下载整首歌曲 |
+| **Spotify 流媒体接入** | 通过 Wrapper、Spicetify 桥接和 Spotify 专属进程采集，接入 WASAPI、ASIO、HQPlayer 与整数模式；支持自建及收藏歌单、收藏专辑、关注艺人、Daily Mix 和每周新发现等推荐，以及单曲／艺人／专辑在线搜索。点赞、关注、收藏及取消操作写入 Spotify，回读后刷新列表；保留原歌词、拼贴卡片滚动歌词和无歌词提示。|
+| **WASAPI / ASIO 独占输出** | 支持本地、Spotify、QQ、网易云等流媒体利用WASAPI / ASIO驱动的独占输出 |
+| **HQPlayer升频与流式输出** | 将 Spotify、QQ、网易云等音源送入 HQPlayer ，按已选 DAC 和 DSP 设置升频到 PCM 或 DSD。支持渐进准备的音源边下载、边解码、边输出 |
 | **HQPlayer 独立连接** | 自动发现或选择本机 HQPlayer Desktop，支持后台静默启动、显示／隐藏窗口、当前曲／下一曲应用 DSP、输出切换续播及官方时钟回报；连接设置独立于 WASAPI／ASIO |
 | **整数 PCM 与音频链路** | 保留整数 PCM 处理、音量与 ReplayGain；显示实际返回的音源、采集格式、处理路径、升频结果和增益，未知的原始编码与音质不作推断 |
 
@@ -24,13 +24,9 @@ Spotify 搜索可切换**单曲、艺人、专辑**，覆盖在线曲库。艺�
 
 首页沿用 Folia 的歌单、专辑、艺术家与电台分类：自建歌单、收藏的他人歌单、收藏专辑及关注艺人分别显示；“电台”展示 Spotify 实际返回的推荐歌单，包括当前账号可用的 Daily Mix、每周新发现等。推荐随账号、地区和 Spotify 返回内容变化，AI DJ 暂不接入。
 
-启动 Folia 先进入主页，由用户选择音源；明确选择 Spotify 后才自动尝试完成准备、配置和连接，正常状态直接复用。切换音源不弹出关闭 Spotify 的询问；只有打开 Spotify 歌单且三次静默重试仍失败时才显示原因和配置入口。Spotify 尚未安装、登录或 Windows 驱动授权/重启仍需用户操作。
-
 ## 双源更新
 
 [GitHub 正式发行版](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/releases/latest) · [Gitee 国内下载](https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/releases)
-
-启动后后台检查本 fork 的正式版本，可选择 GitHub、Gitee 或自动换源。安装版支持应用内下载，确认后正常退出并安装；便携版提供 ZIP 下载。内部构建编号用于识别同版本覆盖，不会自动安装或阻塞播放。Gitee 从 r5 开始同步同一次构建的安装包、便携包和更新清单，源码结构及说明与 GitHub 保持一致。
 
 ## 下载与开始使用
 
@@ -43,14 +39,6 @@ Spotify 搜索可切换**单曲、艺人、专辑**，覆盖在线曲库。艺�
 Spotify 内暂停、停止、切歌、Seek 和后端切换保留路由；暂停/停止会停止采集。仅退出 Folia、实际播放其他流媒体/本地音源，或明确交还 Spotify 播放时恢复路由。Folia 不自动查询或修改 Spotify 音量。
 
 完整步骤、组件版本、桌面协同和退出说明见 [使用方法](docs/exclusive/USAGE.md)。HQPlayer Desktop 与 Spotify 客户端不包含在发行包内；Spicetify、VB-CABLE 按 Folia 已验证组件组合由向导准备，无需用户安装 Node 或 .NET SDK。
-
-## 本次修复与验证
-
-- 统一 Spotify 进程采集的准备、续播、Seek 和输出切换条件；临时无活动端点会话不再误判失败。保留进程身份与清理检查，避免旧失败持续拦住后续播放。
-- 修复快速点歌、上一首/下一首和旧曲结束事件交错时的歌曲错位。拼贴页切歌后留在歌单，定位展开当前歌曲卡片并显示滚动歌词；仅明确进入播放页时跳转，定位沿用上游最小平移。
-- 改善 Spotify 原歌词等待与缓存，过期请求不覆盖新歌；确认没有歌词时，详情页和卡片显示“当前歌曲无歌词或为纯音乐，请欣赏”。加载中与请求失败不显示这条提示。
-- 可恢复的短暂故障先做有界静默重试，界面显示具体中文原因，原始错误码与阶段留在日志。
-- r9 解决 Spotify 经 HQPlayer 输出的爆音／断续问题，改用兼容的 WAV 输入，并将采集完成、输出尾音排空、下一首启动分开处理。启动先进入首页，切换其他音源不再被 Spotify 旧会话阻塞；应用内更新下载支持取消与重试，正式组件自动升级并保留回退，详见 [r9 更新说明](docs/exclusive/releases/0.7.19-r9.md)。
 
 ## 实际界面
 
@@ -114,7 +102,7 @@ Spotify 内暂停、停止、切歌、Seek 和后端切换保留路由；暂停/
 
 </details>
 
-**WASAPI / ASIO 输出**：从实际枚举的设备中选择输出，Spotify PCM 预缓冲可调；整数处理与音频链路显示在同一区域设置。
+**WASAPI / ASIO 输出**：从实际枚举的设备中选择输出，Spotify 缓存大小可调；整数处理与音频链路显示在同一区域设置。
 
 ![WASAPI 与 ASIO 实际输出设备](docs/exclusive/images/r4/native-output.png)
 ![整数 PCM 与音频链路显示开关](docs/exclusive/images/r4/integer-mode.png)
