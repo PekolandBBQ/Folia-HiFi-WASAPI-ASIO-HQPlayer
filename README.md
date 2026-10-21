@@ -28,6 +28,8 @@ Gitee 网页提供分卷包，首次手动下载时请取齐同组分片，用 7
 
 ## 实际界面
 
+点击图片可查看原图。
+
 **Spotify 首次使用向导**：选择客户端，完成组件安装与连接。
 
 ![Spotify 首次配置向导](https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/docs/exclusive/images/0.7.19-r1/spotify-setup.png)
@@ -38,19 +40,19 @@ Gitee 网页提供分卷包，首次手动下载时请取齐同组分片，用 7
 
 **Spotify 音乐库**：浏览自建歌单、收藏歌单、年度歌曲和已点赞歌曲。
 
-![Spotify 收藏歌单、年度歌曲与已点赞歌曲](https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/docs/exclusive/images/r8/spotify-playlists.webp)
+[![Spotify 收藏歌单、年度歌曲与已点赞歌曲](https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/docs/exclusive/images/r8/spotify-playlists-preview.webp)](https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/docs/exclusive/images/r8/spotify-playlists.png)
 
 <details>
 <summary>查看收藏专辑与关注艺人</summary>
 
-![Spotify 收藏专辑](https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/docs/exclusive/images/r8/spotify-albums.webp)
+[![Spotify 收藏专辑](https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/docs/exclusive/images/r8/spotify-albums-preview.webp)](https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/docs/exclusive/images/r8/spotify-albums.png)
 ![Spotify 关注艺人](https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/docs/exclusive/images/r8/spotify-artists.webp)
 
 </details>
 
 **Spotify 推荐歌单**：在“电台”中浏览 Daily Mix、每周新发现、新歌雷达等个性推荐。
 
-![Spotify Daily Mix、每周新发现与推荐歌单](https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/docs/exclusive/images/r8/spotify-recommendations.webp)
+[![Spotify Daily Mix、每周新发现与推荐歌单](https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/docs/exclusive/images/r8/spotify-recommendations-preview.webp)](https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/docs/exclusive/images/r8/spotify-recommendations.png)
 
 **在线分类搜索**：切换单曲、艺人和专辑，进入对应页面浏览与收藏。
 
