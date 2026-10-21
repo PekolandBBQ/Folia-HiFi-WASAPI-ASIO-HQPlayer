@@ -32,35 +32,35 @@ Gitee 网页提供分卷包，首次手动下载时请取齐同组分片，用 7
 
 **Spotify 首次使用向导**：选择客户端，完成组件安装与连接。
 
-![Spotify 首次配置向导](https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/docs/exclusive/images/0.7.19-r1/spotify-setup.png)
+![Spotify 首次配置向导](https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/docs/exclusive/images/0.7.19-r1/spotify-setup.png?v=r9-complete-20261021)
 
 **Spotify 歌单封面**：已点赞歌曲以九宫格封面展示。
 
-![Spotify 已点赞歌曲与本机曲目](https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/docs/exclusive/images/r4/spotify-library.png)
+![Spotify 已点赞歌曲与本机曲目](https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/docs/exclusive/images/r4/spotify-library.png?v=r9-complete-20261021)
 
 **Spotify 音乐库**：浏览自建歌单、收藏歌单、年度歌曲和已点赞歌曲。
 
-[![Spotify 收藏歌单、年度歌曲与已点赞歌曲](https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/docs/exclusive/images/r8/spotify-playlists-preview.webp)](https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/docs/exclusive/images/r8/spotify-playlists.png)
+[![Spotify 收藏歌单、年度歌曲与已点赞歌曲](https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/docs/exclusive/images/r8/spotify-playlists-preview.webp?v=r9-complete-20261021)](https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/docs/exclusive/images/r8/spotify-playlists.png)
 
 <details>
 <summary>查看收藏专辑与关注艺人</summary>
 
-[![Spotify 收藏专辑](https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/docs/exclusive/images/r8/spotify-albums-preview.webp)](https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/docs/exclusive/images/r8/spotify-albums.png)
-![Spotify 关注艺人](https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/docs/exclusive/images/r8/spotify-artists.webp)
+[![Spotify 收藏专辑](https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/docs/exclusive/images/r8/spotify-albums-preview.webp?v=r9-complete-20261021)](https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/docs/exclusive/images/r8/spotify-albums.png)
+![Spotify 关注艺人](https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/docs/exclusive/images/r8/spotify-artists.webp?v=r9-complete-20261021)
 
 </details>
 
 **Spotify 推荐歌单**：在“电台”中浏览 Daily Mix、每周新发现、新歌雷达等个性推荐。
 
-[![Spotify Daily Mix、每周新发现与推荐歌单](https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/docs/exclusive/images/r8/spotify-recommendations-preview.webp)](https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/docs/exclusive/images/r8/spotify-recommendations.png)
+[![Spotify Daily Mix、每周新发现与推荐歌单](https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/docs/exclusive/images/r8/spotify-recommendations-preview.webp?v=r9-complete-20261021)](https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/docs/exclusive/images/r8/spotify-recommendations.png)
 
 **在线分类搜索**：切换单曲、艺人和专辑，进入对应页面浏览与收藏。
 
 <table>
   <tr>
-    <td width="33%"><img src="https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/docs/exclusive/images/r8/spotify-search-tracks.png" alt="Spotify 单曲搜索" /></td>
-    <td width="33%"><img src="https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/docs/exclusive/images/r8/spotify-search-artists.png" alt="Spotify 艺人搜索" /></td>
-    <td width="33%"><img src="https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/docs/exclusive/images/r8/spotify-search-albums.png" alt="Spotify 专辑搜索" /></td>
+    <td width="33%"><img src="https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/docs/exclusive/images/r8/spotify-search-tracks.png?v=r9-complete-20261021" alt="Spotify 单曲搜索" /></td>
+    <td width="33%"><img src="https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/docs/exclusive/images/r8/spotify-search-artists.png?v=r9-complete-20261021" alt="Spotify 艺人搜索" /></td>
+    <td width="33%"><img src="https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/docs/exclusive/images/r8/spotify-search-albums.png?v=r9-complete-20261021" alt="Spotify 专辑搜索" /></td>
   </tr>
   <tr><td align="center">单曲</td><td align="center">艺人</td><td align="center">专辑</td></tr>
 </table>
@@ -68,43 +68,43 @@ Gitee 网页提供分卷包，首次手动下载时请取齐同组分片，用 7
 <details>
 <summary>查看艺人、专辑详情与流媒体账号切换</summary>
 
-![Spotify 艺人详情、热门歌曲与专辑](https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/docs/exclusive/images/r8/spotify-artist-detail.webp)
-![Spotify 专辑详情与曲目](https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/docs/exclusive/images/r8/spotify-album-detail.webp)
+![Spotify 艺人详情、热门歌曲与专辑](https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/docs/exclusive/images/r8/spotify-artist-detail.webp?v=r9-complete-20261021)
+![Spotify 专辑详情与曲目](https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/docs/exclusive/images/r8/spotify-album-detail.webp?v=r9-complete-20261021)
 
 账号菜单展示头像与用户名，可切换 Spotify、网易云、QQ 等音源。
 
-<img src="https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/docs/exclusive/images/r8/streaming-accounts.png" alt="Spotify 与其他流媒体账号切换" width="480" />
+<img src="https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/docs/exclusive/images/r8/streaming-accounts.png?v=r9-complete-20261021" alt="Spotify 与其他流媒体账号切换" width="480" />
 
 </details>
 
 **Folia 歌词体验**：在歌曲卡片内显示滚动歌词，或进入播放页欣赏全屏歌词动效。
 
-![歌曲卡片内滚动歌词](https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/docs/exclusive/images/r8/lyrics-card.webp)
+![歌曲卡片内滚动歌词](https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/docs/exclusive/images/r8/lyrics-card.webp?v=r9-complete-20261021)
 
 <details>
 <summary>查看全屏歌词动效</summary>
 
-![Folia 全屏动态歌词](https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/docs/exclusive/images/r8/lyrics-animation.png)
+![Folia 全屏动态歌词](https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/docs/exclusive/images/r8/lyrics-animation.png?v=r9-complete-20261021)
 
 </details>
 
 **WASAPI / ASIO 输出**：选择播放设备，调整 Spotify 缓存，开启整数处理与音频链路展示。
 
-![WASAPI 与 ASIO 输出设备](https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/docs/exclusive/images/r4/native-output.png)
-![整数 PCM 与音频链路开关](https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/docs/exclusive/images/r4/integer-mode.png)
+![WASAPI 与 ASIO 输出设备](https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/docs/exclusive/images/r4/native-output.png?v=r9-complete-20261021)
+![整数 PCM 与音频链路开关](https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/docs/exclusive/images/r4/integer-mode.png?v=r9-complete-20261021)
 
 **流式播放**：左下角显示准备与缓冲进度，音频链路展示当前处理与输出格式。
 
-![Spotify 与 WASAPI 流式输出链路](https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/docs/exclusive/images/r4/streaming-output.png)
+![Spotify 与 WASAPI 流式输出链路](https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/docs/exclusive/images/r4/streaming-output.png?v=r9-complete-20261021)
 
 **HQPlayer 独立连接**：管理连接与窗口显示，在 DSP 面板选择当前曲或下一曲应用设置。
 
-![HQPlayer 连接与窗口设置](https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/docs/exclusive/images/r4/hqplayer-settings.png)
+![HQPlayer 连接与窗口设置](https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/docs/exclusive/images/r4/hqplayer-settings.png?v=r9-complete-20261021)
 
 <details>
 <summary>查看 HQPlayer DSP 播放面板</summary>
 
-![HQPlayer 浮窗、DSP 和窗口显示开关](https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/docs/exclusive/images/hqplayer-floating.png)
+![HQPlayer 浮窗、DSP 和窗口显示开关](https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/docs/exclusive/images/hqplayer-floating.png?v=r9-complete-20261021)
 
 </details>
 
@@ -155,7 +155,7 @@ Folia是一个以全屏沉浸式歌词播放为核心的在线音乐播放器，
 
 ## 展示
 
-![visualizer](https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/img/visualizer.png)
+![visualizer](https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/img/visualizer.png?v=r9-complete-20261021)
 
 ### 演示视频
 
@@ -170,10 +170,10 @@ https://github.com/user-attachments/assets/704f195a-2194-434b-86e8-8f36290e5cc4
 <table>
   <tr>
     <td width="50%">
-      <img src="https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/img/preview-fume.png" alt="Fume 主题预览" />
+      <img src="https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/img/preview-fume.png?v=r9-complete-20261021" alt="Fume 主题预览" />
     </td>
     <td width="50%">
-      <img src="https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/img/preview-lumi.png" alt="Lumi 主题预览" />
+      <img src="https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/img/preview-lumi.png?v=r9-complete-20261021" alt="Lumi 主题预览" />
     </td>
   </tr>
   <tr>
@@ -182,10 +182,10 @@ https://github.com/user-attachments/assets/704f195a-2194-434b-86e8-8f36290e5cc4
   </tr>
   <tr>
     <td width="50%">
-      <img src="https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/img/preview-cad.png" alt="Cad 主题预览" />
+      <img src="https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/img/preview-cad.png?v=r9-complete-20261021" alt="Cad 主题预览" />
     </td>
     <td width="50%">
-      <img src="https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/img/preview-pat.png" alt="Pat 主题预览" />
+      <img src="https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/img/preview-pat.png?v=r9-complete-20261021" alt="Pat 主题预览" />
     </td>
   </tr>
   <tr>
@@ -194,10 +194,10 @@ https://github.com/user-attachments/assets/704f195a-2194-434b-86e8-8f36290e5cc4
   </tr>
   <tr>
     <td width="50%">
-      <img src="https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/img/preview-cappella.jpg" alt="群唱 主题预览" />
+      <img src="https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/img/preview-cappella.jpg?v=r9-complete-20261021" alt="群唱 主题预览" />
     </td>
     <td width="50%">
-      <img src="https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/img/preview-tilt.png" alt="Tilt 主题预览" />
+      <img src="https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/img/preview-tilt.png?v=r9-complete-20261021" alt="Tilt 主题预览" />
     </td>
   </tr>
   <tr>
@@ -206,10 +206,10 @@ https://github.com/user-attachments/assets/704f195a-2194-434b-86e8-8f36290e5cc4
   </tr>
     <tr>
     <td width="50%">
-      <img src="https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/img/preview-diorama.png" alt="镜台 主题预览" />
+      <img src="https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/img/preview-diorama.png?v=r9-complete-20261021" alt="镜台 主题预览" />
     </td>
     <td width="50%">
-      <img src="https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/img/preview-pendolo.png" alt="时计 主题预览" />
+      <img src="https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/img/preview-pendolo.png?v=r9-complete-20261021" alt="时计 主题预览" />
     </td>
   </tr>
   <tr>
