@@ -2,9 +2,9 @@
 
 基于 [Folia](https://github.com/chthollyphile/folia-major) 的个人公益、非商业专版，由 [PekolandBBQ](https://github.com/PekolandBBQ) 维护。保留 Folia 的歌词与音乐库体验，追加 **Spotify 接入、WASAPI / ASIO 独占、HQPlayer 升频、整数直通与音频链路展示**。
 
-**当前版本：0.7.19 r9** · Windows x64 · Spotify 接入需要 Windows 11 x64
+**当前版本：0.7.19 r10** · Windows x64 · Spotify 接入需要 Windows 11 x64
 
-[GitHub 下载](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/releases/tag/folia-hifi-v0.7.19-r9) · [Gitee 国内下载](https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/releases/tag/folia-hifi-v0.7.19-r9) · [使用说明](docs/exclusive/USAGE.md) · [更新说明](docs/exclusive/releases/0.7.19-r9.md) · [反馈问题](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/issues)
+[GitHub 下载](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/releases/tag/folia-hifi-v0.7.19-r10) · [Gitee 国内下载](https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/releases/tag/folia-hifi-v0.7.19-r10) · [使用说明](docs/exclusive/USAGE.md) · [更新说明](docs/exclusive/releases/0.7.19-r10.md) · [反馈问题](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/issues)
 
 ## 我追加了哪些功能
 
@@ -32,35 +32,35 @@ Gitee 网页提供分卷包，首次手动下载时请取齐同组分片，用 7
 
 **Spotify 首次使用向导**：选择客户端，完成组件安装与连接。
 
-![Spotify 首次配置向导](https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/docs/exclusive/images/0.7.19-r1/spotify-setup.png?v=r9-complete-20261021)
+![Spotify 首次配置向导](https://github.com/user-attachments/assets/e7ab6f03-3d89-4456-8ca7-96b174e62066)
 
 **Spotify 歌单封面**：已点赞歌曲以九宫格封面展示。
 
-![Spotify 已点赞歌曲与本机曲目](https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/docs/exclusive/images/r4/spotify-library.png?v=r9-complete-20261021)
+![Spotify 已点赞歌曲与本机曲目](https://github.com/user-attachments/assets/a276b0f5-bde8-4e28-a1bf-fd8fb20e45e0)
 
 **Spotify 音乐库**：浏览自建歌单、收藏歌单、年度歌曲和已点赞歌曲。
 
-[![Spotify 收藏歌单、年度歌曲与已点赞歌曲](https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/docs/exclusive/images/r8/spotify-playlists-preview.webp?v=r9-complete-20261021)](https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/docs/exclusive/images/r8/spotify-playlists.png)
+[![Spotify 收藏歌单、年度歌曲与已点赞歌曲](https://github.com/user-attachments/assets/740ed4e4-1be8-47ad-b4b8-6519ebd7aeb1)](https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/docs/exclusive/images/r8/spotify-playlists.png)
 
 <details>
 <summary>查看收藏专辑与关注艺人</summary>
 
-[![Spotify 收藏专辑](https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/docs/exclusive/images/r8/spotify-albums-preview.webp?v=r9-complete-20261021)](https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/docs/exclusive/images/r8/spotify-albums.png)
-![Spotify 关注艺人](https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/docs/exclusive/images/r8/spotify-artists.webp?v=r9-complete-20261021)
+[![Spotify 收藏专辑](https://github.com/user-attachments/assets/f2a50f99-3f6b-49f1-aace-7c4f8f421489)](https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/docs/exclusive/images/r8/spotify-albums.png)
+![Spotify 关注艺人](https://github.com/user-attachments/assets/5a8d0ac8-a00a-46d1-8fd5-660794a810cb)
 
 </details>
 
 **Spotify 推荐歌单**：在“电台”中浏览 Daily Mix、每周新发现、新歌雷达等个性推荐。
 
-[![Spotify Daily Mix、每周新发现与推荐歌单](https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/docs/exclusive/images/r8/spotify-recommendations-preview.webp?v=r9-complete-20261021)](https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/docs/exclusive/images/r8/spotify-recommendations.png)
+[![Spotify Daily Mix、每周新发现与推荐歌单](https://github.com/user-attachments/assets/c182efd5-4cf2-45fb-a5a9-1a4900d80664)](https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/docs/exclusive/images/r8/spotify-recommendations.png)
 
 **在线分类搜索**：切换单曲、艺人和专辑，进入对应页面浏览与收藏。
 
 <table>
   <tr>
-    <td width="33%"><img src="https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/docs/exclusive/images/r8/spotify-search-tracks.png?v=r9-complete-20261021" alt="Spotify 单曲搜索" /></td>
-    <td width="33%"><img src="https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/docs/exclusive/images/r8/spotify-search-artists.png?v=r9-complete-20261021" alt="Spotify 艺人搜索" /></td>
-    <td width="33%"><img src="https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/docs/exclusive/images/r8/spotify-search-albums.png?v=r9-complete-20261021" alt="Spotify 专辑搜索" /></td>
+    <td width="33%"><img src="https://github.com/user-attachments/assets/e0d2005d-54f4-46db-bfa0-17518ed7729d" alt="Spotify 单曲搜索" /></td>
+    <td width="33%"><img src="https://github.com/user-attachments/assets/eaa295f6-bc2d-4b9e-bb59-e4bd36cbd8b9" alt="Spotify 艺人搜索" /></td>
+    <td width="33%"><img src="https://github.com/user-attachments/assets/fb94d6fd-399b-41f7-95fc-fcef65d0c8fa" alt="Spotify 专辑搜索" /></td>
   </tr>
   <tr><td align="center">单曲</td><td align="center">艺人</td><td align="center">专辑</td></tr>
 </table>
@@ -68,43 +68,43 @@ Gitee 网页提供分卷包，首次手动下载时请取齐同组分片，用 7
 <details>
 <summary>查看艺人、专辑详情与流媒体账号切换</summary>
 
-![Spotify 艺人详情、热门歌曲与专辑](https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/docs/exclusive/images/r8/spotify-artist-detail.webp?v=r9-complete-20261021)
-![Spotify 专辑详情与曲目](https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/docs/exclusive/images/r8/spotify-album-detail.webp?v=r9-complete-20261021)
+![Spotify 艺人详情、热门歌曲与专辑](https://github.com/user-attachments/assets/9adfce97-73c5-4c0a-a5cb-233fd28c9236)
+![Spotify 专辑详情与曲目](https://github.com/user-attachments/assets/76f553e8-20a4-4e57-8066-f599cdd821ed)
 
 账号菜单展示头像与用户名，可切换 Spotify、网易云、QQ 等音源。
 
-<img src="https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/docs/exclusive/images/r8/streaming-accounts.png?v=r9-complete-20261021" alt="Spotify 与其他流媒体账号切换" width="480" />
+<img src="https://github.com/user-attachments/assets/e7b2fb98-47d9-4627-9285-c21dd5cc1d4e" alt="Spotify 与其他流媒体账号切换" width="480" />
 
 </details>
 
 **Folia 歌词体验**：在歌曲卡片内显示滚动歌词，或进入播放页欣赏全屏歌词动效。
 
-![歌曲卡片内滚动歌词](https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/docs/exclusive/images/r8/lyrics-card.webp?v=r9-complete-20261021)
+![歌曲卡片内滚动歌词](https://github.com/user-attachments/assets/d9bb38e0-b6af-4598-acdc-1a91bb231ed5)
 
 <details>
 <summary>查看全屏歌词动效</summary>
 
-![Folia 全屏动态歌词](https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/docs/exclusive/images/r8/lyrics-animation.png?v=r9-complete-20261021)
+![Folia 全屏动态歌词](https://github.com/user-attachments/assets/858610c6-2830-496c-9e79-04e4ecd25a06)
 
 </details>
 
 **WASAPI / ASIO 输出**：选择播放设备，调整 Spotify 缓存，开启整数处理与音频链路展示。
 
-![WASAPI 与 ASIO 输出设备](https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/docs/exclusive/images/r4/native-output.png?v=r9-complete-20261021)
-![整数 PCM 与音频链路开关](https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/docs/exclusive/images/r4/integer-mode.png?v=r9-complete-20261021)
+![WASAPI 与 ASIO 输出设备](https://github.com/user-attachments/assets/40fda476-59f4-4df9-bf89-75433739153a)
+![整数 PCM 与音频链路开关](https://github.com/user-attachments/assets/f3c3a691-aa76-4338-8cf2-92530a2952bb)
 
 **流式播放**：左下角显示准备与缓冲进度，音频链路展示当前处理与输出格式。
 
-![Spotify 与 WASAPI 流式输出链路](https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/docs/exclusive/images/r4/streaming-output.png?v=r9-complete-20261021)
+![Spotify 与 WASAPI 流式输出链路](https://github.com/user-attachments/assets/d4887785-7829-496c-80bc-58ee26cf7592)
 
 **HQPlayer 独立连接**：管理连接与窗口显示，在 DSP 面板选择当前曲或下一曲应用设置。
 
-![HQPlayer 连接与窗口设置](https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/docs/exclusive/images/r4/hqplayer-settings.png?v=r9-complete-20261021)
+![HQPlayer 连接与窗口设置](https://github.com/user-attachments/assets/d5d339f1-8f61-4318-89a9-b7804f44de3f)
 
 <details>
 <summary>查看 HQPlayer DSP 播放面板</summary>
 
-![HQPlayer 浮窗、DSP 和窗口显示开关](https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/docs/exclusive/images/hqplayer-floating.png?v=r9-complete-20261021)
+![HQPlayer 浮窗、DSP 和窗口显示开关](https://github.com/user-attachments/assets/d736b9ff-a4d5-43c8-bc6d-8e968eaac370)
 
 </details>
 
@@ -155,7 +155,7 @@ Folia是一个以全屏沉浸式歌词播放为核心的在线音乐播放器，
 
 ## 展示
 
-![visualizer](https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/img/visualizer.png?v=r9-complete-20261021)
+![visualizer](https://github.com/user-attachments/assets/0e14a98a-c801-4084-9481-a2add7d9edf2)
 
 ### 演示视频
 
@@ -170,10 +170,10 @@ https://github.com/user-attachments/assets/704f195a-2194-434b-86e8-8f36290e5cc4
 <table>
   <tr>
     <td width="50%">
-      <img src="https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/img/preview-fume.png?v=r9-complete-20261021" alt="Fume 主题预览" />
+      <img src="https://github.com/user-attachments/assets/2bf842f2-c2ee-4621-97fc-461d6b1125ea" alt="Fume 主题预览" />
     </td>
     <td width="50%">
-      <img src="https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/img/preview-lumi.png?v=r9-complete-20261021" alt="Lumi 主题预览" />
+      <img src="https://github.com/user-attachments/assets/a882f595-5d75-401f-a59a-4be982151f86" alt="Lumi 主题预览" />
     </td>
   </tr>
   <tr>
@@ -182,10 +182,10 @@ https://github.com/user-attachments/assets/704f195a-2194-434b-86e8-8f36290e5cc4
   </tr>
   <tr>
     <td width="50%">
-      <img src="https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/img/preview-cad.png?v=r9-complete-20261021" alt="Cad 主题预览" />
+      <img src="https://github.com/user-attachments/assets/10e8a275-7ab1-4355-b7d8-daee2b062cfa" alt="Cad 主题预览" />
     </td>
     <td width="50%">
-      <img src="https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/img/preview-pat.png?v=r9-complete-20261021" alt="Pat 主题预览" />
+      <img src="https://github.com/user-attachments/assets/479529fa-0eff-4fb7-b48b-9b197b0b9b36" alt="Pat 主题预览" />
     </td>
   </tr>
   <tr>
@@ -194,10 +194,10 @@ https://github.com/user-attachments/assets/704f195a-2194-434b-86e8-8f36290e5cc4
   </tr>
   <tr>
     <td width="50%">
-      <img src="https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/img/preview-cappella.jpg?v=r9-complete-20261021" alt="群唱 主题预览" />
+      <img src="https://github.com/user-attachments/assets/b85b2c5d-2021-4fce-8f2e-7f0d9523755c" alt="群唱 主题预览" />
     </td>
     <td width="50%">
-      <img src="https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/img/preview-tilt.png?v=r9-complete-20261021" alt="Tilt 主题预览" />
+      <img src="https://github.com/user-attachments/assets/42ef0be4-e37d-4173-9a80-bfeb202b1a58" alt="Tilt 主题预览" />
     </td>
   </tr>
   <tr>
@@ -206,10 +206,10 @@ https://github.com/user-attachments/assets/704f195a-2194-434b-86e8-8f36290e5cc4
   </tr>
     <tr>
     <td width="50%">
-      <img src="https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/img/preview-diorama.png?v=r9-complete-20261021" alt="镜台 主题预览" />
+      <img src="https://github.com/user-attachments/assets/c5a42e8f-c1f8-4ac7-b616-735a3b4e8dbd" alt="镜台 主题预览" />
     </td>
     <td width="50%">
-      <img src="https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/raw/codex/folia-exclusive/img/preview-pendolo.png?v=r9-complete-20261021" alt="时计 主题预览" />
+      <img src="https://github.com/user-attachments/assets/986d8a52-a712-4a90-9b3e-ef5ce7103cf5" alt="时计 主题预览" />
     </td>
   </tr>
   <tr>
