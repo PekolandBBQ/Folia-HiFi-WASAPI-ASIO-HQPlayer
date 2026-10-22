@@ -11,8 +11,9 @@ function patchWavWorker(source) {
     replace('function createHQPlayerStreaming({ host, onError = () => {}, sourceFactory',
         'function createHQPlayerStreaming({ host, onError = () => {}, onDiagnostic = () => {}, sourceFactory');
     replace('sourceFactory = (settings) => new PcmLoopbackSource(settings)',
-        'sourceFactory = (settings) => settings.foliaWav ? new (require("./wavPcmSource.cjs").createWavPcmSource(PcmLoopbackSource))(settings) : new PcmLoopbackSource(settings)');
-    replace('bufferSeconds: 6\n', 'bufferSeconds: 6, foliaWav: spec.transport !== void 0, onDiagnostic: ((streamGeneration) => (detail) => onDiagnostic({ ...detail, session: spec.session, streamGeneration }))(generation + 1)\n');
+        'sourceFactory = (settings) => new (require("./wavPcmSource.cjs").createWavPcmSource(PcmLoopbackSource))(settings)');
+    // Every producer already supplies signed PCM32; transport describes pipe ownership, not the HTTP container.
+    replace('bufferSeconds: 6\n', 'bufferSeconds: 6, onDiagnostic: ((streamGeneration) => (detail) => onDiagnostic({ ...detail, session: spec.session, streamGeneration, inputContainer: "wav", producerKind: spec.transport !== void 0 ? "live-capture" : "decoded-pcm", sampleRate: spec.sampleRate, channels: spec.channels }))(generation + 1)\n');
     replace('streaming = createHQPlayerStreaming({\n\t\t\t\thost,',
         'streaming = createHQPlayerStreaming({\n\t\t\t\thost, onDiagnostic: (detail) => send({ event: "diagnostic", detail }),');
     replace('bufferCapacityBytes: record.source.state.capacityBytes,',

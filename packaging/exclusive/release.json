@@ -92,11 +92,18 @@
       "platform": "win32-x64",
       "sha256": "17af6c02fbee69f4958835329da57b86240de83d7180ac33eda9d47eed22ea46",
       "entrySha256": "16a47c77fa32f98485714a921ab625937b9c0415ec301bfa20000a7672eb57c0"
+    },
+    {
+      "version": "0.1.4-preview.8",
+      "protocolMajor": 1,
+      "platform": "win32-x64",
+      "sha256": "0d2f153d4cff0928a312ac512bfcb23fa4120a70aef8f57ce258b01c462500b9",
+      "entrySha256": "43b29c4a278f247a5d541057ed8f7165f34181d1631e865fadf7ff6adc668c76"
     }
   ],
   "spotifyBackend": "wrapper",
   "wrapperPreview": false,
   "wrapperLocalValidation": false,
-  "forkTag": "folia-hifi-v0.7.19-r9",
-  "build": 1792519997432
+  "forkTag": "folia-hifi-v0.7.19-r10",
+  "build": 1792688893698
 }

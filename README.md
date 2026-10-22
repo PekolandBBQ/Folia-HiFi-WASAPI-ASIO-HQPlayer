@@ -2,9 +2,9 @@
 
 基于 [Folia](https://github.com/chthollyphile/folia-major) 的个人公益、非商业专版，由 [PekolandBBQ](https://github.com/PekolandBBQ) 维护。保留 Folia 的歌词与音乐库体验，追加 **Spotify 接入、WASAPI / ASIO 独占、HQPlayer 升频、整数直通与音频链路展示**。
 
-**当前版本：0.7.19 r9** · Windows x64 · Spotify 接入需要 Windows 11 x64
+**当前版本：0.7.19 r10** · Windows x64 · Spotify 接入需要 Windows 11 x64
 
-[GitHub 下载](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/releases/tag/folia-hifi-v0.7.19-r9) · [Gitee 国内下载](https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/releases/tag/folia-hifi-v0.7.19-r9) · [使用说明](docs/exclusive/USAGE.md) · [更新说明](docs/exclusive/releases/0.7.19-r9.md) · [反馈问题](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/issues)
+[GitHub 下载](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/releases/tag/folia-hifi-v0.7.19-r10) · [Gitee 国内下载](https://gitee.com/pekoland-bbq/folia-hi-fi-wasapi-asio-hqplayer/releases/tag/folia-hifi-v0.7.19-r10) · [使用说明](docs/exclusive/USAGE.md) · [更新说明](docs/exclusive/releases/0.7.19-r10.md) · [反馈问题](https://github.com/PekolandBBQ/Folia-HiFi-WASAPI-ASIO-HQPlayer/issues)
 
 ## 我追加了哪些功能
 

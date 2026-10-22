@@ -4,7 +4,7 @@ const { createHash } = require('node:crypto');
 const { patchWavWorker } = require('./buildWavListeningComponent.cjs');
 
 // packaging/exclusive/buildWavReleaseComponent.cjs — one integrity-covered worker for the verified WAV input.
-async function buildWavReleaseComponent(archive, version = '0.1.4-preview.8') {
+async function buildWavReleaseComponent(archive, version = '0.1.4-preview.9') {
     const files = unzipSync(archive), old = JSON.parse(Buffer.from(files['component.json']).toString());
     if (old.id !== 'hqplayer' || old.version !== '0.1.4-preview.7') throw Error('Expected the verified preview.7 baseline');
     let source = patchWavWorker(Buffer.from(files['hqplayer-component.cjs']).toString());
