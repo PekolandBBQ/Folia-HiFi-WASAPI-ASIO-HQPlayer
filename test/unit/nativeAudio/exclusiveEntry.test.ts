@@ -159,10 +159,10 @@ describe('packaged exclusive entry with real approved ZIP artifacts', () => {
         expect(f.mainRequested).not.toHaveBeenCalled(); expect(f.verifyStaged).not.toHaveBeenCalled();
         expect(await f.manager().status()).toMatchObject({ available: true, version: old.release.version });
     });
-    it.each(['0.1.3','0.1.4-preview.3','0.1.4-preview.4','0.1.4-preview.5','0.1.4-preview.6','0.1.4-preview.7'])('upgrades known %s activation to the WAV release and retains rollback', async version => {
+    it.each(['0.1.3','0.1.4-preview.3','0.1.4-preview.4','0.1.4-preview.5','0.1.4-preview.6','0.1.4-preview.7','0.1.4-preview.8'])('upgrades known %s activation to the all-source WAV release and retains rollback', async version => {
         const f=await fixture(),old=await f.publishHqp(version);await f.seedHqp(old);
-        await f.publishHqp('0.1.4-preview.8');f.execute();
-        expect(await f.manager().status()).toMatchObject({available:true,version:'0.1.4-preview.8',rollbackAvailable:true});
+        await f.publishHqp('0.1.4-preview.9');f.execute();
+        expect(await f.manager().status()).toMatchObject({available:true,version:'0.1.4-preview.9',rollbackAvailable:true});
         expect(JSON.parse(await fs.readFile(path.join(f.hqpDirectory,'previous.json'),'utf8'))).toEqual(pointer(old.release));
     });
     it('prunes only obsolete known component folders and retains settings, backups, rollback and receipts', async()=>{

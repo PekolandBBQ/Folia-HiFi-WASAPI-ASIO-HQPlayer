@@ -52,9 +52,13 @@ it.each([[2, 'hqplayer-wav-readfix'], [3, 'hqplayer-wav-addressfix'], [4, 'hqpla
 describe.skipIf(!fs.existsSync(archive))('local listening assembly using the released r8 HQPlayer worker', () => {
     function component() {
         const files = unzipSync(fs.readFileSync(archive));
-        const source = patchWavWorker(Buffer.from(files['hqplayer-component.cjs']).toString('utf8'));
+        const source = process.env.FOLIA_WAV_WORKER
+            ? fs.readFileSync(process.env.FOLIA_WAV_WORKER, 'utf8')
+            : patchWavWorker(Buffer.from(files['hqplayer-component.cjs']).toString('utf8'));
         const module = {exports:{} as any};
-        const candidateRequire = (id:string) => id === './wavPcmSource.cjs' ? {createWavPcmSource} : require(id);
+        const candidateRequire = process.env.FOLIA_WAV_WORKER
+            ? createRequire(path.resolve(process.env.FOLIA_WAV_WORKER))
+            : (id:string) => id === './wavPcmSource.cjs' ? {createWavPcmSource} : require(id);
         vm.runInNewContext(source + '\nmodule.exports = { ...require_hqplayerPcmSource(), ...require_hqplayerStreaming() };', {
             module, require:candidateRequire, __dirname:path.dirname(archive), Buffer, URL, AbortController,
             setTimeout,clearTimeout,setInterval,clearInterval,console,
@@ -96,7 +100,7 @@ describe.skipIf(!fs.existsSync(archive))('local listening assembly using the rel
             await expect(source.write(Buffer.alloc(8))).rejects.toMatchObject({code:'CANCELLED'});
         } finally {await source.close();}
     });
-    it('uses WAV only for owned live PCM, keeps raw wire identity, and resets with a fresh WAV header', async () => {
+    it('uses WAV for live and decoded PCM, keeps pipe wire identity, and resets with a fresh WAV header', async () => {
         const {createHQPlayerStreaming} = component();
         const loaded:any[] = [], errors:any[] = [];
         const host = { stop:vi.fn(async()=>{}),setStreamBuffered:()=>{},setStreamDuration:()=>{},
@@ -123,11 +127,13 @@ describe.skipIf(!fs.existsSync(archive))('local listening assembly using the rel
             expect(diagnostics.find(d=>d.phase==='request'&&d.session===base.session&&d.streamGeneration===2)).toBeDefined();
             await streaming.close(base.session,status.generation);
             const finite = await streaming.prepare({session:'finite',sampleRate:44100,channels:2,bits32:true,durationHint:180});
-            expect(finite.inputContainer).toBeUndefined(); expect(loaded[2].filePath.endsWith('.wav')).toBe(false);
+            expect(finite.inputContainer).toBe('wav'); expect(loaded[2].filePath.endsWith('.wav')).toBe(true);
+            expect(finite.transport).toBeUndefined();
+            expect((await fetch(loaded[2].filePath,{method:'HEAD'})).headers.get('content-type')).toBe('audio/wav');
             await streaming.close('finite'); expect(errors).toEqual([]);
         } finally {socket?.destroy();await streaming.close();}
     });
-    it('keeps WAV and the session open after input EOF and flushes the full reported DSP delay above three seconds', async () => {
+    it.each([true, false])('keeps WAV open after EOF and drains full DSP delay (live=%s)', async (live) => {
         const {createHQPlayerStreaming} = component(), loaded:any[] = [], diagnostics:any[] = [], errors:any[] = [];
         const latency = 5.5;
         const host = { stop:vi.fn(async()=>{}),setStreamBuffered:vi.fn(),setStreamDuration:vi.fn(),
@@ -137,7 +143,7 @@ describe.skipIf(!fs.existsSync(archive))('local listening assembly using the rel
         let socket:net.Socket|undefined;
         try {
             const status = await streaming.prepare({session:'tail-drain',sampleRate:44100,channels:2,bits32:true,
-                durationHint:120,transport:LIVE_PCM_TRANSPORT});
+                durationHint:120,...(live ? {transport:LIVE_PCM_TRANSPORT} : {})});
             await vi.waitFor(()=>expect(loaded).toHaveLength(1));
             socket = net.createConnection(status.pipeName);await once(socket,'connect');
             const pcm = Buffer.alloc(80,23);socket.end(pcm);
@@ -149,6 +155,12 @@ describe.skipIf(!fs.existsSync(archive))('local listening assembly using the rel
             expect(wav.length).toBe(68+pcm.length+flushFrames*8);
             expect(wav.subarray(68,148)).toEqual(pcm);
             expect(wav.subarray(148).every(byte=>byte===0)).toBe(true);
+            const ranged = await fetch(loaded[0].filePath,{headers:{Range:'bytes=68-147'}});
+            expect(ranged.status).toBe(206);
+            expect(Buffer.from(await ranged.arrayBuffer())).toEqual(pcm);
+            expect(Buffer.from(await (await fetch(loaded[0].filePath)).arrayBuffer())).toEqual(wav);
+            expect(diagnostics).toContainEqual(expect.objectContaining({inputContainer:'wav',
+                producerKind:live ? 'live-capture' : 'decoded-pcm',sampleRate:44100,channels:2}));
             expect(streaming.status('tail-drain').producerComplete).toBe(true);
             expect(host.stop).not.toHaveBeenCalled(); expect(errors).toEqual([]);
             // Reader completion is input consumption, not an audible-end receipt.
